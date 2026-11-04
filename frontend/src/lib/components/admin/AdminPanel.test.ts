@@ -7,6 +7,12 @@ import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/sv
 import AdminPanel from './AdminPanel.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 function account(username: string, extra: Partial<Account> = {}): Account {
   return {
     username,
@@ -30,7 +36,7 @@ beforeEach(() => {
     AdminPurgeUser: vi.fn(async () => undefined),
     AdminRoles: vi.fn(async () => ({ super: 'alice' })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   session.user = account('alice', { is_admin: true });
 });
 

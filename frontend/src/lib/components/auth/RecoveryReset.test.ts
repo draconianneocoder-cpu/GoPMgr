@@ -7,6 +7,12 @@ import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import RecoveryReset from './RecoveryReset.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // The exact text of users.ErrLegacyRecoveryCode as Wails delivers it.
 const LEGACY_ERROR =
   "This recovery code is from an older version of GoPMgr and can't unlock your encryption key, so nothing was changed.";
@@ -15,7 +21,7 @@ let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   app = { ResetWithRecoveryCode: vi.fn(async () => undefined) };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

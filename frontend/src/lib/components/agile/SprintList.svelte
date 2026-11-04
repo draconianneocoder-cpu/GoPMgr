@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { sprintPayload } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // SprintList: create, edit, activate, and complete sprints. The
   // active-sprint constraint (only one at a time) is GUI-enforced —
   // when the user clicks "Start" on a planning sprint, any other
@@ -36,11 +38,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function refresh() {
     try {
-      const list = await window.go.desktop.App.ListSprints();
+      const list = await desktopApi.ListSprints();
       sprints = list ?? [];
 
       // Index work items by sprint so we can show counts + sums.
-      const all = (await window.go.desktop.App.ListWorkItems('', '', '')) ?? [];
+      const all = (await desktopApi.ListWorkItems('', '', '')) ?? [];
       const map: Record<string, AgileWorkItem[]> = {};
       for (const i of all) {
         if (!i.sprint_id) continue;
@@ -141,7 +143,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         ...savingSprint,
         created_at: savingSprint.created_at === '' ? '0001-01-01T00:00:00Z' : savingSprint.created_at,
       };
-      const saved = await window.go.desktop.App.SaveSprint(payload);
+      const saved = await desktopApi.SaveSprint(sprintPayload(payload));
       const idx = sprints.findIndex((s) => s.id === saved.id);
       if (idx >= 0) sprints[idx] = saved;
       else sprints = [saved, ...sprints];
@@ -197,10 +199,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       for (const other of sprints) {
         if (other.id !== s.id && other.status === 'active') {
-          await window.go.desktop.App.SaveSprint({ ...other, status: 'complete' });
+          await desktopApi.SaveSprint(sprintPayload({ ...other, status: 'complete' }));
         }
       }
-      const saved = await window.go.desktop.App.SaveSprint({ ...s, status: 'active' });
+      const saved = await desktopApi.SaveSprint(sprintPayload({ ...s, status: 'active' }));
       await refresh();
       status = `${saved.name} is now active.`;
     } catch (err: any) {
@@ -240,9 +242,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     sprintActionBusy = true;
     try {
       if (kind === 'complete') {
-        await window.go.desktop.App.SaveSprint({ ...s, status: 'complete' });
+        await desktopApi.SaveSprint(sprintPayload({ ...s, status: 'complete' }));
       } else {
-        await window.go.desktop.App.DeleteSprint(s.id);
+        await desktopApi.DeleteSprint(s.id);
       }
       pendingSprintAction = null;
       await refresh();

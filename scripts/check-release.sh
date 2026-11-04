@@ -14,7 +14,7 @@ echo "Running Final Release Gates for GoPMgr..."
 
 # --- 1. Version consistency ------------------------------------------
 APP_VERSION=$(grep -oE 'Version *= *"[^"]+"' internal/cli/parser.go | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-WAILS_VERSION=$(grep -oE '"productVersion" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/')
+WAILS_VERSION="$(python3 -B scripts/wails-build-config.py version)"
 
 if [ "$APP_VERSION" != "$WAILS_VERSION" ]; then
     echo "Version mismatch: CLI ($APP_VERSION) vs Wails ($WAILS_VERSION)"
@@ -24,8 +24,8 @@ echo "Versions match: $APP_VERSION"
 
 # Keep the Wails runtime, build CLI, and current documentation on one pinned
 # version. This is separate from the product-version check above because both
-# values live in go.mod/workflows rather than wails.json.
-if ! GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+# values live in go.mod/workflows rather than build/config.yml info.version.
+if ! WAILS3="${WAILS3:-.tmp/wails-v3/bin/wails3}" GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
     echo "Wails version consistency failed. Run 'make wails-cli-version' for details."
     exit 1
 fi
@@ -174,19 +174,20 @@ if command -v go >/dev/null 2>&1; then
     # run merely to identify the failing package.
     # Account/root fixtures do real memory-hard KDF work. Bound package
     # overlap, not within-package concurrency; never reuse cached race results.
-    if ! go test -race -p=1 -count=1 -tags webkit2_41 $GO_PACKAGES; then
+    if ! go test -race -p=1 -count=1 $GO_PACKAGES; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi
     echo "Race detector clean."
 fi
 
-# --- 7. Production build (via Wails CLI) -----------------------------
-# `make build` now runs `wails build`, which rebuilds the frontend, injects
-# the desktop,production tags, links the macOS frameworks, and produces the
-# packaged app under build/bin. Requires the `wails` CLI on PATH.
+# --- 7. Production build (reviewed Wails v3 tasks) --------------------
+# make build calls scripts/wails-build.sh, generates bindings before frontend
+# compilation, applies the production tag and builds native CGO output in
+# build/bin. Product metadata comes from build/config.yml info.version;
+# release linker identity is carried through GOPMGR_RELEASE_LDFLAGS.
 if ! make build >/dev/null; then
-    echo "Final build failed (is the pinned 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0')."
+    echo 'Final build failed (install task-local Wails v3.1.0: GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0).'
     exit 1
 fi
 echo "Build verified."

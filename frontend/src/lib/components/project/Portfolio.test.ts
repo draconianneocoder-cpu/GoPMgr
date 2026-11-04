@@ -7,6 +7,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import Portfolio from './Portfolio.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 afterEach(() => {
   cleanup();
   session.user = null;
@@ -18,7 +24,7 @@ function setApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false, encryption_ready: true })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

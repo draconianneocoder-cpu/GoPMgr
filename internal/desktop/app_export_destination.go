@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gopmgr/internal/exportfs"
 )
@@ -27,11 +27,11 @@ var (
 )
 
 type exportDestinationRuntime struct {
-	saveFileDialog func(context.Context, wailsruntime.SaveDialogOptions) (string, error)
+	saveFileDialog func(context.Context, application.SaveFileDialogOptions) (string, error)
 }
 
-func productionExportDestinationRuntime() exportDestinationRuntime {
-	return exportDestinationRuntime{saveFileDialog: wailsruntime.SaveFileDialog}
+func productionExportDestinationRuntime(app *App) exportDestinationRuntime {
+	return exportDestinationRuntime{saveFileDialog: app.native.saveFileDialog}
 }
 
 // selectExportDestination prompts a desktop user for a new output path. Direct
@@ -43,7 +43,7 @@ func (a *App) selectExportDestination(defaultDirectory, defaultFilename, extensi
 		defaultFilename,
 		extension,
 		title,
-		productionExportDestinationRuntime(),
+		productionExportDestinationRuntime(a),
 	)
 }
 
@@ -72,11 +72,11 @@ func (a *App) selectExportDestinationWithRuntime(
 	if remembered := a.rememberedExportDirectory(); remembered != "" {
 		dialogDirectory = remembered
 	}
-	path, err := runtime.saveFileDialog(a.ctx, wailsruntime.SaveDialogOptions{
-		DefaultDirectory:     dialogDirectory,
-		DefaultFilename:      defaultFilename,
+	path, err := runtime.saveFileDialog(a.ctx, application.SaveFileDialogOptions{
+		Directory:            dialogDirectory,
+		Filename:             defaultFilename,
 		Title:                title,
-		Filters:              []wailsruntime.FileFilter{{DisplayName: strings.TrimPrefix(strings.ToUpper(extension), ".") + " files", Pattern: "*" + extension}},
+		Filters:              []application.FileFilter{{DisplayName: strings.TrimPrefix(strings.ToUpper(extension), ".") + " files", Pattern: "*" + extension}},
 		CanCreateDirectories: true,
 	})
 	if err != nil {

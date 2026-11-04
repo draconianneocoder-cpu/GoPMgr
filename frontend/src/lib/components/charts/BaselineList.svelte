@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
   // Lists a schedule chart's baselines, newest first, and deletes one after
@@ -28,7 +29,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     error = '';
     try {
-      baselines = (await window.go.desktop.App.ListScheduleBaselines(chartId)) ?? [];
+      baselines = (await desktopApi.ListScheduleBaselines(chartId)) ?? [];
     } catch (err: any) {
       error = `Could not load baselines: ${err?.message ?? err}`;
     } finally {
@@ -46,7 +47,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     deleting = true;
     error = '';
     try {
-      await window.go.desktop.App.DeleteScheduleBaseline(pending.id);
+      await desktopApi.DeleteScheduleBaseline(pending.id);
       pending = null;
       await load();
       onchange?.();

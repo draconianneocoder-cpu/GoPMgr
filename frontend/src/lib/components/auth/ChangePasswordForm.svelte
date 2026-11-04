@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { showToast } from '../../toast.svelte';
   import { t } from '../../i18n/i18n.svelte';
 
@@ -26,7 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.desktop.App.ChangePassword(current, next);
+      await desktopApi.ChangePassword(current, next);
       current = '';
       next = '';
       confirm = '';

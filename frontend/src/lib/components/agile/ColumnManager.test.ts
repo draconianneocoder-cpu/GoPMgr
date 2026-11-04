@@ -6,6 +6,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import ColumnManager from './ColumnManager.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const col = (id: string, name: string, order_idx: number, wip_limit = 0): AgileColumn => ({
   id,
   board_id: 'board-1',
@@ -23,7 +29,7 @@ beforeEach(() => {
     DeleteColumn: vi.fn(async () => undefined),
     EnsureDefaultBoard: vi.fn(async () => ({ board: { id: 'board-1' }, columns: initial })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

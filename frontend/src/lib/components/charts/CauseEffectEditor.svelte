@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // CauseEffectEditor is the generic cause-tree editor. Unlike Fishbone
   // (which has a fixed effect + categories + causes structure), this
   // chart represents an arbitrary tree of nested causes — useful for
@@ -71,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -96,13 +97,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshLayout() {
     if (!chart) return;
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.desktop.App.LayoutChart(updated.id);
+      const res = await desktopApi.LayoutChart(updated.id);
       layout = res.body as Layout;
     } catch (err: any) {
       status = `Layout failed: ${err}`;
@@ -174,7 +175,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

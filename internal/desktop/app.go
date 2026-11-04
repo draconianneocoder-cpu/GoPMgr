@@ -17,13 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"gopmgr/internal/admin"
 	"gopmgr/internal/applog"
@@ -39,7 +34,7 @@ import (
 )
 
 // App is the Wails-exposed object. Every exported method becomes
-// callable from the Svelte frontend via window.go.desktop.App.<Method>.
+// callable through the generated Wails v3 desktop.App service bindings.
 //
 // Concurrency model (see DEVELOPER_HANDBOOK.md §16 for the full invariants):
 //
@@ -54,7 +49,9 @@ import (
 //     and MUST be accessed under the lock. Helpers `requireUser()`
 //     and `requireDB()` do the RLock/copy/RUnlock dance.
 type App struct {
-	ctx context.Context
+	ctx          context.Context
+	native       *wailsRuntime
+	shutdownOnce sync.Once
 
 	mu    sync.RWMutex
 	store *users.Store   // immutable after NewApp — safe to read without lock
@@ -136,88 +133,61 @@ func NewApp() (*App, error) {
 }
 
 func (a *App) shutdown(_ context.Context) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	// ADR-001: zero the session DEK on exit too, not only on Logout, so
-	// quitting with a session open does not leave key bytes in the heap
-	// (swap / core-dump hygiene).
-	a.clearSessionLocked()
-	// Close the store but keep the pointer: `store` is documented as
-	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §16), so nilling it
-	// here would be the one write that violates that invariant. A closed
-	// store safely returns errors to any late caller (unreachable in
-	// practice — Wails stops dispatching before shutdown runs).
-	if a.store != nil {
-		_ = a.store.Close()
-	}
+	a.shutdownOnce.Do(func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		a.clearSessionLocked()
+		// The native host has already drained admitted calls. Keep the store
+		// pointer immutable; closed stores also refuse non-native late callers.
+		if a.store != nil {
+			if err := a.store.Close(); err != nil {
+				log.Printf("close account store: %v", err)
+			}
+		}
+	})
 }
 
-// Native-close guard: EnableNativeCloseGuard, CompleteNativeClose,
-// shouldPreventNativeClose, and beforeClose together intercept every native
-// quit trigger and hand the frontend a chance to block it on unsaved editor
-// state. Two facts about the invocation model, traced against the vendored
-// github.com/wailsapp/wails/v2@v2.17.0 module source rather than assumed:
-//
-//   - Every quit trigger funnels through the same path. The native
-//     window-close button (WindowDelegate.m windowShouldClose:, all
-//     platforms), macOS's App-menu Quit / Cmd+Q (AppDelegate.m), and this
-//     file's own non-darwin "Quit" menu item (wailsruntime.Quit below) all
-//     end up at internal/frontend/dispatcher/dispatcher.go's `case 'Q':
-//     sender.Quit()`, which calls frontendOptions.OnBeforeClose — our
-//     beforeClose — before ever touching the window.
-//   - That call is NOT invoked the same way on every platform. darwin's and
-//     linux's Frontend.Quit spawn OnBeforeClose in a goroutine of their own;
-//     windows/frontend.go's Frontend.Quit calls it synchronously on the
-//     same path that requested the quit. beforeClose's body MUST stay
-//     non-blocking because of this — it is not proven what thread the
-//     Windows synchronous call runs on, only that it does not spawn a new
-//     goroutine to make the call. wailsruntime.EventsEmit's own blocking
-//     behavior on Windows was not traced, so treat it as unverified rather
-//     than assumed safe.
-//
-// A separate, three-critical-section fact, demonstrated (not assumed) by
-// TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation in
-// main_test.go: EnableNativeCloseGuard, completeNativeClose, and
-// shouldPreventNativeClose each take and release a.mu independently rather
-// than sharing one critical section, so a concurrent EnableNativeCloseGuard
-// call can revoke a permit completeNativeClose just granted before that
-// same call's own quit callback consumes it. This is not reachable from the
-// current frontend: frontend/src/lib/native-close.ts's
-// NativeCloseController calls EnableNativeCloseGuard exactly once at
-// startup, and otherwise only sequentially inside the catch block after a
-// CompleteNativeClose call has already rejected — and completeNativeClose's
-// two Go-side error returns both happen before nativeClosePermit is ever
-// set to true, so there is never an in-flight granted permit for that later
-// call to revoke. If native-close.ts's control flow changes, or a second Go
-// caller of EnableNativeCloseGuard is added, re-check this reachability
-// argument rather than assuming it still holds.
-//
-// EnableNativeCloseGuard makes subsequent native close requests ask the
-// frontend to evaluate its current editor state. Before the frontend is ready,
-// closing remains allowed so a failed startup cannot trap the user in a window.
+// EnableNativeCloseGuard follows frontend listener registration. A late or
+// duplicated enable must not revoke an already accepted terminal cycle.
 func (a *App) EnableNativeCloseGuard() {
 	a.mu.Lock()
 	a.nativeCloseGuardReady = true
-	a.nativeClosePermit = false
 	a.mu.Unlock()
 }
 
-// CompleteNativeClose grants the one-shot permit and immediately invokes the
-// Wails quit path. Keeping those operations in one backend call prevents the
-// permit from being exposed while the frontend waits for a bridge response.
+// CompleteNativeClose accepts the frontend's completed save/discard decision.
+// The same permit covers window and application hooks. The host drains calls
+// with the event loop alive before queuing the final native Quit.
 func (a *App) CompleteNativeClose() error {
-	return a.completeNativeClose(wailsruntime.Quit)
+	if !a.native.ready() {
+		return errors.New("native close: Wails runtime is not ready")
+	}
+	return a.completeNativeClose(func(context.Context) { a.native.beginQuit() })
 }
 
 func (a *App) completeNativeClose(quit func(context.Context)) error {
 	a.mu.Lock()
+	if a.nativeClosePermit {
+		a.mu.Unlock()
+		return nil
+	}
 	if a.ctx == nil {
 		a.mu.Unlock()
 		return errors.New("native close: Wails runtime is not ready")
 	}
+	if err := a.ctx.Err(); err != nil {
+		a.mu.Unlock()
+		return err
+	}
 	if !a.nativeCloseGuardReady {
 		a.mu.Unlock()
 		return errors.New("native close: frontend guard is not ready")
+	}
+	if a.native != nil {
+		if err := a.native.life.ReserveQuit(); err != nil {
+			a.mu.Unlock()
+			return err
+		}
 	}
 	a.nativeClosePermit = true
 	ctx := a.ctx
@@ -229,21 +199,34 @@ func (a *App) completeNativeClose(quit func(context.Context)) error {
 func (a *App) shouldPreventNativeClose() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if !a.nativeCloseGuardReady {
-		return false
-	}
-	if a.nativeClosePermit {
-		a.nativeClosePermit = false
-		return false
-	}
-	return true
+	return a.nativeCloseGuardReady && !a.nativeClosePermit
 }
 
-func (a *App) beforeClose(ctx context.Context) bool {
-	if !a.shouldPreventNativeClose() {
+func (a *App) beforeClose(_ context.Context) bool {
+	if a.native == nil {
+		return a.shouldPreventNativeClose()
+	}
+	if a.native.life.UIBusy() {
+		return true
+	}
+	if a.shouldPreventNativeClose() {
+		a.native.emit("app:before-close")
+		return true
+	}
+	if a.native.life.Ready() {
 		return false
 	}
-	wailsruntime.EventsEmit(ctx, "app:before-close")
+	// Also drain bootstrap closes. Establish the terminal cycle before a
+	// concurrently arriving frontend enable can turn it into a new prompt.
+	a.mu.Lock()
+	a.nativeClosePermit = true
+	if err := a.native.life.ReserveQuit(); err != nil {
+		a.nativeClosePermit = false
+		a.mu.Unlock()
+		return true
+	}
+	a.mu.Unlock()
+	a.native.beginQuit()
 	return true
 }
 
@@ -251,114 +234,74 @@ func (a *App) beforeClose(ctx context.Context) bool {
 // main: CLI dispatch + Wails launch
 // =========================================================
 
-// buildAppMenu constructs the native application menu. The File submenu drives
-// the project lifecycle and Help shows an About dialog. Menu items emit Wails
-// runtime events that the frontend (App.svelte) listens for and turns into
-// navigation, so the menu triggers the same flows as the in-app buttons. On
-// macOS the standard App and Edit menus are included so Quit/Hide and
-// copy/paste/select-all keep working when a custom menu is set.
-//
-// goos selects the macOS-vs-everyone-else branches (App/Edit/Window menu
-// roles, where Quit lives) — callers pass runtime.GOOS in production; tests
-// pass a literal "darwin"/"windows"/"linux" so both branches run in a
-// single `go test` invocation instead of needing a real macOS host and a
-// real non-macOS host.
-func buildAppMenu(app *App, goos string) *menu.Menu {
-	// emit returns a menu callback that fires a frontend event. app.ctx is nil
-	// until OnStartup runs, but menu clicks only happen after the window is up,
-	// so the guard is belt-and-suspenders.
-	emit := func(event string) func(*menu.CallbackData) {
-		return func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.EventsEmit(app.ctx, event)
-			}
-		}
+// buildAppMenu keeps project navigation and native editing/window roles.
+func buildAppMenu(app *App, goos string) *application.Menu {
+	about := func(*application.Context) {
+		app.native.showAbout(fmt.Sprintf(
+			"GoPMgr %s\n\nLocal-first project controls.\nCopyright (C) 2026 James L. Burns and The GoPMgr Contributors.\nLicensed under GPL-3.0-or-later.", cli.Version))
 	}
-
-	m := menu.NewMenu()
+	emit := func(event string) func(*application.Context) {
+		return func(*application.Context) { app.native.emit(event) }
+	}
+	m := application.NewMenu()
 	if goos == "darwin" {
-		m.Append(menu.AppMenu()) // standard macOS app menu: About/Hide/Quit
+		m.AddRole(application.AppMenu)
+		// The standard About selector bypasses Go callbacks. Route both menu
+		// entries through the same owned, dismissible native dialog instead.
+		m.FindByRole(application.About).SetRole(application.NoRole).OnClick(about)
 	}
-
-	fileMenu := m.AddSubmenu("File")
-	fileMenu.AddText("Dashboard", keys.CmdOrCtrl("d"), emit("menu:dashboard"))
-	fileMenu.AddText("New Project", keys.CmdOrCtrl("n"), emit("menu:new-project"))
-	fileMenu.AddText("Open Project…", keys.CmdOrCtrl("o"), emit("menu:open-project"))
-	fileMenu.AddSeparator()
-	fileMenu.AddText("Application Settings…", keys.CmdOrCtrl(","), emit("menu:app-settings"))
-	fileMenu.AddText("Project Settings…", nil, emit("menu:settings"))
-	fileMenu.AddSeparator()
-	fileMenu.AddText("Close Project", keys.CmdOrCtrl("w"), emit("menu:close-project"))
+	file := m.AddSubmenu("File")
+	file.Add("Dashboard").SetAccelerator("CmdOrCtrl+d").OnClick(emit("menu:dashboard"))
+	file.Add("New Project").SetAccelerator("CmdOrCtrl+n").OnClick(emit("menu:new-project"))
+	file.Add("Open Project…").SetAccelerator("CmdOrCtrl+o").OnClick(emit("menu:open-project"))
+	file.AddSeparator()
+	file.Add("Application Settings…").SetAccelerator("CmdOrCtrl+,").OnClick(emit("menu:app-settings"))
+	file.Add("Project Settings…").OnClick(emit("menu:settings"))
+	file.AddSeparator()
+	file.Add("Close Project").SetAccelerator("CmdOrCtrl+w").OnClick(emit("menu:close-project"))
 	if goos != "darwin" {
-		// macOS gets Quit from the App menu; other platforms need it here.
-		fileMenu.AddSeparator()
-		fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.Quit(app.ctx)
-			}
-		})
+		file.AddSeparator()
+		file.Add("Quit").SetAccelerator("CmdOrCtrl+q").OnClick(func(*application.Context) { app.native.requestQuit() })
 	}
-
 	if goos == "darwin" {
-		m.Append(menu.EditMenu())   // undo/redo/cut/copy/paste/select-all
-		m.Append(menu.WindowMenu()) // Minimize (Cmd+M), Zoom, Bring All to Front
+		m.AddRole(application.EditMenu)
+		m.AddRole(application.WindowMenu)
 	} else {
-		// Windows and Linux don't get the macOS role-based Window menu, so
-		// wire Maximize explicitly so keyboard users aren't forced to reach
-		// for the title-bar button.
-		windowMenu := m.AddSubmenu("Window")
-		windowMenu.AddText("Maximize / Restore", keys.Key("F11"), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowToggleMaximise(app.ctx)
-			}
+		window := m.AddSubmenu("Window")
+		window.Add("Maximize / Restore").SetAccelerator("F11").OnClick(func(*application.Context) {
+			app.native.withUI(func() { app.native.window.ToggleMaximise() })
 		})
-		windowMenu.AddText("Minimize", nil, func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowMinimise(app.ctx)
-			}
+		window.Add("Minimize").OnClick(func(*application.Context) {
+			app.native.withUI(func() { app.native.window.Minimise() })
 		})
 	}
-
-	helpMenu := m.AddSubmenu("Help")
-	helpMenu.AddText("User Guide", nil, emit("menu:help"))
-	helpMenu.AddText("About GoPMgr", nil, func(_ *menu.CallbackData) {
-		if app.ctx == nil {
-			return
-		}
-		_, _ = wailsruntime.MessageDialog(app.ctx, wailsruntime.MessageDialogOptions{
-			Type:  wailsruntime.InfoDialog,
-			Title: "About GoPMgr",
-			Message: fmt.Sprintf(
-				"GoPMgr %s\n\nLocal-first project controls.\nCopyright (C) 2026 James L. Burns and The GoPMgr Contributors.\nLicensed under GPL-3.0-or-later.",
-				cli.Version,
-			),
-		})
-	})
-
+	help := m.AddSubmenu("Help")
+	help.Add("User Guide").OnClick(emit("menu:help"))
+	help.Add("About GoPMgr").OnClick(about)
 	return m
 }
 
-// buildAppOptions keeps the native window contract testable without starting
-// the Wails runtime. A non-nil Mac options block is significant: Wails treats
-// a nil block as not zoomable and disables Cocoa's green NSWindowZoomButton.
-func buildAppOptions(app *App, assets fs.FS) *options.App {
-	return &options.App{
-		Title:     "GoPMgr",
-		Width:     1280,
-		Height:    800,
-		MinWidth:  800,
-		MinHeight: 600,
-		Mac: &mac.Options{
-			DisableZoom: false,
+func mainWindowOptions() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{Title: "GoPMgr", Width: 1280, Height: 800,
+		MinWidth: 800, MinHeight: 600, MaximiseButtonState: application.ButtonEnabled}
+}
+
+func buildAppOptions(app *App, assets fs.FS) application.Options {
+	app.native = newWailsRuntime()
+	app.ctx = app.native.life.Context()
+	return application.Options{
+		Name:       "GoPMgr",
+		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		Assets:     application.AssetOptions{Handler: application.BundledAssetFileServer(assets), Middleware: app.native.life.Middleware},
+		Services:   []application.Service{application.NewService(app)},
+		ShouldQuit: func() bool { return !app.beforeClose(app.ctx) },
+		OnShutdown: func() {
+			// No wait on the native thread: full RPC response delivery was
+			// joined before the host allowed this terminal Quit.
+			if app.native.life.Ready() {
+				app.shutdown(app.ctx)
+			}
 		},
-		AssetServer: &assetserver.Options{Assets: assets},
-		Menu:        buildAppMenu(app, runtime.GOOS),
-		OnStartup: func(ctx context.Context) {
-			app.ctx = ctx
-		},
-		OnShutdown:    app.shutdown,
-		OnBeforeClose: app.beforeClose,
-		Bind:          []any{app},
 	}
 }
 
@@ -414,7 +357,22 @@ func Main(assets fs.FS) {
 	app.logPath = logPath
 	app.logDir = applog.LogDir(root)
 
-	err = wails.Run(buildAppOptions(app, assets))
+	gui := application.New(buildAppOptions(app, assets))
+	window := gui.Window.NewWithOptions(mainWindowOptions())
+	app.native.app, app.native.window = gui, window
+	gui.Menu.Set(buildAppMenu(app, runtime.GOOS))
+	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		if app.beforeClose(app.ctx) {
+			event.Cancel()
+		}
+	})
+	err = gui.Run()
+	if finishErr := app.native.life.FinishAfterRun(); finishErr != nil {
+		// A platform-loop failure after dispatch is not an empty startup
+		// failure. Do not clear keys/close stores beneath active execution.
+		applog.Fatal("GoPMgr could not stop safely", "The native loop stopped before desktop work drained.", logPath, errors.Join(err, finishErr))
+	}
+	app.shutdown(app.ctx)
 	if err != nil {
 		applog.Fatal("GoPMgr could not start",
 			"GoPMgr failed to start its application window.", logPath, err)

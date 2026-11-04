@@ -12,6 +12,12 @@ vi.mock('../../session.svelte', () => ({ goto: (...args: unknown[]) => goto(...a
 
 import ProjectHealthNotice from './ProjectHealthNotice.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 const check = (over: Partial<OpenProjectCheck> = {}) => ({ checked: true, damaged: true, dismissed: false, ...over });
 const heading = { name: 'This project may be damaged' };
@@ -23,7 +29,7 @@ beforeEach(() => {
     CheckOpenProject: vi.fn(async () => check()),
     DismissOpenProjectCheck: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

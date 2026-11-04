@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
@@ -45,8 +46,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadSIPOC() {
     loading = true;
     try {
-      const data = await window.go.desktop.App.SigmaGetSIPOC(projectID);
-      sipocData = data;
+      const data = await desktopApi.SigmaGetSIPOC(projectID);
+      sipocData = { ...data, elements: data.elements ?? [] };
     } catch (e) {
       showToast('Failed to load SIPOC', 'error');
     } finally {
@@ -56,7 +57,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveSIPOC() {
     try {
-      await window.go.desktop.App.SigmaSaveSIPOC(projectID, sipocData);
+      await desktopApi.SigmaSaveSIPOC(projectID, sipocData);
       showToast('SIPOC saved', 'success');
       void onSaved?.();
     } catch (e) {

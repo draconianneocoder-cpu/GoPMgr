@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { definedEntries } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Button from '../Button.svelte';
@@ -52,7 +54,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       if (!session.editingId) throw new Error('No scenario chart selected');
-      const loaded = await window.go.desktop.App.GetScenarioChart(session.editingId);
+      const loaded = await desktopApi.GetScenarioChart(session.editingId);
       chart = loaded;
       title = loaded.title;
       data = pretty(loaded.data);
@@ -69,7 +71,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // editor still works when it cannot be read.
   async function loadScenario(id: string) {
     try {
-      scenario = await window.go.desktop.App.GetScenario(id);
+      scenario = await desktopApi.GetScenario(id);
     } catch {
       scenario = null;
     }
@@ -83,7 +85,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       assertJSON('Scenario chart data', data);
       assertJSON('Scenario chart config', config);
-      const saved = await window.go.desktop.App.SaveScenarioChart({
+      const saved = await desktopApi.SaveScenarioChart({
         ...chart,
         title: title.trim() || chart.title,
         data,
@@ -109,7 +111,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     error = '';
     try {
-      variances = await window.go.desktop.App.CompareScenarioChart(chart.id);
+      variances = definedEntries(await desktopApi.CompareScenarioChart(chart.id));
       comparisonLoaded = true;
       status = 'Comparison refreshed.';
     } catch (err: any) {
@@ -127,7 +129,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const name = baselineName.trim();
       if (!name) throw new Error('Baseline name is required');
-      const promoted = await window.go.desktop.App.PromoteScenarioChartToBaseline(chart.id, name);
+      const promoted = await desktopApi.PromoteScenarioChartToBaseline(chart.id, name);
       baselineName = '';
       status = `Promoted ${promoted.name}.`;
     } catch (err: any) {

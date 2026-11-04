@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
@@ -26,7 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadControlPlan() {
     loading = true;
     try {
-      items = await window.go.desktop.App.SigmaGetControlPlan(projectID);
+      items = (await desktopApi.SigmaGetControlPlan(projectID) ?? []);
     } catch (e) {
       showToast('Failed to load control plan', 'error');
     } finally {
@@ -36,7 +37,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveControlPlan() {
     try {
-      await window.go.desktop.App.SigmaSaveControlPlan(projectID, items);
+      await desktopApi.SigmaSaveControlPlan(projectID, items);
       showToast('Control Plan saved', 'success');
       void onSaved?.();
     } catch (e) {

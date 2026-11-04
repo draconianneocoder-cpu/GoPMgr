@@ -36,12 +36,18 @@ masters are retained so those choices can be revised without reconstructing
 the originals.
 
 macOS, Windows, and Linux each expose one installed application icon per
-package. They cannot switch when GoPMgr's frontend theme changes. Wails v2.17
-reads `build/appicon.png`, generates the macOS bundle's
-`Contents/Resources/iconfile.icns`, and generates `build/windows/icon.ico`
-when needed. Linux packaging installs that same PNG. The dark/light lockup and
-app-icon ICNS files are maintained macOS export variants; do not add a tracked
-`build/darwin/iconfile.icns`, because Wails does not consume it.
+package. They cannot switch when GoPMgr's frontend theme changes. Wails v3.1
+icon generation in `scripts/wails-build.sh` consumes `build/appicon.png` and
+creates temporary ICNS/ICO files for the owned macOS/Windows bundle/resource
+steps. The macOS bundle contains `Contents/Resources/iconfile.icns`. Linux
+packaging installs the same source PNG. Windows NSIS packaging remains under
+qualification; generated application resources do not prove installer behavior.
+The dark/light ICNS exports remain maintained design assets, separate from the
+build-generated bundle icon. Do not add a tracked `build/darwin/iconfile.icns`.
+
+Historical note (2026-11-03): the preceding Wails v2.17 flow generated
+`build/windows/icon.ico` and the macOS bundle icon. Current builds use the
+reviewed v3 task wrapper; do not reuse v2 CLI packaging assumptions.
 
 ## Maintenance
 

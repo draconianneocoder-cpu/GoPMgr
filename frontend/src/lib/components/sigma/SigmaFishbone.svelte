@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
 
@@ -69,7 +70,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function saveAll() {
     saving = true;
     try {
-      await window.go.desktop.App.SigmaSaveFishbone(projectId, data);
+      await desktopApi.SigmaSaveFishbone(projectId, data);
       showToast('Fishbone diagram saved', 'success');
     } catch (err: any) {
       showToast(`Save failed: ${err}`, 'error');

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../desktop-api';
   // Shared top toolbar for the post-login, project-independent screens
   // (Portfolio, Projects list, Application settings). Centralises
   // primary navigation and the sign-out control so the screens stay
@@ -29,7 +30,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function logout() {
     requestNavigation('login', null, async () => {
       try {
-        await window.go.desktop.App.Logout();
+        await desktopApi.Logout();
       } catch {
         return false;
       }

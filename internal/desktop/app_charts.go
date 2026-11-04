@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gopmgr/internal/calendar"
 	"gopmgr/internal/charts"
@@ -890,10 +890,10 @@ func (a *App) ImportMSPDIChartWithOptions(options export.MSPDIImportOptions) (db
 	if a.ctx == nil {
 		return db.Chart{}, errors.New("no context (Wails not started)")
 	}
-	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Import project schedule",
-		DefaultDirectory: a.userDir(),
-		Filters: []wailsruntime.FileFilter{
+	path, err := a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Import project schedule",
+		Directory: a.userDir(),
+		Filters: []application.FileFilter{
 			{DisplayName: "Project schedules (*.xml, *.mpp, *.mpx, *.pod)", Pattern: "*.xml;*.mpp;*.mpx;*.pod"},
 			{DisplayName: "MS Project XML (*.xml)", Pattern: "*.xml"},
 			{DisplayName: "All files", Pattern: "*.*"},

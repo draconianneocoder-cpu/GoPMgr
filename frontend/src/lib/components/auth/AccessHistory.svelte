@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // Every recorded time an administrator opened the signed-in user's data
   // (ADR-004), for App Settings, under Account.
   import { onMount } from 'svelte';
@@ -13,7 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      history = (await window.go.desktop.App.MyDataAccessHistory()) ?? [];
+      history = (await desktopApi.MyDataAccessHistory()) ?? [];
     } catch (err: any) {
       error = t('adminAccess.history.loadFailed', { error: String(err?.message ?? err) });
     }

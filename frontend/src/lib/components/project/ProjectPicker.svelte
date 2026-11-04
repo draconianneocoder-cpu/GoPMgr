@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import AppHeader from '../AppHeader.svelte';
@@ -28,12 +29,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function refresh() {
     try {
-      projects = (await window.go.desktop.App.ListProjects()) ?? [];
+      projects = (await desktopApi.ListProjects()) ?? [];
     } catch (err: any) {
       error = `Could not list projects: ${err}`;
     }
     try {
-      deletions = (await window.go.desktop.App.ListProjectDeletions()) ?? [];
+      deletions = (await desktopApi.ListProjectDeletions()) ?? [];
       deletionsError = '';
     } catch (err: any) {
       deletionsError = `Could not load deleted projects: ${err}`;
@@ -48,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function open(p: ProjectFile) {
     error = '';
     try {
-      const meta = await window.go.desktop.App.OpenProject(p.path);
+      const meta = await desktopApi.OpenProject(p.path);
       session.project = meta;
       session.projectPath = p.path;
       goto('dashboard');
@@ -61,7 +62,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busyPath = p.path;
     try {
-      await window.go.desktop.App.CloneProject(p.path);
+      await desktopApi.CloneProject(p.path);
       await refresh();
     } catch (err: any) {
       error = `Clone failed: ${err}`;
@@ -74,7 +75,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busyPath = p.path;
     try {
-      await window.go.desktop.App.DeleteProject(p.path);
+      await desktopApi.DeleteProject(p.path);
       confirmingDelete = null;
       // If the deleted project was the open one, drop it from the session.
       if (session.projectPath === p.path) {
@@ -93,7 +94,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     restoring = true;
     try {
-      await window.go.desktop.App.RestoreProjectArchive();
+      await desktopApi.RestoreProjectArchive();
       await refresh();
     } catch (err: any) {
       const message = String(err?.message ?? err);

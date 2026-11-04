@@ -7,6 +7,12 @@ import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import KanbanBoard from './KanbanBoard.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 const board = { id: 'b1', project_id: 'p1', name: 'Default', is_default: true, created_at: '', updated_at: '' };
@@ -58,7 +64,7 @@ beforeEach(() => {
     DeleteWorkItem: vi.fn(async () => undefined),
     GetWorkItem: vi.fn(async (id: string) => items.find((i) => i.id === id)),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

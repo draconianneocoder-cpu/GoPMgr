@@ -6,18 +6,12 @@
 
 CC      := gcc
 GO      := go
-WAILS   := wails
+WAILS   := .tmp/wails-v3/bin/wails3
 NPM     := npm
-# Tags and flags passed to `wails build`. Bindings ARE generated (no -skipbindings):
-# Wails needs them so multi-value method results marshal correctly to the
-# frontend. The codesign "detritus" problem that -skipbindings previously
-# worked around is handled instead by scripts/wails-build.sh, which strips
-# extended attributes and ad-hoc signs the .app after the build. Production
-# builds target Ubuntu 24.04+ WebKit2GTK 4.1 on Linux. Override
-# WAILS_BUILD_TAGS only for explicit legacy-WebKit development checks.
-WAILS_BUILD_TAGS ?= webkit2_41
+# Build arguments are reviewed task variables (DEV, ARCH, EXTRA_LDFLAGS),
+# never legacy Wails v2 CLI flags. GTK4 is the standard v3 CGO backend.
 WAILS_BUILD_FLAGS ?=
-GO_TEST_TAGS ?= webkit2_41
+GO_TEST_TAGS ?=
 # The main package now lives at the repo root (canonical Wails layout), so
 # Go quality gates scope to the root package, internal packages, and tracked
 # tools. Avoid bare ./... because generated
@@ -38,23 +32,20 @@ export CC
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
-        frontend-notices frontend-notices-check frontend-notices-tests
+        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build a production app via Wails.
-	# scripts/wails-build.sh wraps `wails build`: the CLI injects the required
-	# desktop,production tags, links the macOS frameworks (UniformTypeIdentifiers
-	# / UTType), builds the frontend, and embeds it; the wrapper then strips
-	# extended-attribute detritus and ad-hoc signs the macOS .app (Wails' own
-	# self-sign fails on iCloud-synced trees - see the script header).
-	# Output: build/bin/<ProductName>.app on macOS, build/bin/gopmgr elsewhere.
-	@bash scripts/wails-build.sh -tags "$(WAILS_BUILD_TAGS)" $(WAILS_BUILD_FLAGS)
+build: ## Build the production app with pinned Wails v3 tasks and native CGO.
+	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)
 
-dev: ## Run Wails in development mode (hot-reload Svelte + Go).
-	$(WAILS) dev
+wails-build-tests: ## Verify build failure, bundle, signing and platform contracts in isolated fixtures.
+	@bash scripts/wails-build_test.sh
+
+dev: ## Run pinned Wails v3 development mode (Svelte + Go).
+	$(WAILS) dev -config build/config.yml --port 5173
 
 tidy: ## go mod tidy + npm install.
 	$(GO) mod tidy
@@ -116,7 +107,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: wails-build-tests config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -197,7 +188,8 @@ windows-installer-scaffold: ## Validate GoPMgr-owned NSIS templates and Windows 
 	@bash scripts/validate-windows-nsis-template_test.sh
 	@bash scripts/validate-windows-nsis-template.sh
 
-linux-runtime-target: ## Verify Linux CI targets Ubuntu 26.04, packaging is deliberately pinned to Ubuntu 24.04+, both use WebKit2GTK 4.1.
+linux-runtime-target: ## Verify GTK4/WebKitGTK6 build and package dependencies without legacy fallback.
+	@bash scripts/check-linux-runtime-target_test.sh
 	@bash scripts/check-linux-runtime-target.sh
 
 wails-version: ## Verify Wails runtime, CLI, and current documentation pins match go.mod.

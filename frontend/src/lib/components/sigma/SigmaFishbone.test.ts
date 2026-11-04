@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/svelte';
 import SigmaFishbone from './SigmaFishbone.svelte';
 
+// These cases do not call the backend. Unexpected calls must fail.
+vi.mock('../../desktop-api', () => ({ desktopApi: {} }));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();

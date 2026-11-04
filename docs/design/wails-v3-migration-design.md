@@ -240,7 +240,10 @@ set any new acceptance budget before using it as a gate.
 
 The isolated shell's implementation results are recorded in the
 [migration evidence](../testing/wails-v3-migration-evidence.md). Production
-conversion, benchmarks, package and release qualification remain pending.
+conversion is implemented on the migration branch. Native bridge/dialog checks
+pass on available hosts; local package evidence is recorded separately. Final
+independent integration review, comparative benchmarks and release/platform
+qualification remain open.
 The owner approved deferring macOS 13 and Ubuntu 24.04 execution to the
 mandatory release gate because no such test hosts are currently available.
 Development may continue on the available hosts without claiming compatibility
@@ -285,3 +288,14 @@ The detailed maintainer execution checklist is local-only at
 `docs/superpowers/plans/2026-11-03-wails-v3-migration.md`, following this
 repository's ignore policy. It is intentionally not a link a normal clone
 would be expected to resolve. The sequence above is the portable public plan.
+
+
+## Implementation findings and owner decision (2026-11-04)
+
+The production host drains complete runtime HTTP responses before native quit,
+with the UI loop still running. Native `OnShutdown` performs cleanup without
+joining UI-dependent response handlers. Native About dialog ownership follows
+dismissal, because `Show` is asynchronous. The owner approved separate OK and
+Cancel buttons so Return and Escape both work through the pinned public API;
+the App and Help menu entries share that owned dialog. These findings refine
+the lifecycle design without changing the 209-method domain API or data formats.

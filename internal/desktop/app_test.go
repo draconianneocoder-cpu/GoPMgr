@@ -15,7 +15,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gopmgr/internal/cli"
 	"gopmgr/internal/debug"
@@ -273,96 +273,66 @@ func TestSecureArchive_CapturesReportForBugReport(t *testing.T) {
 	}
 }
 
-// findMenuItem returns the first top-level item in m with the given label,
-// or nil. Used to inspect buildAppMenu's output structurally instead of
-// re-deriving it via runtime.GOOS, which is fixed for the whole test binary
-// and can't exercise both platform branches in one run.
-func findMenuItem(m *menu.Menu, label string) *menu.MenuItem {
+func findMenuItem(m *application.Menu, label string) *application.MenuItem {
 	if m == nil {
 		return nil
 	}
-	for _, item := range m.Items {
-		if item.Label == label {
+	for i := 0; ; i++ {
+		item := m.ItemAt(i)
+		if item == nil {
+			return nil
+		}
+		if item.Label() == label {
 			return item
 		}
 	}
-	return nil
 }
 
-// TestBuildAppMenu_Darwin pins the macOS branch: the native App menu is
-// prepended (About/Hide/Quit come from there, so Quit must NOT also appear
-// in the File menu), and Edit/Window are the OS-provided role menus rather
-// than GoPMgr's own hand-built Window submenu.
 func TestBuildAppMenu_Darwin(t *testing.T) {
-	m := buildAppMenu(&App{}, "darwin")
-
-	if len(m.Items) == 0 || m.Items[0].Role != menu.AppMenuRole {
-		t.Fatalf("first top-level item = %+v, want the AppMenuRole item first", m.Items)
+	if runtime.GOOS != "darwin" {
+		t.Skip("Wails v3 macOS role construction is native-platform-specific")
 	}
-
+	application.New(application.Options{Name: "GoPMgr"})
+	m := buildAppMenu(&App{}, "darwin")
+	if m.FindByRole(application.AppMenu) == nil || m.ItemAt(0) != m.FindByRole(application.AppMenu) {
+		t.Fatal("standard application menu must come first")
+	}
+	if m.FindByRole(application.About) != nil {
+		t.Fatal("native About selector bypasses owned dialog admission")
+	}
+	if item := m.ItemAt(0).GetSubmenu().ItemAt(0); item.Label() != "About GoPMgr" {
+		t.Fatal("application menu lost its About action")
+	}
 	file := findMenuItem(m, "File")
-	if file == nil || file.SubMenu == nil {
+	if file == nil || file.GetSubmenu() == nil {
 		t.Fatal("File submenu missing")
 	}
-	if findMenuItem(file.SubMenu, "Quit") != nil {
-		t.Error("File submenu contains Quit on darwin; macOS gets Quit from the App menu, so this would show it twice")
+	if findMenuItem(file.GetSubmenu(), "Quit") != nil {
+		t.Fatal("duplicate macOS File/Quit")
 	}
-
-	var sawEditRole, sawWindowRole bool
-	for _, item := range m.Items {
-		switch item.Role {
-		case menu.EditMenuRole:
-			sawEditRole = true
-		case menu.WindowMenuRole:
-			sawWindowRole = true
-		}
-	}
-	if !sawEditRole {
-		t.Error("Edit role menu missing on darwin")
-	}
-	if !sawWindowRole {
-		t.Error("Window role menu missing on darwin")
-	}
-	if findMenuItem(m, "Window") != nil {
-		t.Error("a hand-built \"Window\" submenu is present on darwin; darwin should use the OS role menu instead")
+	if m.FindByRole(application.EditMenu) == nil || m.FindByRole(application.WindowMenu) == nil {
+		t.Fatal("native editing/window roles missing")
 	}
 }
 
-// TestBuildAppMenu_NonDarwin pins the everyone-else branch: no native App
-// menu, so File must carry its own Quit item, and Window is GoPMgr's own
-// submenu (Maximize/Minimize) rather than the macOS role menu.
 func TestBuildAppMenu_NonDarwin(t *testing.T) {
+	application.New(application.Options{Name: "GoPMgr"})
 	for _, goos := range []string{"windows", "linux"} {
 		t.Run(goos, func(t *testing.T) {
 			m := buildAppMenu(&App{}, goos)
-
-			if len(m.Items) > 0 && m.Items[0].Role == menu.AppMenuRole {
-				t.Error("AppMenuRole item present on non-darwin; that role is macOS-only")
+			if m.FindByRole(application.AppMenu) != nil {
+				t.Fatal("macOS role on non-macOS")
 			}
-
 			file := findMenuItem(m, "File")
-			if file == nil || file.SubMenu == nil {
-				t.Fatal("File submenu missing")
+			if file == nil || file.GetSubmenu() == nil || findMenuItem(file.GetSubmenu(), "Quit") == nil {
+				t.Fatal("non-macOS Quit missing")
 			}
-			quit := findMenuItem(file.SubMenu, "Quit")
-			if quit == nil {
-				t.Fatal("File submenu missing Quit on non-darwin; there is no App menu to provide it")
-			}
-
 			window := findMenuItem(m, "Window")
-			if window == nil || window.SubMenu == nil {
-				t.Fatal("hand-built Window submenu missing on non-darwin")
+			if window == nil || window.GetSubmenu() == nil || findMenuItem(window.GetSubmenu(), "Maximize / Restore") == nil || findMenuItem(window.GetSubmenu(), "Minimize") == nil {
+				t.Fatal("window controls missing")
 			}
-			if findMenuItem(window.SubMenu, "Maximize / Restore") == nil {
-				t.Error("Window submenu missing \"Maximize / Restore\"")
-			}
-			if findMenuItem(window.SubMenu, "Minimize") == nil {
-				t.Error("Window submenu missing \"Minimize\"")
-			}
-			for _, item := range m.Items {
-				if item.Role == menu.WindowMenuRole {
-					t.Error("WindowMenuRole (macOS role menu) present on non-darwin; should use the hand-built submenu instead")
-				}
+			if m.FindByRole(application.WindowMenu) != nil {
+				t.Fatal("macOS Window role on non-macOS")
 			}
 		})
 	}
@@ -371,24 +341,27 @@ func TestBuildAppMenu_NonDarwin(t *testing.T) {
 func TestBuildAppOptionsPreservesNativeWindowContract(t *testing.T) {
 	app := &App{}
 	opts := buildAppOptions(app, fstest.MapFS{})
-	if opts.Title != "GoPMgr" || opts.Width != 1280 || opts.Height != 800 {
-		t.Fatalf("unexpected main window options: %#v", opts)
+	t.Cleanup(func() {
+		if err := app.native.life.FinishAfterRun(); err != nil {
+			t.Error(err)
+		}
+	})
+	window := mainWindowOptions()
+	if window.Title != "GoPMgr" || window.Width != 1280 || window.Height != 800 || window.MinWidth != 800 || window.MinHeight != 600 {
+		t.Fatalf("window contract changed: %#v", window)
 	}
-	if opts.MinWidth != 800 || opts.MinHeight != 600 {
-		t.Fatalf("minimum window size = %dx%d, want 800x600", opts.MinWidth, opts.MinHeight)
+	if window.DisableResize || window.MaximiseButtonState != application.ButtonEnabled {
+		t.Fatal("native resize/zoom disabled")
 	}
-	if opts.Mac == nil {
-		t.Fatal("macOS options are nil; Wails will disable the native zoom control")
+	if opts.Assets.Handler == nil || opts.Assets.Middleware == nil || len(opts.Services) != 1 || opts.Services[0].Instance() != app {
+		t.Fatal("assets, admission or existing App service missing")
 	}
-	if opts.Mac.DisableZoom {
-		t.Fatal("native macOS zoom control is disabled")
-	}
-	if opts.Menu == nil || opts.AssetServer == nil || len(opts.Bind) != 1 {
-		t.Fatal("centralized options dropped menu, assets, or App binding")
+	if opts.ShouldQuit == nil || opts.OnShutdown == nil || !opts.Mac.ApplicationShouldTerminateAfterLastWindowClosed {
+		t.Fatal("central native close/shutdown contract missing")
 	}
 }
 
-func TestNativeCloseGuardConsumesOneShotPermit(t *testing.T) {
+func TestNativeCloseGuardKeepsTerminalPermitAcrossHooks(t *testing.T) {
 	app := &App{}
 	if app.shouldPreventNativeClose() {
 		t.Fatal("native close was prevented before the frontend guard was ready")
@@ -412,8 +385,8 @@ func TestNativeCloseGuardConsumesOneShotPermit(t *testing.T) {
 	if quitCalls != 1 {
 		t.Fatalf("quit calls = %d, want 1", quitCalls)
 	}
-	if !app.shouldPreventNativeClose() {
-		t.Fatal("native close remained allowed after one-shot permit was consumed")
+	if app.shouldPreventNativeClose() {
+		t.Fatal("second native hook revoked accepted terminal close")
 	}
 }
 
@@ -470,69 +443,27 @@ func TestNativeCloseGuard_ConcurrentAccessRaceFree(t *testing.T) {
 	wg.Wait()
 }
 
-// TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation records a
-// real, demonstrated consequence of EnableNativeCloseGuard,
-// completeNativeClose, and shouldPreventNativeClose being three separate
-// critical sections rather than one atomic operation: a permit
-// completeNativeClose has just granted (and is about to consume via its own
-// quit callback) can be silently revoked by a concurrent EnableNativeCloseGuard
-// call landing in the gap between completeNativeClose's unlock and its quit
-// callback's shouldPreventNativeClose check. This is a genuine TOCTOU gap in
-// the exposed Go API's contract, not a data race (the mutex fully serializes
-// every access; nothing is corrupted) and not a bug reachable from the
-// current frontend: frontend/src/lib/native-close.ts's NativeCloseController
-// only calls EnableNativeCloseGuard once at startup, or sequentially in the
-// catch block after a CompleteNativeClose call has already rejected — both of
-// completeNativeClose's Go-side error returns happen before
-// nativeClosePermit is ever set to true, so the frontend never has an
-// in-flight granted permit for a concurrent EnableNativeCloseGuard call to
-// revoke.
-//
-// This is deliberately NOT a regression guard for the gap itself: the split
-// between "revoked" and "consumed by self" is scheduler-dependent (348/500
-// and 360/500 across two observed runs), so asserting a specific ratio, or
-// even that a gap exists at all, would pin non-deterministic behavior this
-// test doesn't control. If a future change merges the three critical
-// sections into one atomic operation and closes the gap, this test must
-// keep passing — that would be a fix, not a regression. The only invariant
-// asserted is that the callback path actually runs; the logged ratio is
-// evidence for a human reader, not a pass/fail condition. Re-check the
-// JS-side reachability argument above if native-close.ts's control flow
-// changes or a second Go caller of EnableNativeCloseGuard is added — that
-// argument, not this test, is what keeps the gap unreachable in practice.
-func TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation(t *testing.T) {
+// Late enables must not revoke a terminal decision observed by both hooks.
+func TestNativeCloseGuardConcurrentEnableCannotRevokeTerminalPermit(t *testing.T) {
 	app := &App{ctx: context.Background()}
 	app.EnableNativeCloseGuard()
-
-	const n = 500
+	if err := app.completeNativeClose(func(context.Context) {}); err != nil {
+		t.Fatal(err)
+	}
 	var wg sync.WaitGroup
-	var granted, consumedBySelf int64
-
-	wg.Add(n * 2)
-	for range n {
+	var revoked atomic.Int64
+	for range 200 {
+		wg.Add(2)
+		go func() { defer wg.Done(); app.EnableNativeCloseGuard() }()
 		go func() {
 			defer wg.Done()
-			_ = app.completeNativeClose(func(context.Context) {
-				atomic.AddInt64(&granted, 1)
-				if !app.shouldPreventNativeClose() {
-					atomic.AddInt64(&consumedBySelf, 1)
-				}
-			})
-		}()
-		// A concurrent re-arm, interleaved with the completeNativeClose calls
-		// above rather than run in its own separate loop, so it lands in the
-		// narrow unlock-to-consume window this test is checking for.
-		go func() {
-			defer wg.Done()
-			app.EnableNativeCloseGuard()
+			if app.shouldPreventNativeClose() {
+				revoked.Add(1)
+			}
 		}()
 	}
 	wg.Wait()
-
-	if granted == 0 {
-		t.Fatal("no completeNativeClose call ever ran its quit callback")
+	if revoked.Load() != 0 {
+		t.Fatalf("terminal permission revoked %d times", revoked.Load())
 	}
-	// Observational only — see the function comment for why this ratio is
-	// not, and must not become, a pass/fail assertion.
-	t.Logf("granted=%d consumedBySelf=%d (scheduler-dependent; a gap here is the documented TOCTOU behavior, not a failure, and its absence would mean the gap is closed, also not a failure)", granted, consumedBySelf)
 }

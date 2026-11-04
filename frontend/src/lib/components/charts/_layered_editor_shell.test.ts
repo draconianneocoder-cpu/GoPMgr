@@ -13,6 +13,12 @@ vi.mock('../../autosave.svelte', () => ({
 import NetworkEditor from './NetworkEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Added 2026-08-19 alongside migrating this shell's "Connect…"/"Clear
 // edges"/"Delete node" buttons to the canvas/canvas-danger Button variants.
 // This file (shared by NetworkEditor, PERTEditor, and CPMEditor) had zero
@@ -50,7 +56,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [], edges: [], width: 0, height: 0 } } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { workItemPayload } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // WorkItemEditor is a modal-style panel for editing one work item.
   // The parent owns the open/close state and passes the work item
   // (or null for "create new") via the `item` prop. When the user
@@ -124,7 +126,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         updated_at: savingDraft.updated_at === '' ? zeroTime : savingDraft.updated_at,
       };
       if (payload.closed_at === '') payload.closed_at = zeroTime;
-      const saved = await window.go.desktop.App.SaveWorkItem(payload);
+      const saved = await desktopApi.SaveWorkItem(workItemPayload(payload));
       // Mark clean before the callbacks run: `onSaved` can trigger a
       // parent refresh that awaits before this modal actually unmounts,
       // and a stale `original` would make a post-save `requestClose`
@@ -201,7 +203,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     confirmingDelete = false;
     status = 'deleting';
     try {
-      await window.go.desktop.App.DeleteWorkItem(deletingID);
+      await desktopApi.DeleteWorkItem(deletingID);
       onDeleted(deletingID);
       onClose();
     } catch (err: any) {

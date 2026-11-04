@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Build a macOS .dmg (drag-to-Applications) from the Wails .app under
-# build/bin. Run `wails build -platform darwin/arm64` first (Apple Silicon).
+# build/bin. Run `make build` first (Apple Silicon).
 #
-# Signing/notarization is OFF by default: the .dmg installs and runs, but
+# Developer ID signing/notarization is OFF by default: the app is ad-hoc signed, but
 # Gatekeeper shows an "unidentified developer" warning. To sign, export
 # MACOS_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" and, for
 # notarization, fill in the notarytool block below (needs an Apple Developer
@@ -17,21 +17,20 @@ cd "$SCRIPT_DIR/.."
 
 VERSION="$(release_version)"
 
-app="$(ls -d build/bin/*.app 2>/dev/null | head -1 || true)"
-if [ -z "$app" ] || [ ! -d "$app" ]; then
-	echo "package-macos: no .app under build/bin — run 'wails build -platform darwin/arm64' first." >&2
+app="build/bin/gopmgr.app"
+if [ ! -d "$app" ]; then
+	echo "package-macos: no .app under build/bin — run 'make build' first." >&2
 	exit 1
 fi
-app_binary="$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -111 2>/dev/null | head -1 || true)"
-if [ -z "$app_binary" ] || [ ! -f "$app_binary" ]; then
+app_binary="$app/Contents/MacOS/gopmgr"
+if [ ! -f "$app_binary" ]; then
 	echo "package-macos: no executable found in $app/Contents/MacOS." >&2
 	exit 1
 fi
 if [ "${GOPMGR_PACKAGE_LAYOUT_TEST:-0}" != "1" ]; then
 	bash scripts/verify-module-notices.sh "$app_binary"
 fi
-product_name="$(grep -oE '"productName" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/' || true)"
-product_name="${product_name:-$(basename "$app" .app)}"
+product_name="$(python3 -B scripts/wails-build-config.py productName)"
 visible_app="${product_name}.app"
 
 mkdir -p build/packages
@@ -98,14 +97,14 @@ create_fancy_dmg() {
 		"$dmg" "$create_dmg_root"
 }
 
-# --- Code-signing hook (no-op unless MACOS_SIGN_IDENTITY is set) ---
+# Notices change the resource seal; sign the final staged bundle before imaging.
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
 	echo "package-macos: codesigning $staged_app ..."
 	codesign --deep --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$staged_app"
-	# Notarize + staple once credentials are configured:
-	#   xcrun notarytool submit "$dmg" --keychain-profile "GOPMGR_NOTARY" --wait
-	#   xcrun stapler staple "$dmg"
+else
+	codesign --deep --force --sign - "$staged_app"
 fi
+codesign --verify --deep --strict --verbose=2 "$staged_app"
 
 # Reliable by default: hdiutil is built in, non-interactive, and always
 # produces a drag-to-Applications .dmg (the staged root already carries the

@@ -14,7 +14,7 @@ For a prerelease, first resolve the decisions and evidence matrix in
 
 ## Before tagging
 
-1. Confirm the version of record in `internal/cli/parser.go` and `wails.json`.
+1. Confirm the version of record in `internal/cli/parser.go` and `build/config.yml` (`info.version`).
 2. Run the full local gate:
 
    ```sh

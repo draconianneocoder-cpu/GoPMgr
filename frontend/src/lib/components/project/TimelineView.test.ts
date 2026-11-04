@@ -6,6 +6,12 @@ import { render, waitFor, fireEvent } from '@testing-library/svelte';
 
 import TimelineView from './TimelineView.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const milestoneEntry: TimelineEntry = {
   kind: 'milestone',
   title: 'Kickoff',
@@ -49,7 +55,7 @@ beforeEach(() => {
     BuildTimeline: vi.fn(async () => []),
     ListHolidays: vi.fn(async () => []),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

@@ -20,7 +20,7 @@ import (
 // in the version number.
 //
 // IMPORTANT: scripts/check-release.sh greps this constant and the
-// `productVersion` key in wails.json. Keep them in sync, and keep the value
+// `info.version` key in build/config.yml. Keep them in sync, and keep the value
 // a valid package version (rpm forbids '-' in its Version field, so use a
 // semver prerelease like 1.1.0-rc.1 only via the release tag).
 const Version = "1.1.0"

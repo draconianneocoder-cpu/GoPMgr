@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // ChartPicker is a self-contained dropdown that lists the charts
   // in the currently-open project and lets the user pick one. Used
   // by DocumentFieldEditor for every FieldChartRef field.
@@ -39,7 +40,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // The backend's ListCharts(projectID, kind) filters server-side
       // when kind is non-empty. The Wails binding takes only `kind`
       // because the currently-open project is on the Go side.
-      const all = (await window.go.desktop.App.ListCharts(chartKind || '')) ?? [];
+      const all = (await desktopApi.ListCharts(chartKind || '')) ?? [];
       charts = all;
     } catch (err: any) {
       error = String(err?.message ?? err);

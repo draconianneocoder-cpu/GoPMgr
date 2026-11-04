@@ -26,6 +26,7 @@ new_fixture() {
 	cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
 	cp "$ROOT/scripts/check-coverage-ledger-drift.sh" "$fixture/scripts/check-coverage-ledger-drift.sh"
 	cp "$ROOT/scripts/check-help-guide-current.sh" "$fixture/scripts/check-help-guide-current.sh"
+	cp "$ROOT/frontend/src/lib/components/help/HelpReference.svelte" "$fixture/frontend/src/lib/components/help/HelpReference.svelte"
 	cp "$ROOT/scripts/check-release-publication-mode.sh" "$fixture/scripts/check-release-publication-mode.sh"
 	cp "$ROOT/scripts/check-release-publication-mode_test.sh" "$fixture/scripts/check-release-publication-mode_test.sh"
 	cp "$ROOT/scripts/release-publication-flag.sh" "$fixture/scripts/release-publication-flag.sh"

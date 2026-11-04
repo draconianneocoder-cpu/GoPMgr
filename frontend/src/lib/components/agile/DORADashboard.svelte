@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // DORADashboard renders the four DORA KPI cards (Deployment
   // Frequency, Lead Time, Change Failure Rate, MTTR), classification
   // badges, a daily-deploy trend line (powered by StatsChart), and a
@@ -44,10 +45,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refresh() {
     try {
       const [d, list] = await Promise.all([
-        window.go.desktop.App.ComputeDORA(windowDays),
-        window.go.desktop.App.ListDeployments(''),
+        desktopApi.ComputeDORA(windowDays),
+        desktopApi.ListDeployments(''),
       ]);
-      dora = d;
+      dora = { ...d, daily_deploy_trend: d.daily_deploy_trend ?? [] };
       deploys = (list ?? []).slice(0, 50); // show most recent 50
     } catch (err: any) {
       error = `Could not load DORA: ${err}`;
@@ -60,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      await window.go.desktop.App.SaveDeployment({
+      await desktopApi.SaveDeployment({
         id: '',
         project_id: session.project!.id,
         ts: new Date().toISOString(),
@@ -103,7 +104,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const id = deletingDeployment.id;
     deleteDeploymentBusy = true;
     try {
-      await window.go.desktop.App.DeleteDeployment(id);
+      await desktopApi.DeleteDeployment(id);
       deletingDeployment = null;
       await refresh();
     } catch (err: any) {

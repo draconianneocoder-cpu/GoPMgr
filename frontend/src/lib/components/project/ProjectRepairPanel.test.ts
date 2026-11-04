@@ -12,12 +12,18 @@ vi.mock('../../session.svelte', () => ({ goto: (...args: unknown[]) => goto(...a
 
 import ProjectRepairPanel from './ProjectRepairPanel.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   goto.mockReset();
   app = { RepairAndSwap: vi.fn() };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

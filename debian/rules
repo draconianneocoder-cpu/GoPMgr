@@ -8,7 +8,8 @@ export CGO_ENABLED := 1
 	dh $@
 
 override_dh_auto_build:
-	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags "desktop,production,webkit2_41" -ldflags "-s -w" -o build/ppa/gopmgr .
+	pkg-config --exists gtk4 webkitgtk-6.0
+	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags production -ldflags "-s -w" -o build/ppa/gopmgr .
 
 override_dh_auto_install:
 	install -D -m 0755 build/ppa/gopmgr debian/gopmgr/usr/bin/gopmgr

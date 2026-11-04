@@ -21,6 +21,27 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			name: "accepts the supported format inventory",
 		},
 		{
+			name: "rejects legacy task schema",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["Taskfile.yml"] = []byte("version: '2'\ntasks: {build: {}}\n")
+			},
+			wantErrText: "expected Taskfile version 3",
+		},
+		{
+			name: "rejects empty build tasks",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["build/Taskfile.yml"] = []byte("version: '3'\ntasks: {}\n")
+			},
+			wantErrText: "tasks must be a nonempty mapping",
+		},
+		{
+			name: "rejects missing product identity",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["build/config.yml"] = []byte("version: '3'\ninfo: {version: '1.1.0', productName: GoPMgr}\n")
+			},
+			wantErrText: "info.productIdentifier must be a nonempty string",
+		},
+		{
 			name: "rejects malformed YAML",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte("name: CI\njobs: [\n")
@@ -310,6 +331,12 @@ func TestDF0RustConfigInventory(t *testing.T) {
 
 func validConfigFixture() (map[string][]byte, []string) {
 	files := map[string][]byte{
+		"Taskfile.yml":               []byte("version: '3'\ntasks: {build: {cmds: ['bash scripts/wails-build.sh']}}\n"),
+		"build/Taskfile.yml":         []byte("version: '3'\ntasks: {frontend: {cmds: ['npm ci']}}\n"),
+		"build/darwin/Taskfile.yml":  []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/linux/Taskfile.yml":   []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/windows/Taskfile.yml": []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/config.yml":           []byte("version: '3'\ninfo: {version: '1.1.0', productName: GoPMgr, productIdentifier: dev.gopmgr.GoPMgr}\n"),
 		".github/dependabot.yml": []byte(`
 version: 2
 updates:

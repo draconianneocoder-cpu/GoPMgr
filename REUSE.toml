@@ -141,10 +141,10 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = "wails.json"
+path = "third_party/wails-runtime-LICENSE.txt"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
-SPDX-License-Identifier = "GPL-3.0-or-later"
+SPDX-FileCopyrightText = "2018-Present Lea Anthony"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = ["debian/changelog", "debian/control", "debian/copyright", "debian/gopmgr.1", "debian/gopmgr.manpages", "debian/source/format", "debian/source/options"]
@@ -406,6 +406,14 @@ SPDX-License-Identifier = "GFDL-1.3-or-later"
 
 [[annotations]]
 path = ["internal/analytics/testdata/import/*.parquet", "internal/analytics/testdata/import/*.csv", "internal/analytics/testdata/import/*.tsv", "internal/analytics/testdata/import/*.txt", "internal/analytics/testdata/import/*.json", "internal/analytics/testdata/import/*.ndjson"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Wails v3 generates declarations from GoPMgr's bound source. Regenerate via
+# scripts/wails-v3-qualification.sh, never hand-edit generated model files.
+[[annotations]]
+path = "frontend/bindings/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"

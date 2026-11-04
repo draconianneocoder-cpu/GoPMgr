@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../desktop-api';
   import { tick } from 'svelte';
 
   // Reusable modal for choosing document export signing behavior.
@@ -112,7 +113,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function chooseCert() {
     chooseError = '';
     try {
-      const picked = await window.go.desktop.App.ChooseCertFile();
+      const picked = await desktopApi.ChooseCertFile();
       if (picked) chosenPath = picked;
     } catch (err: any) {
       chooseError = `Could not choose certificate: ${err}`;

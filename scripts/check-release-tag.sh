@@ -23,13 +23,13 @@ if [ -z "$TAG" ]; then
 fi
 
 APP_VERSION="$(grep -oE 'Version *= *"[^"]+"' internal/cli/parser.go | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
-WAILS_VERSION="$(grep -oE '"productVersion" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/' || true)"
+WAILS_VERSION="$(python3 -B scripts/wails-build-config.py version)"
 
 if [ -z "$APP_VERSION" ] || [ -z "$WAILS_VERSION" ]; then
 	fail "could not read the application and Wails product versions."
 fi
 if [ "$APP_VERSION" != "$WAILS_VERSION" ]; then
-	fail "version mismatch: CLI is $APP_VERSION while wails.json is $WAILS_VERSION."
+	fail "version mismatch: CLI is $APP_VERSION while build/config.yml is $WAILS_VERSION."
 fi
 if [[ ! "$APP_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
 	fail "product version $APP_VERSION is not a clean major.minor.patch SemVer."

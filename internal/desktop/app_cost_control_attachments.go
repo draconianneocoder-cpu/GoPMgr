@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/export"
@@ -45,9 +45,9 @@ func (a *App) AttachCostEntryFile(costEntryID string) (CostEntryAttachmentWire, 
 	if a.ctx == nil {
 		return CostEntryAttachmentWire{}, errors.New("no context (Wails not started)")
 	}
-	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Attach file to ledger entry",
-		DefaultDirectory: a.userDir(),
+	path, err := a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Attach file to ledger entry",
+		Directory: a.userDir(),
 	})
 	if err != nil {
 		return CostEntryAttachmentWire{}, err

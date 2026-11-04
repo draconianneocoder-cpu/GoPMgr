@@ -187,10 +187,10 @@ func TestNativeShellCloseCycle(t *testing.T) {
 						want = append(want, "probe:dispatch-failed", "probe:dispatch-recovery", "probe:prompt", "probe:save-called", "probe:saved", "probe:approved")
 					}
 				}
-				want = append(want, "probe:shutdown")
 				if scenario == "inflight" {
 					want = append(want, "probe:work-drained")
 				}
+				want = append(want, "probe:bindings-drained", "probe:shutdown")
 				want = append(want, "probe:resource-closed")
 				if scenario == "inflight" || scenario == "update-quit" {
 					want = append(want, "probe:service-stopped")

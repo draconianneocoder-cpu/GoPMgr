@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // Read-only view of another account's projects, opened through recorded
   // administrator access (ADR-004). It can only look: every call it makes is
   // an AdminView* read of a copy the backend keeps apart from the
@@ -40,7 +41,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      projects = (await window.go.desktop.App.AdminListUserProjects()) ?? [];
+      projects = (await desktopApi.AdminListUserProjects()) ?? [];
     } catch (err: any) {
       error = `Could not list ${username}'s projects: ${err}`;
     } finally {
@@ -52,7 +53,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     tabError = '';
     try {
-      view = await window.go.desktop.App.AdminViewUserProject(p.path);
+      view = await desktopApi.AdminViewUserProject(p.path);
       openPath = p.path;
       tab = 'summary';
       schedules = null;
@@ -69,11 +70,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     tabLoading = true;
     try {
       if (next === 'schedule' && schedules === null) {
-        schedules = (await window.go.desktop.App.AdminViewSchedule()) ?? [];
+        schedules = ((await desktopApi.AdminViewSchedule()) ?? []).map((schedule) => ({ ...schedule, tasks: schedule.tasks ?? [] }));
       } else if (next === 'costs' && costs === null) {
-        costs = await window.go.desktop.App.AdminViewCosts();
+        const loaded = await desktopApi.AdminViewCosts();
+        costs = { ...loaded, entries: loaded.entries ?? [], baselines: loaded.baselines ?? [] };
       } else if (next === 'documents' && documents === null) {
-        documents = (await window.go.desktop.App.AdminViewDocuments()) ?? [];
+        documents = (await desktopApi.AdminViewDocuments()) ?? [];
       }
     } catch (err: any) {
       tabError = `Could not load this view: ${err}`;
@@ -85,7 +87,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function stop() {
     stopping = true;
     try {
-      await window.go.desktop.App.AdminStopUserData();
+      await desktopApi.AdminStopUserData();
     } catch (err: any) {
       error = `Could not stop viewing: ${err}`;
       stopping = false;
@@ -99,7 +101,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onDestroy(() => {
     if (!stopped) {
       stopped = true;
-      void window.go.desktop.App.AdminStopUserData().catch(() => {});
+      void desktopApi.AdminStopUserData().catch(() => {});
     }
   });
 

@@ -54,6 +54,11 @@ put('node_modules/@scope/beta/dist/beta.js', 'export {}');
 pkg('alpha/node_modules/gamma', { name: 'gamma', version: '0.1.0', license: 'BSD-3-Clause' }, { COPYING: 'Gamma' });
 put('node_modules/alpha/node_modules/gamma/g.js', 'export {}');
 pkg('vite', { name: 'vite', version: '8.3.4', license: 'MIT' }, { 'LICENSE.md': '# Vite core license\nMIT\n\n# Licenses of bundled dependencies\nmany more\n' });
+pkg('rolldown', { name: 'rolldown', version: '1.2.15', license: 'MIT' }, { LICENSE: 'Rolldown MIT', 'THIRD-PARTY-LICENSE': 'Rollup and esbuild MIT notices' });
+pkg('@wailsio/runtime', { name: '@wailsio/runtime', version: '3.1.0', license: 'MIT', author: 'The Wails Team' });
+put('node_modules/@wailsio/runtime/dist/index.js', 'export {}');
+const wailsLicense = readFileSync(path.join(repoRoot, 'third_party/wails-runtime-LICENSE.txt'), 'utf8');
+put('../third_party/wails-runtime-LICENSE.txt', wailsLicense);
 pkg('tailwindcss', { name: 'tailwindcss', version: '4.3.3', license: 'MIT' }, { LICENSE: 'Tailwind' });
 pkg('bare', { name: 'bare', version: '1.0.0', license: 'MIT', author: 'Someone' });
 put('node_modules/bare/i.js', 'export {}');
@@ -151,7 +156,19 @@ describe('collectPackages', () => {
     assert.deepEqual(vite.roles, ['build helpers that Vite injects into the bundle']);
   });
   it('rejects an unknown virtual module', () => {
-    assert.throws(() => collect(['\0rolldown/runtime.js']), /unknown virtual module/);
+    assert.throws(() => collect(['\0unreviewed/runtime.js']), /unknown virtual module/);
+    assert.throws(() => collect(['\0rolldown/unreviewed.js']), /unknown virtual module/);
+  });
+  it('attributes the reviewed Rolldown runtime and includes its derived-code notices', () => {
+    const [runtime] = collect(['\0rolldown/runtime.js']);
+    assert.equal(runtime.name, 'rolldown');
+    assert.deepEqual(runtime.files.map((file) => file.name), ['LICENSE', 'THIRD-PARTY-LICENSE']);
+  });
+  it('includes the exact upstream Wails license without inventing a copyright holder', () => {
+    const [runtime] = collect([path.join(nodeModules, '@wailsio/runtime/dist/index.js')]);
+    assert.equal(runtime.files[0].text, wailsLicense);
+    assert.match(runtime.files[0].text, /Copyright \(c\) 2018-Present Lea Anthony/);
+    assert.doesNotMatch(runtime.files[0].text, /Copyright \(c\) The Wails Team/);
   });
   it('rejects a module outside the frontend', () => {
     assert.throws(() => collect([path.join(work, 'elsewhere.js')]), /outside the frontend/);

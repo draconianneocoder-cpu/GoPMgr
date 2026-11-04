@@ -14,7 +14,8 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
-	"gopmgr-wails-v3-shell/internal/closeguard"
+	"gopmgr/internal/desktop/runtimehost"
+	"gopmgr/spikes/wails-v3-shell/internal/closeguard"
 )
 
 //go:embed assets
@@ -37,7 +38,12 @@ func main() {
 	}
 	fmt.Println("probe:resource-open")
 	owner := newOwnedFile(resource)
+	life := runtimehost.New()
 	defer func() {
+		if err := life.FinishAfterRun(); err != nil {
+			fmt.Println("probe:error", err)
+			return
+		}
 		if err := owner.Close(); err != nil {
 			fmt.Println("probe:error", err)
 		}
@@ -49,21 +55,40 @@ func main() {
 	scenario := os.Getenv("SHELL_SCENARIO")
 	var gate closeguard.Gate
 	var app *application.App
+	drainQuit := func() error {
+		return life.BeginShutdown(func() {
+			fmt.Println("probe:bindings-drained")
+			application.InvokeAsync(app.Quit)
+		})
+	}
 	request := func() bool {
 		allow, prompt := gate.Request()
 		if prompt {
 			fmt.Println("probe:prompt")
 			app.Event.Emit("probe:prompt")
 		}
-		return allow
+		if !allow {
+			return false
+		}
+		if life.Ready() {
+			return true
+		}
+		if err := drainQuit(); err != nil {
+			fmt.Println("probe:error", err)
+		}
+		return false
 	}
 	options := application.Options{
 		Name:       "GoPMgr Wails v3 qualification",
-		Assets:     application.AssetOptions{Handler: application.BundledAssetFileServer(assets)},
+		Assets:     application.AssetOptions{Handler: application.BundledAssetFileServer(assets), Middleware: life.Middleware},
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		ShouldQuit: request,
 		OnShutdown: func() {
 			fmt.Println("probe:shutdown")
+			if !life.Ready() {
+				fmt.Println("probe:error shutdown before bridge drainage")
+				return
+			}
 			if err := owner.Close(); err != nil {
 				fmt.Println("probe:error", err)
 			}
@@ -75,7 +100,7 @@ func main() {
 	}
 	var service *probeService
 	if scenario == "inflight" || scenario == "update-quit" {
-		service = &probeService{owner: owner}
+		service = &probeService{owner: owner, ctx: life.Context()}
 		options.Services = []application.Service{application.NewService(service)}
 	}
 	app = application.New(options)
@@ -193,7 +218,9 @@ func main() {
 			app.Event.Emit("probe:recover-dispatch")
 			return
 		}
-		app.Quit()
+		if err := drainQuit(); err != nil {
+			fmt.Println("probe:error", err)
+		}
 	})
 	if err := app.Run(); err != nil {
 		if scenario == "startup-failure" && errors.Is(err, errInjectedStartup) {

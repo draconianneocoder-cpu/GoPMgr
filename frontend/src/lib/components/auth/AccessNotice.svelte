@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // Tells the signed-in user that an administrator opened their data
   // (ADR-004), or made a new administrator key because nobody held the old
   // one (ADR-005 part 3c). Shown on the first screen after every sign-in
@@ -31,7 +32,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function load() {
     loadError = '';
     try {
-      notices = (await window.go.desktop.App.MyDataAccessNotices()) ?? [];
+      notices = (await desktopApi.MyDataAccessNotices()) ?? [];
     } catch (err: any) {
       loadError = String(err?.message ?? err);
     }
@@ -44,7 +45,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // Acknowledge only what was shown: an access recorded since stays unread.
     const throughID = Math.max(...notices.map((n) => n.id));
     try {
-      await window.go.desktop.App.AcknowledgeDataAccessNotices(throughID);
+      await desktopApi.AcknowledgeDataAccessNotices(throughID);
       await load();
     } catch (err: any) {
       ackError = t('adminAccess.notice.ackFailed', { error: String(err?.message ?? err) });

@@ -6,7 +6,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # GoPMgr
 
 GoPMgr is a local-first desktop application for project controls. It combines
-a Go backend, Wails v2 desktop shell, and Svelte 5 frontend to provide
+a Go backend, Wails v3 desktop shell, and Svelte 5 frontend to provide
 planning, scheduling, reporting, and export workflows without requiring a
 hosted service.
 
@@ -28,19 +28,33 @@ for planned work.
 
 ## Build and verify
 
-Prerequisites are Go 1.27.3 or later, Node.js, npm, CGO, and the matching Wails CLI.
-Wails: the project uses Wails v2.17.0. Install that exact CLI version with:
+Prerequisites are Go 1.27.3 or later, Node.js, npm, Python 3, CGO, and the matching Wails CLI.
+Wails: the project uses Wails v3.1.0. Install that exact CLI version with:
 
 ```sh
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
+mkdir -p .tmp/wails-v3/bin
+GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
+
+Linux source builds require GTK 4 and WebKitGTK 6.0 development packages
+(`libgtk-4-dev`, `libwebkitgtk-6.0-dev`, and `pkg-config` on Debian/Ubuntu).
+The Go runtime, task-local CLI, and npm `@wailsio/runtime` are pinned to 3.1.0.
+
+The Wails v3 migration was approved on 2026-11-03. Frontend check/build and
+742 tests pass against the actual 209-method bindings; native macOS bridge
+qualification covers exact money, encrypted persistence, null/empty lists, and
+cleanup. This is development evidence, not completed package or release
+qualification. macOS 13 and Ubuntu 24.04 execution remain mandatory release
+gates on hosts that are currently unavailable; Windows NSIS qualification is
+pending. See [the migration design](docs/design/wails-v3-migration-design.md).
+Run verification locally; workflow edits do not authorize hosted CI.
 
 From a checkout:
 
 ```sh
 go mod tidy
 npm --prefix frontend ci
-wails dev
+make dev
 make build
 make verify
 ```

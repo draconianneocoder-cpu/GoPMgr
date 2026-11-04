@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: MIT
 #
-# GoPMgr-owned Wails v2.17 NSIS entrypoint. Wails regenerates
-# wails_tools.nsh from its pinned embedded template on every build; keeping
-# project.nsi here prevents fallback to Wails' generic installer entrypoint.
+# GoPMgr-owned Wails v3.1 NSIS entrypoint (pinned CLI v3.1.0). scripts/package-windows.sh
+# generates wails_tools.nsh and the WebView2 bootstrapper with the pinned
+# task-local CLI in private staging, retaining this product policy.
 
 Unicode true
 SetCompressor /SOLID lzma

@@ -20,7 +20,8 @@ const launchpad = readFileSync(
   'utf8',
 );
 const app = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
-const wailsWindowTypes = readFileSync(new URL('../src/wails-window.d.ts', import.meta.url), 'utf8');
+const generatedApp = readFileSync(new URL('../bindings/gopmgr/internal/desktop/app.ts', import.meta.url), 'utf8');
+const generatedModels = readFileSync(new URL('../bindings/gopmgr/internal/db/models.ts', import.meta.url), 'utf8');
 const scenarioChartEditor = readFileSync(
   new URL('../src/lib/components/project/ScenarioChartEditor.svelte', import.meta.url),
   'utf8',
@@ -94,9 +95,9 @@ const checks = [
   ],
   [
     'settings uses Wails scenario metadata methods',
-    component.includes('App.ListScenarios()') &&
-      component.includes('App.SaveScenario') &&
-      component.includes('App.DeleteScenario'),
+    component.includes('desktopApi.ListScenarios()') &&
+      component.includes('desktopApi.SaveScenario') &&
+      component.includes('desktopApi.DeleteScenario'),
   ],
   [
     'settings exposes scenario chart copy controls',
@@ -107,10 +108,10 @@ const checks = [
   ],
   [
     'settings uses Wails scenario chart copy methods',
-    component.includes('App.ListCharts') &&
-      component.includes('App.ListScheduleBaselines') &&
-      component.includes('App.BranchScenarioChart') &&
-      component.includes('App.ListScenarioCharts'),
+    component.includes('desktopApi.ListCharts') &&
+      component.includes('desktopApi.ListScheduleBaselines') &&
+      component.includes('desktopApi.BranchScenarioChart') &&
+      component.includes('desktopApi.ListScenarioCharts'),
   ],
   [
     'settings exposes scenario promotion controls',
@@ -120,8 +121,8 @@ const checks = [
   ],
   [
     'settings uses Wails scenario promotion method',
-    component.includes('App.PromoteScenarioChartToBaseline') &&
-      wailsWindowTypes.includes('PromoteScenarioChartToBaseline: ('),
+    component.includes('desktopApi.PromoteScenarioChartToBaseline') &&
+      generatedApp.includes('export function PromoteScenarioChartToBaseline('),
   ],
   [
     'settings exposes scenario comparison controls',
@@ -131,10 +132,10 @@ const checks = [
   ],
   [
     'settings uses Wails scenario comparison method',
-    component.includes('App.CompareScenarioChart') &&
-      wailsWindowTypes.includes('CompareScenarioChart: (') &&
-      wailsWindowTypes.includes('scenarioChartID: string') &&
-      wailsWindowTypes.includes('Promise<Record<string, ScheduleVariance>>'),
+    component.includes('desktopApi.CompareScenarioChart') &&
+      generatedApp.includes('export function CompareScenarioChart(') &&
+      generatedApp.includes('scenarioChartID: string') &&
+      generatedApp.includes('$CancellablePromise<{ [_ in string]?: kernel$0.ScheduleVariance } | null>'),
   ],
   [
     'settings exposes scenario chart edit controls',
@@ -145,8 +146,8 @@ const checks = [
   ],
   [
     'settings uses Wails scenario chart save method',
-    component.includes('App.SaveScenarioChart') &&
-      wailsWindowTypes.includes('SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>'),
+    component.includes('desktopApi.SaveScenarioChart') &&
+      generatedApp.includes('export function SaveScenarioChart(c: db$0.ScenarioChart): $CancellablePromise<db$0.ScenarioChart>'),
   ],
   [
     'session includes scenario chart editor route',
@@ -163,11 +164,11 @@ const checks = [
   ],
   [
     'scenario chart editor uses scoped scenario APIs',
-    scenarioChartEditor.includes('App.GetScenarioChart') &&
-      scenarioChartEditor.includes('App.SaveScenarioChart') &&
-      scenarioChartEditor.includes('App.CompareScenarioChart') &&
-      scenarioChartEditor.includes('App.PromoteScenarioChartToBaseline') &&
-      !scenarioChartEditor.includes('App.SaveChart') &&
+    scenarioChartEditor.includes('desktopApi.GetScenarioChart') &&
+      scenarioChartEditor.includes('desktopApi.SaveScenarioChart') &&
+      scenarioChartEditor.includes('desktopApi.CompareScenarioChart') &&
+      scenarioChartEditor.includes('desktopApi.PromoteScenarioChartToBaseline') &&
+      !scenarioChartEditor.includes('desktopApi.SaveChart') &&
       scenarioChartEditor.includes('Scenario chart editor'),
   ],
   [
@@ -177,8 +178,8 @@ const checks = [
       scenarioChartEditor.includes('varianceRows'),
   ],
   [
-    'tracked Wails App shim includes scenario chart get method',
-    wailsWindowTypes.includes('GetScenarioChart: (id: string) => Promise<ScenarioChart>'),
+    'generated Wails App service includes scenario chart get method',
+    generatedApp.includes('export function GetScenarioChart(id: string): $CancellablePromise<db$0.ScenarioChart>'),
   ],
   [
     'settings loads and saves compliance_mode through Wails settings',
@@ -187,44 +188,44 @@ const checks = [
       component.includes('complianceMode = defaults.compliance_mode ?? false'),
   ],
   [
-    'tracked Wails UserSettings shim includes compliance_mode',
-    wailsWindowTypes.includes('compliance_mode?: boolean'),
+    'generated Wails UserSettings model includes compliance_mode',
+    generatedModels.includes('"compliance_mode": boolean'),
   ],
   [
-    'tracked Wails App shim includes audit verification report export',
-    wailsWindowTypes.includes('ExportAuditVerificationReport: () => Promise<string>'),
+    'generated Wails App service includes audit verification report export',
+    generatedApp.includes('export function ExportAuditVerificationReport(): $CancellablePromise<string>'),
   ],
   [
-    'tracked Wails App shim includes audit repair evidence export',
-    wailsWindowTypes.includes('ExportAuditRepairEvidence: () => Promise<string>'),
+    'generated Wails App service includes audit repair evidence export',
+    generatedApp.includes('export function ExportAuditRepairEvidence(): $CancellablePromise<string>'),
   ],
   [
-    'tracked Wails App shim includes scenario metadata methods',
-    wailsWindowTypes.includes('ListScenarios: () => Promise<Scenario[]>') &&
-      wailsWindowTypes.includes('GetScenario: (id: string) => Promise<Scenario>') &&
-      wailsWindowTypes.includes('SaveScenario: (s: Scenario) => Promise<Scenario>') &&
-      wailsWindowTypes.includes('DeleteScenario: (id: string) => Promise<void>'),
+    'generated Wails App service includes scenario metadata methods',
+    generatedApp.includes('export function ListScenarios(): $CancellablePromise<db$0.Scenario[] | null>') &&
+      generatedApp.includes('export function GetScenario(id: string): $CancellablePromise<db$0.Scenario>') &&
+      generatedApp.includes('export function SaveScenario(s: db$0.Scenario): $CancellablePromise<db$0.Scenario>') &&
+      generatedApp.includes('export function DeleteScenario(id: string): $CancellablePromise<void>'),
   ],
   [
-    'tracked Wails App shim includes scenario chart partition methods',
-    wailsWindowTypes.includes('BranchScenarioChart: (') &&
-      wailsWindowTypes.includes('scenarioID: string') &&
-      wailsWindowTypes.includes('chartID: string') &&
-      wailsWindowTypes.includes('baselineID: string') &&
-      wailsWindowTypes.includes('Promise<ScenarioChart>') &&
-      wailsWindowTypes.includes('ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>'),
+    'generated Wails App service includes scenario chart partition methods',
+    generatedApp.includes('export function BranchScenarioChart(') &&
+      generatedApp.includes('scenarioID: string') &&
+      generatedApp.includes('chartID: string') &&
+      generatedApp.includes('baselineID: string') &&
+      generatedApp.includes('$CancellablePromise<db$0.ScenarioChart>') &&
+      generatedApp.includes('export function ListScenarioCharts(scenarioID: string): $CancellablePromise<db$0.ScenarioChart[] | null>'),
   ],
   [
-    'tracked Wails shim includes Scenario type',
-    wailsWindowTypes.includes('interface Scenario') &&
-      wailsWindowTypes.includes('source_baseline_id: string') &&
-      wailsWindowTypes.includes('is_active: boolean'),
+    'generated Wails models includes Scenario type',
+    generatedModels.includes('export interface Scenario') &&
+      generatedModels.includes('"source_baseline_id": string') &&
+      generatedModels.includes('"is_active": boolean'),
   ],
   [
-    'tracked Wails shim includes ScenarioChart type',
-    wailsWindowTypes.includes('interface ScenarioChart') &&
-      wailsWindowTypes.includes('source_chart_id: string') &&
-      wailsWindowTypes.includes('baseline_data: string'),
+    'generated Wails models includes ScenarioChart type',
+    generatedModels.includes('export interface ScenarioChart') &&
+      generatedModels.includes('"source_chart_id": string') &&
+      generatedModels.includes('"baseline_data": string'),
   ],
 ];
 

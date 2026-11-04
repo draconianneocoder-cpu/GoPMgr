@@ -6,7 +6,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # Agent Operating Guide
 
 This repository is GoPMgr, a local-first desktop project controls
-application built with a Go backend, Wails v2, and a Svelte 5 frontend.
+application built with a Go backend, Wails v3, and a Svelte 5 frontend.
 Treat this file as the first project-local instruction source for
 automated engineering work.
 
@@ -85,14 +85,25 @@ automated engineering work.
 
 ## Project Invariants
 
-- `go.mod` requires Go 1.27.3 or later and pins Wails v2.17.0. CGO is required.
-- The main package is the root `main.go` (required by `wails build`). It
-  only embeds the repo-root `frontend/dist` through `go:embed` and calls
-  `desktop.Main`. The Wails-bound `App` lives in `internal/desktop`; every
-  exported `App` method is frontend API (`window.go.desktop.App`), listed in
-  `code-map/app-api.json`.
-  `make build` runs `wails build`, which builds `frontend/dist`, injects the
-  `desktop,production` tags, and links the platform frameworks.
+- `go.mod` requires Go 1.27.3 or later and pins Wails v3.1.0. CGO is required.
+- The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
+  calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
+  its 209 exported methods are frontend API, listed in `code-map/app-api.json`.
+  `frontend/src/lib/desktop-api.ts` re-exports the generated App namespace from
+  `frontend/bindings/gopmgr/internal/desktop/index.ts`. Generate real bindings
+  before frontend checks; do not restore ambient `window.go` declarations.
+  `domain-types.d.ts` contains frontend editor views, and `desktop-dtos.ts`
+  explicitly normalizes nullable collections for those views. Raw generated
+  calls retain wire null/empty distinctions. `desktop-runtime.ts` adapts
+  `Events.On` and preserves listener-before-guard readiness and unsubscribe.
+- `make build` calls `scripts/wails-build.sh` and the reviewed v3 Taskfiles.
+  Use the task-local `.tmp/wails-v3/bin/wails3` CLI pinned to v3.1.0 and npm
+  `@wailsio/runtime` 3.1.0. Product metadata is `build/config.yml` `info.version`.
+  CGO Linux builds use GTK 4 and WebKitGTK 6.0 without legacy backend tags.
+- The migration was approved on 2026-11-03; package/release qualification is
+  separate. macOS 13 and Ubuntu 24.04 execution remain mandatory release gates
+  on currently unavailable hosts. Windows NSIS qualification remains pending.
+  Run CI-equivalent checks on local macOS/local Ubuntu; do not launch hosted CI.
 - `system.db` stores local account metadata. Per-project `.gopmgr`
   databases hold project data and are SQLCipher-capable through
   `internal/sqlitedriver`.

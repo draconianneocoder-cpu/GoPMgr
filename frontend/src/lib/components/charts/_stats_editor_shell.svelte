@@ -21,6 +21,7 @@ JSON differs; the doc is treated as an opaque object that gets
 JSON.stringified back to db.charts.data.
 -->
 <script lang="ts" generics="TDoc">
+  import { desktopApi } from '../../desktop-api';
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
@@ -76,7 +77,7 @@ JSON.stringified back to db.charts.data.
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -99,13 +100,13 @@ JSON.stringified back to db.charts.data.
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.desktop.App.LayoutChart(updated.id);
+      const res = await desktopApi.LayoutChart(updated.id);
       layout = res.body as StatsLayout;
     } catch (err: any) {
       layoutError = String(err?.message ?? err);
@@ -117,7 +118,7 @@ JSON.stringified back to db.charts.data.
     saving = true;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

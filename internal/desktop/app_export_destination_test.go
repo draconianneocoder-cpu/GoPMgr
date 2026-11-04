@@ -9,13 +9,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 func TestSelectExportDestinationCancellationIsNeutral(t *testing.T) {
 	app := &App{ctx: context.Background()}
 	called := false
-	_, err := app.selectExportDestinationWithRuntime(t.TempDir(), "report.pdf", ".pdf", "Export", exportDestinationRuntime{saveFileDialog: func(context.Context, wailsruntime.SaveDialogOptions) (string, error) { called = true; return "", nil }})
+	_, err := app.selectExportDestinationWithRuntime(t.TempDir(), "report.pdf", ".pdf", "Export", exportDestinationRuntime{saveFileDialog: func(context.Context, application.SaveFileDialogOptions) (string, error) {
+		called = true
+		return "", nil
+	}})
 	if !called {
 		t.Fatal("save dialog was not called")
 	}
@@ -26,7 +29,7 @@ func TestSelectExportDestinationCancellationIsNeutral(t *testing.T) {
 
 func TestSelectExportDestinationRejectsMisleadingExtension(t *testing.T) {
 	app := &App{ctx: context.Background()}
-	_, err := app.selectExportDestinationWithRuntime(t.TempDir(), "report.pdf", ".pdf", "Export", exportDestinationRuntime{saveFileDialog: func(context.Context, wailsruntime.SaveDialogOptions) (string, error) {
+	_, err := app.selectExportDestinationWithRuntime(t.TempDir(), "report.pdf", ".pdf", "Export", exportDestinationRuntime{saveFileDialog: func(context.Context, application.SaveFileDialogOptions) (string, error) {
 		return filepath.Join(t.TempDir(), "report.txt"), nil
 	}})
 	if err == nil {
@@ -73,8 +76,8 @@ func TestSelectExportDestinationRemembersAndReusesChosenDirectory(t *testing.T) 
 	var firstDialogDefault string
 	chosenPath := filepath.Join(chosenDir, "report.pdf")
 	_, err := app.selectExportDestinationWithRuntime(firstDefaultDir, "report.pdf", ".pdf", "Export", exportDestinationRuntime{
-		saveFileDialog: func(_ context.Context, opts wailsruntime.SaveDialogOptions) (string, error) {
-			firstDialogDefault = opts.DefaultDirectory
+		saveFileDialog: func(_ context.Context, opts application.SaveFileDialogOptions) (string, error) {
+			firstDialogDefault = opts.Directory
 			return chosenPath, nil
 		},
 	})
@@ -99,8 +102,8 @@ func TestSelectExportDestinationRemembersAndReusesChosenDirectory(t *testing.T) 
 
 	var secondDialogDefault string
 	_, err = app.selectExportDestinationWithRuntime(firstDefaultDir, "report2.pdf", ".pdf", "Export", exportDestinationRuntime{
-		saveFileDialog: func(_ context.Context, opts wailsruntime.SaveDialogOptions) (string, error) {
-			secondDialogDefault = opts.DefaultDirectory
+		saveFileDialog: func(_ context.Context, opts application.SaveFileDialogOptions) (string, error) {
+			secondDialogDefault = opts.Directory
 			return "", nil // cancel; only the default matters for this assertion
 		},
 	})
@@ -130,8 +133,8 @@ func TestSelectExportDestinationFallsBackWhenRememberedDirectoryIsGone(t *testin
 	defaultDir := t.TempDir()
 	var dialogDefault string
 	_, err := app.selectExportDestinationWithRuntime(defaultDir, "report.pdf", ".pdf", "Export", exportDestinationRuntime{
-		saveFileDialog: func(_ context.Context, opts wailsruntime.SaveDialogOptions) (string, error) {
-			dialogDefault = opts.DefaultDirectory
+		saveFileDialog: func(_ context.Context, opts application.SaveFileDialogOptions) (string, error) {
+			dialogDefault = opts.Directory
 			return "", nil
 		},
 	})

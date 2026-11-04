@@ -42,6 +42,9 @@ fi
 mkdir -p build/bin/gopmgr.app/Contents/MacOS build/packages
 printf 'fake app binary\n' > build/bin/gopmgr.app/Contents/MacOS/gopmgr
 chmod +x build/bin/gopmgr.app/Contents/MacOS/gopmgr
+mkdir -p build/bin/AAA-unrelated.app/Contents/MacOS
+printf 'unrelated binary\n' > build/bin/AAA-unrelated.app/Contents/MacOS/unrelated
+chmod +x build/bin/AAA-unrelated.app/Contents/MacOS/unrelated
 cat > build/bin/gopmgr.app/Contents/Info.plist << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -53,6 +56,35 @@ cat > build/bin/gopmgr.app/Contents/Info.plist << 'PLIST'
 </dict>
 </plist>
 PLIST
+
+# Exercise the actual release workflow selection with an unrelated app first.
+darwin_case="$(awk '/darwin\/arm64\) exe=/ {print; exit}' .github/workflows/release.yml)"
+[ -n "$darwin_case" ] || fail 'missing macOS SBOM inventory selection'
+selected="$(bash -c "case darwin/arm64 in $darwin_case esac; printf '%s' \"\$exe\"")"
+[ "$selected" = build/bin/gopmgr.app/Contents/MacOS/gopmgr ] || fail "SBOM inventory selected $selected"
+mounted_selection="$(awk '/exe=.*mounted.*Contents\/MacOS\/gopmgr/ {print; exit}' .github/workflows/release.yml)"
+[ -n "$mounted_selection" ] || fail 'missing mounted macOS SBOM selection'
+mkdir -p "$backup_root/mounted/AAA-unrelated.app" "$backup_root/mounted/GoPMgr.app"
+selected="$(mounted="$backup_root/mounted" bash -c "$mounted_selection; printf '%s' \"\$exe\"")"
+[ "$selected" = "$backup_root/mounted/GoPMgr.app/Contents/MacOS/gopmgr" ] || fail "mounted SBOM selected $selected"
+
+cat > "$stub_bin/codesign" << 'STUB'
+#!/bin/bash
+set -euo pipefail
+app="${!#}"
+case " $* " in
+ *" --verify "*)
+  [ "${FAIL_CODESIGN_VERIFY:-0}" != 1 ] || exit 41
+  [ -f "$app/.fixture-signed" ] || exit 42
+  ;;
+ *)
+  [ "${FAIL_CODESIGN_SIGN:-0}" != 1 ] || exit 43
+  [ -s "$app/Contents/Resources/Licenses/frontend.txt" ] || exit 44
+  touch "$app/.fixture-signed"
+  ;;
+esac
+STUB
+chmod +x "$stub_bin/codesign"
 
 cat > "$stub_bin/create-dmg" << 'STUB'
 #!/bin/bash
@@ -71,6 +103,12 @@ srcfolder="$current"
 if [ -z "$outfile" ] || [ -z "$srcfolder" ]; then
 	echo "create-dmg stub: missing output/source arguments" >&2
 	exit 1
+fi
+if ! grep -q 'fake app binary' "$srcfolder/GoPMgr.app/Contents/MacOS/gopmgr"; then
+ echo 'packaged an unrelated bundle' >&2; exit 1
+fi
+if [ ! -f "$srcfolder/GoPMgr.app/.fixture-signed" ]; then
+ echo "packaged bundle was not signed after adding notices" >&2; exit 1
 fi
 if [ ! -d "$srcfolder/GoPMgr.app" ]; then
 	echo "create-dmg stub: source folder lacks GoPMgr.app: $srcfolder" >&2
@@ -143,6 +181,12 @@ fi
 if [ -z "$outfile" ]; then
 	echo "hdiutil stub: missing output dmg path" >&2
 	exit 1
+fi
+if ! grep -q 'fake app binary' "$srcfolder/GoPMgr.app/Contents/MacOS/gopmgr"; then
+ echo 'packaged an unrelated bundle' >&2; exit 1
+fi
+if [ ! -f "$srcfolder/GoPMgr.app/.fixture-signed" ]; then
+ echo "packaged bundle was not signed after adding notices" >&2; exit 1
 fi
 if [ ! -d "$srcfolder/GoPMgr.app" ]; then
 	echo "hdiutil stub: DMG root lacks GoPMgr.app: $srcfolder" >&2
@@ -261,4 +305,13 @@ if [ ! -f build/packages/GoPMgr-test-fallback-arm64.dmg ]; then
 	fail "package-macos did not create the expected DMG artifact"
 fi
 
-echo "package-macos layout tests passed."
+for failure in FAIL_CODESIGN_SIGN FAIL_CODESIGN_VERIFY; do
+ if env "$failure=1" PATH="$stub_bin:$PATH" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION="test-$failure" bash scripts/package-macos.sh >"$backup_root/sign-failure.log" 2>&1; then
+  fail "package-macos concealed $failure"
+ fi
+ if [ -f "build/packages/GoPMgr-test-$failure-arm64.dmg" ]; then
+  fail "package-macos published despite $failure"
+ fi
+done
+
+echo "package-macos layout and signing tests passed."

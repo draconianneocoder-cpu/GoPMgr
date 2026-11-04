@@ -44,7 +44,7 @@ fi
 # are explicitly excluded so the scan stays focused.
 PMF_DIRS="./main.go ./internal ./tools"
 GO_PACKAGES=". ./internal/... ./tools/update-manifest"
-GO_TAGS="${GOPMGR_GO_TAGS:-webkit2_41}"
+GO_TAGS="${GOPMGR_GO_TAGS:-production}"
 
 fail=0
 section () {

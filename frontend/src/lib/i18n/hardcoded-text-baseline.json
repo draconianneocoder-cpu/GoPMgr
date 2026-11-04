@@ -49,7 +49,7 @@
   "lib/components/help/HelpFeatures.svelte": 468,
   "lib/components/help/HelpMethodologies.svelte": 281,
   "lib/components/help/HelpOverview.svelte": 36,
-  "lib/components/help/HelpReference.svelte": 197,
+  "lib/components/help/HelpReference.svelte": 195,
   "lib/components/help/HelpTroubleshooting.svelte": 84,
   "lib/components/help/HelpTutorials.svelte": 66,
   "lib/components/project/BudgetPanel.svelte": 9,

@@ -7,6 +7,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import CreateAccount from './CreateAccount.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const account = {
   username: 'alice',
   display_name: 'alice',
@@ -23,7 +29,7 @@ function installApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     IssueRecoveryCodes: vi.fn(async () => ['AAAAAAAA-BBBBBBBB']),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

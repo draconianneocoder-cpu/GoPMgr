@@ -9,6 +9,12 @@ import { autosave } from '../../autosave.svelte';
 import CharterEditor from './CharterEditor.svelte';
 import { cancelNavigation, navigation, requestNavigation, session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 let register: ReturnType<typeof vi.spyOn>;
 
@@ -43,7 +49,7 @@ beforeEach(() => {
         fields: [{ key: 'purpose', label: 'Purpose', type: 'string', required: false }] },
     ]),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

@@ -14,7 +14,7 @@
 // This script executes the app's real module graph through the actual
 // Vite + Svelte compiler (no jsdom, no browser, no new dependency) by
 // SSR-loading App.svelte and rendering it. App.svelte's onMount/$effect
-// (which touch window.go and dynamic route imports) do not run under
+// (which use the desktop runtime and dynamic route imports) do not run under
 // SSR, so the foundation loads without the Wails backend -- exactly the
 // part that must never crash on import. Any load-time or synchronous
 // render throw fails the gate.

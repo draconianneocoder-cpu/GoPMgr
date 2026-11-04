@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { definedEntries } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // GanttEditor: the first-class Gantt chart kind. Shares the
   // layered/CPM data model ({nodes, edges}); the backend computes the
   // full schedule (typed links + lag, constraints, overallocation,
@@ -59,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadChart() {
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -79,13 +81,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!chart) return false;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.desktop.App.LayoutChart(updated.id);
+      const res = await desktopApi.LayoutChart(updated.id);
       const body = res.body as { layout?: GanttLayout } | GanttLayout;
       layout = (body as any).layout ?? (body as GanttLayout);
       return true;
@@ -98,9 +100,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshBaseline() {
     if (!session.editingId) return;
     try {
-      const list = await window.go.desktop.App.ListScheduleBaselines(session.editingId);
+      const list = await desktopApi.ListScheduleBaselines(session.editingId);
       variances = (list?.length ?? 0) > 0
-        ? await window.go.desktop.App.CompareScheduleBaseline(session.editingId, '')
+        ? definedEntries(await desktopApi.CompareScheduleBaseline(session.editingId, ''))
         : {};
     } catch {
       variances = {};
@@ -121,7 +123,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function setBaseline() {
     if (!session.editingId) return;
     try {
-      await window.go.desktop.App.SetScheduleBaseline(session.editingId, '');
+      await desktopApi.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       status = 'Baseline set';
       clearStatusAfter(2000);
@@ -138,7 +140,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const p = await window.go.desktop.App.PreviewSplitLeveling(session.editingId);
+      const p = await desktopApi.PreviewSplitLeveling(session.editingId);
       status = splitPreviewMessage(p).msg;
       clearStatusAfter(4000);
     } catch (err: any) {
@@ -156,13 +158,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const res = await window.go.desktop.App.LevelChartResources(
+      const res = await desktopApi.LevelChartResources(
         session.editingId,
         'ltf',
         false,
         true // allow splitting
       );
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
       doc = JSON.parse(chart.data) as GDoc;
       await refreshLayout();
       status = splitLevelStatus(res);

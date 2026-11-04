@@ -6,6 +6,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import BaselineList from './BaselineList.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const newer = { id: 'b2', project_id: 'p', chart_id: 'c1', name: 'Replan', data: '{}', created_at: '2026-09-02T10:00:00Z' };
 const older = { id: 'b1', project_id: 'p', chart_id: 'c1', name: '', data: '{}', created_at: '2026-08-01T10:00:00Z' };
 
@@ -16,7 +22,7 @@ beforeEach(() => {
     ListScheduleBaselines: vi.fn(async () => [newer, older]),
     DeleteScheduleBaseline: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

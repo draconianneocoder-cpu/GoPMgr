@@ -13,10 +13,6 @@
     "producer": "The Go Authors"
   },
   "go_modules": {
-    "git.sr.ht/~jackmordaunt/go-toast/v2": {
-      "license": "MIT",
-      "producer": "Jack Mordaunt"
-    },
     "github.com/andybalholm/brotli": {
       "license": "MIT",
       "producer": "The Brotli Authors"
@@ -29,10 +25,6 @@
       "license": "Apache-2.0",
       "producer": "The Apache Software Foundation"
     },
-    "github.com/bep/debounce": {
-      "license": "MIT",
-      "producer": "Bjørn Erik Pedersen"
-    },
     "github.com/cespare/xxhash/v2": {
       "license": "MIT",
       "producer": "Caleb Spare"
@@ -44,10 +36,6 @@
     "github.com/digitorus/timestamp": {
       "license": "BSD-2-Clause",
       "producer": "Digitorus B.V."
-    },
-    "github.com/gabriel-vasile/mimetype": {
-      "license": "MIT",
-      "producer": "Gabriel Vasile"
     },
     "github.com/go-ole/go-ole": {
       "license": "MIT",
@@ -93,18 +81,6 @@
       "license": "MIT",
       "producer": "Klaus Post"
     },
-    "github.com/leaanthony/go-ansi-parser": {
-      "license": "MIT",
-      "producer": "Lea Anthony"
-    },
-    "github.com/leaanthony/slicer": {
-      "license": "MIT",
-      "producer": "Lea Anthony"
-    },
-    "github.com/leaanthony/u": {
-      "license": "MIT",
-      "producer": "Lea Anthony"
-    },
     "github.com/mutecomm/go-sqlcipher/v4": {
       "license": "MIT AND BSD-3-Clause AND blessing AND Unlicense",
       "producer": "Yasuhiro Matsumoto",
@@ -113,14 +89,6 @@
     "github.com/pierrec/lz4/v4": {
       "license": "BSD-3-Clause",
       "producer": "Pierre Curto"
-    },
-    "github.com/pkg/browser": {
-      "license": "BSD-2-Clause",
-      "producer": "Dave Cheney"
-    },
-    "github.com/pkg/errors": {
-      "license": "BSD-2-Clause",
-      "producer": "Dave Cheney"
     },
     "github.com/richardlehane/mscfb": {
       "license": "Apache-2.0",
@@ -133,14 +101,6 @@
     "github.com/rickar/cal/v2": {
       "license": "BSD-3-Clause",
       "producer": "Rick Arnold"
-    },
-    "github.com/rivo/uniseg": {
-      "license": "MIT",
-      "producer": "Oliver Kuederle"
-    },
-    "github.com/samber/lo": {
-      "license": "MIT",
-      "producer": "Samuel Berthe"
     },
     "github.com/tidwall/gjson": {
       "license": "MIT",
@@ -158,15 +118,7 @@
       "license": "MIT",
       "producer": "tiendc"
     },
-    "github.com/tkrajina/go-reflector": {
-      "license": "Apache-2.0",
-      "producer": ""
-    },
-    "github.com/wailsapp/go-webview2": {
-      "license": "MIT",
-      "producer": "John Chadwick"
-    },
-    "github.com/wailsapp/wails/v2": {
+    "github.com/wailsapp/wails/v3": {
       "license": "MIT",
       "producer": "Lea Anthony"
     },
@@ -255,15 +207,14 @@
       "note": "Codec compiled from third_party/go-sqlcipher"
     },
     {
-      "parent_module": "github.com/wailsapp/wails/v2",
-      "parent_package": "github.com/wailsapp/wails/v2/internal/webview2runtime",
-      "module_file": "internal/webview2runtime/MicrosoftEdgeWebview2Setup.exe",
+      "parent_module": "github.com/wailsapp/wails/v3",
+      "module_file": "internal/commands/webview2/MicrosoftEdgeWebview2Setup.exe",
       "in_installer": true,
       "name": "Microsoft Edge WebView2 Runtime Evergreen Bootstrapper",
       "version": "",
       "producer": "Microsoft Corporation",
       "license_note": "Microsoft distributes the bootstrapper under its own terms, which have no SPDX identifier; see https://developer.microsoft.com/microsoft-edge/webview2/",
-      "note": "Windows only. Embedded in the executable by Wails and also carried by the NSIS installer, which runs it when the WebView2 Runtime is missing; it downloads and installs the runtime"
+      "note": "Windows installer only. scripts/package-windows.sh copies the bootstrapper from the pinned Wails CLI into fresh NSIS staging. It is not embedded in the GoPMgr executable; the installer runs it when the WebView2 Runtime is missing, downloading and installing that runtime."
     },
     {
       "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
@@ -406,15 +357,15 @@
     ],
     "linux": [
       {
-        "name": "WebKitGTK 4.1 (libwebkit2gtk-4.1-0 / webkit2gtk4.1)",
+        "name": "WebKitGTK 6.0 (libwebkitgtk-6.0-4 / webkitgtk6.0)",
         "producer": "The WebKitGTK Project",
-        "purl": "pkg:generic/webkitgtk/webkit2gtk-4.1",
+        "purl": "pkg:generic/webkitgtk/webkitgtk-6.0",
         "note": "Installed by the distribution's package manager as a declared package dependency"
       },
       {
-        "name": "GTK 3 (libgtk-3-0 / gtk3)",
+        "name": "GTK 4 (libgtk-4-1 / gtk4)",
         "producer": "The GTK Team",
-        "purl": "pkg:generic/gnome/gtk3",
+        "purl": "pkg:generic/gnome/gtk4",
         "note": "Installed by the distribution's package manager as a declared package dependency"
       }
     ],

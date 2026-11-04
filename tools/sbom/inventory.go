@@ -25,7 +25,7 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-// target is one release build, with the tags its `wails build` step uses.
+// target is one release build, with the tags its `repository production build` step uses.
 // tools/module-notices keeps the same list; a test holds them in step.
 type target struct {
 	GOOS, GOARCH, Tags string
@@ -34,9 +34,9 @@ type target struct {
 func (t target) String() string { return t.GOOS + "/" + t.GOARCH }
 
 var releaseTargets = []target{
-	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production"},
-	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,webkit2_41"},
-	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production"},
+	{GOOS: "darwin", GOARCH: "arm64", Tags: "production"},
+	{GOOS: "linux", GOARCH: "amd64", Tags: "production"},
+	{GOOS: "windows", GOARCH: "amd64", Tags: "production"},
 }
 
 func findTarget(name string) (target, error) {

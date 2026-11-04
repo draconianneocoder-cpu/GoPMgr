@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { normaliseDocumentDefinition, signatureMethodValue } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
 import { onMount } from 'svelte';
 import ProjectHealthNotice from './ProjectHealthNotice.svelte';
 import { session, goto } from '../../session.svelte';
@@ -74,10 +76,10 @@ import Button from '../Button.svelte';
     loading = true;
     loadError = '';
     try {
-      chartKinds = (await window.go.desktop.App.ListChartKinds()) ?? [];
-      docKinds = (await window.go.desktop.App.ListDocumentKinds()) ?? [];
-      charts = (await window.go.desktop.App.ListCharts('')) ?? [];
-      docs = (await window.go.desktop.App.ListDocuments('')) ?? [];
+      chartKinds = (await desktopApi.ListChartKinds()) ?? [];
+      docKinds = ((await desktopApi.ListDocumentKinds() ?? []).map(normaliseDocumentDefinition)) ?? [];
+      charts = (await desktopApi.ListCharts('')) ?? [];
+      docs = (await desktopApi.ListDocuments('')) ?? [];
       // One-time default (matches ChartCatalog/DocumentCatalog's own prior
       // initiallyExpanded contract): an empty project's catalog opens
       // automatically. Setting it here, once per successful load, rather
@@ -90,7 +92,7 @@ import Button from '../Button.svelte';
       chartsExpanded = charts.length === 0;
       docsExpanded = docs.length === 0;
       try {
-        agileEnabled = await window.go.desktop.App.AgileEnabled();
+        agileEnabled = await desktopApi.AgileEnabled();
       } catch {
         // Older binary without the Agile bindings — feature stays hidden.
         agileEnabled = false;
@@ -116,9 +118,9 @@ import Button from '../Button.svelte';
 
     if (!signatureSettingsLoaded) {
       try {
-        const s = await window.go.desktop.App.GetSettings();
+        const s = await desktopApi.GetSettings();
         if (s?.cert_path) signCertPath = s.cert_path;
-        if (s?.signature_method) preferredSignatureMethod = s.signature_method;
+        if (s?.signature_method) preferredSignatureMethod = signatureMethodValue(s.signature_method);
         if (s?.gpg_key_id) signGPGKeyID = s.gpg_key_id;
         signatureSettingsLoaded = true;
       } catch {}
@@ -139,20 +141,20 @@ import Button from '../Button.svelte';
     (async () => {
       try {
         if (options.method === 'pades') {
-          const path = await window.go.desktop.App.ExportDocumentPDFSigned(
+          const path = await desktopApi.ExportDocumentPDFSigned(
             pendingDocForSign!.id,
             options.cert_path,
             options.cert_password,
           );
           showToast(`PAdES signed PDF exported to: ${path}`, 'success');
         } else if (options.method === 'gpg') {
-          const result = await window.go.desktop.App.ExportDocumentPDFGnuPG(
+          const result = await desktopApi.ExportDocumentPDFGnuPG(
             pendingDocForSign!.id,
             options.gpg_key_id,
           );
           showToast(`PDF exported to: ${result.pdf_path}; GnuPG signature: ${result.signature_path}`, 'success');
         } else {
-          const path = await window.go.desktop.App.ExportDocumentPDF(pendingDocForSign!.id);
+          const path = await desktopApi.ExportDocumentPDF(pendingDocForSign!.id);
           showToast(`PDF exported without digital signature to: ${path}`, 'success');
         }
       } catch (e: any) {
@@ -180,7 +182,7 @@ import Button from '../Button.svelte';
     if (loading) return;
     const next = !agileEnabled;
     try {
-      await window.go.desktop.App.SetAgileEnabled(next);
+      await desktopApi.SetAgileEnabled(next);
       agileEnabled = next;
     } catch {
       // Binding missing; do nothing.
@@ -189,7 +191,7 @@ import Button from '../Button.svelte';
 
   async function confirmDeleteChart(id: string) {
     try {
-      await window.go.desktop.App.DeleteChart(id);
+      await desktopApi.DeleteChart(id);
       charts = charts.filter((c) => c.id !== id);
     } catch (err: any) {
       showToast(`Delete failed: ${err}`, 'error');
@@ -200,7 +202,7 @@ import Button from '../Button.svelte';
 
   async function confirmDeleteDoc(id: string) {
     try {
-      await window.go.desktop.App.DeleteDocument(id);
+      await desktopApi.DeleteDocument(id);
       docs = docs.filter((d) => d.id !== id);
     } catch (err: any) {
       showToast(`Delete failed: ${err}`, 'error');
@@ -272,7 +274,7 @@ import Button from '../Button.svelte';
   async function newChart(kind: string, title: string) {
     try {
       const starter = chartStarters[kind]?.() ?? {};
-      const c = await window.go.desktop.App.SaveChart({
+      const c = await desktopApi.SaveChart({
         id: '',
         project_id: session.project!.id,
         kind,
@@ -297,7 +299,7 @@ import Button from '../Button.svelte';
   async function importMSPDI() {
     importMsg = '';
     try {
-      const c = await window.go.desktop.App.ImportMSPDIChartWithOptions({
+      const c = await desktopApi.ImportMSPDIChartWithOptions({
         include_dependencies: importDependencies,
         include_progress: importProgress,
         include_assignments: importAssignments,
@@ -311,7 +313,7 @@ import Button from '../Button.svelte';
 
   async function newDocument(kind: string, defaultTitle: string) {
     try {
-      const d = await window.go.desktop.App.NewDocument(kind, defaultTitle);
+      const d = await desktopApi.NewDocument(kind, defaultTitle);
       // Both routes use the structured document editor today, but retaining
       // the charter route preserves its specific screen-reader route label.
       goto(kind.startsWith('charter') ? 'charter' : 'documents', d.id);
@@ -330,7 +332,7 @@ import Button from '../Button.svelte';
     // 2026-08-18 as a latent ordering trap, not a live defect, so it isn't
     // rediscovered as a mystery if this component grows its own dirty
     // state later.
-    await window.go.desktop.App.CloseProject();
+    await desktopApi.CloseProject();
     session.project = null;
     session.projectPath = null;
     goto('portfolio');

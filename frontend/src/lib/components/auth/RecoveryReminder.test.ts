@@ -7,6 +7,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import RecoveryReminder from './RecoveryReminder.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const status = (unused: number, legacy = false) => ({ unused, total: 8, legacy, encryption_ready: !legacy && unused > 0 });
 const account = (username: string) => ({ username }) as unknown as Account;
 
@@ -21,7 +27,7 @@ beforeEach(() => {
     ConfirmRecoveryCodes: vi.fn(async () => undefined),
     DiscardRecoveryCodes: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

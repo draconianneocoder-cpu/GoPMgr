@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from './lib/desktop-api';
+  import { desktopRuntime } from './lib/desktop-runtime';
   import { onMount } from 'svelte';
   import {
     session,
@@ -35,36 +37,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const cachedTheme = readCachedTheme(session.user.username);
       if (cachedTheme) applyTheme(cachedTheme);
 
-      const p = window.go?.desktop?.App?.GetAppInfo?.();
-      if (p) {
-        p.then((info) => {
-          const theme = applyTheme(info?.settings?.app_theme);
-          rememberTheme(theme, session.user?.username);
-          autosave.setInterval(info?.settings?.auto_save_seconds ?? 0);
+      desktopApi.GetAppInfo().then((info) => {
+        const theme = applyTheme(info?.settings?.app_theme);
+        rememberTheme(theme, session.user?.username);
+        autosave.setInterval(info?.settings?.auto_save_seconds ?? 0);
 
-          // Opt-in only (see AppSettings.svelte's toggle); a fresh
-          // install/settings file defaults this to false. This check
-          // itself never downloads or installs anything -- it only
-          // populates session.updateStatus so a small notice can point
-          // the user at Settings, where the actual download is always a
-          // separate, explicit click.
-          if (shouldAutoCheckForUpdates(info?.settings, autoUpdateCheckedThisSession)) {
-            autoUpdateCheckedThisSession = true;
-            window.go?.desktop?.App?.CheckLatestVersion?.()
-              ?.then((status) => {
-                session.updateStatus = status;
-                if (status?.update_available && !status.error) {
-                  showToast(`GoPMgr ${status.latest} is available — see Application Settings to update.`, 'info');
-                }
-              })
-              .catch(() => {
-                // Silent: matches update.CheckLatest's own fail-closed,
-                // non-blocking design -- a network hiccup on launch must
-                // never interrupt the user.
-              });
-          }
-        }).catch(() => {});
-      }
+        // Opt-in only (see AppSettings.svelte's toggle); a fresh
+        // install/settings file defaults this to false. This check
+        // itself never downloads or installs anything -- it only
+        // populates session.updateStatus so a small notice can point
+        // the user at Settings, where the actual download is always a
+        // separate, explicit click.
+        if (shouldAutoCheckForUpdates(info?.settings, autoUpdateCheckedThisSession)) {
+          autoUpdateCheckedThisSession = true;
+          desktopApi.CheckLatestVersion()
+            .then((status) => {
+              session.updateStatus = status;
+              if (status?.update_available && !status.error) {
+                showToast(`GoPMgr ${status.latest} is available — see Application Settings to update.`, 'info');
+              }
+            })
+            .catch(() => {
+              // Silent: matches update.CheckLatest's own fail-closed,
+              // non-blocking design -- a network hiccup on launch must
+              // never interrupt the user.
+            });
+        }
+      }).catch(() => {});
     } else {
       applyTheme('dark');
       autosave.setInterval(0);
@@ -256,65 +255,59 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // signed in (the Go side keeps state across `wails dev` HMR cycles).
   onMount(() => {
     // Native menu items (built in Go) emit these events; turn them into
-    // navigation. `window.runtime` is injected by the Wails runtime.
-    const rt = (window as any).runtime;
+    // navigation through the typed Wails event adapter.
+    const rt = desktopRuntime;
     const stopEvents: Array<() => void> = [];
-    if (rt?.EventsOn) {
-      stopEvents.push(rt.EventsOn('menu:new-project', () => {
-        if (session.user) goto('launchpad');
-      }));
-      stopEvents.push(rt.EventsOn('menu:open-project', () => {
-        if (session.user) goto('project_picker');
-      }));
-      stopEvents.push(rt.EventsOn('menu:settings', () => {
-        if (session.user && session.project) goto('project_settings');
-      }));
-      stopEvents.push(rt.EventsOn('menu:close-project', async () => {
-        if (!session.project) return;
-        requestNavigation('portfolio', null, async () => {
-          try {
-            await window.go.desktop.App.CloseProject();
-            session.project = null;
-            session.projectPath = null;
-            return true;
-          } catch (err: any) {
-            routeError = `Could not close project: ${err?.message ?? err}`;
-            return false;
-          }
-        });
-      }));
-      stopEvents.push(rt.EventsOn('menu:dashboard', () => {
-        if (session.user) goto('portfolio');
-      }));
-      stopEvents.push(rt.EventsOn('menu:app-settings', () => {
-        if (session.user) goto('app_settings');
-      }));
-      stopEvents.push(rt.EventsOn('menu:help', () => {
-        if (session.user) goto('help');
-      }));
-      const app = window.go?.desktop?.App;
-      if (app) {
-        nativeClose = new NativeCloseController({
-          app,
-          reportError: (message) => { routeError = message; },
-          setInteractionLocked: setNativeCloseInteractionLocked,
-        });
-        stopEvents.push(installNativeCloseGuard(rt, app, nativeClose, (message) => {
-          routeError = message;
-        }));
-      }
-    }
-
-    if (window.go?.desktop?.App?.CurrentUser) {
-      void window.go.desktop.App.CurrentUser().then((u) => {
-        if (u) {
-          session.user = u;
-          goto('portfolio');
+    stopEvents.push(rt.EventsOn('menu:new-project', () => {
+      if (session.user) goto('launchpad');
+    }));
+    stopEvents.push(rt.EventsOn('menu:open-project', () => {
+      if (session.user) goto('project_picker');
+    }));
+    stopEvents.push(rt.EventsOn('menu:settings', () => {
+      if (session.user && session.project) goto('project_settings');
+    }));
+    stopEvents.push(rt.EventsOn('menu:close-project', async () => {
+      if (!session.project) return;
+      requestNavigation('portfolio', null, async () => {
+        try {
+          await desktopApi.CloseProject();
+          session.project = null;
+          session.projectPath = null;
+          return true;
+        } catch (err: any) {
+          routeError = `Could not close project: ${err?.message ?? err}`;
+          return false;
         }
-      }).catch(() => {
-        // No active session — stay on login.
       });
-    }
+    }));
+    stopEvents.push(rt.EventsOn('menu:dashboard', () => {
+      if (session.user) goto('portfolio');
+    }));
+    stopEvents.push(rt.EventsOn('menu:app-settings', () => {
+      if (session.user) goto('app_settings');
+    }));
+    stopEvents.push(rt.EventsOn('menu:help', () => {
+      if (session.user) goto('help');
+    }));
+    const app = desktopApi;
+    nativeClose = new NativeCloseController({
+      app,
+      reportError: (message) => { routeError = message; },
+      setInteractionLocked: setNativeCloseInteractionLocked,
+    });
+    stopEvents.push(installNativeCloseGuard(rt, app, nativeClose, (message) => {
+      routeError = message;
+    }));
+
+    void desktopApi.CurrentUser().then((u) => {
+      if (u) {
+        session.user = u;
+        goto('portfolio');
+      }
+    }).catch(() => {
+      // No active session — stay on login.
+    });
 
     return () => {
       setNativeCloseInteractionLocked(false);

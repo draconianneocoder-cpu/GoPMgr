@@ -13,11 +13,17 @@ vi.mock('../../autosave.svelte', () => ({
 import FishboneEditor from './FishboneEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
 const emptyLayout = { nodes: [], edges: [], width: 0, height: 0 };
 
-// installApp wires a mock Wails bridge onto window.go.desktop.App. `data` is
+// installApp wires a mock desktop API module. `data` is
 // the chart's stored FishboneDoc JSON, so tests can start from either an
 // empty or a populated categories list.
 function installApp(data: string): AppMock {
@@ -27,7 +33,7 @@ function installApp(data: string): AppMock {
     SaveChart: vi.fn(async (c: unknown) => c),
     LayoutChart: vi.fn(async () => ({ body: emptyLayout })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 
@@ -182,7 +188,7 @@ describe('FishboneEditor migrated load-error "Back to dashboard" button', () => 
       SaveChart: vi.fn(async (c: unknown) => c),
       LayoutChart: vi.fn(async () => ({ body: emptyLayout })),
     };
-    (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+    desktopApiMock.current = app;
     const { findByText } = render(FishboneEditor);
 
     const btn = await findByText('Back to dashboard');

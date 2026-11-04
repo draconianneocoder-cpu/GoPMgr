@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { definedEntries } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // BudgetPanel is a Dashboard-embedded summary tile. It calls
   // ComputeBudget on mount and renders four exact decimal strings + a progress
   // bar + a per-category breakdown.
@@ -19,7 +21,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      summary = await window.go.desktop.App.ComputeBudget();
+      const loaded = await desktopApi.ComputeBudget();
+      summary = { ...loaded, by_category: definedEntries(loaded.by_category) };
     } catch (err: any) {
       error = String(err);
     }

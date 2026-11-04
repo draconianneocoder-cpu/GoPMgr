@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // =========================================================
@@ -1088,10 +1088,10 @@ func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 		return analytics.Dataset{}, errors.New("no context (Wails not started)")
 	}
 
-	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Select a data file to analyze",
-		DefaultDirectory: a.userDir(),
-		Filters: []wailsruntime.FileFilter{
+	path, err := a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Select a data file to analyze",
+		Directory: a.userDir(),
+		Filters: []application.FileFilter{
 			{
 				DisplayName: "Data files (*.csv, *.tsv, *.txt, *.json, *.ndjson, *.parquet)",
 				Pattern:     "*.csv;*.tsv;*.txt;*.json;*.ndjson;*.parquet",
@@ -1145,7 +1145,7 @@ func (a *App) DownloadAndInstallUpdate() (string, error) {
 // confirms — but harmless to expose on every platform rather than gating
 // it behind a runtime.GOOS check the frontend would have to duplicate.
 func (a *App) QuitToInstallUpdate() {
-	wailsruntime.Quit(a.ctx)
+	a.native.requestQuit()
 }
 
 // ChooseCertFile opens a native file-picker for X.509 certificate
@@ -1155,10 +1155,10 @@ func (a *App) ChooseCertFile() (string, error) {
 	if a.ctx == nil {
 		return "", errors.New("no context (Wails not started)")
 	}
-	return wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Select signing certificate",
-		DefaultDirectory: a.userDir(),
-		Filters: []wailsruntime.FileFilter{
+	return a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Select signing certificate",
+		Directory: a.userDir(),
+		Filters: []application.FileFilter{
 			{
 				DisplayName: "PKCS#12 bundles (*.p12, *.pfx)",
 				Pattern:     "*.p12;*.pfx",
@@ -1175,10 +1175,10 @@ func (a *App) ChooseTSARootCertFile() (string, error) {
 	if a.ctx == nil {
 		return "", errors.New("no context (Wails not started)")
 	}
-	return wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Select timestamp authority trust root",
-		DefaultDirectory: a.userDir(),
-		Filters: []wailsruntime.FileFilter{
+	return a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Select timestamp authority trust root",
+		Directory: a.userDir(),
+		Filters: []application.FileFilter{
 			{
 				DisplayName: "PEM certificates (*.pem, *.crt, *.cer)",
 				Pattern:     "*.pem;*.crt;*.cer",

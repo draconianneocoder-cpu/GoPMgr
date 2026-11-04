@@ -38,8 +38,13 @@ The maintainer approved [Wails v3.1.0 and GTK 4 migration](design/wails-v3-migra
 with no v2/GTK 3 fallback. The isolated shell's core close/save/recovery and
 resource-lifecycle gate passed on available macOS and Ubuntu hosts; see the
 [evidence and limits](testing/wails-v3-migration-evidence.md).
-Production still uses v2 pending service/209-binding conversion, frontend
-integration and packaging qualification. macOS 13 and Ubuntu 24.04 remain
+The migration working tree now uses Wails v3.1.0, generated bindings for the
+unchanged 209 App methods, and the typed frontend runtime adapter. Local
+production bridge/dialog tests pass on macOS and Ubuntu. Local package builds
+and macOS/Linux bundled GUI checks pass; Linux packaged GUI under additional outer
+containment, installed-package lifecycle and final release checks remain open.
+Final integration review uses the owner-authorized self-review fallback after
+delegated reviewers reached their usage limit. macOS 13 and Ubuntu 24.04 remain
 support targets; their unavailable-host execution checks are mandatory before
 release, as approved by the maintainer. No full v3 release readiness is claimed.
 

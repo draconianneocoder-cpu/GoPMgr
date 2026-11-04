@@ -9,6 +9,12 @@ import { autosave } from '../../autosave.svelte';
 import WBSEditor from './WBSEditor.svelte';
 import { cancelNavigation, session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Preserve the migrated Button class contracts alongside persistence tests.
 // Persistence fixtures use the real coordinator and commit at release time.
 
@@ -28,7 +34,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { nodes: [], edges: [], width: 0, height: 0 } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

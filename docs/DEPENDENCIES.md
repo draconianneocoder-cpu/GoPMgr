@@ -12,13 +12,29 @@ posture, and validator coverage, so keep them intentional and verified.
 ## Toolchain
 
 - Go: 1.27.3 minimum from `go.mod`; CI and release workflows select that version.
-- Wails: v2.17.0.
+- Wails: v3.1.0.
 - Node frontend: Node.js 26 in CI/release workflows, with Vite 8, Svelte 5,
   TypeScript 6, and npm scripts in `frontend/package.json`. Browser storage
   code uses `window.localStorage`, and Vitest workers disable Node's
   process-wide Web Storage so jsdom remains the authoritative per-test browser
   environment.
-- CGO: required for the SQLite/SQLCipher driver path.
+- Python 3: standard-library metadata parsing/rendering for the native wrapper
+  and `scripts/wails-build-config.py`; no PyYAML dependency is required.
+- CGO: required for SQLite/SQLCipher and the standard Wails v3 native backend.
+- Linux: GTK 4 and WebKitGTK 6.0 (`gtk4`, `webkitgtk-6.0` pkg-config modules).
+  Debian/Ubuntu development packages are `libgtk-4-dev` and
+  `libwebkitgtk-6.0-dev`; runtime packages are `libgtk-4-1` and
+  `libwebkitgtk-6.0-4`. Minimum-target package qualification remains pending.
+- CLI: task-local `.tmp/wails-v3/bin/wails3`, built from
+  `github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`. Current metadata authority
+  is `build/config.yml` `info.version`.
+
+The Wails migration was approved on 2026-11-03. Dated vulnerability and build
+reports below describe their measured revisions and tags, not clearance of
+the v3 graph. Refresh notices, SBOMs, advisories and native package evidence
+before release. macOS 13 and Ubuntu 24.04 execution remain mandatory release
+gates on unavailable hosts; NSIS qualification is pending. Hosted workflow
+execution is not authorized; use local macOS/local Ubuntu checks.
 
 ### Go security baseline, 2026-10-22
 
@@ -40,7 +56,9 @@ platform/publication limits are recorded in
 
 ## Core Go Dependencies
 
-- `github.com/wailsapp/wails/v2`: Desktop app runtime and Go/JS bridge.
+- `github.com/wailsapp/wails/v3` v3.1.0: desktop application/services runtime.
+  The matching `@wailsio/runtime` npm package is pinned to 3.1.0; generated
+  bindings feed the frontend `desktop-api` namespace and narrow event adapter.
 - `github.com/mutecomm/go-sqlcipher/v4`: SQLCipher-capable SQLite driver
   registered through `internal/sqlitedriver`. The v4.4.2 module is replaced by
   the runtime-only copy in `third_party/go-sqlcipher` to carry SQLite's
@@ -153,7 +171,7 @@ their `go.mod` hashes:
 
 A G1 package that would start compiling any of these needs a new review.
 
-**Verification at G1-1:**
+**Historical verification at G1-1 (2026-10-26, before the v3 migration):**
 
 - `go mod verify` passes.
 - All 12 new `go.sum` lines match `sum.golang.org`.
@@ -292,15 +310,17 @@ Some gates use optional or required tools outside Go/npm:
 - `openssl`: CMS ASN.1 and detached signature verification.
 - `dss-validation-tool`: DSS PAdES baseline classification when
   installed.
-- `wails`: development server and desktop packaging workflow; also builds
-  the Windows NSIS installer (`wails build -nsis`).
+- `wails3` v3.1.0: development server, generated bindings, and reviewed native
+  build tasks through `scripts/wails-build.sh`.
 - `nfpm` v2.47.0: builds the Linux `.deb` and `.rpm` packages from
   `build/linux/nfpm.yaml`.
 - `hdiutil`: the built-in macOS release path for the `.dmg`. `create-dmg`
   remains an optional local-only presentation path when
   `GOPMGR_FANCY_DMG=1`; the tag workflow does not install or enable it.
-- NSIS (`makensis`) 3.12.0: the Chocolatey-pinned toolchain behind
-  `wails build -nsis` on Windows.
+- NSIS (`makensis`) 3.12.0: the pinned Windows installer compiler consumed
+  by `scripts/package-windows.sh`. Local NSIS 3.13 source/macro compilation
+  and fixture checks are separate from release-pinned-tool and native
+  installer lifecycle qualification, which remain release gates.
 - `ripgrep` (`rg`): required by release-scope and packaging source contracts;
   the tag preflight installs and discovers it explicitly instead of depending
   on the current hosted-runner image.
@@ -309,9 +329,13 @@ Some gates use optional or required tools outside Go/npm:
 that are fetched by the tag workflow. `make installer-tool-pins` verifies the
 workflow, the record, and local Linux packaging guidance as one contract.
 GoPMgr tracks `build/windows/installer/project.nsi`, `info.json`, and the
-application manifest. The pinned Wails CLI regenerates `wails_tools.nsh`, the
-WebView2 bootstrapper, and platform icon during native builds; those derived
-files remain ignored.
+application manifest. The v3 wrapper generates the application icon/resource
+from those owned inputs. `scripts/package-windows.sh` uses the pinned CLI to
+generate `wails_tools.nsh` in private staging and a fresh WebView2 bootstrapper
+beside the owned `project.nsi`; no upstream template overwrites product policy.
+It passes the binary architecture explicitly to NSIS. The earlier v2 flow
+placed the bootstrapper under `tmp/`; that layout is historical. Qualify the
+release-pinned NSIS compiler and native install/upgrade/remove before release.
 
 `make check-release` is strict where release correctness requires proof.
 If a required validator is missing, install the tool rather than
@@ -383,7 +407,7 @@ listed in `go.mod` before the change.
 | `google.golang.org/grpc`, `google.golang.org/protobuf`, `google.golang.org/genproto/googleapis/rpc` | Apache-2.0; BSD-3-Clause; Apache-2.0 | `arrow/flight`, imported by `pqarrow`; already approved under ADR-010 G1 |
 
 `github.com/go-viper/mapstructure/v2` and the five DuckDB modules left the
-release binaries. Review evidence:
+release binaries. Historical review evidence (2026-11-02, before Wails v3):
 
 - `govulncheck` v1.1.4 (symbol scan, `-tags webkit2_41`): no vulnerability
   reachable from GoPMgr's code; the one module-level advisory is the existing

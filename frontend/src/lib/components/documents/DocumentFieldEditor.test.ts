@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/svelte';
 
 import DocumentFieldEditor from './DocumentFieldEditor.svelte';
+
+// These cases do not call the backend. Unexpected calls must fail.
+vi.mock('../../desktop-api', () => ({ desktopApi: {} }));
 
 // Narrow, targeted coverage added alongside the 2026-08-18 Button
 // migration (see TEST_COVERAGE_LEDGER.md): this file previously had zero

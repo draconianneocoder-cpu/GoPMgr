@@ -37,6 +37,12 @@ type configSpec struct {
 }
 
 var supportedConfigs = []configSpec{
+	{path: "Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/darwin/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/linux/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/windows/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/config.yml", format: formatYAML, validate: validateWailsBuild},
 	{path: ".github/dependabot.yml", format: formatYAML, validate: validateDependabot},
 	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateCIAssuranceWorkflow},
 	{path: ".github/workflows/release.yml", format: formatYAML, validate: validateWorkflow},
@@ -56,6 +62,32 @@ var supportedConfigs = []configSpec{
 	{path: "spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml", format: formatTOML},
 	{path: "spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml", format: formatTOML},
 	{path: "spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml", format: formatTOML},
+}
+
+func validateTaskfile(config map[string]any) error {
+	if config["version"] != "3" {
+		return fmt.Errorf("expected Taskfile version 3")
+	}
+	if tasks, ok := stringMap(config["tasks"]); !ok || len(tasks) == 0 {
+		return fmt.Errorf("tasks must be a nonempty mapping")
+	}
+	return nil
+}
+
+func validateWailsBuild(config map[string]any) error {
+	if config["version"] != "3" {
+		return fmt.Errorf("expected Wails build version 3")
+	}
+	info, ok := stringMap(config["info"])
+	if !ok {
+		return fmt.Errorf("info must be a mapping")
+	}
+	for _, name := range []string{"version", "productName", "productIdentifier"} {
+		if value, ok := info[name].(string); !ok || strings.TrimSpace(value) == "" {
+			return fmt.Errorf("info.%s must be a nonempty string", name)
+		}
+	}
+	return nil
 }
 
 func main() {

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Build a local Apple Silicon .pkg installer for GoPMgr by wrapping the
-# .app produced by `wails build` (via `make build`). The .app's bundle
+# .app produced by `scripts/wails-build.sh` (via `make build`). The .app's bundle
 # metadata (CFBundleIdentifier dev.gopmgr.GoPMgr, name, version) comes
 # from build/darwin/Info.plist, so this script no longer hand-assembles a
 # bundle - it ad-hoc signs the Wails output and packages it for
@@ -38,21 +38,15 @@ for tool in pkgutil plutil xmllint; do
 	fi
 done
 
-if ! command -v wails >/dev/null 2>&1; then
-	echo "package-macos-installer: the 'wails' CLI is required. Install with:" >&2
-	echo "  go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0" >&2
+if ! WAILS3="${WAILS3:-.tmp/wails-v3/bin/wails3}" GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+	echo "package-macos-installer: the task-local Wails CLI must match go.mod." >&2
+	echo '  GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0' >&2
 	exit 2
 fi
 
-if ! GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
-	echo "package-macos-installer: the installed Wails CLI does not match go.mod." >&2
-	exit 2
-fi
-
-# Produce build/bin/<App>.app via the Wails CLI (make build -> wails build).
-# Remove any prior output first so a stale, previously-executed binary (which
-# macOS 15 stamps with com.apple.provenance) cannot break Wails' self-sign.
-rm -rf build/bin
+# Produce build/bin/gopmgr.app via make build -> scripts/wails-build.sh.
+# The build wrapper constructs and signs fresh private staging before replacing
+# its exact output. Preserve unrelated artifacts in build/bin.
 make build
 
 # The component policy and approved install destination name this exact app.
@@ -73,7 +67,7 @@ bash scripts/verify-module-notices.sh "$app_binary"
 # package-version-lib.sh), so the .dmg and .pkg from one build always agree.
 # This is independent of the bundle's actual CFBundleVersion/
 # CFBundleShortVersionString, which pkgbuild reads from the .app's own
-# Info.plist (templated from wails.json's productVersion by `wails build`)
+# Info.plist (rendered from build/config.yml info.version by the build wrapper)
 # and which stays a clean major.minor.patch on purpose — release gates
 # require it.
 full_version="$(release_version)"

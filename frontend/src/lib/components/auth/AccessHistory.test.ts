@@ -6,8 +6,14 @@ import { cleanup, render } from '@testing-library/svelte';
 
 import AccessHistory from './AccessHistory.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 function setApp(history: () => Promise<AccountEvent[]>) {
-  (window as unknown as { go: unknown }).go = { desktop: { App: { MyDataAccessHistory: vi.fn(history) } } };
+  desktopApiMock.current = { MyDataAccessHistory: vi.fn(history) };
 }
 
 afterEach(() => {

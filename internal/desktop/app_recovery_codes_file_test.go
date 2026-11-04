@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // recoveryFileApp signs alice in and returns real recovery codes from the
@@ -31,8 +31,8 @@ func recoveryFileApp(t *testing.T) (*App, []string) {
 }
 
 // fakeSaveDialog answers with path and records the options it was given.
-func fakeSaveDialog(path string, got *wailsruntime.SaveDialogOptions, calls *int) exportDestinationRuntime {
-	return exportDestinationRuntime{saveFileDialog: func(_ context.Context, opts wailsruntime.SaveDialogOptions) (string, error) {
+func fakeSaveDialog(path string, got *application.SaveFileDialogOptions, calls *int) exportDestinationRuntime {
+	return exportDestinationRuntime{saveFileDialog: func(_ context.Context, opts application.SaveFileDialogOptions) (string, error) {
 		*calls++
 		if got != nil {
 			*got = opts
@@ -47,7 +47,7 @@ func TestSaveRecoveryCodesFileWritesThePrivateFileTheUserChose(t *testing.T) {
 	app.rememberExportDirectory(remembered)
 
 	dest := filepath.Join(t.TempDir(), "my-codes.txt")
-	var opts wailsruntime.SaveDialogOptions
+	var opts application.SaveFileDialogOptions
 	calls := 0
 	before := time.Now().Format("2006-01-02")
 	path, err := app.saveRecoveryCodesFileWithRuntime("alice", codes, fakeSaveDialog(dest, &opts, &calls))
@@ -57,7 +57,7 @@ func TestSaveRecoveryCodesFileWritesThePrivateFileTheUserChose(t *testing.T) {
 	}
 	// The run may cross midnight; the date is one of the two.
 	created := before
-	if !strings.HasSuffix(opts.DefaultFilename, "-"+before+".txt") {
+	if !strings.HasSuffix(opts.Filename, "-"+before+".txt") {
 		created = after
 	}
 
@@ -75,8 +75,8 @@ func TestSaveRecoveryCodesFileWritesThePrivateFileTheUserChose(t *testing.T) {
 	}
 
 	home, _ := os.UserHomeDir()
-	if wantName := "gopmgr-recovery-codes-alice-" + created + ".txt"; opts.DefaultDirectory != home || opts.DefaultFilename != wantName {
-		t.Fatalf("dialog opened with %q / %q; want the home folder and %s", opts.DefaultDirectory, opts.DefaultFilename, wantName)
+	if wantName := "gopmgr-recovery-codes-alice-" + created + ".txt"; opts.Directory != home || opts.Filename != wantName {
+		t.Fatalf("dialog opened with %q / %q; want the home folder and %s", opts.Directory, opts.Filename, wantName)
 	}
 	if got := app.requireUser().LastExportDirectory; got != remembered {
 		t.Fatalf("remembered export directory changed to %q, want it left at %q", got, remembered)
@@ -191,7 +191,7 @@ func TestSaveRecoveryCodesFileNeedsTheWindow(t *testing.T) {
 func TestSaveRecoverySheetPDFWritesAPrivatePrintableSheet(t *testing.T) {
 	app, codes := recoveryFileApp(t)
 	dest := filepath.Join(t.TempDir(), "sheet.pdf")
-	var opts wailsruntime.SaveDialogOptions
+	var opts application.SaveFileDialogOptions
 	calls := 0
 	before := time.Now().Format("2006-01-02")
 	path, err := app.saveRecoveryCodes("alice", codes, fakeSaveDialog(dest, &opts, &calls), recoverySheetPDF)
@@ -208,10 +208,10 @@ func TestSaveRecoverySheetPDFWritesAPrivatePrintableSheet(t *testing.T) {
 		t.Fatalf("saved sheet mode = %v, %v; want 0600", info.Mode().Perm(), err)
 	}
 	home, _ := os.UserHomeDir()
-	if opts.DefaultDirectory != home ||
-		(opts.DefaultFilename != "gopmgr-recovery-sheet-alice-"+before+".pdf" && opts.DefaultFilename != "gopmgr-recovery-sheet-alice-"+after+".pdf") ||
+	if opts.Directory != home ||
+		(opts.Filename != "gopmgr-recovery-sheet-alice-"+before+".pdf" && opts.Filename != "gopmgr-recovery-sheet-alice-"+after+".pdf") ||
 		len(opts.Filters) != 1 || opts.Filters[0].Pattern != "*.pdf" {
-		t.Fatalf("dialog opened with %q / %q / %v; want the home folder, a dated sheet name, and a PDF filter", opts.DefaultDirectory, opts.DefaultFilename, opts.Filters)
+		t.Fatalf("dialog opened with %q / %q / %v; want the home folder, a dated sheet name, and a PDF filter", opts.Directory, opts.Filename, opts.Filters)
 	}
 }
 
@@ -248,21 +248,21 @@ func TestPublicRecoverySaveMethodsUseTheirOwnFormat(t *testing.T) {
 	app, codes := recoveryFileApp(t)
 	app.ctx = context.Background()
 	t.Cleanup(func() { app.ctx = nil })
-	var opts wailsruntime.SaveDialogOptions
+	var opts application.SaveFileDialogOptions
 	calls := 0
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "codes")
 	saved := recoveryCodesRuntime
-	recoveryCodesRuntime = func() exportDestinationRuntime { return fakeSaveDialog(dest, &opts, &calls) }
+	recoveryCodesRuntime = func(*App) exportDestinationRuntime { return fakeSaveDialog(dest, &opts, &calls) }
 	t.Cleanup(func() { recoveryCodesRuntime = saved })
 
 	path, err := app.SaveRecoveryCodesFile("alice", codes)
-	if err != nil || path != dest+".txt" || !strings.HasSuffix(opts.DefaultFilename, ".txt") {
-		t.Fatalf("SaveRecoveryCodesFile = %q, %v (default %q); want a .txt file", path, err, opts.DefaultFilename)
+	if err != nil || path != dest+".txt" || !strings.HasSuffix(opts.Filename, ".txt") {
+		t.Fatalf("SaveRecoveryCodesFile = %q, %v (default %q); want a .txt file", path, err, opts.Filename)
 	}
 	path, err = app.SaveRecoverySheetPDF("alice", codes)
-	if err != nil || path != dest+".pdf" || !strings.HasPrefix(opts.DefaultFilename, "gopmgr-recovery-sheet-") {
-		t.Fatalf("SaveRecoverySheetPDF = %q, %v (default %q); want a printable .pdf sheet", path, err, opts.DefaultFilename)
+	if err != nil || path != dest+".pdf" || !strings.HasPrefix(opts.Filename, "gopmgr-recovery-sheet-") {
+		t.Fatalf("SaveRecoverySheetPDF = %q, %v (default %q); want a printable .pdf sheet", path, err, opts.Filename)
 	}
 	if body, err := os.ReadFile(path); err != nil || !strings.HasPrefix(string(body), "%PDF-") {
 		t.Fatalf("SaveRecoverySheetPDF wrote something other than a PDF (read err %v)", err)

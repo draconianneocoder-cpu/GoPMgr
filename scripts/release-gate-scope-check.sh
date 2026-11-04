@@ -55,7 +55,7 @@ release_race="$(awk '
 ' scripts/check-release.sh)"
 expected_release_race="$(cat <<'RACE'
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race -p=1 -count=1 -tags webkit2_41 $GO_PACKAGES; then
+    if ! go test -race -p=1 -count=1 $GO_PACKAGES; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi

@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // =========================================================
@@ -55,10 +55,10 @@ func (a *App) ImportFont() (fonts.FamilyInfo, error) {
 	if a.requireUser() == nil {
 		return fonts.FamilyInfo{}, errors.New("not signed in")
 	}
-	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Select a TrueType font (.ttf)",
-		DefaultDirectory: a.userDir(),
-		Filters: []wailsruntime.FileFilter{
+	path, err := a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Select a TrueType font (.ttf)",
+		Directory: a.userDir(),
+		Filters: []application.FileFilter{
 			{DisplayName: "TrueType fonts (*.ttf)", Pattern: "*.ttf"},
 		},
 	})

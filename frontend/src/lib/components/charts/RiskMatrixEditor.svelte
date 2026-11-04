@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // The editor keeps the complete risk/issue/opportunity record in chart data;
   // the backend is authoritative for validation, score bands, and cell order.
   // Keeping scoring out of the component prevents screen, PDF, and report
@@ -56,7 +57,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
       const parsed = JSON.parse(chart.data) as RiskDocument;
       doc = { items: parsed.items ?? [] };
       await refreshLayout();
@@ -68,10 +69,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function persistAndLayout(showSavedStatus = false) {
     if (!chart) return;
-    const updated = await window.go.desktop.App.SaveChart({ ...chart, data: JSON.stringify(doc) });
+    const updated = await desktopApi.SaveChart({ ...chart, data: JSON.stringify(doc) });
     chart = updated;
     lastSavedAt = new Date();
-    const result = await window.go.desktop.App.LayoutChart(updated.id);
+    const result = await desktopApi.LayoutChart(updated.id);
     layout = result.body as RiskLayout;
     if (showSavedStatus) status = `Saved at ${lastSavedAt.toLocaleTimeString()}.`;
   }

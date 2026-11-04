@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: '3'
+tasks:
+  compile:
+    preconditions:
+      - test -n "$GOPMGR_BUILD_STAGE"
+      - sh: pkg-config --exists gtk4 webkitgtk-6.0
+        msg: 'GTK 4 and WebKitGTK 6.0 development packages are required; no legacy fallback.'
+    cmds:
+      - go build {{if eq .GOPMGR_BUILD_DEV "true"}}-gcflags=all=-l{{else}}-tags production -trimpath{{end}} -buildvcs=false -ldflags "{{if ne .GOPMGR_BUILD_DEV "true"}}-w -s {{end}}$GOPMGR_BUILD_LDFLAGS" -o "$GOPMGR_BUILD_STAGE/gopmgr" .
+    env:
+      CGO_ENABLED: '1'
+      GOOS: linux
+      GOARCH: '{{.GOPMGR_BUILD_ARCH}}'

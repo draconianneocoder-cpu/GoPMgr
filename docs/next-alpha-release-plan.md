@@ -31,7 +31,7 @@ they must not be described as supported.
 
 | Decision | Required record |
 | --- | --- |
-| Version and tag | Confirm the version of record in `internal/cli/parser.go` and `wails.json`, then choose the symbolic form `v<version-of-record>-alpha.<sequence>`. |
+| Version and tag | Confirm the version of record in `internal/cli/parser.go` and `build/config.yml` (`info.version`), then choose the symbolic form `v<version-of-record>-alpha.<sequence>`. |
 | Target matrix | Name each OS, architecture, package format, and test host that the alpha will advertise. |
 | Trust posture | Decide whether this alpha remains explicitly unsigned or waits for platform signing, macOS notarization, the signed-update keypair, and trusted-certificate PAdES evidence. |
 | Residual-risk acceptance | Review every open P0/P1 item and state whether it blocks this limited alpha, remains a disclosed alpha limitation, or is outside the advertised scope. |

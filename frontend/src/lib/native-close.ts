@@ -1,11 +1,10 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type { desktopRuntime } from './desktop-runtime';
 import { cancelNavigation, navigation, requestNavigation, session } from './session.svelte';
 
-export interface NativeCloseRuntime {
-  EventsOn(event: string, callback: () => void): () => void;
-}
+export type NativeCloseRuntime = Pick<typeof desktopRuntime, 'EventsOn'>;
 
 export interface NativeCloseApp {
   EnableNativeCloseGuard(): Promise<void>;

@@ -10,6 +10,7 @@ This is a helper composed inside NetworkEditor/PERTEditor/CPMEditor;
 not routed directly.
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
@@ -131,7 +132,7 @@ not routed directly.
   async function loadChart() {
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -171,13 +172,13 @@ not routed directly.
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.desktop.App.LayoutChart(updated.id);
+      const res = await desktopApi.LayoutChart(updated.id);
       // For layered kinds the body shape is {layout, doc}.
       const body = res.body as { layout?: any; doc?: LayeredDoc } | any;
       if (body && body.layout) {
@@ -263,7 +264,7 @@ not routed directly.
     saving = true;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

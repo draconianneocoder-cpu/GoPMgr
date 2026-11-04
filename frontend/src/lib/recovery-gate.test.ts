@@ -5,8 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { recoveryGateNeeded } from './recovery-gate';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('./desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 function install(status: () => Promise<unknown>) {
-  (window as unknown as { go: unknown }).go = { desktop: { App: { RecoveryCodeStatus: vi.fn(status) } } };
+  desktopApiMock.current = { RecoveryCodeStatus: vi.fn(status) };
 }
 
 afterEach(() => vi.restoreAllMocks());

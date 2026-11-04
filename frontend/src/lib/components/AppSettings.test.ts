@@ -8,6 +8,12 @@ import AppSettings from './AppSettings.svelte';
 import { THEME_STORAGE_KEY } from '../theme';
 import { session } from '../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const appInfo = {
   version: '1.1.0',
   username: 'tester',
@@ -41,7 +47,7 @@ beforeEach(() => {
     SaveAppSettings: vi.fn(async () => undefined),
     CheckLatestVersion: vi.fn(async () => upToDateStatus),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   window.localStorage.clear();
   document.documentElement.dataset.theme = 'dark';
   session.updateStatus = null;

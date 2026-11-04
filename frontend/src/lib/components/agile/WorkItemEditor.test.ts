@@ -16,6 +16,12 @@ import {
 } from '../../session.svelte';
 import { NativeCloseController } from '../../native-close';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 function makeItem(overrides: Partial<AgileWorkItem> = {}): AgileWorkItem {
   return {
     id: 'wi-1',
@@ -42,7 +48,7 @@ beforeEach(() => {
     SaveWorkItem: vi.fn(async (wi: AgileWorkItem) => wi),
     DeleteWorkItem: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {
