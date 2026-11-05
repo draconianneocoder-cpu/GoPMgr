@@ -15,7 +15,7 @@ is implemented under the approved style contract. Hosted/required-gate adoption
 remains deferred. P4's [local actionlint check and adjudication](../engineering/adr-013-actionlint.md)
 is implemented. P5's [local zizmor policy](../engineering/adr-013-zizmor.md) is
 implemented with owner-approved mitigations and a documented persona limitation.
-P6–P9 are not implemented or accepted as complete.
+P6 is partially implemented; P6–P9 are not accepted as complete.
 
 ## Decision and authority
 
@@ -26,6 +26,9 @@ the developer and automation command surface. The owner supplied the
 analysis, improvement and integration. That submission is preserved verbatim;
 this ADR records its reconciliation with the current repository. The
 [baseline](../engineering/adr-013-baseline.md) records executable evidence and gaps.
+
+P6's owner-approved [checkout credential guard](../engineering/adr-013-checkout-guard-plan.md)
+is implemented in the existing configuration gate. Other P6 repairs remain open.
 
 Direction approval does not certify completed phases, approve publication or
 change release credentials, protected checks, signing policy or support targets.

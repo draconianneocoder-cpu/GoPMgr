@@ -60,8 +60,10 @@ mode, but reserves explicit `true` for auditor mode. A future edit from `false`
 to explicit `true` can therefore pass this check. This is not safe credential
 handling, a waiver or a guarantee that literal `false` is enforced. A dedicated
 characterization test records the limitation and must be reassessed on scanner
-upgrade. A structural literal-`false` guard needs separate owner approval;
-switching the entire persona would also extend the approved policy.
+upgrade. The separately owner-approved [P6 guard](adr-013-checkout-guard-plan.md) now
+enforces effective boolean false through `make config-check` and `make verify`.
+`make workflow-security` alone still has this detection gap; switching the entire
+persona would extend the approved P5 policy.
 
 Offline auditing does not qualify current remote action/advisory integrity,
 repository secret settings, protected environments or branch protection.
@@ -101,6 +103,5 @@ checkouts and duplicate tool/export fixtures are removed after receipts are
 retained. Independent reviewers inspect code and receipts; their approval does
 not imply they independently reran the tests.
 
-Next is P6's individually reviewed contract hardening. The most relevant security
-follow-up is proposing a literal-`false` checkout guard, before implementing any
-new blocking rule. P6 has not been started by this work.
+P6's separately approved checkout guard closes this regression path in the
+configuration gate. Other P6 contract repairs remain separate work.

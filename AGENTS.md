@@ -38,7 +38,9 @@ is implemented with separately reviewed normalization. Maintainer acceptance
 precedes mandatory lint adoption. P4's [local workflow correctness check](docs/engineering/adr-013-actionlint.md)
 is implemented. P5's [local workflow security policy](docs/engineering/adr-013-zizmor.md)
 is implemented under the approved regular-persona contract; its documented
-credential-detection gap remains a follow-up. P6–P9 remain separate.
+credential-detection gap is covered by the separately owner-approved
+[P6 configuration guard](docs/engineering/adr-013-checkout-guard-plan.md). Other
+P6 repairs and P7–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

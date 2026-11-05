@@ -1157,7 +1157,7 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 
 ---
 
-## `tools/config-check` — 71.2%
+## `tools/config-check` — 76.6%
 
 `make config-check`: parses tracked YAML/TOML and enforces each tool's supported
 format. Moved from `scripts/` on 2026-11-03 so `scripts/` holds only shell
@@ -1166,6 +1166,7 @@ scripts.
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `config_check_test.go` | 3 | DF0 Cargo/toolchain manifest registration with malformed-TOML rejection, repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE with a required encoding-module extra and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
+| `tools/config-check/checkout_test.go` | 3 table-driven tests | Effective checkout credential policy, aliases/merges and malformed input, independent registration of all three workflows, stable job/step diagnostics | Real YAML parser and repository validator fixtures | Prevent explicit credential persistence or skipped malformed structures from passing the configuration gate; preserve unrelated actions and reusable jobs. |
 | `rust_toolchain_test.go` | 3 (fixture matrices) | DF0 Rust 1.99.1 launcher and all build/code-generation/evidence entrypoints | isolated executable fixtures, real TOML pin | Prevent PATH-shadowed tools or ambient compiler overrides from bypassing the reviewed pin; preserve argument boundaries, working-directory identity, target directory and exit status. Refuse failed lookups, runtime refusal and missing selected tools without fallback or installation. Require rustup runtime dispatch and complete Cargo invocation sequences. POSIX fixtures; native Rust builds are separate evidence. |
 | `df0_source_pins_test.go` | 4 (includes fixture matrices) | Four temporary DF0 source trees, selected override paths and the single patched Zstd pair in the active lock | real manifests, complete file hashes, changed/added/missing/renamed files and symlink fixtures | Prevent unreviewed source drift, missing overrides or reintroduction of vulnerable versions. Disposable fault checks reject old/duplicate Zstd, a missing safe wrapper and absent patch selections. Requires no Rust toolchain in the root config gate. |
 | `spikes/adr012-datafusion/rust/engine/tests/zstd_context.rs` | 2 | Interrupted compression/decompression context reuse | native dependency regression, exact payload assertions | An abandoned payload must not enter the next operation. The same test source fails against Zstd 0.13.3 and passes against 0.14.3; this demonstrates dependency behavior, not application exploitability or full DF0 security qualification. |

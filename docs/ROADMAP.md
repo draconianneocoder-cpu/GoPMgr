@@ -72,9 +72,10 @@ is implemented for all three workflows. Eight stale-label findings are resolved
 by an exact verified label entry; the owner-approved retired G0 macOS 14 row is
 removed. P5's [local zizmor policy and mitigations](engineering/adr-013-zizmor.md) are
 implemented: all three workflows have zero reported regular-persona findings.
-Explicit credential persistence is outside that persona's detection and needs a
-separate literal-`false` guard proposal. Next: P6 individually reviewed contract
-hardening. P6–P9 remain separate; no mandatory lint gate or hosted run was added.
+P6's separately approved [checkout guard](engineering/adr-013-checkout-guard-plan.md)
+closes the explicit-true detection gap through the existing configuration gate.
+Other P6 contract repairs remain, including REUSE failure handling; P7–P9 are
+separate. No new mandatory scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
 

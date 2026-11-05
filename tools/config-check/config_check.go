@@ -289,8 +289,88 @@ func validateWorkflow(config map[string]any) error {
 	if _, ok := config["on"]; !ok {
 		return fmt.Errorf("on trigger is required")
 	}
-	if jobs, ok := stringMap(config["jobs"]); !ok || len(jobs) == 0 {
+	jobs, ok := stringMap(config["jobs"])
+	if !ok || len(jobs) == 0 {
 		return fmt.Errorf("jobs must contain at least one job")
+	}
+	names := make([]string, 0, len(jobs))
+	for name := range jobs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		job, ok := stringMap(jobs[name])
+		if !ok {
+			return fmt.Errorf("jobs.%s must be a mapping", name)
+		}
+		rawSteps, present := job["steps"]
+		if !present {
+			continue
+		}
+		steps, ok := rawSteps.([]any)
+		if !ok {
+			return fmt.Errorf("jobs.%s.steps must be a sequence", name)
+		}
+		for i, rawStep := range steps {
+			if err := validateCheckoutStep(rawStep); err != nil {
+				return fmt.Errorf("jobs.%s.steps[%d] %w", name, i, err)
+			}
+		}
+	}
+	return nil
+}
+
+func validateCheckoutStep(rawStep any) error {
+	step, ok := stringMap(rawStep)
+	if !ok {
+		return fmt.Errorf("must be a mapping")
+	}
+	rawUses, present := step["uses"]
+	if !present {
+		return nil
+	}
+	uses, ok := rawUses.(string)
+	if !ok || strings.TrimSpace(uses) == "" {
+		return fmt.Errorf("uses must be a nonempty string")
+	}
+	if uses != strings.TrimSpace(uses) {
+		return fmt.Errorf("uses must not contain surrounding whitespace")
+	}
+	if strings.HasPrefix(uses, "./") || strings.HasPrefix(uses, `.\`) || strings.HasPrefix(uses, "docker://") {
+		return nil
+	}
+	repository, ref, hasRef := strings.Cut(uses, "@")
+	// Match the runner's owner/repository split, including optional action paths.
+	parts := strings.FieldsFunc(repository, func(r rune) bool { return r == '/' || r == '\\' })
+	if len(parts) < 2 || !strings.EqualFold(parts[0], "actions") || !strings.EqualFold(parts[1], "checkout") {
+		return nil
+	}
+	if !hasRef || strings.TrimSpace(ref) == "" || strings.Contains(ref, "@") {
+		return fmt.Errorf("checkout reference must include a nonempty ref")
+	}
+	rawInputs, present := step["with"]
+	if !present {
+		return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
+	}
+	inputs, ok := stringMap(rawInputs)
+	if !ok {
+		return fmt.Errorf("checkout with must be a mapping")
+	}
+	found := false
+	for name, value := range inputs {
+		if !strings.EqualFold(name, "persist-credentials") {
+			continue
+		}
+		// The runner treats input names case-insensitively. Require every
+		// spelling to be safe so map order cannot hide a conflicting value.
+		persist, ok := value.(bool)
+		if !ok || persist {
+			return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
 	}
 	return nil
 }
