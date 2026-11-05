@@ -335,8 +335,6 @@ jobs:
     # govulncheck when it happens to be installed and skips silently otherwise, so
     # nothing actually scanned dependencies in CI before this job. govulncheck does
     # call-graph analysis, so it reports only advisories the build can actually reach.
-    # If a pre-existing advisory surfaces on first run, patch the dependency (preferred)
-    # or temporarily add `continue-on-error: true` here while the fix is prepared.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -359,7 +357,7 @@ jobs:
           printf '<!doctype html>\n' > frontend/dist/index.html
 
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
       - name: Scan default build (govulncheck ./...)
         run: govulncheck ./...

@@ -168,7 +168,7 @@ or changed. Workflow source hashes below bind this receipt to its inputs.
 |---|---|---|
 | Wails v2 baseline in submission | Current migration go.mod/CLI/npm are 3.1.0 | Corrected in ADR; archive remains historical |
 | Wails direct workflow build divergence (P6-F) | Workflow build steps now call `scripts/wails-build.sh` | Re-evaluate parity; do not blindly repeat obsolete fix |
-| Mutable vulnerability scanner (P6-C) | CI installs `govulncheck@latest` | Open; select/check immutable release in its own scoped implementation |
+| Mutable vulnerability scanner (P6-C) | P0 CI installed `govulncheck@latest` | Fixed in [P6-C](adr-013-govulncheck.md); immutable v1.9.0 and scanner boundary qualification |
 | License check cleanup (P6-B) | P0 Make recipe deleted `.DS_Store` | Fixed in [P6-B](adr-013-license-check.md); explicit maintenance and sentinel/failure regressions |
 | Release REUSE skips (P6-D) | P0 script tolerated missing/broken executable | Fixed in [P6-D](adr-013-release-license-plan.md); mandatory licensing, no skip mode |
 | Compiler policy (P6-E) | `CC := gcc`; current Apple compiler behavior differs by host | Characterize natively before changing it |

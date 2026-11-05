@@ -31,7 +31,8 @@ P6's owner-approved [checkout credential guard](../engineering/adr-013-checkout-
 is implemented in the existing configuration gate. P6-B separates
 [licensing validation from cleanup](../engineering/adr-013-license-check.md).
 P6-D requires [mandatory release licensing](../engineering/adr-013-release-license-plan.md)
-without skip mode. Other P6 repairs remain open.
+without skip mode. P6-C [pins govulncheck](../engineering/adr-013-govulncheck.md)
+to the verified stable release. Other P6 repairs remain open.
 
 Direction approval does not certify completed phases, approve publication or
 change release credentials, protected checks, signing policy or support targets.

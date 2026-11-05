@@ -78,7 +78,9 @@ P6-B's [licensing check repair](engineering/adr-013-license-check.md) separates
 read-only validation from explicit Finder cleanup. P6-D
 [mandatory release licensing](engineering/adr-013-release-license-plan.md) requires
 successful validation at every entry point and removes implicit cleanup.
-Other P6 repairs and P7–P9 remain.
+P6-C [freezes govulncheck installation](engineering/adr-013-govulncheck.md) at the
+verified stable v1.9.0 release and tests text-mode failure propagation. Other
+P6 repairs and P7–P9 remain.
 No new mandatory scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
