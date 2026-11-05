@@ -1441,3 +1441,12 @@ unexplained given how thorough this ledger is elsewhere.
 
 These are static/fixture controls, not native release or execution coverage of
 every shell branch. See [P2 evidence and limits](engineering/adr-013-shellcheck.md).
+
+## ADR-013 P3 formatting assurance (2026-11-05)
+
+`scripts/engineering/shfmt_check_test.py` exercises real pinned formatting over
+tracked disposable Git roots: valid/drift/parser cases, scope/dialect and ambient
+configuration boundaries, source/index preservation, tool substitution refusal,
+Make failure/recovery and exact heredoc/literal runtime output. The timeout case
+injects subprocess failure; other formatter cases use the real executable.
+See [P3 evidence and limits](engineering/adr-013-shfmt.md).
