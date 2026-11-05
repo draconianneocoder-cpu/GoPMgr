@@ -65,8 +65,10 @@ the safe-mode URL limitation and its enforced wrapper mitigation. Maintainer
 acceptance precedes mandatory lint adoption. P2's
 [ShellCheck inventory and adjudication](engineering/adr-013-shellcheck.md) covers
 90 tracked scripts with zero findings and approved, statement-scoped literal
-exceptions. Next: P3 shfmt style and read-only formatting discipline. P3–P9
-remain separate; no mandatory lint gate or hosted run has been introduced.
+exceptions. P3's [shfmt style and read-only check](engineering/adr-013-shfmt.md)
+is implemented; 48 scripts were normalized separately, with all 90 now clean.
+Next: P4 actionlint inventory and adjudication. P4–P9 remain separate;
+no mandatory lint gate or hosted run has been introduced.
 
 ## DuckDB retirement (2026-11-02)
 

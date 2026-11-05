@@ -10,8 +10,9 @@ P0 characterization is complete for the source/hosts recorded in the baseline.
 P1 opt-in provisioning is implemented; its [qualification and recovery policy](../engineering/adr-013-provisioning.md)
 records evidence and limits. Maintainer acceptance precedes mandatory lint
 adoption. P2's [local ShellCheck inventory and adjudication](../engineering/adr-013-shellcheck.md)
-is implemented; hosted/required-gate adoption remains deferred. P3–P9 are not
-implemented or accepted as complete.
+is implemented. P3's [local shfmt check and normalization](../engineering/adr-013-shfmt.md)
+is implemented under the approved style contract. Hosted/required-gate adoption
+remains deferred; P4–P9 are not implemented or accepted as complete.
 
 ## Decision and authority
 

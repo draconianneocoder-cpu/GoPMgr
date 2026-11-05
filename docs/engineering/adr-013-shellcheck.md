@@ -129,6 +129,6 @@ release, signing, native Windows and unavailable minimum-OS qualification
 are not established by this work. Static analysis never establishes execution
 coverage, parser completeness or freedom from shell defects.
 
-Next is P3's reviewed [shfmt](https://github.com/mvdan/sh) style and read-only
-formatting check; no formatting
-rewrite has been started.
+P3's [reviewed shfmt style and read-only check](adr-013-shfmt.md) is now
+implemented, with normalization in a separate commit. Next is P4's local
+actionlint inventory and finding adjudication.

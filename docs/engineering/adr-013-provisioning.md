@@ -183,4 +183,5 @@ Maintainer acceptance of this tested configuration/version-control policy is
 still required **before supplying mandatory lint tools**. P2's
 [local ShellCheck adjudication](adr-013-shellcheck.md) is now implemented;
 actionlint and later phases remain separate. Provisioning itself does not
-suppress scanner findings. The next slice is P3's reviewed shfmt discipline.
+suppress scanner findings. P3's [reviewed shfmt discipline](adr-013-shfmt.md) is implemented. The next
+slice is P4's local actionlint inventory and adjudication.

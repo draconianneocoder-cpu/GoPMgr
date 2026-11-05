@@ -38,9 +38,11 @@ A clean formatting report says nothing about shell security or runtime safety.
 
 ## Baseline and verification
 
-At baseline `5024043`, the check reports 90 scripts and 48 needing formatting,
-returning failure as designed. Normalization is a separate commit; this
-implementation alone does not claim the existing formatting baseline is clean.
+At baseline `5024043`, the check reported 90 scripts and 48 needing formatting,
+returning failure as designed. The checker was committed separately as `2f1720c`.
+The subsequent formatting-only change normalizes those 48 scripts, including
+reviewed indentation alignment of the release race witness. The final inventory
+remains 90 scripts, with zero formatting differences and zero ShellCheck findings.
 
 Fifteen behavioral tests use the real pinned formatter, disposable Git roots
 and hand-derived expected output. They cover passing input, drift without writes,
@@ -72,6 +74,35 @@ apart from Git's nonpersistent `/dev/null` sink. The sandbox check returned the
 expected 48-file drift failure. Linux evidence at this stage is checker fixtures,
 not a full application build or native package qualification.
 
-Native release/signing, Windows and unavailable minimum-OS checks are outside
-this tooling phase. See the completion evidence below when normalization and
-host qualification are finished.
+After normalization, local macOS passed:
+
+- `make shfmt-check shellcheck`: 90 scripts, zero drift/findings.
+- `make shfmt-tests shellcheck-tests`: 15 formatter, 18 analyzer and five
+  script-contract tests.
+- `make verify`: full canonical Go/frontend regression gate, 742 frontend tests.
+- All 18 changed shell regression scripts, including real macOS/Linux packaging
+  fixture matrices and native-launch, Wails-build and qualification wrappers.
+- `bash scripts/release-gate-scope-check_test.sh`: all 24 race-policy mutations.
+- `make shfmt-check` under the same network/persistent-write-denied sandbox.
+
+Before witness alignment, the normalized source failed the existing valid-scope
+assertion as expected. Alignment restored it without relaxing the matcher.
+An independent source review compared all 48 paths with pinned formatter output
+and checked 76 heredoc payloads; only the approved race witness payload changed.
+A supplementary position-free shfmt AST comparison matched 47 files; the sole
+difference is that witness literal. This uses the same parser as formatting,
+so it supports review rather than independently proving behavioral equivalence.
+
+Local Ubuntu 26.04.1 passed the final 90-script formatting check and all 15
+formatter tests. SHA-256 comparison confirmed all 90 input scripts matched the
+macOS snapshot. The Linux formatter was provisioned only in a temporary task
+directory from P1's pinned artifact and hash; no global installation changed.
+The temporary checkout/tool fixtures were removed after retaining receipts.
+Linux's full application build, native GUI and real packaging were not rerun for
+this formatting change. Windows scripts were statically checked and their shell
+fixtures ran on macOS, which is not native Windows execution evidence.
+
+All checks are local. No required Make dependency or hosted job was added.
+Native release/signing and unavailable minimum-OS checks remain separate gates.
+Next: P4's local actionlint inventory and finding adjudication, retaining the
+same explicit policy gate before mandatory adoption.
