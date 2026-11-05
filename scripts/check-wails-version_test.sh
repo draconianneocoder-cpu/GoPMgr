@@ -18,8 +18,8 @@ make_fixture() {
 	local root=$1
 	mkdir -p "$root/.github/workflows" "$root/docs" "$root/scripts" "$root/build/windows/installer"
 	mkdir -p "$root/frontend"
-	printf '{"dependencies":{"@wailsio/runtime":"3.1.0"}}' > "$root/frontend/package.json"
-	printf '{"packages":{"":{"dependencies":{"@wailsio/runtime":"3.1.0"}},"node_modules/@wailsio/runtime":{"version":"3.1.0"}}}' > "$root/frontend/package-lock.json"
+	printf '{"dependencies":{"@wailsio/runtime":"3.1.0"}}' >"$root/frontend/package.json"
+	printf '{"packages":{"":{"dependencies":{"@wailsio/runtime":"3.1.0"}},"node_modules/@wailsio/runtime":{"version":"3.1.0"}}}' >"$root/frontend/package-lock.json"
 
 	cat >"$root/go.mod" <<'EOF'
 module example.test/gopmgr

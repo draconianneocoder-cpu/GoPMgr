@@ -36,23 +36,23 @@ restore_path=""
 
 while (($# > 0)); do
 	case "$1" in
-		--data-root)
-			(($# >= 2)) || fail "--data-root requires an absolute path"
-			data_root="$2"
-			shift 2
-			;;
-		--restore)
-			(($# >= 2)) || fail "--restore requires a backup path"
-			restore_path="$2"
-			shift 2
-			;;
-		-h | --help)
-			usage
-			exit 0
-			;;
-		*)
-			fail "unknown argument: $1"
-			;;
+	--data-root)
+		(($# >= 2)) || fail "--data-root requires an absolute path"
+		data_root="$2"
+		shift 2
+		;;
+	--restore)
+		(($# >= 2)) || fail "--restore requires a backup path"
+		restore_path="$2"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		fail "unknown argument: $1"
+		;;
 	esac
 done
 

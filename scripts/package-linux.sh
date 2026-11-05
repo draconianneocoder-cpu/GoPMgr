@@ -69,18 +69,18 @@ fi
 # must never be repackaged as a GTK4 application. readelf is from binutils;
 # inspect NEEDED only so incidental debug strings cannot satisfy this guard.
 command -v readelf >/dev/null 2>&1 || {
-    echo 'package-linux: readelf (binutils) is required to verify GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
-    exit 1
+	echo 'package-linux: readelf (binutils) is required to verify GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
+	exit 1
 }
 if ! dynamic="$(readelf --dynamic build/bin/gopmgr)"; then
-    echo 'package-linux: cannot inspect GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
-    exit 1
+	echo 'package-linux: cannot inspect GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
+	exit 1
 fi
 needed="$(printf '%s\n' "$dynamic" | sed -n 's/.*(NEEDED).*\[\([^]]*\)\].*/\1/p')"
-if ! grep -Fxq libgtk-4.so.1 <<< "$needed" || ! grep -Fxq libwebkitgtk-6.0.so.4 <<< "$needed" ||
-    grep -Eq '^(libgtk-3\.|libwebkit2gtk-|libjavascriptcoregtk-4\.)' <<< "$needed"; then
-    echo 'package-linux: binary must link GTK 4/WebKitGTK 6.0 only; legacy or missing backend dependencies rejected.' >&2
-    exit 1
+if ! grep -Fxq libgtk-4.so.1 <<<"$needed" || ! grep -Fxq libwebkitgtk-6.0.so.4 <<<"$needed" ||
+	grep -Eq '^(libgtk-3\.|libwebkit2gtk-|libjavascriptcoregtk-4\.)' <<<"$needed"; then
+	echo 'package-linux: binary must link GTK 4/WebKitGTK 6.0 only; legacy or missing backend dependencies rejected.' >&2
+	exit 1
 fi
 
 # Every Go module linked into the binary must have its notices in the
@@ -95,8 +95,8 @@ nfpm package --config build/linux/nfpm.yaml --packager rpm --target "build/packa
 
 echo "package-linux: done. Artifacts in build/packages/:"
 (
-    shopt -s nullglob
-    for artifact in build/packages/*; do
-        printf '  %q\n' "${artifact##*/}"
-    done
+	shopt -s nullglob
+	for artifact in build/packages/*; do
+		printf '  %q\n' "${artifact##*/}"
+	done
 )

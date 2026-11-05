@@ -17,8 +17,8 @@ APP_VERSION=$(grep -oE 'Version *= *"[^"]+"' internal/cli/parser.go | head -1 | 
 WAILS_VERSION="$(python3 -B scripts/wails-build-config.py version)"
 
 if [ "$APP_VERSION" != "$WAILS_VERSION" ]; then
-    echo "Version mismatch: CLI ($APP_VERSION) vs Wails ($WAILS_VERSION)"
-    exit 1
+	echo "Version mismatch: CLI ($APP_VERSION) vs Wails ($WAILS_VERSION)"
+	exit 1
 fi
 echo "Versions match: $APP_VERSION"
 
@@ -26,8 +26,8 @@ echo "Versions match: $APP_VERSION"
 # version. This is separate from the product-version check above because both
 # values live in go.mod/workflows rather than build/config.yml info.version.
 if ! WAILS3="${WAILS3:-.tmp/wails-v3/bin/wails3}" GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
-    echo "Wails version consistency failed. Run 'make wails-cli-version' for details."
-    exit 1
+	echo "Wails version consistency failed. Run 'make wails-cli-version' for details."
+	exit 1
 fi
 echo "Wails toolchain version verified."
 
@@ -36,8 +36,8 @@ echo "Wails toolchain version verified."
 # code. Validate the complete tracked inventory early so malformed YAML/TOML
 # or an unsupported format conversion cannot make later gates disappear.
 if ! make config-check >/dev/null; then
-    echo "Configuration validation failed. Run 'make config-check' for details."
-    exit 1
+	echo "Configuration validation failed. Run 'make config-check' for details."
+	exit 1
 fi
 echo "Tracked configuration files verified."
 
@@ -45,8 +45,8 @@ echo "Tracked configuration files verified."
 # Tag builds run on three hosted operating systems, so fail locally if a
 # workflow edit reintroduces @latest, unversioned NSIS, or unused create-dmg.
 if ! make installer-tool-pins >/dev/null; then
-    echo "Installer tool pin validation failed. Run 'make installer-tool-pins' for details."
-    exit 1
+	echo "Installer tool pin validation failed. Run 'make installer-tool-pins' for details."
+	exit 1
 fi
 echo "Native installer tool versions verified."
 
@@ -55,8 +55,8 @@ echo "Native installer tool versions verified."
 # (and the other bundled fonts) before the expensive build and veraPDF gates so
 # a clean-checkout omission produces a direct, actionable failure.
 if ! make required-font-assets >/dev/null; then
-    echo "Required font asset validation failed. Run 'make required-font-assets' for details."
-    exit 1
+	echo "Required font asset validation failed. Run 'make required-font-assets' for details."
+	exit 1
 fi
 echo "Required embedded font assets verified."
 
@@ -65,8 +65,8 @@ echo "Required embedded font assets verified."
 # and verify the built binary. When makensis is available, the
 # target also compiles a harmless NSIS fixture without claiming a native build.
 if ! make windows-installer-scaffold >/dev/null; then
-    echo "Windows installer scaffold validation failed. Run 'make windows-installer-scaffold' for details."
-    exit 1
+	echo "Windows installer scaffold validation failed. Run 'make windows-installer-scaffold' for details."
+	exit 1
 fi
 echo "Windows installer source contract verified."
 
@@ -86,32 +86,32 @@ find . -name .DS_Store -delete
 REUSE_INSTALL_HINT="pipx install 'reuse[charset-normalizer]==6.2.0'"
 
 if ! command -v reuse >/dev/null 2>&1; then
-    echo "reuse tool not installed; skipping license check."
-    echo "  Install with:  $REUSE_INSTALL_HINT"
+	echo "reuse tool not installed; skipping license check."
+	echo "  Install with:  $REUSE_INSTALL_HINT"
 elif ! reuse --version >/dev/null 2>&1; then
-    # The case the comment above describes. It reaches here, not the branch
-    # above: the binary exists, so `command -v` succeeds, and only running it
-    # surfaces the import-time abort. Probing --version separates "cannot run"
-    # from "ran and found violations" -- previously both produced
-    # "REUSE/SPDX compliance failed", pointing at the repository's licensing
-    # when the real fault was the local install, and the hint never printed.
-    # Skips rather than exits, matching the not-installed branch's behavior.
-    echo "reuse is installed but cannot run (it aborts before linting; usually a missing encoding module); skipping license check."
-    echo "  Reinstall with:  $REUSE_INSTALL_HINT"
+	# The case the comment above describes. It reaches here, not the branch
+	# above: the binary exists, so `command -v` succeeds, and only running it
+	# surfaces the import-time abort. Probing --version separates "cannot run"
+	# from "ran and found violations" -- previously both produced
+	# "REUSE/SPDX compliance failed", pointing at the repository's licensing
+	# when the real fault was the local install, and the hint never printed.
+	# Skips rather than exits, matching the not-installed branch's behavior.
+	echo "reuse is installed but cannot run (it aborts before linting; usually a missing encoding module); skipping license check."
+	echo "  Reinstall with:  $REUSE_INSTALL_HINT"
 else
-    if ! reuse lint >/dev/null; then
-        echo "REUSE/SPDX compliance failed. Run 'reuse lint' for details."
-        exit 1
-    fi
-    echo "Licensing compliant."
+	if ! reuse lint >/dev/null; then
+		echo "REUSE/SPDX compliance failed. Run 'reuse lint' for details."
+		exit 1
+	fi
+	echo "Licensing compliant."
 fi
 
 if [ -f scripts/frontend-build-budget.sh ]; then
-    if ! bash scripts/frontend-build-budget.sh >/dev/null; then
-        echo "Frontend build budget failed. Run 'make frontend-build-budget' for details."
-        exit 1
-    fi
-    echo "Frontend build budget passed."
+	if ! bash scripts/frontend-build-budget.sh >/dev/null; then
+		echo "Frontend build budget failed. Run 'make frontend-build-budget' for details."
+		exit 1
+	fi
+	echo "Frontend build budget passed."
 fi
 
 # The frontend-build-budget gate above produces the repo-root frontend/dist
@@ -119,29 +119,29 @@ fi
 
 # --- 3. Release gate scope -------------------------------------------
 if [ -f scripts/release-gate-scope-check.sh ]; then
-    if ! bash scripts/release-gate-scope-check.sh >/dev/null; then
-        echo "Release gate scope check failed. Run 'make release-scope' for details."
-        exit 1
-    fi
-    echo "Release gate scope verified."
+	if ! bash scripts/release-gate-scope-check.sh >/dev/null; then
+		echo "Release gate scope check failed. Run 'make release-scope' for details."
+		exit 1
+	fi
+	echo "Release gate scope verified."
 fi
 
 # --- 3b. Linux runtime target ----------------------------------------
 if [ -f scripts/check-linux-runtime-target.sh ]; then
-    if ! bash scripts/check-linux-runtime-target.sh >/dev/null; then
-        echo "Linux runtime target check failed. Run 'make linux-runtime-target' for details."
-        exit 1
-    fi
-    echo "Linux runtime target verified."
+	if ! bash scripts/check-linux-runtime-target.sh >/dev/null; then
+		echo "Linux runtime target check failed. Run 'make linux-runtime-target' for details."
+		exit 1
+	fi
+	echo "Linux runtime target verified."
 fi
 
 # --- 4. Frontend stability gate --------------------------------------
 if [ -f scripts/frontend-stability-check.sh ]; then
-    if ! bash scripts/frontend-stability-check.sh >/dev/null; then
-        echo "Frontend stability gate failed. Run 'make frontend-stability' for details."
-        exit 1
-    fi
-    echo "Frontend stability gate passed."
+	if ! bash scripts/frontend-stability-check.sh >/dev/null; then
+		echo "Frontend stability gate failed. Run 'make frontend-stability' for details."
+		exit 1
+	fi
+	echo "Frontend stability gate passed."
 fi
 
 # --- 4b. Frontend runtime smoke check --------------------------------
@@ -149,36 +149,36 @@ fi
 # Catches load-time crashes (e.g. a $state rune in a plain .ts) that
 # svelte-check and the build pass but that leave #app empty in the app.
 if [ -f scripts/frontend-smoke-check.sh ]; then
-    if ! bash scripts/frontend-smoke-check.sh >/dev/null; then
-        echo "Frontend runtime smoke check failed. Run 'make frontend-smoke' for details."
-        exit 1
-    fi
-    echo "Frontend runtime smoke check passed."
+	if ! bash scripts/frontend-smoke-check.sh >/dev/null; then
+		echo "Frontend runtime smoke check failed. Run 'make frontend-smoke' for details."
+		exit 1
+	fi
+	echo "Frontend runtime smoke check passed."
 fi
 
 # --- 5. Memory-safety gate -------------------------------------------
 if [ -f scripts/memory-safety-scan.sh ]; then
-    if ! bash scripts/memory-safety-scan.sh >/dev/null; then
-        echo "Memory-safety gate failed. Run 'make memory-scan' for details."
-        exit 1
-    fi
-    echo "Memory-safety gate passed."
+	if ! bash scripts/memory-safety-scan.sh >/dev/null; then
+		echo "Memory-safety gate failed. Run 'make memory-scan' for details."
+		exit 1
+	fi
+	echo "Memory-safety gate passed."
 else
-    echo "memory-safety-scan.sh missing; skipping."
+	echo "memory-safety-scan.sh missing; skipping."
 fi
 
 # --- 6. Race detector ------------------------------------------------
 if command -v go >/dev/null 2>&1; then
-    # Keep race output visible in hosted logs. Suppressing it reduced a
-    # Linux-only failure to an unactionable exit code and forced another tag
-    # run merely to identify the failing package.
-    # Account/root fixtures do real memory-hard KDF work. Bound package
-    # overlap, not within-package concurrency; never reuse cached race results.
-    if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
-        echo "Race detector flagged tests. Run 'make race' for details."
-        exit 1
-    fi
-    echo "Race detector clean."
+	# Keep race output visible in hosted logs. Suppressing it reduced a
+	# Linux-only failure to an unactionable exit code and forced another tag
+	# run merely to identify the failing package.
+	# Account/root fixtures do real memory-hard KDF work. Bound package
+	# overlap, not within-package concurrency; never reuse cached race results.
+	if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
+		echo "Race detector flagged tests. Run 'make race' for details."
+		exit 1
+	fi
+	echo "Race detector clean."
 fi
 
 # --- 7. Production build (reviewed Wails v3 tasks) --------------------
@@ -187,37 +187,37 @@ fi
 # build/bin. Product metadata comes from build/config.yml info.version;
 # release linker identity is carried through GOPMGR_RELEASE_LDFLAGS.
 if ! make build >/dev/null; then
-    # shellcheck disable=SC2016 # Print the command literally for the caller to run.
-    echo 'Final build failed (install task-local Wails v3.1.0: GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0).'
-    exit 1
+	# shellcheck disable=SC2016 # Print the command literally for the caller to run.
+	echo 'Final build failed (install task-local Wails v3.1.0: GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0).'
+	exit 1
 fi
 echo "Build verified."
 
 # --- 8. Encrypted database validation gate ----------------------------
 if [ -f scripts/validate-encrypted-db.sh ]; then
-    if ! bash scripts/validate-encrypted-db.sh >/dev/null 2>&1; then
-        echo "Encrypted database validation gate failed. Run 'make check-encrypted-db' for details."
-        exit 1
-    fi
-    echo "Encrypted database validation gate passed."
+	if ! bash scripts/validate-encrypted-db.sh >/dev/null 2>&1; then
+		echo "Encrypted database validation gate failed. Run 'make check-encrypted-db' for details."
+		exit 1
+	fi
+	echo "Encrypted database validation gate passed."
 fi
 
 # --- 9. PDF/A-2u validation gate (hard) ---------------------------------
 # Strict: a missing validator/ICC/sample set fails the release rather than
 # certifying PDF/A-2u conformance we could not actually verify.
 if [ -f scripts/validate-pdfa.sh ]; then
-    # Run the hermetic helper/container-contract regression before invoking the
-    # installed validator. This catches mutable image tags and output-parser
-    # regressions even when the current machine takes only the CLI branch.
-    if ! bash scripts/validate-pdfa-lib_test.sh; then
-        echo "PDF/A harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
-        exit 1
-    fi
-    if ! GOPMGR_PDFA_STRICT=1 bash scripts/validate-pdfa.sh; then
-        echo "PDF/A-2u validation gate failed. Run 'make check-pdfa' for details."
-        exit 1
-    fi
-    echo "PDF/A harness and PDF/A-2u validation gates passed."
+	# Run the hermetic helper/container-contract regression before invoking the
+	# installed validator. This catches mutable image tags and output-parser
+	# regressions even when the current machine takes only the CLI branch.
+	if ! bash scripts/validate-pdfa-lib_test.sh; then
+		echo "PDF/A harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
+		exit 1
+	fi
+	if ! GOPMGR_PDFA_STRICT=1 bash scripts/validate-pdfa.sh; then
+		echo "PDF/A-2u validation gate failed. Run 'make check-pdfa' for details."
+		exit 1
+	fi
+	echo "PDF/A harness and PDF/A-2u validation gates passed."
 fi
 
 # --- 10. PAdES harness regression gate -------------------------------
@@ -225,8 +225,8 @@ fi
 # trusted-source matrices. Running only validate-pades.sh would miss failures
 # in the release-evidence harnesses that wrap the generated signature.
 if ! make pades-harness-tests >/dev/null; then
-    echo "PAdES harness regression gate failed. Run 'make pades-harness-tests' for details."
-    exit 1
+	echo "PAdES harness regression gate failed. Run 'make pades-harness-tests' for details."
+	exit 1
 fi
 echo "PAdES harness regression gate passed."
 

@@ -11,9 +11,9 @@ verapdf_output_is_compliant() {
 	compact="$(printf '%s' "$output" | tr -d '[:space:]')"
 
 	case "$compact" in
-		*'<isCompliant>true</isCompliant>'* | *'isCompliant="true"'* | *"isCompliant='true'"* | *'"isCompliant":true'*)
-			return 0
-			;;
+	*'<isCompliant>true</isCompliant>'* | *'isCompliant="true"'* | *"isCompliant='true'"* | *'"isCompliant":true'*)
+		return 0
+		;;
 	esac
 
 	return 1
@@ -26,25 +26,25 @@ verapdf_sample_arg() {
 	sample="$3"
 
 	case "$mode" in
-		docker)
-			case "$sample" in
-				"$root"/*)
-					rel="${sample#"$root"/}"
-					printf '/work/%s\n' "$rel"
-					;;
-				*)
-					printf 'validate-pdfa: sample is outside repo root: %s\n' "$sample" >&2
-					return 1
-					;;
-			esac
-			;;
-		cli)
-			printf '%s\n' "$sample"
+	docker)
+		case "$sample" in
+		"$root"/*)
+			rel="${sample#"$root"/}"
+			printf '/work/%s\n' "$rel"
 			;;
 		*)
-			printf 'validate-pdfa: unknown veraPDF mode: %s\n' "$mode" >&2
+			printf 'validate-pdfa: sample is outside repo root: %s\n' "$sample" >&2
 			return 1
 			;;
+		esac
+		;;
+	cli)
+		printf '%s\n' "$sample"
+		;;
+	*)
+		printf 'validate-pdfa: unknown veraPDF mode: %s\n' "$mode" >&2
+		return 1
+		;;
 	esac
 }
 
@@ -130,7 +130,7 @@ file_has_sha256() {
 verapdf_auto_install_xml() {
 	local dir
 	dir="$(printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')"
-	cat << XML
+	cat <<XML
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <AutomatedInstallation langpack="eng">
   <com.izforge.izpack.panels.htmlhello.HTMLHelloPanel id="welcome"/>

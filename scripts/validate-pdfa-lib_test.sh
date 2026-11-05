@@ -56,13 +56,13 @@ assert_not_compliant 'The file is not compliant with PDF/A-2U.' "text false posi
 
 assert_eq "$(verapdf_installer_url 1.30.2)" "https://software.verapdf.org/rel/1.30/verapdf-greenfield-1.30.2-installer.zip" "versioned installer URL"
 case "$(verapdf_auto_install_xml '/tmp/a&b<c>')" in
-	*'<installpath>/tmp/a&amp;b&lt;c&gt;</installpath>'*) ;;
-	*) fail "auto-install XML does not escape the install path" ;;
+*'<installpath>/tmp/a&amp;b&lt;c&gt;</installpath>'*) ;;
+*) fail "auto-install XML does not escape the install path" ;;
 esac
 
 sha_probe="$ROOT/.tmp/sha256-probe"
 mkdir -p "$ROOT/.tmp"
-printf 'abc' > "$sha_probe"
+printf 'abc' >"$sha_probe"
 file_has_sha256 "$sha_probe" ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad || fail "file_has_sha256 rejected a matching file"
 if file_has_sha256 "$sha_probe" 0000000000000000000000000000000000000000000000000000000000000000; then
 	fail "file_has_sha256 accepted a mismatched file"
@@ -79,7 +79,7 @@ assert_eq "$(verapdf_sample_arg cli "$ROOT" "$sample")" "$sample" "cli sample pa
 probe_dir="$ROOT/.tmp/verapdf-find-test"
 rm -rf "$probe_dir"
 mkdir -p "$probe_dir/nested"
-cat > "$probe_dir/nested/verapdf" << 'EOF'
+cat >"$probe_dir/nested/verapdf" <<'EOF'
 #!/bin/bash
 exit 0
 EOF
@@ -89,7 +89,7 @@ rm -rf "$probe_dir"
 
 bad_archive="$ROOT/.tmp/not-a-valid-jar.zip"
 mkdir -p "$ROOT/.tmp"
-printf '%s\n' 'not a zip archive' > "$bad_archive"
+printf '%s\n' 'not a zip archive' >"$bad_archive"
 command -v zip_archive_is_valid >/dev/null 2>&1 || fail "zip_archive_is_valid helper is missing"
 if zip_archive_is_valid "$bad_archive"; then
 	fail "invalid veraPDF archive was accepted"
@@ -98,8 +98,8 @@ rm -f "$bad_archive"
 
 bad_jar="$ROOT/.tmp/bad-verapdf.jar"
 bad_wrapper="$ROOT/.tmp/bad-verapdf-wrapper"
-printf '%s\n' 'not a jar' > "$bad_jar"
-cat > "$bad_wrapper" << EOF
+printf '%s\n' 'not a jar' >"$bad_jar"
+cat >"$bad_wrapper" <<EOF
 #!/bin/bash
 java -jar "$bad_jar" "\$@"
 EOF
@@ -119,7 +119,7 @@ cleanup_fake_verapdf() {
 }
 trap cleanup_fake_verapdf EXIT
 fake_verapdf_log="$fake_verapdf_dir/verapdf.args"
-cat > "$fake_verapdf" << EOF
+cat >"$fake_verapdf" <<EOF
 #!/bin/bash
 printf '%s\\n' "\$*" >> "$fake_verapdf_log"
 printf '%s\\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
@@ -134,40 +134,40 @@ gate_output="$(
 		bash "$ROOT/scripts/validate-pdfa.sh" 2>&1
 )"
 case "$gate_output" in
-	*"Checking schedule.pdf"* ) ;;
-	*)
-		printf '%s\n' "$gate_output" >&2
-		fail "validate-pdfa gate did not generate and validate schedule.pdf"
-		;;
+*"Checking schedule.pdf"*) ;;
+*)
+	printf '%s\n' "$gate_output" >&2
+	fail "validate-pdfa gate did not generate and validate schedule.pdf"
+	;;
 esac
 case "$gate_output" in
-	*"Checking document-charter.pdf"* ) ;;
-	*)
-		printf '%s\n' "$gate_output" >&2
-		fail "validate-pdfa gate did not generate and validate document-charter.pdf"
-		;;
+*"Checking document-charter.pdf"*) ;;
+*)
+	printf '%s\n' "$gate_output" >&2
+	fail "validate-pdfa gate did not generate and validate document-charter.pdf"
+	;;
 esac
 case "$gate_output" in
-	*"Checking combined-report.pdf"* ) ;;
-	*)
-		printf '%s\n' "$gate_output" >&2
-		fail "validate-pdfa gate did not generate and validate combined-report.pdf"
-		;;
+*"Checking combined-report.pdf"*) ;;
+*)
+	printf '%s\n' "$gate_output" >&2
+	fail "validate-pdfa gate did not generate and validate combined-report.pdf"
+	;;
 esac
 case "$gate_output" in
-	*"Checking monte-carlo-risk-report.pdf"* ) ;;
-	*)
-		printf '%s\n' "$gate_output" >&2
-		fail "validate-pdfa gate did not generate and validate monte-carlo-risk-report.pdf"
-		;;
+*"Checking monte-carlo-risk-report.pdf"*) ;;
+*)
+	printf '%s\n' "$gate_output" >&2
+	fail "validate-pdfa gate did not generate and validate monte-carlo-risk-report.pdf"
+	;;
 esac
 for sample in document-multilingual.pdf document-japanese.pdf document-korean.pdf document-chinese.pdf signed-document.pdf; do
 	case "$gate_output" in
-		*"Checking $sample"* ) ;;
-		*)
-			printf '%s\n' "$gate_output" >&2
-			fail "validate-pdfa gate did not generate and validate $sample"
-			;;
+	*"Checking $sample"*) ;;
+	*)
+		printf '%s\n' "$gate_output" >&2
+		fail "validate-pdfa gate did not generate and validate $sample"
+		;;
 	esac
 done
 if [ "$(grep -c -- '-f 2u' "$fake_verapdf_log")" -ne 9 ]; then
@@ -175,10 +175,10 @@ if [ "$(grep -c -- '-f 2u' "$fake_verapdf_log")" -ne 9 ]; then
 	fail "validate-pdfa gate did not validate all nine samples against the PDF/A-2u profile"
 fi
 case "$gate_output" in
-	*"Gate passed (nothing to check)"* )
-		printf '%s\n' "$gate_output" >&2
-		fail "validate-pdfa gate silently passed without samples"
-		;;
+*"Gate passed (nothing to check)"*)
+	printf '%s\n' "$gate_output" >&2
+	fail "validate-pdfa gate silently passed without samples"
+	;;
 esac
 
 # Exercise the Docker branch without contacting a registry. The fake records
@@ -186,7 +186,7 @@ esac
 # pinned official image and translates repo-local samples to /work paths.
 fake_docker="$fake_verapdf_dir/docker"
 fake_docker_log="$fake_verapdf_dir/docker.args"
-cat > "$fake_docker" <<'EOF'
+cat >"$fake_docker" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "$GOPMGR_FAKE_DOCKER_LOG"
 printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'

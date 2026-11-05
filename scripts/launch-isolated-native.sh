@@ -34,18 +34,18 @@ fail() {
 app="$DEFAULT_APP"
 while (($# > 0)); do
 	case "$1" in
-		--app)
-			(($# >= 2)) || fail "--app requires an absolute bundle executable path"
-			app="$2"
-			shift 2
-			;;
-		-h | --help)
-			usage
-			exit 0
-			;;
-		*)
-			fail "unknown argument: $1"
-			;;
+	--app)
+		(($# >= 2)) || fail "--app requires an absolute bundle executable path"
+		app="$2"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		fail "unknown argument: $1"
+		;;
 	esac
 done
 

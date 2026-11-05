@@ -8,8 +8,8 @@ cd "$(dirname "$0")/.."
 fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
-readme_text="$(tr '\n' ' ' < README.md)"
-agent_text="$(tr '\n' ' ' < docs/DEVELOPER_HANDBOOK.md)"
+readme_text="$(tr '\n' ' ' <README.md)"
+agent_text="$(tr '\n' ' ' <docs/DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
 # The scope matcher is intentionally narrower than a general documentation
@@ -53,13 +53,14 @@ release_race="$(awk '
     active && NF && $0 !~ /^[[:space:]]*#/ { print }
     END { if (starts != 1 || ends != 1) print "invalid race section count" }
 ' scripts/check-release.sh)"
-expected_release_race="$(cat <<'RACE'
+expected_release_race="$(
+	cat <<'RACE'
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
-        echo "Race detector flagged tests. Run 'make race' for details."
-        exit 1
-    fi
-    echo "Race detector clean."
+	if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
+		echo "Race detector flagged tests. Run 'make race' for details."
+		exit 1
+	fi
+	echo "Race detector clean."
 fi
 RACE
 )"

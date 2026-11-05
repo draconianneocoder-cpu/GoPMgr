@@ -22,7 +22,7 @@ mkdir -p "$repo"
 	git init -q
 	git config user.email "test@example.invalid"
 	git config user.name "test"
-	echo one > file.txt
+	echo one >file.txt
 	git add file.txt
 	git commit -q -m "first commit"
 	git tag v1.2.3
@@ -44,19 +44,19 @@ out="$(cd "$repo" && VERSION='' release_version)"
 # this assertion fail.
 (
 	cd "$repo"
-	echo two > file.txt
+	echo two >file.txt
 	git add file.txt
 	git commit -q -m "second commit"
 )
 out="$(cd "$repo" && VERSION='' release_version)"
 case "$out" in
-	"1.2.3")
-		fail "post-tag commit produced the bare tag name; distance/sha info was lost (got '$out')"
-		;;
-	1.2.3-*) ;;
-	*)
-		fail "post-tag version did not start with the nearest tag (got '$out')"
-		;;
+"1.2.3")
+	fail "post-tag commit produced the bare tag name; distance/sha info was lost (got '$out')"
+	;;
+1.2.3-*) ;;
+*)
+	fail "post-tag version did not start with the nearest tag (got '$out')"
+	;;
 esac
 [ "$out" != "1.2.3" ] || fail "post-tag version must differ from the exact-tag version"
 
@@ -66,9 +66,9 @@ esac
 # both satisfy `${VERSION:-}`, but only this case proves the real call path.
 out="$(cd "$repo" && env -u VERSION bash -c '. "'"$ROOT"'/scripts/package-version-lib.sh"; set -euo pipefail; release_version')"
 case "$out" in
-	"1.2.3") fail "unset-VERSION post-tag case returned the bare tag (got '$out')" ;;
-	1.2.3-*) ;;
-	*) fail "unset-VERSION post-tag version did not start with the nearest tag (got '$out')" ;;
+"1.2.3") fail "unset-VERSION post-tag case returned the bare tag (got '$out')" ;;
+1.2.3-*) ;;
+*) fail "unset-VERSION post-tag version did not start with the nearest tag (got '$out')" ;;
 esac
 
 # Case 4: VERSION unset, no tags reachable at all -> "0.0.0", not a
@@ -80,7 +80,7 @@ mkdir -p "$notags"
 	git init -q
 	git config user.email "test@example.invalid"
 	git config user.name "test"
-	echo one > file.txt
+	echo one >file.txt
 	git add file.txt
 	git commit -q -m "only commit, no tags"
 )

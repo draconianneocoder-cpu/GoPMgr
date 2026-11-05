@@ -40,12 +40,12 @@ if [ -e build/packages ]; then
 fi
 
 mkdir -p build/bin/gopmgr.app/Contents/MacOS build/packages
-printf 'fake app binary\n' > build/bin/gopmgr.app/Contents/MacOS/gopmgr
+printf 'fake app binary\n' >build/bin/gopmgr.app/Contents/MacOS/gopmgr
 chmod +x build/bin/gopmgr.app/Contents/MacOS/gopmgr
 mkdir -p build/bin/AAA-unrelated.app/Contents/MacOS
-printf 'unrelated binary\n' > build/bin/AAA-unrelated.app/Contents/MacOS/unrelated
+printf 'unrelated binary\n' >build/bin/AAA-unrelated.app/Contents/MacOS/unrelated
 chmod +x build/bin/AAA-unrelated.app/Contents/MacOS/unrelated
-cat > build/bin/gopmgr.app/Contents/Info.plist << 'PLIST'
+cat >build/bin/gopmgr.app/Contents/Info.plist <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
 	"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -68,7 +68,7 @@ mkdir -p "$backup_root/mounted/AAA-unrelated.app" "$backup_root/mounted/GoPMgr.a
 selected="$(mounted="$backup_root/mounted" bash -c "$mounted_selection; printf '%s' \"\$exe\"")"
 [ "$selected" = "$backup_root/mounted/GoPMgr.app/Contents/MacOS/gopmgr" ] || fail "mounted SBOM selected $selected"
 
-cat > "$stub_bin/codesign" << 'STUB'
+cat >"$stub_bin/codesign" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 app="${!#}"
@@ -86,7 +86,7 @@ esac
 STUB
 chmod +x "$stub_bin/codesign"
 
-cat > "$stub_bin/create-dmg" << 'STUB'
+cat >"$stub_bin/create-dmg" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 # Record that create-dmg was invoked so tests can assert it is opt-in.
@@ -156,7 +156,7 @@ printf 'stub create-dmg\n' > "$outfile"
 STUB
 chmod +x "$stub_bin/create-dmg"
 
-cat > "$stub_bin/hdiutil" << 'STUB'
+cat >"$stub_bin/hdiutil" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 srcfolder=""
@@ -248,11 +248,11 @@ output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GO_MODULE_NOTIC
 	fail "package-macos default (hdiutil) layout failed"
 }
 case "$output" in
-	*"build/packages/GoPMgr-test-default-arm64.dmg"*) ;;
-	*)
-		printf '%s\n' "$output" >&2
-		fail "package-macos did not report the expected default DMG path"
-		;;
+*"build/packages/GoPMgr-test-default-arm64.dmg"*) ;;
+*)
+	printf '%s\n' "$output" >&2
+	fail "package-macos did not report the expected default DMG path"
+	;;
 esac
 if [ ! -f build/packages/GoPMgr-test-default-arm64.dmg ]; then
 	fail "package-macos did not create the expected default DMG artifact"
@@ -268,11 +268,11 @@ output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GOPMGR_FANCY_DM
 	fail "package-macos create-dmg layout failed"
 }
 case "$output" in
-	*"build/packages/GoPMgr-test-create-dmg-arm64.dmg"*) ;;
-	*)
-		printf '%s\n' "$output" >&2
-		fail "package-macos did not report the expected create-dmg artifact path"
-		;;
+*"build/packages/GoPMgr-test-create-dmg-arm64.dmg"*) ;;
+*)
+	printf '%s\n' "$output" >&2
+	fail "package-macos did not report the expected create-dmg artifact path"
+	;;
 esac
 if [ ! -f build/packages/GoPMgr-test-create-dmg-arm64.dmg ]; then
 	fail "package-macos did not create the expected create-dmg artifact"
@@ -282,7 +282,7 @@ if [ ! -f "$sentinel" ]; then
 fi
 
 # Case 3: opt-in fancy layout falls back to hdiutil when create-dmg fails.
-cat > "$stub_bin/create-dmg" << 'STUB'
+cat >"$stub_bin/create-dmg" <<'STUB'
 #!/bin/bash
 exit 127
 STUB
@@ -294,11 +294,11 @@ output="$(PATH="$stub_bin:$PATH" GOPMGR_FANCY_DMG=1 GO_MODULE_NOTICES="$ROOT/thi
 }
 
 case "$output" in
-	*"build/packages/GoPMgr-test-fallback-arm64.dmg"*) ;;
-	*)
-		printf '%s\n' "$output" >&2
-		fail "package-macos did not report the expected DMG path"
-		;;
+*"build/packages/GoPMgr-test-fallback-arm64.dmg"*) ;;
+*)
+	printf '%s\n' "$output" >&2
+	fail "package-macos did not report the expected DMG path"
+	;;
 esac
 
 if [ ! -f build/packages/GoPMgr-test-fallback-arm64.dmg ]; then
@@ -306,12 +306,12 @@ if [ ! -f build/packages/GoPMgr-test-fallback-arm64.dmg ]; then
 fi
 
 for failure in FAIL_CODESIGN_SIGN FAIL_CODESIGN_VERIFY; do
- if env "$failure=1" PATH="$stub_bin:$PATH" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION="test-$failure" bash scripts/package-macos.sh >"$backup_root/sign-failure.log" 2>&1; then
-  fail "package-macos concealed $failure"
- fi
- if [ -f "build/packages/GoPMgr-test-$failure-arm64.dmg" ]; then
-  fail "package-macos published despite $failure"
- fi
+	if env "$failure=1" PATH="$stub_bin:$PATH" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION="test-$failure" bash scripts/package-macos.sh >"$backup_root/sign-failure.log" 2>&1; then
+		fail "package-macos concealed $failure"
+	fi
+	if [ -f "build/packages/GoPMgr-test-$failure-arm64.dmg" ]; then
+		fail "package-macos published despite $failure"
+	fi
 done
 
 echo "package-macos layout and signing tests passed."

@@ -21,7 +21,7 @@ for chunk in frontend/dist/assets/index-*.js; do
 		echo "frontend-budget: no main index chunk found in frontend/dist/assets." >&2
 		exit 1
 	fi
-	size_bytes="$(wc -c < "$chunk" | tr -d '[:space:]')"
+	size_bytes="$(wc -c <"$chunk" | tr -d '[:space:]')"
 	if [ "$size_bytes" -gt "$main_budget_bytes" ]; then
 		echo "frontend-budget: $chunk is ${size_bytes} bytes, above ${main_budget_bytes} byte main-chunk budget." >&2
 		exit 1

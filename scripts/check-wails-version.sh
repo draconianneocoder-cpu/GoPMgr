@@ -98,7 +98,7 @@ if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
 	fi
 fi
 
-if (( fail != 0 )); then
+if ((fail != 0)); then
 	exit "$fail"
 fi
 

@@ -20,6 +20,6 @@ trap 'rm -rf "$corpus"' EXIT
 
 go test -count=1 ./internal/...
 go run ./cmd/df0-fixtures -out "$corpus" -check
-"$python" -I tools/independent_read.py "$corpus" > "$corpus/independent-reads.jsonl"
+"$python" -I tools/independent_read.py "$corpus" >"$corpus/independent-reads.jsonl"
 go run ./cmd/df0-selfcheck -corpus "$corpus" -reads "$corpus/independent-reads.jsonl" -out evidence/df0-a
 go run -tags duckdb ./cmd/df0-baseline -corpus "$corpus" -out evidence/df0-a

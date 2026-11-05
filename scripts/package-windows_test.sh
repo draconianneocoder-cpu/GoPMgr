@@ -24,7 +24,7 @@ export REAL_GO
 REAL_NSIS="$(command -v makensis || true)"
 export REAL_NSIS
 export FIXTURE_REPO="$repo"
-cat > "$repo/.tmp/wails-v3/bin/wails3" <<'STUB'
+cat >"$repo/.tmp/wails-v3/bin/wails3" <<'STUB'
 #!/bin/bash
 set -eu
 case "$1 $2" in
@@ -33,7 +33,7 @@ case "$1 $2" in
 esac
 exec "$REAL_WAILS" "$@"
 STUB
-cat > "$fixture/bin/go" <<'STUB'
+cat >"$fixture/bin/go" <<'STUB'
 #!/bin/bash
 set -eu
 if [ "$1" = version ] && [ "$2" = -m ] && [[ "$3" = */wails3 ]]; then
@@ -42,7 +42,7 @@ if [ "$1" = version ] && [ "$2" = -m ] && [[ "$3" = */wails3 ]]; then
 fi
 exec "$REAL_GO" "$@"
 STUB
-cat > "$fixture/bin/makensis" <<'STUB'
+cat >"$fixture/bin/makensis" <<'STUB'
 #!/bin/bash
 set -eu
 [ "${NSIS_FAIL:-0}" = 0 ] || exit 43
@@ -56,27 +56,37 @@ printf fresh > "../../bin/gopmgr-$arch-installer.exe"
 STUB
 chmod +x "$fixture/bin/"* "$repo/.tmp/wails-v3/bin/wails3"
 export PATH="$fixture/bin:$PATH"
-printf 'package main\nfunc main() {}\n' > "$fixture/main.go"
+printf 'package main\nfunc main() {}\n' >"$fixture/main.go"
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$REAL_GO" build -o "$fixture/amd64.exe" "$fixture/main.go"
 CGO_ENABLED=0 GOOS=windows GOARCH=arm64 "$REAL_GO" build -o "$fixture/arm64.exe" "$fixture/main.go"
 cd "$repo"
 cp "$fixture/amd64.exe" build/bin/gopmgr.exe
-fail() { echo "FAIL $*" >&2; exit 1; }
+fail() {
+	echo "FAIL $*" >&2
+	exit 1
+}
 run_failure() {
- local name=$1; shift
- printf stale > build/bin/gopmgr-amd64-installer.exe
- echo keep > build/bin/unrelated
- if env "$@" bash scripts/package-windows.sh > output 2>&1; then cat output; fail "accepted $name"; fi
- [ "$(cat build/bin/gopmgr-amd64-installer.exe)" = stale ] || fail "$name lost previous installer"
- [ "$(cat build/bin/unrelated)" = keep ] || fail "$name lost unrelated artifact"
- echo "PASS rejects $name"
+	local name=$1
+	shift
+	printf stale >build/bin/gopmgr-amd64-installer.exe
+	echo keep >build/bin/unrelated
+	if env "$@" bash scripts/package-windows.sh >output 2>&1; then
+		cat output
+		fail "accepted $name"
+	fi
+	[ "$(cat build/bin/gopmgr-amd64-installer.exe)" = stale ] || fail "$name lost previous installer"
+	[ "$(cat build/bin/unrelated)" = keep ] || fail "$name lost unrelated artifact"
+	echo "PASS rejects $name"
 }
 # Positive first ensures absent or broken production code cannot make all
 # negative cases look green by failing before their intended boundary.
-if ! bash scripts/package-windows.sh > output 2>&1; then cat output; fail 'valid package pipeline'; fi
+if ! bash scripts/package-windows.sh >output 2>&1; then
+	cat output
+	fail 'valid package pipeline'
+fi
 [ "$(cat build/bin/gopmgr-amd64-installer.exe)" = fresh ] || fail 'expected installer output'
 for expected in '!define INFO_PROJECTNAME "gopmgr"' '!define INFO_COMPANYNAME "The GoPMgr Contributors"' '!define INFO_PRODUCTNAME "GoPMgr"' '!define INFO_PRODUCTVERSION "1.1.0"' 'File "MicrosoftEdgeWebview2Setup.exe"'; do
- grep -F -- "$expected" captured-wails-tools.nsh >/dev/null || fail "generated macro missing $expected"
+	grep -F -- "$expected" captured-wails-tools.nsh >/dev/null || fail "generated macro missing $expected"
 done
 if grep -F '{{' captured-wails-tools.nsh; then fail 'unrendered macro'; fi
 module="$(cd "$ROOT" && "$REAL_GO" list -m -f '{{.Dir}}' github.com/wailsapp/wails/v3)"
@@ -88,25 +98,32 @@ run_failure 'failed makensis' NSIS_FAIL=1
 run_failure 'missing installer output' NSIS_MISSING_OUTPUT=1
 run_failure 'invalid scope' WAILS_INSTALL_SCOPE=unexpected
 run_failure 'wrong architecture request' GOARCH=arm64
-cp build/bin/gopmgr.exe binary.saved; printf 'not PE\n' > build/bin/gopmgr.exe
+cp build/bin/gopmgr.exe binary.saved
+printf 'not PE\n' >build/bin/gopmgr.exe
 run_failure 'non-PE binary'
 mv binary.saved build/bin/gopmgr.exe
 cp third_party/GO-MODULE-NOTICES.txt notices.saved
-grep -vx 'Module: std' notices.saved > third_party/GO-MODULE-NOTICES.txt
+grep -vx 'Module: std' notices.saved >third_party/GO-MODULE-NOTICES.txt
 run_failure 'missing notices'
 mv notices.saved third_party/GO-MODULE-NOTICES.txt
 cp "$fixture/arm64.exe" build/bin/gopmgr.exe
-WAILS_INSTALL_SCOPE=user bash scripts/package-windows.sh > output 2>&1 || { cat output; fail 'ARM64/user package'; }
+WAILS_INSTALL_SCOPE=user bash scripts/package-windows.sh >output 2>&1 || {
+	cat output
+	fail 'ARM64/user package'
+}
 [ "$(cat build/bin/gopmgr-arm64-installer.exe)" = fresh ] || fail 'ARM64 output'
 grep -F -- '-DWAILS_INSTALL_SCOPE=user' captured-nsis-args >/dev/null || fail 'per-user scope'
 # Real preprocessor/compiler consumes the exact generated macros, owned nsi,
 # icon, bootstrapper and notices. No fixture executable is ever launched.
 if [ -n "$REAL_NSIS" ]; then
- for arch in amd64 arm64; do
-  cp "$fixture/$arch.exe" build/bin/gopmgr.exe
-  RUN_REAL_NSIS=1 bash scripts/package-windows.sh > output 2>&1 || { cat output; fail "real NSIS compile $arch"; }
-  [ -s "build/bin/gopmgr-$arch-installer.exe" ] || fail "real NSIS output $arch"
- done
- echo "PASS actual NSIS syntax compilation ($($REAL_NSIS -VERSION))"
+	for arch in amd64 arm64; do
+		cp "$fixture/$arch.exe" build/bin/gopmgr.exe
+		RUN_REAL_NSIS=1 bash scripts/package-windows.sh >output 2>&1 || {
+			cat output
+			fail "real NSIS compile $arch"
+		}
+		[ -s "build/bin/gopmgr-$arch-installer.exe" ] || fail "real NSIS output $arch"
+	done
+	echo "PASS actual NSIS syntax compilation ($($REAL_NSIS -VERSION))"
 else echo 'SKIP actual NSIS compilation: makensis unavailable'; fi
 echo 'package-windows fixtures passed; native Windows install/upgrade/remove remains unqualified'

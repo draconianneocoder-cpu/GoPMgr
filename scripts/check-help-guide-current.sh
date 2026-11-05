@@ -74,12 +74,12 @@ app_file="frontend/src/App.svelte"
 
 route_phrase() {
 	case "$1" in
-		recovery_reset) printf '%s\n' "recovery code" ;;
-		burnup) printf '%s\n' "burn-up" ;;
-		burndown) printf '%s\n' "burn-down" ;;
-		cause_effect) printf '%s\n' "Cause-and-Effect Diagram" ;;
-		sigma_dashboard) printf '%s\n' "DMAIC Pack" ;;
-		*) printf '%s\n' "${1//_/ }" ;;
+	recovery_reset) printf '%s\n' "recovery code" ;;
+	burnup) printf '%s\n' "burn-up" ;;
+	burndown) printf '%s\n' "burn-down" ;;
+	cause_effect) printf '%s\n' "Cause-and-Effect Diagram" ;;
+	sigma_dashboard) printf '%s\n' "DMAIC Pack" ;;
+	*) printf '%s\n' "${1//_/ }" ;;
 	esac
 }
 

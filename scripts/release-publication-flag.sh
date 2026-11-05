@@ -15,14 +15,14 @@ if [ -z "$tag" ]; then
 fi
 
 case "$tag" in
-	v*-*)
-		printf '%s\n' "--prerelease"
-		;;
-	v*)
-		# A GA tag intentionally emits no optional gh argument.
-		;;
-	*)
-		echo "release-publication-flag: expected a v-prefixed version tag, got $tag." >&2
-		exit 1
-		;;
+v*-*)
+	printf '%s\n' "--prerelease"
+	;;
+v*)
+	# A GA tag intentionally emits no optional gh argument.
+	;;
+*)
+	echo "release-publication-flag: expected a v-prefixed version tag, got $tag." >&2
+	exit 1
+	;;
 esac

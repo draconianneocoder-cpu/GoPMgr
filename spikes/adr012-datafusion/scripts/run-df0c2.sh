@@ -4,7 +4,11 @@
 # DF0-C2 native UDS comparison. Evidence destination must be explicitly selected.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-case "$(uname -s)" in Darwin|Linux) ;; *) echo "DF0-C2 requires a native UDS host" >&2; exit 1;; esac
+case "$(uname -s)" in Darwin | Linux) ;; *)
+	echo "DF0-C2 requires a native UDS host" >&2
+	exit 1
+	;;
+esac
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${TMPDIR:-/tmp}/gopmgr-df0-c2-target}"
 mkdir -p "$CARGO_TARGET_DIR"
 CARGO_TARGET_DIR="$(cd "$CARGO_TARGET_DIR" && pwd -P)"

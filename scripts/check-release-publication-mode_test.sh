@@ -54,8 +54,8 @@ expect_failure() {
 		fail "expected failure containing: $expected"
 	fi
 	case "$output" in
-		*"$expected"*) ;;
-		*) fail "failure did not contain '$expected': $output" ;;
+	*"$expected"*) ;;
+	*) fail "failure did not contain '$expected': $output" ;;
 	esac
 }
 

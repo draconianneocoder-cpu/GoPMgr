@@ -9,17 +9,21 @@ cd "$(dirname "$0")/.."
 root="$(pwd)"
 cli="$root/.tmp/wails-v3/bin/wails3"
 if [ "$(go env GOHOSTOS)" = windows ]; then cli="$cli.exe"; fi
-fail() { echo "package-windows: $*" >&2; exit 1; }
+fail() {
+	echo "package-windows: $*" >&2
+	exit 1
+}
 [ -x "$cli" ] || fail 'task-local Wails v3.1.0 CLI is required'
 cli_version="$(go version -m "$cli" | awk '$1 == "mod" && $2 == "github.com/wailsapp/wails/v3" { print $3 }')"
 [ "$cli_version" = v3.1.0 ] || fail "requires CLI v3.1.0; found ${cli_version:-unknown}"
 command -v makensis >/dev/null 2>&1 || fail 'makensis is required (release tool version is pinned in scripts/release-tool-versions.env)'
 scope="${WAILS_INSTALL_SCOPE:-machine}"
-case "$scope" in machine|user) ;; *) fail 'WAILS_INSTALL_SCOPE must be machine or user';; esac
+case "$scope" in machine | user) ;; *) fail 'WAILS_INSTALL_SCOPE must be machine or user' ;; esac
 [ -s build/bin/gopmgr.exe ] || fail 'build/bin/gopmgr.exe missing; run scripts/wails-build.sh on Windows first'
 # Inspect actual PE architecture so a stale non-Windows/wrong-architecture
 # artifact cannot silently be wrapped as an installer for the requested target.
-arch="$(python3 - <<'PY'
+arch="$(
+	python3 - <<'PY'
 import struct, sys
 with open('build/bin/gopmgr.exe', 'rb') as f:
     header = f.read(64)
@@ -68,10 +72,10 @@ cp "$stage/generated/windows/nsis/wails_tools.nsh" "$installer/wails_tools.nsh"
 [ -s "$installer/MicrosoftEdgeWebview2Setup.exe" ] || fail 'bootstrapper generation produced no file'
 nsis_binary="$stage/build/bin/gopmgr.exe"
 if command -v cygpath >/dev/null 2>&1; then nsis_binary="$(cygpath -w "$nsis_binary")"; fi
-case "$arch" in amd64) arch_define=AMD64;; arm64) arch_define=ARM64;; esac
+case "$arch" in amd64) arch_define=AMD64 ;; arm64) arch_define=ARM64 ;; esac
 (
-    cd "$installer"
-    makensis -V2 "-DWAILS_INSTALL_SCOPE=$scope" "-DARG_WAILS_${arch_define}_BINARY=$nsis_binary" project.nsi
+	cd "$installer"
+	makensis -V2 "-DWAILS_INSTALL_SCOPE=$scope" "-DARG_WAILS_${arch_define}_BINARY=$nsis_binary" project.nsi
 )
 output="gopmgr-${arch}-installer.exe"
 [ -s "$stage/build/bin/$output" ] || fail "makensis succeeded without expected $output"

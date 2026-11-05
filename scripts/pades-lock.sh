@@ -37,7 +37,7 @@ pades_acquire_lock() {
 			[ -d "$lock_path" ] && owner_file="$lock_path/pid"
 			local owner="unknown"
 			if [ -f "$owner_file" ] && [ -r "$owner_file" ]; then
-				owner="$(tr -d '\r\n' < "$owner_file" 2>/dev/null || true)"
+				owner="$(tr -d '\r\n' <"$owner_file" 2>/dev/null || true)"
 				[ -n "$owner" ] || owner="unknown"
 			fi
 			echo "timed out after ${timeout_seconds}s waiting for PAdES lock $lock_path (owner PID: $owner); verify no owner is running before removing the lock" >&2

@@ -30,11 +30,11 @@ cp third_party/GO-MODULE-NOTICES.txt third_party/FRONTEND-NOTICES.txt "$repo/thi
 cp internal/fonts/assets/FONT-NOTICES.txt "$repo/internal/fonts/assets/"
 
 # A real Go binary, so verify-module-notices.sh checks it for real.
-printf 'package main\n\nfunc main() {}\n' > "$work/src/main.go"
+printf 'package main\n\nfunc main() {}\n' >"$work/src/main.go"
 (cd "$work/src" && CGO_ENABLED=0 GOFLAGS='' go build -o "$work/gopmgr" main.go) ||
 	fail "could not build the fixture binary (needs a Go toolchain)"
 
-cat > "$work/bin/make" << 'STUB'
+cat >"$work/bin/make" <<'STUB'
 #!/bin/bash
 [ "$*" = build ] || { echo "make stub: unexpected arguments '$*'" >&2; exit 2; }
 mkdir -p build/bin
@@ -76,7 +76,7 @@ check_member LICENSES/frontend.txt third_party/FRONTEND-NOTICES.txt
 # written. The fixture links no modules, so a file without the standard
 # library section stands in for a missing module.
 rm -rf "$repo/build/packages"
-grep -vx 'Module: std' third_party/GO-MODULE-NOTICES.txt > "$repo/third_party/GO-MODULE-NOTICES.txt"
+grep -vx 'Module: std' third_party/GO-MODULE-NOTICES.txt >"$repo/third_party/GO-MODULE-NOTICES.txt"
 if output="$(run_package)"; then
 	printf '%s\n' "$output" >&2
 	fail "package.sh succeeded with Go module notices that do not cover the binary"

@@ -101,7 +101,7 @@ acquire_pades_lock
 WORK_DIR="$(mktemp -d "$SCRATCH_ROOT/gopmgr-pades-test.build.XXXXXX")"
 GENERATOR="$WORK_DIR/validate_pades.go"
 
-cat > "$GENERATOR" <<'EOF'
+cat >"$GENERATOR" <<'EOF'
 package main
 
 import (

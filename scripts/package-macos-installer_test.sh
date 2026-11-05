@@ -12,7 +12,7 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-installer-test.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 bin="$work/bin"
 mkdir -p "$bin" "$work/source.app/Contents/MacOS"
-cat > "$work/source.app/Contents/Info.plist" <<'PLIST'
+cat >"$work/source.app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>dev.gopmgr.GoPMgr</string>
@@ -20,12 +20,12 @@ cat > "$work/source.app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleShortVersionString</key><string>7.8.9</string>
 </dict></plist>
 PLIST
-printf 'fixture app\n' > "$work/source.app/Contents/MacOS/gopmgr"
+printf 'fixture app\n' >"$work/source.app/Contents/MacOS/gopmgr"
 
 # `go version -m` reports the fixture app's linked modules for
 # verify-module-notices.sh; the missing-module-notice case adds one that the
 # fixture notices file lacks.
-cat > "$bin/go" <<'STUB'
+cat >"$bin/go" <<'STUB'
 #!/bin/bash
 case "$*" in
 	'env GOOS') echo darwin ;;
@@ -39,11 +39,11 @@ case "$*" in
 	*) exit 2 ;;
 esac
 STUB
-cat > "$bin/wails" <<'STUB'
+cat >"$bin/wails" <<'STUB'
 #!/bin/bash
 exit 0
 STUB
-cat > "$bin/make" <<'STUB'
+cat >"$bin/make" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 echo build >> "$PKG_TEST_LOG"
@@ -54,7 +54,7 @@ for tool in xattr codesign; do
 	cp "$bin/wails" "$bin/$tool"
 done
 
-cat > "$bin/pkgbuild" <<'STUB'
+cat >"$bin/pkgbuild" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 echo package >> "$PKG_TEST_LOG"
@@ -92,7 +92,7 @@ fi
 printf '%s\n' "$identity" "$version" "$location" "$relocation" > "$output"
 STUB
 
-cat > "$bin/pkgutil" <<'STUB'
+cat >"$bin/pkgutil" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 echo expand >> "$PKG_TEST_LOG"
@@ -130,7 +130,7 @@ case "$PKG_TEST_CASE" in
 	scripts) mkdir "$3/Scripts" ;;
 esac
 STUB
-cat > "$bin/xmllint" <<'STUB'
+cat >"$bin/xmllint" <<'STUB'
 #!/bin/bash
 echo parse >> "$PKG_TEST_LOG"
 if [ "$PKG_TEST_CASE" = parser-failure ]; then echo true; exit 43; fi
@@ -140,7 +140,7 @@ if [ "$PKG_TEST_CASE" = version-parser-failure ] && [[ "$*" == *'string(/pkg-inf
 fi
 exec /usr/bin/xmllint "$@"
 STUB
-cat > "$bin/mv" <<'STUB'
+cat >"$bin/mv" <<'STUB'
 #!/bin/bash
 echo publish >> "$PKG_TEST_LOG"
 if [ "$PKG_TEST_CASE" = publication-failure ]; then exit 43; fi
@@ -148,7 +148,10 @@ exec /bin/mv "$@"
 STUB
 chmod +x "$bin/"*
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+	echo "FAIL: $*" >&2
+	exit 1
+}
 cases=0
 run_case() {
 	local name="$1" expected_stage="$2" expected_error="$3"
@@ -161,19 +164,25 @@ run_case() {
 	cp "$ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt" "$repo/third_party/go-sqlcipher/"
 	cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$repo/internal/fonts/assets/"
 	printf '%s\n' 'Go module notices fixture' '' 'Module: std' 'Module: example.com/fixture v1.0.0' \
-		> "$repo/third_party/GO-MODULE-NOTICES.txt"
+		>"$repo/third_party/GO-MODULE-NOTICES.txt"
 	cp "$ROOT/third_party/FRONTEND-NOTICES.txt" "$repo/third_party/"
 	cp "$ROOT/LICENSES/GPL-3.0-or-later.txt" "$repo/LICENSES/"
 	# Wails pinning has its own regressions. This matrix owns installer behavior.
-	printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-wails-version.sh"
-	printf 'prior good package\n' > "$repo/prior.pkg"
+	printf '#!/bin/bash\nexit 0\n' >"$repo/scripts/check-wails-version.sh"
+	printf 'prior good package\n' >"$repo/prior.pkg"
 	final="$repo/build/packages/gopmgr-fixture-darwin-arm64.pkg"
 	cp "$repo/prior.pkg" "$final"
 	case "$name" in
-		missing-policy) plutil -remove 0.BundleIsRelocatable "$repo/build/darwin/installer-components.plist" ;;
-		true-policy) plutil -replace 0.BundleIsRelocatable -bool YES "$repo/build/darwin/installer-components.plist" ;;
-		symlink-target) rm "$final"; ln -s "$repo/prior.pkg" "$final" ;;
-		directory-target) rm "$final"; mkdir "$final" ;;
+	missing-policy) plutil -remove 0.BundleIsRelocatable "$repo/build/darwin/installer-components.plist" ;;
+	true-policy) plutil -replace 0.BundleIsRelocatable -bool YES "$repo/build/darwin/installer-components.plist" ;;
+	symlink-target)
+		rm "$final"
+		ln -s "$repo/prior.pkg" "$final"
+		;;
+	directory-target)
+		rm "$final"
+		mkdir "$final"
+		;;
 	esac
 	status=0
 	output="$(cd "$repo" && PATH="$bin:$PATH" TMPDIR="$repo/tmp" VERSION=fixture \
@@ -181,37 +190,46 @@ run_case() {
 		PKG_TEST_SOURCE="$work/source.app" bash scripts/package-macos-installer.sh 2>&1)" || status=$?
 	events="$(cat "$repo/events")"
 	case "$name" in
-		success-*)
-			[[ "$status" == 0 ]] || { printf '%s\n' "$output" >&2; fail "$name failed"; }
-			[[ "$output" == *build/packages/gopmgr-fixture-darwin-arm64.pkg* ]] || fail "$name missing output path"
-			! cmp -s "$repo/prior.pkg" "$final" || fail "$name did not publish"
-			[[ "$(sed -n '2p' "$final")" == 7.8.9 && "$(sed -n '4p' "$final")" == false ]] || fail "$name changed version/relocation"
-			[[ "$events" == *publish* && "$events" != *default-relocation* ]] || fail "$name used implicit policy"
-			;;
-		*)
-			[[ "$status" != 0 ]] || fail "$name unexpectedly succeeded"
-			if [ "$expected_error" = injected ]; then
-				[[ "$status" == 43 ]] || { printf '%s\n' "$output" >&2; fail "$name failed at wrong stage"; }
-			else
-				[[ "$output" == *"$expected_error"* ]] || { printf '%s\n' "$output" >&2; fail "$name missing intended diagnostic"; }
-			fi
-			if [ "$name" = directory-target ]; then
-				[[ -d "$final" && -z "$(ls -A "$final")" ]] || fail "$name changed target directory"
-			else
-				cmp -s "$repo/prior.pkg" "$final" || fail "$name changed prior artifact"
-			fi
-			if [ "$name" = symlink-target ]; then
-				[[ -L "$final" && "$(cat "$repo/prior.pkg")" == 'prior good package' ]] || fail "$name changed symlink or referent"
-			fi
-			case "$expected_stage" in
-				build) [[ "$events" == build ]] || fail "$name proceeded past the notices check" ;;
-				package) [[ "$events" == $'build\npackage' ]] || fail "$name proceeded past packaging failure" ;;
-				expand) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name proceeded past expansion failure" ;;
-				scripts) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name parsed/published a scripted package" ;;
-				parse) [[ "$events" == *expand* && "$events" == *parse* && "$events" != *publish* ]] || fail "$name did not reject during validation" ;;
-				publish) [[ "$events" == *expand* && "$events" == *parse* && "$events" == *publish* ]] || fail "$name did not reach publication" ;;
-			esac
-			;;
+	success-*)
+		[[ "$status" == 0 ]] || {
+			printf '%s\n' "$output" >&2
+			fail "$name failed"
+		}
+		[[ "$output" == *build/packages/gopmgr-fixture-darwin-arm64.pkg* ]] || fail "$name missing output path"
+		! cmp -s "$repo/prior.pkg" "$final" || fail "$name did not publish"
+		[[ "$(sed -n '2p' "$final")" == 7.8.9 && "$(sed -n '4p' "$final")" == false ]] || fail "$name changed version/relocation"
+		[[ "$events" == *publish* && "$events" != *default-relocation* ]] || fail "$name used implicit policy"
+		;;
+	*)
+		[[ "$status" != 0 ]] || fail "$name unexpectedly succeeded"
+		if [ "$expected_error" = injected ]; then
+			[[ "$status" == 43 ]] || {
+				printf '%s\n' "$output" >&2
+				fail "$name failed at wrong stage"
+			}
+		else
+			[[ "$output" == *"$expected_error"* ]] || {
+				printf '%s\n' "$output" >&2
+				fail "$name missing intended diagnostic"
+			}
+		fi
+		if [ "$name" = directory-target ]; then
+			[[ -d "$final" && -z "$(ls -A "$final")" ]] || fail "$name changed target directory"
+		else
+			cmp -s "$repo/prior.pkg" "$final" || fail "$name changed prior artifact"
+		fi
+		if [ "$name" = symlink-target ]; then
+			[[ -L "$final" && "$(cat "$repo/prior.pkg")" == 'prior good package' ]] || fail "$name changed symlink or referent"
+		fi
+		case "$expected_stage" in
+		build) [[ "$events" == build ]] || fail "$name proceeded past the notices check" ;;
+		package) [[ "$events" == $'build\npackage' ]] || fail "$name proceeded past packaging failure" ;;
+		expand) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name proceeded past expansion failure" ;;
+		scripts) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name parsed/published a scripted package" ;;
+		parse) [[ "$events" == *expand* && "$events" == *parse* && "$events" != *publish* ]] || fail "$name did not reject during validation" ;;
+		publish) [[ "$events" == *expand* && "$events" == *parse* && "$events" == *publish* ]] || fail "$name did not reach publication" ;;
+		esac
+		;;
 	esac
 	if [ "$name" = missing-policy ]; then
 		[[ "$events" == *default-relocation* ]] || fail 'missing policy did not exercise simulated old default'

@@ -40,9 +40,9 @@ fi
 
 # Tolerate CRLF line endings, as a Windows checkout may produce. Here-strings,
 # not pipes: under pipefail, grep -q closing a pipe early fails the writer.
-notice_lines="$(tr -d '\r' < "$notices")"
+notice_lines="$(tr -d '\r' <"$notices")"
 
-if ! grep -Fqx 'Module: std' <<< "$notice_lines"; then
+if ! grep -Fqx 'Module: std' <<<"$notice_lines"; then
 	echo "verify-module-notices: $notices has no Go standard library section." >&2
 	exit 1
 fi
@@ -55,10 +55,10 @@ count=0
 while IFS= read -r dep; do
 	[ -n "$dep" ] || continue
 	count=$((count + 1))
-	if ! grep -Fqx "Module: $dep" <<< "$notice_lines"; then
+	if ! grep -Fqx "Module: $dep" <<<"$notice_lines"; then
 		missing+=("$dep")
 	fi
-done <<< "$deps"
+done <<<"$deps"
 
 if [ "${#missing[@]}" -gt 0 ]; then
 	echo "verify-module-notices: $notices lacks notices for ${#missing[@]} module(s) linked into $binary:" >&2
@@ -69,7 +69,7 @@ fi
 
 # DuckDB is retired; nothing from it may ship again unreviewed.
 duck_status=0
-duck_deps="$(grep -i 'duckdb' <<< "$deps")" || duck_status=$?
+duck_deps="$(grep -i 'duckdb' <<<"$deps")" || duck_status=$?
 if [ "$duck_status" -gt 1 ]; then
 	echo "verify-module-notices: DuckDB module detection failed." >&2
 	exit 1

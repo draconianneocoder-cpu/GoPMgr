@@ -44,8 +44,8 @@ verify_asset() {
 	# inputs, and mislabeled files before they enter go:embed or the bundle.
 	signature="$(head -c 4 "$path" | od -An -tx1 | tr -d ' \n')"
 	case "$path:$signature" in
-		*.ttf:00010000 | *.ttf:74727565 | *.woff2:774f4632) ;;
-		*) fail "$path does not have a supported font signature for its type." ;;
+	*.ttf:00010000 | *.ttf:74727565 | *.woff2:774f4632) ;;
+	*) fail "$path does not have a supported font signature for its type." ;;
 	esac
 
 	actual_sha256="$(sha256_file "$path")"

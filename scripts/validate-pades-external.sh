@@ -30,13 +30,14 @@ if [ "$#" -eq 0 ]; then
 else
 	# Resolve explicit input once so every validator and provenance record refers
 	# to the same artifact even when the caller used a relative path.
-	PDF_PATH="$(python3 - "$1" <<'PY'
+	PDF_PATH="$(
+		python3 - "$1" <<'PY'
 import sys
 from pathlib import Path
 
 print(Path(sys.argv[1]).expanduser().resolve())
 PY
-)"
+	)"
 	EVIDENCE_SOURCE="supplied_pdf"
 	EVIDENCE_GENERATOR="not_applicable"
 fi
@@ -186,7 +187,8 @@ PY
 
 VALIDATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 VALIDATOR_REVISION="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
-VALIDATOR_SCRIPT_SHA256="$(python3 - "$ROOT/scripts/validate-pades-external.sh" <<'PY'
+VALIDATOR_SCRIPT_SHA256="$(
+	python3 - "$ROOT/scripts/validate-pades-external.sh" <<'PY'
 import hashlib
 import sys
 from pathlib import Path
@@ -196,14 +198,15 @@ PY
 )"
 GENERATOR_SCRIPT_SHA256="not_applicable"
 if [ "$EVIDENCE_SOURCE" = "generated_current_checkout" ]; then
-	GENERATOR_SCRIPT_SHA256="$(python3 - "$ROOT/scripts/validate-pades.sh" <<'PY'
+	GENERATOR_SCRIPT_SHA256="$(
+		python3 - "$ROOT/scripts/validate-pades.sh" <<'PY'
 import hashlib
 import sys
 from pathlib import Path
 
 print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
 PY
-)"
+	)"
 fi
 VALIDATOR_WORKTREE_DIRTY="false"
 if ! git diff --quiet --ignore-submodules -- 2>/dev/null ||

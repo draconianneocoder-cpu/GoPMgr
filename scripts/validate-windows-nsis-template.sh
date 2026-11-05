@@ -18,8 +18,8 @@ WAILS_DIR="$(go list -m -f '{{.Dir}}' github.com/wailsapp/wails/v3)"
 WAILS_WINDOWS="$WAILS_DIR/internal/commands/build_assets/windows"
 cli="${WAILS3:-$ROOT/.tmp/wails-v3/bin/wails3}"
 if [ "$("$cli" version 2>&1)" != "$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)" ]; then
- echo "validate-windows-nsis-template: matching pinned Wails v3 CLI is required." >&2
- exit 1
+	echo "validate-windows-nsis-template: matching pinned Wails v3 CLI is required." >&2
+	exit 1
 fi
 
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-nsis-template.XXXXXX")"

@@ -5,8 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ "$(uname -s)" != Darwin ]; then
- echo "DF0-D2 write-denial experiment requires native Darwin; no unguarded fallback" >&2
- exit 1
+	echo "DF0-D2 write-denial experiment requires native Darwin; no unguarded fallback" >&2
+	exit 1
 fi
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${TMPDIR:-/tmp}/gopmgr-df0-d2-target}"
 mkdir -p "$CARGO_TARGET_DIR"
