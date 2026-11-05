@@ -42,48 +42,48 @@ fi
 # Scope: only scan GoPMgr's own source tree. Other directories
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
-PMF_DIRS="./main.go ./internal ./tools"
-GO_PACKAGES=". ./internal/... ./tools/update-manifest"
+PMF_DIRS=(./main.go ./internal ./tools)
+GO_PACKAGES=(. ./internal/... ./tools/update-manifest)
 GO_TAGS="${GOPMGR_GO_TAGS:-production}"
 
 fail=0
 section () {
-    printf "\n${YELLOW}== %s ==${NC}\n" "$1"
+    printf '\n%b== %s ==%b\n' "$YELLOW" "$1" "$NC"
 }
 ok () {
-    printf "${GREEN}OK${NC}: %s\n" "$1"
+    printf '%bOK%b: %s\n' "$GREEN" "$NC" "$1"
 }
 fail_msg () {
-    printf "${RED}FAIL${NC}: %s\n" "$1"
+    printf '%bFAIL%b: %s\n' "$RED" "$NC" "$1"
     fail=1
 }
 optional_fail_msg () {
     if [ "${GOPMGR_STRICT_OPTIONAL_SCANS:-0}" = "1" ]; then
         fail_msg "$1"
     else
-        printf "${YELLOW}warn${NC}: %s (set GOPMGR_STRICT_OPTIONAL_SCANS=1 to fail on optional scanner findings)\n" "$1"
+        printf '%bwarn%b: %s (set GOPMGR_STRICT_OPTIONAL_SCANS=1 to fail on optional scanner findings)\n' "$YELLOW" "$NC" "$1"
     fi
 }
 
 # -------------------------------------------------------------------
 # 1. go vet
 # -------------------------------------------------------------------
-section "go vet -tags $GO_TAGS $GO_PACKAGES"
+section "go vet -tags $GO_TAGS ${GO_PACKAGES[*]}"
 if command -v go >/dev/null 2>&1; then
-    if go vet -tags "$GO_TAGS" $GO_PACKAGES 2>&1; then
+    if go vet -tags "$GO_TAGS" "${GO_PACKAGES[@]}" 2>&1; then
         ok "go vet clean"
     else
         fail_msg "go vet reported issues (see above)"
     fi
 else
-    printf "${YELLOW}skip${NC}: go not in PATH\n"
+    printf '%bskip%b: go not in PATH\n' "$YELLOW" "$NC"
 fi
 
 # -------------------------------------------------------------------
 # 2. unsafe.Pointer is forbidden
 # -------------------------------------------------------------------
 section "unsafe.Pointer ban"
-matches=$(grep -rn 'unsafe\.Pointer' --include='*.go' $PMF_DIRS 2>/dev/null \
+matches=$(grep -rn 'unsafe\.Pointer' --include='*.go' "${PMF_DIRS[@]}" 2>/dev/null \
     | grep -v '^\./vendor/' \
     | grep -v 'DEVELOPER_HANDBOOK.md' \
     | grep -v 'scripts/memory-safety-scan.sh' \
@@ -103,7 +103,7 @@ fi
 # uses; flag for human review.
 section "os.Open → defer Close()"
 if ! command -v go >/dev/null 2>&1; then
-    printf "${YELLOW}skip${NC}: go not in PATH (cannot run helper)\n"
+    printf '%bskip%b: go not in PATH (cannot run helper)\n' "$YELLOW" "$NC"
     problems=""
 else
 helper_dir=$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-os-open-scan.XXXXXX")
@@ -184,7 +184,7 @@ fi
 # 4. sql.Open / DB.Conn use without Close
 # -------------------------------------------------------------------
 section "sql.Open → defer Close()"
-matches=$(grep -rn 'sql\.Open(' --include='*.go' $PMF_DIRS 2>/dev/null \
+matches=$(grep -rn 'sql\.Open(' --include='*.go' "${PMF_DIRS[@]}" 2>/dev/null \
     | grep -v '/vendor/' \
     | while IFS=: read -r f n _; do
         # Look forward 30 lines from the match for either Close() on
@@ -206,7 +206,7 @@ fi
 section "no value-copies of sync.Mutex / RWMutex"
 # go vet already catches these but we double-check by looking for
 # explicit assignments like `m := other.mu`.
-matches=$(grep -rnE '(:=|=)\s*[a-zA-Z_]+\.mu([^.]|$)' --include='*.go' $PMF_DIRS 2>/dev/null \
+matches=$(grep -rnE '(:=|=)\s*[a-zA-Z_]+\.mu([^.]|$)' --include='*.go' "${PMF_DIRS[@]}" 2>/dev/null \
     | grep -v '/vendor/' \
     | grep -v '\.mu\.' \
     || true)
@@ -225,12 +225,12 @@ fi
 # trip on substrings inside comments / package names like `gofpdf`.
 section "goroutine inventory (informational)"
 matches=$(grep -rnE '(^|[[:space:]{(;])go (func|[A-Za-z_][A-Za-z0-9_]*\()' \
-    --include='*.go' $PMF_DIRS 2>/dev/null \
+    --include='*.go' "${PMF_DIRS[@]}" 2>/dev/null \
     | grep -v '/vendor/' \
     | grep -vE ':[[:space:]]*//' \
     || true)
 if [ -n "$matches" ]; then
-    printf "${YELLOW}goroutines detected${NC} (must be reviewed):\n%s\n" "$matches"
+    printf '%bgoroutines detected%b (must be reviewed):\n%s\n' "$YELLOW" "$NC" "$matches"
 else
     ok "no explicit goroutines (Wails runtime is the only spawner)"
 fi
@@ -240,13 +240,13 @@ fi
 # -------------------------------------------------------------------
 section "staticcheck (optional)"
 if command -v staticcheck >/dev/null 2>&1; then
-    if staticcheck $GO_PACKAGES; then
+    if staticcheck "${GO_PACKAGES[@]}"; then
         ok "staticcheck clean"
     else
         optional_fail_msg "staticcheck reported issues"
     fi
 else
-    printf "${YELLOW}skip${NC}: staticcheck not installed\n"
+    printf '%bskip%b: staticcheck not installed\n' "$YELLOW" "$NC"
     printf "  Install:  go install honnef.co/go/tools/cmd/staticcheck@latest\n"
 fi
 
@@ -255,13 +255,13 @@ fi
 # -------------------------------------------------------------------
 section "gosec (optional)"
 if command -v gosec >/dev/null 2>&1; then
-    if gosec -quiet $GO_PACKAGES; then
+    if gosec -quiet "${GO_PACKAGES[@]}"; then
         ok "gosec clean"
     else
         optional_fail_msg "gosec flagged security issues"
     fi
 else
-    printf "${YELLOW}skip${NC}: gosec not installed\n"
+    printf '%bskip%b: gosec not installed\n' "$YELLOW" "$NC"
 fi
 
 # -------------------------------------------------------------------
@@ -269,13 +269,13 @@ fi
 # -------------------------------------------------------------------
 section "govulncheck (optional)"
 if command -v govulncheck >/dev/null 2>&1; then
-    if govulncheck $GO_PACKAGES; then
+    if govulncheck "${GO_PACKAGES[@]}"; then
         ok "no known vulnerabilities"
     else
         optional_fail_msg "govulncheck found vulnerabilities"
     fi
 else
-    printf "${YELLOW}skip${NC}: govulncheck not installed\n"
+    printf '%bskip%b: govulncheck not installed\n' "$YELLOW" "$NC"
 fi
 
 # -------------------------------------------------------------------
@@ -283,7 +283,7 @@ fi
 # -------------------------------------------------------------------
 echo
 if [ "$fail" -ne 0 ]; then
-    printf "${RED}Memory-safety gate FAILED.${NC} See findings above.\n"
+    printf '%bMemory-safety gate FAILED.%b See findings above.\n' "$RED" "$NC"
     exit 1
 fi
-printf "${GREEN}Memory-safety gate PASSED.${NC}\n"
+printf '%bMemory-safety gate PASSED.%b\n' "$GREEN" "$NC"

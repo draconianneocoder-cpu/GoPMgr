@@ -54,6 +54,7 @@ perl -0pi -e 's/!define MUI_WELCOMEPAGE_TITLE .*/!define MUI_WELCOMEPAGE_TITLE "
 expect_failure "$generic_branding" "project.nsi must retain GoPMgr-owned welcome branding"
 
 destructive_uninstall="$(new_fixture destructive-uninstall)"
+# shellcheck disable=SC2016 # Literal NSIS template; do not expand installer variables.
 printf '\n  RMDir /r "$DOCUMENTS\\PMForge"\n' >>"$destructive_uninstall/build/windows/installer/project.nsi"
 expect_failure "$destructive_uninstall" "uninstaller must not delete GoPMgr/PMForge project data"
 
@@ -62,6 +63,7 @@ expect_failure "$destructive_uninstall" "uninstaller must not delete GoPMgr/PMFo
 # running today writes to Documents\GoPMgr, and that's the tree most users
 # would actually have on disk to lose.
 destructive_uninstall_current="$(new_fixture destructive-uninstall-current)"
+# shellcheck disable=SC2016 # Literal NSIS template; do not expand installer variables.
 printf '\n  RMDir /r "$DOCUMENTS\\GoPMgr"\n' >>"$destructive_uninstall_current/build/windows/installer/project.nsi"
 expect_failure "$destructive_uninstall_current" "uninstaller must not delete GoPMgr/PMForge project data"
 

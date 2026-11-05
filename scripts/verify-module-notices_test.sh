@@ -104,7 +104,8 @@ run "no arguments" 2 "usage:"
 for dep in github.com/duckdb/duckdb-go/v2 github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 go.duckdb.org/libduckdb/darwin-arm64; do
 	printf '%s\n' "$(cat "$work/metadata.txt")" $'\tdep\t'"$dep"$'\tv1.0.0\th1:d=' > "$work/metadata-duckdb.txt"
 	notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2" "Module: $dep v1.0.0"
-	FAKE="$work/metadata-duckdb.txt" run "a binary linking $dep" 1 "links DuckDB, which GoPMgr retired" \
+	expected_retirement=$'links DuckDB, which GoPMgr retired:\n  '"$dep v1.0.0"
+	FAKE="$work/metadata-duckdb.txt" run "a binary linking $dep" 1 "$expected_retirement" \
 		"$binary" "$work/notices.txt"
 done
 notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2"
@@ -131,7 +132,7 @@ rm "$work/bin/grep"
 # `go version -m`: proves the parsing matches the toolchain's actual format.
 mkdir -p "$work/src"
 printf 'package main\n\nfunc main() {}\n' > "$work/src/main.go"
-(cd "$work/src" && CGO_ENABLED=0 GOFLAGS= "$real_go" build -o "$work/real" main.go) ||
+(cd "$work/src" && CGO_ENABLED=0 GOFLAGS='' "$real_go" build -o "$work/real" main.go) ||
 	fail "could not build the real Go binary fixture"
 out="$(bash "$VERIFY" "$work/real" 2>&1)" || {
 	printf '%s\n' "$out" >&2

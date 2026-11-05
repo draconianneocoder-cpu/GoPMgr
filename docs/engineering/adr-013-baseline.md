@@ -190,10 +190,11 @@ P0 ran installed ShellCheck 0.11.0 over all 81 tracked `.sh` files under
 no error-level findings). The five SC1007 warnings are intentional empty
 `VERSION=`/`GOFLAGS=` assignments in fixtures, verified against the source.
 The information findings comprise SC2016 (27), SC2086 (10), SC2059 (7),
-SC1091 (3) and SC2012 (1). They remain an advisory P2 baseline, not confirmed
-vulnerabilities or approved blanket exceptions. The SC2012 match is a package
-listing for display, not executable/artifact selection. No suppression, autofix
-or new blocking gate was added. Current actionlint 1.7.12 still exits 1 with the
+SC1091 (3) and SC2012 (1). At P0 these formed an advisory baseline, not confirmed
+vulnerabilities or approved blanket exceptions. Their later dispositions are
+recorded in the [P2 adjudication](adr-013-shellcheck.md). The SC2012 match is a package
+listing for display, not executable/artifact selection. P0 added no suppression, autofix
+or new blocking gate. Current actionlint 1.7.12 still exits 1 with the
 eight runner-label findings recorded above. Neither shfmt nor zizmor ran.
 
 ## Evidence and proof limits

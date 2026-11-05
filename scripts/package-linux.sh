@@ -94,4 +94,9 @@ nfpm package --config build/linux/nfpm.yaml --packager deb --target "build/packa
 nfpm package --config build/linux/nfpm.yaml --packager rpm --target "build/packages/gopmgr-${VERSION}-x86_64.rpm"
 
 echo "package-linux: done. Artifacts in build/packages/:"
-ls -1 build/packages/ | sed 's/^/  /'
+(
+    shopt -s nullglob
+    for artifact in build/packages/*; do
+        printf '  %q\n' "${artifact##*/}"
+    done
+)

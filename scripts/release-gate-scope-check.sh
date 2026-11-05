@@ -55,7 +55,7 @@ release_race="$(awk '
 ' scripts/check-release.sh)"
 expected_release_race="$(cat <<'RACE'
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race -p=1 -count=1 $GO_PACKAGES; then
+    if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi
@@ -68,7 +68,7 @@ if [ "$race_recipe" != $'\t$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)
 	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*GO_PACKAGES[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
 	! rg -qx 'GO_PACKAGES := \. \./internal/\.\.\. \./tools/\.\.\.' Makefile ||
 	[ "$(rg -c '^[[:space:]]*(export[[:space:]]+)?GO_PACKAGES=' scripts/check-release.sh)" != 1 ] ||
-	! rg -qx 'GO_PACKAGES="\. \./internal/\.\.\. \./tools/update-manifest"' scripts/check-release.sh; then
+	! rg -qx 'GO_PACKAGES=\(\. \./internal/\.\.\. \./tools/update-manifest\)' scripts/check-release.sh; then
 	echo "release-scope: race entrypoints must preserve uncached, bounded-package tests, complete scope and failure propagation." >&2
 	fail=1
 fi
@@ -184,6 +184,7 @@ if ! grep -Eq 'sudo apt-get install -y .*ripgrep' .github/workflows/release.yml 
 	fail=1
 fi
 
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 if ! grep -Fq 'pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"' .github/workflows/release.yml ||
 	grep -Fq 'python3 -m site --user-base' .github/workflows/release.yml; then
 	echo "release-scope: Release preflight must add pipx's configured binary directory, not Python's user-base bin." >&2

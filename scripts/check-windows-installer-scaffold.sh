@@ -42,6 +42,7 @@ fi
 
 require_literal "$PROJECT_NSI" '!include "wails_tools.nsh"' \
 	"project.nsi must consume Wails' pinned generated macro file."
+# shellcheck disable=SC2016 # Literal NSIS template; do not expand installer variables.
 require_literal "$PROJECT_NSI" '!define MUI_WELCOMEPAGE_TITLE "Install ${INFO_PRODUCTNAME}"' \
 	"project.nsi must retain GoPMgr-owned welcome branding."
 require_literal "$PROJECT_NSI" '!insertmacro MUI_PAGE_LICENSE "..\..\..\LICENSES\GPL-3.0-or-later.txt"' \

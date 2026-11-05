@@ -76,7 +76,7 @@ if [ "$duck_status" -gt 1 ]; then
 fi
 if [ -n "$duck_deps" ]; then
 	echo "verify-module-notices: $binary links DuckDB, which GoPMgr retired:" >&2
-	printf '  %s\n' $duck_deps >&2
+	printf '  %s\n' "$duck_deps" >&2
 	exit 1
 fi
 

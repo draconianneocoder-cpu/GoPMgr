@@ -31,7 +31,7 @@ cp internal/fonts/assets/FONT-NOTICES.txt "$repo/internal/fonts/assets/"
 
 # A real Go binary, so verify-module-notices.sh checks it for real.
 printf 'package main\n\nfunc main() {}\n' > "$work/src/main.go"
-(cd "$work/src" && CGO_ENABLED=0 GOFLAGS= go build -o "$work/gopmgr" main.go) ||
+(cd "$work/src" && CGO_ENABLED=0 GOFLAGS='' go build -o "$work/gopmgr" main.go) ||
 	fail "could not build the fixture binary (needs a Go toolchain)"
 
 cat > "$work/bin/make" << 'STUB'

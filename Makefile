@@ -33,7 +33,8 @@ export CC
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
         frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests \
-        tools-bootstrap tools-install tools-check tools-tests tools-qualify
+        tools-bootstrap tools-install tools-check tools-tests tools-qualify \
+        shellcheck shellcheck-inventory shellcheck-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -53,6 +54,16 @@ tools-tests: ## Run offline provisioning boundary regression tests.
 
 tools-qualify: ## Opt-in real trusted/safe mise install qualification (network access).
 	@python3 -B scripts/engineering/provision_integration_test.py
+
+shellcheck: ## Opt-in, read-only analysis of tracked first-party shells; findings fail.
+	@python3 -B scripts/engineering/shellcheck.py
+
+shellcheck-inventory: ## Print tracked shell dialects and ownership exclusions as JSON.
+	@python3 -B scripts/engineering/shellcheck.py --inventory
+
+shellcheck-tests: ## Verify shell inventory, analyzer failures and repaired script contracts.
+	@python3 -B scripts/engineering/shellcheck_test.py
+	@python3 -B scripts/engineering/shell_contract_test.py
 
 build: ## Build the production app with pinned Wails v3 tasks and native CGO.
 	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)

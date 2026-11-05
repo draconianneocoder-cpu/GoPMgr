@@ -9,7 +9,9 @@ Date: 2026-11-04. Status: accepted maintainer direction; implementation staged.
 P0 characterization is complete for the source/hosts recorded in the baseline.
 P1 opt-in provisioning is implemented; its [qualification and recovery policy](../engineering/adr-013-provisioning.md)
 records evidence and limits. Maintainer acceptance precedes mandatory lint
-adoption. P2–P9 are not implemented or accepted as complete.
+adoption. P2's [local ShellCheck inventory and adjudication](../engineering/adr-013-shellcheck.md)
+is implemented; hosted/required-gate adoption remains deferred. P3–P9 are not
+implemented or accepted as complete.
 
 ## Decision and authority
 

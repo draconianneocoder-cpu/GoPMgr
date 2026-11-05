@@ -8,7 +8,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-GO_PACKAGES=". ./internal/... ./tools/update-manifest"
+GO_PACKAGES=(. ./internal/... ./tools/update-manifest)
 
 echo "Running Final Release Gates for GoPMgr..."
 
@@ -174,7 +174,7 @@ if command -v go >/dev/null 2>&1; then
     # run merely to identify the failing package.
     # Account/root fixtures do real memory-hard KDF work. Bound package
     # overlap, not within-package concurrency; never reuse cached race results.
-    if ! go test -race -p=1 -count=1 $GO_PACKAGES; then
+    if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi
@@ -187,6 +187,7 @@ fi
 # build/bin. Product metadata comes from build/config.yml info.version;
 # release linker identity is carried through GOPMGR_RELEASE_LDFLAGS.
 if ! make build >/dev/null; then
+    # shellcheck disable=SC2016 # Print the command literally for the caller to run.
     echo 'Final build failed (install task-local Wails v3.1.0: GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0).'
     exit 1
 fi

@@ -35,7 +35,7 @@ out="$(cd "$repo" && VERSION="9.9.9-explicit" release_version)"
 [ "$out" = "9.9.9-explicit" ] || fail "explicit VERSION was not honored (got '$out')"
 
 # Case 2: VERSION unset, HEAD exactly on a tag -> the bare tag (no 'v').
-out="$(cd "$repo" && VERSION= release_version)"
+out="$(cd "$repo" && VERSION='' release_version)"
 [ "$out" = "1.2.3" ] || fail "exact-tag case did not return the bare tag (got '$out')"
 
 # Case 3: VERSION unset, HEAD past the tag -> must be DISTINGUISHABLE from
@@ -48,7 +48,7 @@ out="$(cd "$repo" && VERSION= release_version)"
 	git add file.txt
 	git commit -q -m "second commit"
 )
-out="$(cd "$repo" && VERSION= release_version)"
+out="$(cd "$repo" && VERSION='' release_version)"
 case "$out" in
 	"1.2.3")
 		fail "post-tag commit produced the bare tag name; distance/sha info was lost (got '$out')"
@@ -62,7 +62,7 @@ esac
 
 # Case 3b: same as case 3, but with VERSION genuinely unset (not merely
 # empty) — the actual invocation shape package-macos.sh/
-# package-macos-installer.sh use under `set -u`. VERSION= and unset VERSION
+# package-macos-installer.sh use under `set -u`. VERSION='' and unset VERSION
 # both satisfy `${VERSION:-}`, but only this case proves the real call path.
 out="$(cd "$repo" && env -u VERSION bash -c '. "'"$ROOT"'/scripts/package-version-lib.sh"; set -euo pipefail; release_version')"
 case "$out" in
@@ -84,7 +84,7 @@ mkdir -p "$notags"
 	git add file.txt
 	git commit -q -m "only commit, no tags"
 )
-out="$(cd "$notags" && VERSION= release_version)"
+out="$(cd "$notags" && VERSION='' release_version)"
 [ "$out" = "0.0.0" ] || fail "no-tags case did not fall back to 0.0.0 (got '$out')"
 
 echo "package-version-lib tests passed."

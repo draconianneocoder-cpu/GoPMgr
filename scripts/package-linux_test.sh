@@ -30,6 +30,23 @@ case "${ELF_BACKEND:-gtk4}" in
 esac
 STUB
 chmod +x bin/readelf
+# Backend/header rejection does not require a real packager. Supply only that
+# prerequisite's build metadata, then remove the doubles before nFPM rejection
+# and real package-content checks. All application metadata uses the real Go.
+REAL_GO="$(command -v go)"
+FAKE_NFPM_VERSION="$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env)"
+FAKE_NFPM_BINARY="$fixture/bin/nfpm"
+export REAL_GO FAKE_NFPM_VERSION FAKE_NFPM_BINARY
+printf '#!/bin/sh\nexit 98\n' > bin/nfpm
+cat > bin/go <<'STUB'
+#!/bin/bash
+if [ "${1:-}" = version ] && [ "${2:-}" = -m ] && [ "${3:-}" = "$FAKE_NFPM_BINARY" ]; then
+    printf '\tmod\tgithub.com/goreleaser/nfpm/v2\t%s\n' "$FAKE_NFPM_VERSION"
+    exit 0
+fi
+exec "$REAL_GO" "$@"
+STUB
+chmod +x bin/go bin/nfpm
 export PATH="$fixture/bin:$PATH"
 fail() { echo "FAIL $*" >&2; exit 1; }
 reject() {
@@ -49,6 +66,7 @@ cp good-binary build/bin/gopmgr
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/bin/gopmgr main.go
 reject 'wrong architecture' 'not a linux/amd64 ELF'
 cp good-binary build/bin/gopmgr
+rm bin/go bin/nfpm
 reject 'missing nfpm' 'nfpm not found' PATH=/usr/bin:/bin
 printf '#!/bin/sh\nexit 0\n' > bin/nfpm; chmod +x bin/nfpm
 reject 'unverifiable nfpm' 'is required; found'

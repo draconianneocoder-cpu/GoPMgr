@@ -180,6 +180,7 @@ macOS Intel, Linux arm64/musl, Windows and unavailable minimum-version OS hosts
 have not been qualified by P1. This does not change product support promises.
 
 Maintainer acceptance of this tested configuration/version-control policy is
-still required **before supplying mandatory lint tools**. P2–P9 remain separate.
-ShellCheck/actionlint findings recorded in P0 are not suppressed by provisioning.
-The next slice is P2's dialect-aware ShellCheck inventory and adjudication.
+still required **before supplying mandatory lint tools**. P2's
+[local ShellCheck adjudication](adr-013-shellcheck.md) is now implemented;
+actionlint and later phases remain separate. Provisioning itself does not
+suppress scanner findings. The next slice is P3's reviewed shfmt discipline.

@@ -62,9 +62,11 @@ P1 opt-in auxiliary provisioning is implemented with pinned mise, a genuine
 platform lock, isolated installs and Make-only recovery. See the
 [P1 setup and qualification record](engineering/adr-013-provisioning.md), including
 the safe-mode URL limitation and its enforced wrapper mitigation. Maintainer
-acceptance precedes mandatory lint adoption. Next: P2 ShellCheck inventory and
-finding adjudication; P2–P9 remain separate. No mandatory lint gate or hosted
-run has been introduced.
+acceptance precedes mandatory lint adoption. P2's
+[ShellCheck inventory and adjudication](engineering/adr-013-shellcheck.md) covers
+90 tracked scripts with zero findings and approved, statement-scoped literal
+exceptions. Next: P3 shfmt style and read-only formatting discipline. P3–P9
+remain separate; no mandatory lint gate or hosted run has been introduced.
 
 ## DuckDB retirement (2026-11-02)
 

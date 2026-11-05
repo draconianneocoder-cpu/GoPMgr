@@ -17,6 +17,7 @@ fail() {
 if rg -q 'verapdf/[^[:space:]]*:latest' "$ROOT/scripts/validate-pdfa.sh"; then
 	fail "validate-pdfa uses a mutable latest container tag"
 fi
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 if ! grep -Fq 'VERAPDF_IMAGE="verapdf/cli:v${VERAPDF_VERSION}"' "$ROOT/scripts/validate-pdfa.sh"; then
 	fail "validate-pdfa does not bind the official CLI image to VERAPDF_VERSION"
 fi
@@ -24,6 +25,7 @@ fi
 if ! grep -Eq '^VERAPDF_INSTALLER_SHA256="[0-9a-f]{64}"$' "$ROOT/scripts/validate-pdfa.sh"; then
 	fail "validate-pdfa does not pin the veraPDF installer by SHA-256"
 fi
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 if ! grep -Fq 'file_has_sha256 "$tmp_zip" "$VERAPDF_INSTALLER_SHA256"' "$ROOT/scripts/validate-pdfa.sh"; then
 	fail "validate-pdfa does not verify a downloaded installer before using it"
 fi

@@ -1178,7 +1178,7 @@ scripts.
 | `scripts/package-macos-installer_test.sh` | 22 shell cases | Explicit non-relocation, bundle-derived receipt metadata, app-only staging, validation and failure-safe publication | isolated tool doubles, native plist/XML parsers, fault injection | Simulates both builder relocation defaults; rejects missing/true policy, malformed or unexpected metadata, parser failures even with plausible stdout, installer scripts, version mismatch and non-regular output targets. Packaging/expansion/publication failures preserve prior bytes; all cases check private staging cleanup. Separate real-package evidence and unverified native/older-builder boundaries are recorded in [installer policy](testing/macos-installer-policy.md). A module missing from the Go module notices stops the build before packaging (added 2026-10-26). |
 | `scripts/package_test.sh` (added 2026-10-26) | 1 shell matrix | The tarball path, `scripts/package.sh` | isolated copy, stub `make`, real Go binary | Every file the tarball must carry (binary, README, license texts, go-sqlcipher, font and Go module notices) must be an exact copy, and incomplete Go module notices must stop packaging before any archive exists. |
 | `frontend/scripts/bundle-notices.test.mjs` (added 2026-10-26) | 29 (node:test) | The frontend notices generator's helpers: notice-file naming, whitespace normalization, package-root detection (stub, scoped and nested packages), license banners, module-to-package mapping, the reviewed no-license-file and excerpt exceptions, rendering | unit, fixture `node_modules` | An npm package whose code ships without its notices, or an unplaced module accepted silently, would breach its license. Unknown injected modules, modules outside the frontend, banner version mismatches and unreviewed packages without a license file must each fail. The real production build is exercised by `make frontend-notices-check` on every `make verify`. |
-| `scripts/verify-module-notices_test.sh` (added 2026-10-26) | 17 shell cases | The packaging check that a built binary's linked modules (`go version -m`) all have Go module notices, and that no DuckDB module is linked (rewritten 2026-11-02) | stub `go`, real Go binary | A missing module, a different version, a version sharing only a prefix, a missing version or standard-library section, no build information, and a missing or empty notices file must each fail; CRLF endings must pass. A DuckDB library module needs a DuckDB native notices file naming it at that exact version. A real binary checked against the committed file proves the parsing matches the toolchain's actual output. Native notices must pass the real reviewed-input/full-file check, including header-only and body-tamper negatives; native-dependency scan errors fail. Complete notices do not excuse linked TPC code: a binary carrying an excluded-code marker fails. |
+| `scripts/verify-module-notices_test.sh` (updated 2026-11-04) | shell matrix | Built-binary module notices and retired DuckDB rejection | controlled `go version -m` output, real Go binary | Missing modules, wrong/prefix-only/missing versions, absent standard-library notices, absent/empty inputs and unreadable build information fail. CRLF notices pass. Three retired DuckDB module families are rejected even with complete notices; diagnostics retain each module/version pair. Grep errors fail even with plausible partial output. A real Go binary verifies compatibility with actual build metadata. |
 
 ## `tools/update-manifest` — 42.4%
 
@@ -1429,3 +1429,15 @@ unexplained given how thorough this ledger is elsewhere.
 | Test file | Behavior and evidence limits |
 | --- | --- |
 | `lifetime_test.go` | Deterministic real HTTP/file fixtures and the race detector cover asynchronous drain while UI-dependent response delivery remains possible, cancellation before resource cleanup, late RPC refusal, busy native UI refusal/retry, reservation rollback and single worker ownership. Late platform-loop return with either active RPC or UI refuses cleanup. This package supplies no header authentication or crash/forced-termination guarantees. |
+
+## ADR-013 P2 shell assurance (2026-11-04)
+
+- `scripts/engineering/shellcheck_test.py`: real pinned analyzer and disposable Git
+  repositories verify tracked scope/dialects, odd paths, source fences, binary
+  identity, analyzer failures and green/fault/restored Make behavior.
+- `scripts/engineering/shell_contract_test.py`: controlled external dependencies
+  capture release/scanner argument vectors and failure propagation, terminal
+  colors and escaped Linux artifact display.
+
+These are static/fixture controls, not native release or execution coverage of
+every shell branch. See [P2 evidence and limits](engineering/adr-013-shellcheck.md).

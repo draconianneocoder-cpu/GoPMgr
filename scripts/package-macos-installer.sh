@@ -40,6 +40,7 @@ done
 
 if ! WAILS3="${WAILS3:-.tmp/wails-v3/bin/wails3}" GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
 	echo "package-macos-installer: the task-local Wails CLI must match go.mod." >&2
+	# shellcheck disable=SC2016 # Print the command literally for the caller to run.
 	echo '  GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0' >&2
 	exit 2
 fi

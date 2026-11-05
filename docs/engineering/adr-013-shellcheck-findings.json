@@ -1,0 +1,882 @@
+{
+  "baseline_revision": "f8b83b9eb662aad52231de28771147c8c1787077",
+  "shellcheck_version": "0.11.0",
+  "baseline_scope": "90 tracked first-party Bash scripts; 81 scripts/ plus 9 isolated spike scripts",
+  "baseline_flags": [
+    "--format=json",
+    "--external-sources"
+  ],
+  "qualified_flags": [
+    "--norc",
+    "--check-sourced",
+    "--source-path=SCRIPTDIR",
+    "--format=json",
+    "--shell=<declared dialect>"
+  ],
+  "findings": [
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 62,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'go install github.com/goreleaser/nfpm/v2/cmd/nfpm@\"${NFPM_VERSION}\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 65,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'choco install nsis --version=\"${NSIS_VERSION}\" -y --no-progress' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 68,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'actual_nfpm_version=\"$(go version -m \"$(command -v nfpm)\" | awk' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 71,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'installed_nsis_version=\"$(choco list --exact nsis --limit-output' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 74,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'test -x \"$nsis_dir/makensis.exe\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 80,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'echo \"  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 83,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'actual_nfpm_version=\"$(go version -m \"$nfpm_binary\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 90,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "nfpm_install_line=\"$(line_of_literal \"$WORKFLOW\" 'go install github.com/goreleaser/nfpm/v2/cmd/nfpm@\"${NFPM_VERSION}\"')\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-installer-tool-pins.sh",
+      "line": 91,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "nsis_install_line=\"$(line_of_literal \"$WORKFLOW\" 'choco install nsis --version=\"${NSIS_VERSION}\"')\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 56,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_fail 'const q = `SELECT * FROM t WHERE x = ? ORDER BY updated_at DESC`' \"bare updated_at\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 57,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_fail 'const q = `SELECT * FROM t WHERE x = ? ORDER BY created_at ASC`' \"bare created_at\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 59,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_fail 'const q = `ORDER BY is_active DESC, created_at DESC, name ASC`' \"TEXT column as secondary sort key\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 65,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_pass 'const q = `SELECT * FROM t WHERE x = ? ORDER BY updated_at_unixnano DESC`' \"_unixnano sibling\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 66,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_pass 'const q = `ORDER BY is_active DESC, created_at_unixnano DESC, name ASC`' \"_unixnano as secondary sort key\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+      "line": 69,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "expect_pass 'const q = `ORDER BY updated_at DESC` // timestamp-order-guard-exempt: fixture' \"exempted bare column\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-release-publication-mode.sh",
+      "line": 32,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\t'publication_flag=\"$(bash scripts/release-publication-flag.sh \"$GITHUB_REF_NAME\")\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-release-publication-mode.sh",
+      "line": 34,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "require_literal \"$WORKFLOW\" 'publication_args+=(\"$publication_flag\")' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-release-publication-mode.sh",
+      "line": 36,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "require_literal \"$WORKFLOW\" '\"${publication_args[@]}\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-release-publication-mode.sh",
+      "line": 42,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "channel_calls=\"$(grep -Fc 'channel=\"$(bash scripts/release-update-channel.sh \"$GITHUB_REF_NAME\")\"' \"$WORKFLOW\" || true)\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-release.sh",
+      "line": 177,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    if ! go test -race -p=1 -count=1 $GO_PACKAGES; then",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/check-release.sh",
+      "line": 190,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "    echo 'Final build failed (install task-local Wails v3.1.0: GOBIN=\"$PWD/.tmp/wails-v3/bin\" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0).'",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-windows-installer-scaffold.sh",
+      "line": 45,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "require_literal \"$PROJECT_NSI\" '!define MUI_WELCOMEPAGE_TITLE \"Install ${INFO_PRODUCTNAME}\"' \\",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-windows-installer-scaffold_test.sh",
+      "line": 57,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "printf '\\n  RMDir /r \"$DOCUMENTS\\\\PMForge\"\\n' >>\"$destructive_uninstall/build/windows/installer/project.nsi\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/check-windows-installer-scaffold_test.sh",
+      "line": 65,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "printf '\\n  RMDir /r \"$DOCUMENTS\\\\GoPMgr\"\\n' >>\"$destructive_uninstall_current/build/windows/installer/project.nsi\"",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 73,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    if go vet -tags \"$GO_TAGS\" $GO_PACKAGES 2>&1; then",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 79,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${YELLOW}skip${NC}: go not in PATH\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 86,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "matches=$(grep -rn 'unsafe\\.Pointer' --include='*.go' $PMF_DIRS 2>/dev/null \\",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 106,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${YELLOW}skip${NC}: go not in PATH (cannot run helper)\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 187,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "matches=$(grep -rn 'sql\\.Open(' --include='*.go' $PMF_DIRS 2>/dev/null \\",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 209,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "matches=$(grep -rnE '(:=|=)\\s*[a-zA-Z_]+\\.mu([^.]|$)' --include='*.go' $PMF_DIRS 2>/dev/null \\",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 228,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    --include='*.go' $PMF_DIRS 2>/dev/null \\",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 243,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    if staticcheck $GO_PACKAGES; then",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 249,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${YELLOW}skip${NC}: staticcheck not installed\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 258,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    if gosec -quiet $GO_PACKAGES; then",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 264,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${YELLOW}skip${NC}: gosec not installed\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 272,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "    if govulncheck $GO_PACKAGES; then",
+      "disposition": "explicit-arguments"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 278,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${YELLOW}skip${NC}: govulncheck not installed\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 286,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "    printf \"${RED}Memory-safety gate FAILED.${NC} See findings above.\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/memory-safety-scan.sh",
+      "line": 289,
+      "rule": "SC2059",
+      "severity": "info",
+      "source_line": "printf \"${GREEN}Memory-safety gate PASSED.${NC}\\n\"",
+      "disposition": "constant-format"
+    },
+    {
+      "path": "scripts/package-linux.sh",
+      "line": 16,
+      "rule": "SC1091",
+      "severity": "info",
+      "source_line": ". \"$SCRIPT_DIR/package-version-lib.sh\"",
+      "disposition": "source-context"
+    },
+    {
+      "path": "scripts/package-linux.sh",
+      "line": 97,
+      "rule": "SC2012",
+      "severity": "info",
+      "source_line": "ls -1 build/packages/ | sed 's/^/  /'",
+      "disposition": "escaped-display"
+    },
+    {
+      "path": "scripts/package-macos-installer.sh",
+      "line": 15,
+      "rule": "SC1091",
+      "severity": "info",
+      "source_line": ". \"$SCRIPT_DIR/package-version-lib.sh\"",
+      "disposition": "source-context"
+    },
+    {
+      "path": "scripts/package-macos-installer.sh",
+      "line": 43,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "\techo '  GOBIN=\"$PWD/.tmp/wails-v3/bin\" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0' >&2",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/package-macos.sh",
+      "line": 15,
+      "rule": "SC1091",
+      "severity": "info",
+      "source_line": ". \"$SCRIPT_DIR/package-version-lib.sh\"",
+      "disposition": "source-context"
+    },
+    {
+      "path": "scripts/package-version-lib_test.sh",
+      "line": 38,
+      "rule": "SC1007",
+      "severity": "warning",
+      "source_line": "out=\"$(cd \"$repo\" && VERSION= release_version)\"",
+      "disposition": "explicit-empty-value"
+    },
+    {
+      "path": "scripts/package-version-lib_test.sh",
+      "line": 51,
+      "rule": "SC1007",
+      "severity": "warning",
+      "source_line": "out=\"$(cd \"$repo\" && VERSION= release_version)\"",
+      "disposition": "explicit-empty-value"
+    },
+    {
+      "path": "scripts/package-version-lib_test.sh",
+      "line": 87,
+      "rule": "SC1007",
+      "severity": "warning",
+      "source_line": "out=\"$(cd \"$notags\" && VERSION= release_version)\"",
+      "disposition": "explicit-empty-value"
+    },
+    {
+      "path": "scripts/package_test.sh",
+      "line": 34,
+      "rule": "SC1007",
+      "severity": "warning",
+      "source_line": "(cd \"$work/src\" && CGO_ENABLED=0 GOFLAGS= go build -o \"$work/gopmgr\" main.go) ||",
+      "disposition": "explicit-empty-value"
+    },
+    {
+      "path": "scripts/release-gate-scope-check.sh",
+      "line": 187,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "if ! grep -Fq 'pipx environment --value PIPX_BIN_DIR >> \"$GITHUB_PATH\"' .github/workflows/release.yml ||",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/validate-pdfa-lib_test.sh",
+      "line": 20,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "if ! grep -Fq 'VERAPDF_IMAGE=\"verapdf/cli:v${VERAPDF_VERSION}\"' \"$ROOT/scripts/validate-pdfa.sh\"; then",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/validate-pdfa-lib_test.sh",
+      "line": 27,
+      "rule": "SC2016",
+      "severity": "info",
+      "source_line": "if ! grep -Fq 'file_has_sha256 \"$tmp_zip\" \"$VERAPDF_INSTALLER_SHA256\"' \"$ROOT/scripts/validate-pdfa.sh\"; then",
+      "disposition": "approved-literal"
+    },
+    {
+      "path": "scripts/verify-module-notices.sh",
+      "line": 79,
+      "rule": "SC2086",
+      "severity": "info",
+      "source_line": "\tprintf '  %s\\n' $duck_deps >&2",
+      "disposition": "diagnostic-record"
+    },
+    {
+      "path": "scripts/verify-module-notices_test.sh",
+      "line": 134,
+      "rule": "SC1007",
+      "severity": "warning",
+      "source_line": "(cd \"$work/src\" && CGO_ENABLED=0 GOFLAGS= \"$real_go\" build -o \"$work/real\" main.go) ||",
+      "disposition": "explicit-empty-value"
+    }
+  ],
+  "dispositions": {
+    "approved-literal": {
+      "count": 27,
+      "reason": "Intentional workflow/NSIS/Go fixture text or copyable command. Preserve literal expansion semantics.",
+      "resolution": "Statement-scoped SC2016 directive with local explanation.",
+      "approval": "Maintainer explicitly approved these 27 sites in nine scripts on 2026-11-04.",
+      "evidence": "Existing source-guard negative fixtures and full make verify."
+    },
+    "explicit-arguments": {
+      "count": 9,
+      "reason": "Intentional splitting of fixed first-party package/filesystem lists, not an established injection vulnerability.",
+      "resolution": "Nonempty Bash arrays with quoted expansion; scope unchanged.",
+      "evidence": "Captured argv, strict scanner failures, unchanged release race flags and 24 source-guard mutations."
+    },
+    "diagnostic-record": {
+      "count": 1,
+      "reason": "Unquoted multiword records split the module and version across separate diagnostic lines.",
+      "resolution": "Quote the complete rejected-module text.",
+      "evidence": "Strengthened verify-module-notices_test.sh failed before the correction and passed after."
+    },
+    "constant-format": {
+      "count": 7,
+      "reason": "Dynamic formats are unnecessary; color variables were fixed trusted values.",
+      "resolution": "Constant printf formats; colors use %b and messages use %s.",
+      "evidence": "Terminal/nonterminal output and optional-scan failure fixtures."
+    },
+    "explicit-empty-value": {
+      "count": 5,
+      "reason": "Intentional empty VERSION/GOFLAGS values in test command environments.",
+      "resolution": "Use explicit ='' assignments without changing values.",
+      "evidence": "Existing packaging/version/notices fixtures."
+    },
+    "source-context": {
+      "count": 3,
+      "reason": "Analyzer cwd lacked the script-relative source search path.",
+      "resolution": "SCRIPTDIR resolution plus explicit reviewed first-party library operands; no external-sources flag.",
+      "evidence": "Allowed-source, omitted-library mutation and excluded/unlisted-source controls."
+    },
+    "escaped-display": {
+      "count": 1,
+      "reason": "Human artifact listing, not executable or package selection.",
+      "resolution": "Nullglob plus Bash printf %q for basenames; preserve empty/nonhidden directory behavior.",
+      "evidence": "Controlled package display with spaces/newline filenames; existing native-packager regressions."
+    }
+  },
+  "retained_exception": {
+    "path": "scripts/coverage-go.sh",
+    "line": 87,
+    "rule": "SC2086",
+    "status": "pre-existing, unchanged; no new P2 waiver",
+    "reason": "Existing trusted go-list splitting and empty tags_arg workaround for Bash 3.2 nounset behavior.",
+    "follow_up": "Revisit obsolete tag plumbing and package/scan scope under P6; do not silently broaden measurement scope."
+  },
+  "inventory": {
+    "files": [
+      {
+        "path": "scripts/check-coverage-ledger-current.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-coverage-ledger-current_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-coverage-ledger-drift.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-coverage-ledger-drift_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-help-guide-current.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-installer-tool-pins.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-installer-tool-pins_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-linux-runtime-target.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-linux-runtime-target_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-no-raw-import-in-tests.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-no-raw-import-in-tests_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-no-text-timestamp-ordering.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-no-text-timestamp-ordering_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-publication-mode.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-publication-mode_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-reference-truth.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-reference-truth_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-tag.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release-tag_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-release.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-required-font-assets.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-required-font-assets_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-wails-version.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-wails-version_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-windows-installer-scaffold.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/check-windows-installer-scaffold_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/coverage-frontend.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/coverage-go-cleanup_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/coverage-go.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/coverage-ratchet.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/fetch-fonts.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/fetch-icc.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/frontend-build-budget.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/frontend-smoke-check.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/frontend-stability-check.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/launch-isolated-native.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/launch-isolated-native_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/memory-safety-scan.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-linux.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-linux_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-macos-installer.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-macos-installer_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-macos.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-macos_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-version-lib.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-version-lib_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-windows.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package-windows_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/package_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/pades-lock.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/pades-lock_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/pades-publish.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/pades-publish_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/release-gate-scope-check.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/release-gate-scope-check_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/release-publication-flag.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/release-update-channel.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/reset-clean-test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/reset-clean-test_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-encrypted-db.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-cleanup_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-external.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-external_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-parallel_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-trusted-source.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades-trusted-source_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pades.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pdfa-lib.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pdfa-lib_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-pdfa.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-windows-nsis-template.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/validate-windows-nsis-template_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/verify-module-notices.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/verify-module-notices_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/wails-build.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/wails-build_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/wails-v3-qualification.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/wails-v3-qualification_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/workspace-hygiene.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "scripts/workspace-hygiene_test.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr010-g0-transport/scripts/generate.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr010-g0-transport/scripts/toolchain.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/generate-df0ipc.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/run-df0a.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/run-df0b.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/run-df0c.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/run-df0c2.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/run-df0d2-no-spill.sh",
+        "shell": "bash"
+      },
+      {
+        "path": "spikes/adr012-datafusion/scripts/with-rust-toolchain.sh",
+        "shell": "bash"
+      }
+    ],
+    "excluded": []
+  },
+  "review_corrections": [
+    {
+      "issue": "Incidental batch membership authorized a noncatalog source.",
+      "resolution": "One root script plus reviewed libraries; real-analyzer regression first failed, then passed."
+    },
+    {
+      "issue": "Extensionless env -S shell declarations were omitted.",
+      "resolution": "Recognize common forms and reject ambiguous env declarations; regression first failed, then passed."
+    },
+    {
+      "issue": "Git inventory errors hid the child diagnostic.",
+      "resolution": "Preserve stderr; nonrepository regression first failed, then passed."
+    },
+    {
+      "issue": "Linux packaging backend negatives depended on an installed nFPM.",
+      "resolution": "Controlled prerequisite metadata only for negative paths; remove doubles before missing/unverifiable and real content checks. Original Linux failure retained."
+    },
+    {
+      "issue": "Two SC2155 warnings appeared during that fixture repair.",
+      "resolution": "Separate assignments from export so initialization failures propagate; no suppression added."
+    }
+  ]
+}
