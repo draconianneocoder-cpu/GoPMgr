@@ -117,5 +117,6 @@ native GUI and real packaging were not rebuilt for this tooling phase. Release,
 signing, Windows and unavailable minimum-OS gates remain separate. Temporary
 Linux checkout/tool fixtures are cleaned after receipts are retained.
 
-Next: P5 local zizmor security findings and policy. No mandatory or hosted
-integration was introduced, and P5 has not been started.
+[P5 local zizmor policy and mitigations](adr-013-zizmor.md) are implemented.
+Next: P6 contract hardening, including a proposal to close the recorded
+credential-detection gap. No mandatory or hosted integration was introduced.

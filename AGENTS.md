@@ -36,7 +36,9 @@ P2's [local ShellCheck inventory and adjudication](docs/engineering/adr-013-shel
 is implemented. P3's [local shfmt style and read-only check](docs/engineering/adr-013-shfmt.md)
 is implemented with separately reviewed normalization. Maintainer acceptance
 precedes mandatory lint adoption. P4's [local workflow correctness check](docs/engineering/adr-013-actionlint.md)
-is implemented; P5–P9 remain separate.
+is implemented. P5's [local workflow security policy](docs/engineering/adr-013-zizmor.md)
+is implemented under the approved regular-persona contract; its documented
+credential-detection gap remains a follow-up. P6–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

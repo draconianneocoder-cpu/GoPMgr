@@ -34,7 +34,7 @@ export CC
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
         frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
-        shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests
+        shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests workflow-security workflow-security-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -76,6 +76,12 @@ workflow-lint: ## Opt-in, read-only actionlint check of tracked workflows.
 
 workflow-lint-tests: ## Verify workflow errors, analyzer identity and read-only boundaries.
 	@python3 -B scripts/engineering/workflow_lint_test.py
+
+workflow-security: ## Opt-in, read-only offline zizmor security check; any finding fails.
+	@python3 -B scripts/engineering/workflow_security.py
+
+workflow-security-tests: ## Verify workflow security risks, tool/output failures and recovery.
+	@python3 -B scripts/engineering/workflow_security_test.py
 
 build: ## Build the production app with pinned Wails v3 tasks and native CGO.
 	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)

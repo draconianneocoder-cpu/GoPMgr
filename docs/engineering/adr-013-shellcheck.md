@@ -131,4 +131,5 @@ coverage, parser completeness or freedom from shell defects.
 
 P3's [reviewed shfmt style and read-only check](adr-013-shfmt.md) is now
 implemented, with normalization in a separate commit. [P4 actionlint](adr-013-actionlint.md)
-is also implemented. Next is P5's local zizmor findings and policy.
+is also implemented, as is [P5's local zizmor policy](adr-013-zizmor.md). Next is
+P6's individually reviewed contract hardening.

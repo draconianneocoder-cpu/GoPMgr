@@ -70,8 +70,11 @@ is implemented; 48 scripts were normalized separately, with all 90 now clean.
 P4's [local actionlint inventory and adjudication](engineering/adr-013-actionlint.md)
 is implemented for all three workflows. Eight stale-label findings are resolved
 by an exact verified label entry; the owner-approved retired G0 macOS 14 row is
-removed. Next: P5 local zizmor security findings and policy. P5–P9 remain
-separate; no mandatory lint gate or hosted run has been introduced.
+removed. P5's [local zizmor policy and mitigations](engineering/adr-013-zizmor.md) are
+implemented: all three workflows have zero reported regular-persona findings.
+Explicit credential persistence is outside that persona's detection and needs a
+separate literal-`false` guard proposal. Next: P6 individually reviewed contract
+hardening. P6–P9 remain separate; no mandatory lint gate or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
 

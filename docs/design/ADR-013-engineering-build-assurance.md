@@ -13,7 +13,9 @@ adoption. P2's [local ShellCheck inventory and adjudication](../engineering/adr-
 is implemented. P3's [local shfmt check and normalization](../engineering/adr-013-shfmt.md)
 is implemented under the approved style contract. Hosted/required-gate adoption
 remains deferred. P4's [local actionlint check and adjudication](../engineering/adr-013-actionlint.md)
-is implemented; P5–P9 are not implemented or accepted as complete.
+is implemented. P5's [local zizmor policy](../engineering/adr-013-zizmor.md) is
+implemented with owner-approved mitigations and a documented persona limitation.
+P6–P9 are not implemented or accepted as complete.
 
 ## Decision and authority
 

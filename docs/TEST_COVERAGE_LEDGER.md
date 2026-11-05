@@ -1460,3 +1460,13 @@ sidecar/inline nonexecution, inventory boundaries and Make failure/recovery.
 `tools/config-check/config_check_test.go` explicitly tracks the new actionlint
 configuration independently of the registry to expose omission, and rejects its
 malformed YAML. See [P4 evidence and limits](engineering/adr-013-actionlint.md).
+
+## ADR-013 P5 workflow security (2026-11-05)
+
+`scripts/engineering/workflow_security_test.py` verifies the approved regular-
+persona policy using pinned zizmor over disposable tracked workflows, meaningful
+injection/permission/credential/cache negatives, strict input handling, ambient
+ignore resistance, tool identity and Make failure/recovery. Mocked output cases
+exercise JSON/schema/status failures, including a valid finding with zero exit.
+An explicit-`true` characterization records a real detection gap, not acceptable
+credential policy. See [P5 evidence and limits](engineering/adr-013-zizmor.md).
