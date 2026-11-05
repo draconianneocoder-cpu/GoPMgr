@@ -47,6 +47,7 @@ var supportedConfigs = []configSpec{
 	{path: "build/windows/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
 	{path: "build/config.yml", format: formatYAML, validate: validateWailsBuild},
 	{path: ".github/dependabot.yml", format: formatYAML, validate: validateDependabot},
+	{path: ".github/actionlint.yaml", format: formatYAML},
 	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateCIAssuranceWorkflow},
 	{path: ".github/workflows/release.yml", format: formatYAML, validate: validateWorkflow},
 	{path: ".github/workflows/adr010-g0-spike.yml", format: formatYAML, validate: validateWorkflow},
@@ -180,7 +181,7 @@ func validateRepositoryConfigs(files map[string][]byte, tracked []string) []erro
 			continue
 		}
 		if _, ok := specByPath[path]; !ok {
-			errs = append(errs, fmt.Errorf("%s: tracked YAML/TOML file is not classified in scripts/config_check.go", path))
+			errs = append(errs, fmt.Errorf("%s: tracked YAML/TOML file is not classified in tools/config-check/config_check.go", path))
 		}
 	}
 

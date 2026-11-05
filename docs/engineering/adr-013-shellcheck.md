@@ -130,5 +130,5 @@ are not established by this work. Static analysis never establishes execution
 coverage, parser completeness or freedom from shell defects.
 
 P3's [reviewed shfmt style and read-only check](adr-013-shfmt.md) is now
-implemented, with normalization in a separate commit. Next is P4's local
-actionlint inventory and finding adjudication.
+implemented, with normalization in a separate commit. [P4 actionlint](adr-013-actionlint.md)
+is also implemented. Next is P5's local zizmor findings and policy.

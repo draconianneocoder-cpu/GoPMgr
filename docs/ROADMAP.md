@@ -67,8 +67,11 @@ acceptance precedes mandatory lint adoption. P2's
 90 tracked scripts with zero findings and approved, statement-scoped literal
 exceptions. P3's [shfmt style and read-only check](engineering/adr-013-shfmt.md)
 is implemented; 48 scripts were normalized separately, with all 90 now clean.
-Next: P4 actionlint inventory and adjudication. P4–P9 remain separate;
-no mandatory lint gate or hosted run has been introduced.
+P4's [local actionlint inventory and adjudication](engineering/adr-013-actionlint.md)
+is implemented for all three workflows. Eight stale-label findings are resolved
+by an exact verified label entry; the owner-approved retired G0 macOS 14 row is
+removed. Next: P5 local zizmor security findings and policy. P5–P9 remain
+separate; no mandatory lint gate or hosted run has been introduced.
 
 ## DuckDB retirement (2026-11-02)
 

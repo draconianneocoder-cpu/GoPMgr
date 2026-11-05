@@ -21,6 +21,21 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			name: "accepts the supported format inventory",
 		},
 		{
+			name: "accepts tracked actionlint configuration",
+			mutate: func(_ map[string][]byte, tracked *[]string) {
+				if !containsPath(*tracked, ".github/actionlint.yaml") {
+					*tracked = append(*tracked, ".github/actionlint.yaml")
+				}
+			},
+		},
+		{
+			name: "rejects malformed actionlint configuration",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/actionlint.yaml"] = []byte("self-hosted-runner: [\n")
+			},
+			wantErrText: ".github/actionlint.yaml: parse YAML",
+		},
+		{
 			name: "rejects malformed auxiliary lockfile",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files["mise.lock"] = []byte("[broken\n")
@@ -342,6 +357,7 @@ func TestDF0RustConfigInventory(t *testing.T) {
 
 func validConfigFixture() (map[string][]byte, []string) {
 	files := map[string][]byte{
+		".github/actionlint.yaml":    []byte("self-hosted-runner: {labels: [ubuntu-26.04]}\n"),
 		"Taskfile.yml":               []byte("version: '3'\ntasks: {build: {cmds: ['bash scripts/wails-build.sh']}}\n"),
 		"build/Taskfile.yml":         []byte("version: '3'\ntasks: {frontend: {cmds: ['npm ci']}}\n"),
 		"build/darwin/Taskfile.yml":  []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),

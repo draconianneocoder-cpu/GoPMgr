@@ -104,5 +104,6 @@ fixtures ran on macOS, which is not native Windows execution evidence.
 
 All checks are local. No required Make dependency or hosted job was added.
 Native release/signing and unavailable minimum-OS checks remain separate gates.
-Next: P4's local actionlint inventory and finding adjudication, retaining the
-same explicit policy gate before mandatory adoption.
+[P4 actionlint inventory and adjudication](adr-013-actionlint.md) is implemented.
+Next: P5's local zizmor findings and policy, retaining the same explicit policy
+gate before mandatory adoption.

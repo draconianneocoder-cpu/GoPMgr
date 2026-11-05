@@ -1450,3 +1450,13 @@ configuration boundaries, source/index preservation, tool substitution refusal,
 Make failure/recovery and exact heredoc/literal runtime output. The timeout case
 injects subprocess failure; other formatter cases use the real executable.
 See [P3 evidence and limits](engineering/adr-013-shfmt.md).
+
+## ADR-013 P4 workflow correctness (2026-11-05)
+
+`scripts/engineering/workflow_lint_test.py` uses real pinned actionlint in
+tracked disposable Git roots for workflow/expression/output/reusable-call errors,
+exact-label and unknown-label controls, binary identity, ambient configuration,
+sidecar/inline nonexecution, inventory boundaries and Make failure/recovery.
+`tools/config-check/config_check_test.go` explicitly tracks the new actionlint
+configuration independently of the registry to expose omission, and rejects its
+malformed YAML. See [P4 evidence and limits](engineering/adr-013-actionlint.md).

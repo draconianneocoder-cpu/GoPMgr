@@ -12,7 +12,8 @@ records evidence and limits. Maintainer acceptance precedes mandatory lint
 adoption. P2's [local ShellCheck inventory and adjudication](../engineering/adr-013-shellcheck.md)
 is implemented. P3's [local shfmt check and normalization](../engineering/adr-013-shfmt.md)
 is implemented under the approved style contract. Hosted/required-gate adoption
-remains deferred; P4–P9 are not implemented or accepted as complete.
+remains deferred. P4's [local actionlint check and adjudication](../engineering/adr-013-actionlint.md)
+is implemented; P5–P9 are not implemented or accepted as complete.
 
 ## Decision and authority
 

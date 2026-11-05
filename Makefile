@@ -34,7 +34,7 @@ export CC
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
         frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
-        shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests
+        shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -70,6 +70,12 @@ shfmt-check: ## Opt-in, read-only formatting check for tracked first-party shell
 
 shfmt-tests: ## Verify formatting failures, scope and source/index preservation.
 	@python3 -B scripts/engineering/shfmt_check_test.py
+
+workflow-lint: ## Opt-in, read-only actionlint check of tracked workflows.
+	@python3 -B scripts/engineering/workflow_lint.py
+
+workflow-lint-tests: ## Verify workflow errors, analyzer identity and read-only boundaries.
+	@python3 -B scripts/engineering/workflow_lint_test.py
 
 build: ## Build the production app with pinned Wails v3 tasks and native CGO.
 	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)

@@ -184,4 +184,4 @@ still required **before supplying mandatory lint tools**. P2's
 [local ShellCheck adjudication](adr-013-shellcheck.md) is now implemented;
 actionlint and later phases remain separate. Provisioning itself does not
 suppress scanner findings. P3's [reviewed shfmt discipline](adr-013-shfmt.md) is implemented. The next
-slice is P4's local actionlint inventory and adjudication.
+slice is P5's local zizmor findings and policy; [P4 actionlint](adr-013-actionlint.md) is implemented.

@@ -35,7 +35,8 @@ implemented; see [setup and proof limits](docs/engineering/adr-013-provisioning.
 P2's [local ShellCheck inventory and adjudication](docs/engineering/adr-013-shellcheck.md)
 is implemented. P3's [local shfmt style and read-only check](docs/engineering/adr-013-shfmt.md)
 is implemented with separately reviewed normalization. Maintainer acceptance
-precedes mandatory lint adoption; P4–P9 remain separate.
+precedes mandatory lint adoption. P4's [local workflow correctness check](docs/engineering/adr-013-actionlint.md)
+is implemented; P5–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a
