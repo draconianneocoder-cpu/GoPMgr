@@ -80,7 +80,9 @@ read-only validation from explicit Finder cleanup. P6-D
 successful validation at every entry point and removes implicit cleanup.
 P6-C [freezes govulncheck installation](engineering/adr-013-govulncheck.md) at the
 verified stable v1.9.0 release and tests text-mode failure propagation. Other
-P6 repairs and P7–P9 remain.
+P6 repairs and P7–P9 remain. The separately owner-approved
+[x/crypto dependency repair](engineering/xcrypto-advisory-plan.md) removes the
+module-only OpenPGP advisory while preserving existing crypto implementations.
 No new mandatory scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)

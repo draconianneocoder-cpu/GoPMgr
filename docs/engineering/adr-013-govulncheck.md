@@ -97,16 +97,14 @@ job continues to use text output and its finding-sensitive exit status.
 `govulncheck -show verbose ./...` reports
 [GO-2026-5932](https://vuln.go.dev/ID/GO-2026-5932.json) for required
 `golang.org/x/crypto` v0.58.0. The affected OpenPGP packages are not imported or
-reachable in the current macOS scan. This is accepted-deferred to a separate
-dependency repair; it is not a waiver of a reachable finding. The advisory's
+reachable in the current macOS scan. This was deferred from the scanner-pin slice and is addressed by the separately
+owner-approved [dependency repair](xcrypto-advisory-plan.md); it is not a waiver
+of a reachable finding. The advisory's
 fixed main-module boundary is v0.58.1-0.20261009181718-2f1f834330b2. Updating
 versions must never be presented as making the deprecated OpenPGP package safe.
 
-Next repair plan: verify a compatible stable x/crypto version containing the
-advisory fix; inspect the resolved graph and supported Go minimum; update module
-pins and affected notices/SBOM only as required by repository generators. Prove
-Argon2 account/password recovery and PKCS#12/PAdES compatibility through existing
-crypto/auth/document regressions, then rerun verbose scanning and canonical
-verification on local hosts. Confirm affected OpenPGP packages remain unused.
-This application cryptography dependency change is deliberately separate from
-the CI scanner pin so its compatibility evidence remains reviewable.
+No fixed stable tag existed at repair time. The owner approved the exact fixed
+pseudo-version; its evidence and platform limits are recorded in the repair
+report. This cryptography dependency change stays separate from the scanner pin
+so compatibility evidence remains reviewable. Historical scan results above
+remain scoped to their original dependency revision.

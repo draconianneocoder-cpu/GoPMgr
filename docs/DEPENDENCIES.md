@@ -66,7 +66,12 @@ platform/publication limits are recorded in
   replacement retains SQLite 3.33.0, SQLCipher 4.4.2, the LibTomCrypt provider, and the existing encrypted
   file format; provenance, hashes, and the removal procedure are recorded in
   `third_party/go-sqlcipher/GOPMGR.md`.
-- `golang.org/x/crypto`: Argon2id and related cryptographic support.
+- `golang.org/x/crypto` v0.58.1-0.20261009181718-2f1f834330b2: Argon2id and
+  PKCS#12 support. The owner-approved upstream commit separates the deprecated
+  OpenPGP module, resolving the selected main-module advisory without adding an
+  OpenPGP dependency. Retained crypto source and module requirements match
+  v0.58.0; see [compatibility and validation](engineering/xcrypto-advisory-plan.md).
+  This exact pseudo-version is intentional while no fixed stable tag exists.
 - `golang.org/x/sys`: Windows `MoveFileEx` with replace-existing and
   write-through flags for atomic canonical-path publication after SQLCipher
   migration.
