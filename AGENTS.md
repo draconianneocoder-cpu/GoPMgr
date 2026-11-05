@@ -39,8 +39,9 @@ precedes mandatory lint adoption. P4's [local workflow correctness check](docs/e
 is implemented. P5's [local workflow security policy](docs/engineering/adr-013-zizmor.md)
 is implemented under the approved regular-persona contract; its documented
 credential-detection gap is covered by the separately owner-approved
-[P6 configuration guard](docs/engineering/adr-013-checkout-guard-plan.md). Other
-P6 repairs and P7–P9 remain separate.
+[P6 configuration guard](docs/engineering/adr-013-checkout-guard-plan.md).
+P6-B makes [licensing validation read-only](docs/engineering/adr-013-license-check.md)
+with explicit Finder cleanup separate. Other P6 repairs and P7–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

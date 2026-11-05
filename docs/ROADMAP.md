@@ -74,8 +74,11 @@ removed. P5's [local zizmor policy and mitigations](engineering/adr-013-zizmor.m
 implemented: all three workflows have zero reported regular-persona findings.
 P6's separately approved [checkout guard](engineering/adr-013-checkout-guard-plan.md)
 closes the explicit-true detection gap through the existing configuration gate.
-Other P6 contract repairs remain, including REUSE failure handling; P7–P9 are
-separate. No new mandatory scanner target or hosted run was added.
+P6-B's [licensing check repair](engineering/adr-013-license-check.md) separates
+read-only validation from explicit Finder cleanup. P6-D release preflight still
+deletes Finder metadata and skips missing/broken REUSE; its caller/mode and
+failure-handling fix is planned separately. Other P6 repairs and P7–P9 remain.
+No new mandatory scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
 

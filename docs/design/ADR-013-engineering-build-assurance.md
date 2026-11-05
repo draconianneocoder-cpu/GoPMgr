@@ -28,7 +28,9 @@ this ADR records its reconciliation with the current repository. The
 [baseline](../engineering/adr-013-baseline.md) records executable evidence and gaps.
 
 P6's owner-approved [checkout credential guard](../engineering/adr-013-checkout-guard-plan.md)
-is implemented in the existing configuration gate. Other P6 repairs remain open.
+is implemented in the existing configuration gate. P6-B separates
+[licensing validation from cleanup](../engineering/adr-013-license-check.md).
+Other P6 repairs remain open.
 
 Direction approval does not certify completed phases, approve publication or
 change release credentials, protected checks, signing policy or support targets.
@@ -77,9 +79,10 @@ permit a legacy desktop runtime or a GTK backend fallback.
   independently installed binaries when mise is absent. Do not invoke installers,
   `mise exec`, lock generation or source formatting from verification.
 - Preserve current Make semantics until a separately tested correction changes
-  them. Existing `license-check` cleanup, optional scanner modes and release
-  REUSE skips are recorded defects/risks, not descriptions of read-only or
-  fail-closed guarantees already achieved.
+  them. P6-B removed implicit cleanup from `license-check`; explicit maintenance is
+  separate. Release preflight still deletes Finder metadata and skips
+  missing/broken REUSE (P6-D). Optional scanner/release modes must not be
+  described as release-wide read-only or fail-closed guarantees.
 
 ## Phased implementation and acceptance gates
 

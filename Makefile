@@ -22,7 +22,7 @@ export CGO_ENABLED := 1
 export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
-        license-check memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
+        license-check license-check-tests clean-finder-metadata memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability pades-lock-test \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
@@ -152,7 +152,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: wails-build-tests config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -288,9 +288,14 @@ frontend-notices-tests: ## Unit-test the frontend notices generator.
 module-notices-tests: ## Verify the packaging check that compares a built binary with the Go module notices.
 	@bash scripts/verify-module-notices_test.sh
 
-license-check: ## Verify REUSE/SPDX compliance.
-	find . -name .DS_Store -delete
+license-check: ## Verify REUSE/SPDX compliance without repository cleanup.
 	reuse lint
+
+license-check-tests: ## Verify licensing validation preserves files and propagates failures.
+	@python3 -B scripts/engineering/license_check_test.py
+
+clean-finder-metadata: ## Explicitly delete .DS_Store entries recursively; never a verification dependency.
+	find . -name .DS_Store -delete
 
 package-tarball-tests: ## Verify the tarball layout (scripts/package.sh) and its notices with a stub build.
 	@bash scripts/package_test.sh

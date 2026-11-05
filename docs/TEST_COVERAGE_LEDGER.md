@@ -1157,6 +1157,14 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 
 ---
 
+**Licensing Make contract.**
+
+`scripts/engineering/license_check_test.py`: seven isolated real-Make tests
+preserve sentinel/source/index bytes on validator success, failure, missing or
+broken executable; require actual lint invocation and recovery; prevent target
+filenames from bypassing checks; qualify explicit cleanup and traversal-failure
+propagation. Controlled validator exits test Make's boundary, not REUSE internals.
+
 ## `tools/config-check` — 76.6%
 
 `make config-check`: parses tracked YAML/TOML and enforces each tool's supported
