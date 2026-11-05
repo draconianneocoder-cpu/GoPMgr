@@ -50,7 +50,7 @@ No mise/config/lock/static-gate implementation is claimed.
 | `build` | Maintainer, platform packaging; CI uses same wrapper | Binding generation, `npm ci`, frontend dist, private native staging and exact build/bin publication |
 | `dev` | Developer only | Wails development process and Vite 5173; not qualified here as a runtime test |
 | `license-check` | Assurance job and maintainer | P0 observed recursive `.DS_Store` deletion; [P6-B](adr-013-license-check.md) now separates cleanup from validation |
-| `check-release` / `tag-preflight` | Release preflight and maintainer | Builds, tests, documents/encryption validation; explicit tag contract; REUSE skip branches remain P6-D |
+| `check-release` / `tag-preflight` | Release preflight and maintainer | Builds, tests, documents/encryption validation; explicit tag contract; [P6-D](adr-013-release-license-plan.md) removes the P0 REUSE skips |
 | `package-macos` / `package-macos-installer` | Maintainer; release invokes DMG script after wrapper | App copies, signing, DMG/PKG and package fixture backup/restore; do not overlap package tests with real packaging |
 | `package-linux-nfpm` | Maintainer; release invokes same tests/script after wrapper | .deb/.rpm, notices and ELF metadata; nfpm is explicit setup |
 | Windows installer scripts | Windows release step | Scaffold -> native wrapper -> notices -> private NSIS packaging; native lifecycle unverified |
@@ -170,7 +170,7 @@ or changed. Workflow source hashes below bind this receipt to its inputs.
 | Wails direct workflow build divergence (P6-F) | Workflow build steps now call `scripts/wails-build.sh` | Re-evaluate parity; do not blindly repeat obsolete fix |
 | Mutable vulnerability scanner (P6-C) | CI installs `govulncheck@latest` | Open; select/check immutable release in its own scoped implementation |
 | License check cleanup (P6-B) | P0 Make recipe deleted `.DS_Store` | Fixed in [P6-B](adr-013-license-check.md); explicit maintenance and sentinel/failure regressions |
-| Release REUSE skips (P6-D) | Release script tolerates missing/broken executable | Open; strict release policy/failure injection required |
+| Release REUSE skips (P6-D) | P0 script tolerated missing/broken executable | Fixed in [P6-D](adr-013-release-license-plan.md); mandatory licensing, no skip mode |
 | Compiler policy (P6-E) | `CC := gcc`; current Apple compiler behavior differs by host | Characterize natively before changing it |
 | Make-only usability | Current canonical targets do not depend on mise | Preserve; no claim for not-yet-created tool checks |
 | Tool bootstrap trust | Latest API metadata only, no downloaded artifact verification | P1 gate, not a verified supply chain |

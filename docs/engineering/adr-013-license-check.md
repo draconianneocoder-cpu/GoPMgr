@@ -42,22 +42,14 @@ of an arbitrary executable substituted on PATH. No scanner/tool pin changes.
 Explicit maintenance retains the old recursive deletion behavior and must be
 invoked deliberately by the maintainer. It is not rollback or recovery machinery.
 
-## Related finding: P6-D remains open
+## Related finding: P6-D follow-up
 
-`scripts/check-release.sh` currently prints a skip message and continues if
-REUSE is missing or cannot run. It also independently deletes `.DS_Store`
-before its licensing probe. That is separate from Make's license gate, which
-already propagates validator failure. This slice must not claim release-wide
-fail-closed licensing assurance.
-
-Next fix plan: characterize all release callers and their existing modes;
-separate its cleanup from validation and propose a strict release contract
-that refuses missing/broken REUSE, while
-identifying any intentional best-effort developer path. Resolve that behavior
-choice with the maintainer before changing it. Add missing/broken/noncompliant
-validator and strict/best-effort caller fixtures, then qualify release-entry
-failure propagation locally. Signing and published release evidence remain
-separate. P6-C's mutable scanner pin and other P6 repairs also remain open.
+P6-B originally left the release script's independent Finder cleanup and
+missing/broken-REUSE skip behavior open. The separately owner-approved
+[P6-D contract](adr-013-release-license-plan.md) now requires successful licensing
+for every release entry point and removes that cleanup. It reuses this Make
+license gate. Neither slice claims the whole release process is read-only or
+that signing, packaging and publication have been qualified.
 
 ## Results
 

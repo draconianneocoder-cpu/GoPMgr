@@ -30,7 +30,8 @@ this ADR records its reconciliation with the current repository. The
 P6's owner-approved [checkout credential guard](../engineering/adr-013-checkout-guard-plan.md)
 is implemented in the existing configuration gate. P6-B separates
 [licensing validation from cleanup](../engineering/adr-013-license-check.md).
-Other P6 repairs remain open.
+P6-D requires [mandatory release licensing](../engineering/adr-013-release-license-plan.md)
+without skip mode. Other P6 repairs remain open.
 
 Direction approval does not certify completed phases, approve publication or
 change release credentials, protected checks, signing policy or support targets.
@@ -80,9 +81,9 @@ permit a legacy desktop runtime or a GTK backend fallback.
   `mise exec`, lock generation or source formatting from verification.
 - Preserve current Make semantics until a separately tested correction changes
   them. P6-B removed implicit cleanup from `license-check`; explicit maintenance is
-  separate. Release preflight still deletes Finder metadata and skips
-  missing/broken REUSE (P6-D). Optional scanner/release modes must not be
-  described as release-wide read-only or fail-closed guarantees.
+  separate. P6-D removes release licensing cleanup and rejects missing/broken
+  REUSE without a skip mode. Other optional scanner/helper behavior is unchanged
+  and must not be described as release-wide fail-closed assurance.
 
 ## Phased implementation and acceptance gates
 

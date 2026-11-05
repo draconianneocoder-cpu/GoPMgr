@@ -75,9 +75,10 @@ implemented: all three workflows have zero reported regular-persona findings.
 P6's separately approved [checkout guard](engineering/adr-013-checkout-guard-plan.md)
 closes the explicit-true detection gap through the existing configuration gate.
 P6-B's [licensing check repair](engineering/adr-013-license-check.md) separates
-read-only validation from explicit Finder cleanup. P6-D release preflight still
-deletes Finder metadata and skips missing/broken REUSE; its caller/mode and
-failure-handling fix is planned separately. Other P6 repairs and P7–P9 remain.
+read-only validation from explicit Finder cleanup. P6-D
+[mandatory release licensing](engineering/adr-013-release-license-plan.md) requires
+successful validation at every entry point and removes implicit cleanup.
+Other P6 repairs and P7–P9 remain.
 No new mandatory scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)

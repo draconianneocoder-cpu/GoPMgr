@@ -71,40 +71,23 @@ fi
 echo "Windows installer source contract verified."
 
 # --- 2d. REUSE / SPDX licensing --------------------------------------
-# The embedded frontend now lives at the repo-root frontend/dist (the real
-# Vite output, gitignored), so there is no separate copy to clean. reuse
-# lint skips gitignored paths, so frontend/dist is not linted.
-find . -name .DS_Store -delete
-
-# The charset-normalizer extra is required, not optional: reuse depends
-# unconditionally on python-magic, a ctypes binding to the native libmagic
-# library pip does not ship, and aborts at import time with
-# NoEncodingModuleError when no encoding module loads. macOS has no libmagic,
-# so a bare `pip install reuse` yields a binary that satisfies `command -v`
-# and then fails every invocation. Version pinned to match
-# .github/workflows/release.yml's tag-preflight gate.
+# Match the release workflow's pinned encoding-capable REUSE installation.
+# Validation never cleans Finder metadata; use explicit maintenance for that.
 REUSE_INSTALL_HINT="pipx install 'reuse[charset-normalizer]==6.2.0'"
 
 if ! command -v reuse >/dev/null 2>&1; then
-	echo "reuse tool not installed; skipping license check."
-	echo "  Install with:  $REUSE_INSTALL_HINT"
-elif ! reuse --version >/dev/null 2>&1; then
-	# The case the comment above describes. It reaches here, not the branch
-	# above: the binary exists, so `command -v` succeeds, and only running it
-	# surfaces the import-time abort. Probing --version separates "cannot run"
-	# from "ran and found violations" -- previously both produced
-	# "REUSE/SPDX compliance failed", pointing at the repository's licensing
-	# when the real fault was the local install, and the hint never printed.
-	# Skips rather than exits, matching the not-installed branch's behavior.
-	echo "reuse is installed but cannot run (it aborts before linting; usually a missing encoding module); skipping license check."
-	echo "  Reinstall with:  $REUSE_INSTALL_HINT"
-else
-	if ! reuse lint >/dev/null; then
-		echo "REUSE/SPDX compliance failed. Run 'reuse lint' for details."
-		exit 1
-	fi
-	echo "Licensing compliant."
+	echo "reuse is required for release validation. Install with: $REUSE_INSTALL_HINT" >&2
+	exit 1
 fi
+if ! reuse --version >/dev/null 2>&1; then
+	echo "reuse cannot run. Reinstall with: $REUSE_INSTALL_HINT" >&2
+	exit 1
+fi
+if ! make license-check; then
+	echo "REUSE/SPDX compliance failed. Run 'make license-check' for details." >&2
+	exit 1
+fi
+echo "Licensing compliant."
 
 if [ -f scripts/frontend-build-budget.sh ]; then
 	if ! bash scripts/frontend-build-budget.sh >/dev/null; then

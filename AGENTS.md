@@ -41,7 +41,9 @@ is implemented under the approved regular-persona contract; its documented
 credential-detection gap is covered by the separately owner-approved
 [P6 configuration guard](docs/engineering/adr-013-checkout-guard-plan.md).
 P6-B makes [licensing validation read-only](docs/engineering/adr-013-license-check.md)
-with explicit Finder cleanup separate. Other P6 repairs and P7–P9 remain separate.
+with explicit Finder cleanup separate. P6-D requires
+[successful licensing at every release entry point](docs/engineering/adr-013-release-license-plan.md),
+with no skip mode. Other P6 repairs and P7–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a
