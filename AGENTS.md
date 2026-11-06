@@ -48,8 +48,10 @@ P6-E [native Make environments](docs/engineering/adr-013-native-make-environment
 align test/race and three coverage targets with macOS 26. The
 [standalone release/validator slice](docs/engineering/adr-013-release-native-environment.md)
 also guards release race execution, encrypted-database tests and PDF generators.
-Other direct analysis/coverage callers remain separate. Other P6 repairs and
-P7–P9 remain separate.
+The [memory-scanner repair](docs/engineering/memory-scan-integrity-plan.md)
+also guards analysis commands and the explicit-root helper. Remaining grep-stage
+operational errors and standalone coverage callers remain separate. Other P6
+repairs and P7–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

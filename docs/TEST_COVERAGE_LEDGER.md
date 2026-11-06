@@ -1498,3 +1498,8 @@ credential policy. See [P5 evidence and limits](engineering/adr-013-zizmor.md).
 ### GnuPG private staging (2026-11-06)
 
 - internal/desktop/app_gnupg_staging_test.go: both real export handlers preserve competing-writer sentinel bytes, use owner-only staging and retain PDFs; command failure, missing/empty/symlink/directory output, cleanup denial and final destination collision produce no successful signing audit or new sidecar. Cancellation cleans staging without executing a signer. Unix command/permission fixtures are separate from explicitly enabled native GnuPG tests, which verify both exported PDFs using an isolated synthetic keyring and reject changed PDF bytes. Root cannot qualify permission-denial behavior; Windows ACL qualification remains separate.
+
+### Memory scanner integrity (2026-11-06)
+
+- tools/os-open-scan/main_test.go: real filesystem roots, scoped traversal/vendor pruning, the retained ten-line/comment heuristic, missing/unreadable inputs, symlink refusal and oversized-line errors; child processes verify actual CLI status for clean/findings/execution failure. Permission and symlink fixtures distinguish unsupported environments.
+- scripts/memory-safety-scan_test.py: subprocess scanner checks for silent/non-silent helper failure, missing Go, vet/preflight failure, all-command native environment, Linux pass-through and each optional analyzer's advisory/strict behavior. Existing scripts/engineering/shell_contract_test.py retains package-argument and terminal-color assertions with valid native-launcher fixtures.

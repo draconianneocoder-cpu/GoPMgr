@@ -88,12 +88,12 @@ The opt-in `make shellcheck shfmt-check` uses the provisioned pinned tools.
 
 ## Remaining work and limits
 
-The next slice should review direct analysis commands in
-`scripts/memory-safety-scan.sh`: its `go vet` and generated `go run` helper still
-bypass this environment when called independently. Map optional analyzer
-boundaries and failure behavior before wrapping them, add conflict/Linux
-regressions first, then verify locally. Standalone coverage-script invocation
-also remains outside these slices; canonical Make coverage is already guarded.
+The [scanner-integrity repair](memory-scan-integrity-plan.md) now guards direct
+memory-scan Go and installed analyzer execution, rejects mandatory failures and
+qualifies the new explicit-root reader. Optional advisory/strict behavior is
+unchanged. Remaining grep-stage operational errors are a separate follow-up.
+Standalone coverage-script invocation still remains outside these slices;
+canonical Make coverage is already guarded.
 
 This does not complete all of P6-E, execute the full release pipeline or qualify
 minimum-version macOS 26, Ubuntu 24.04, Windows, installer/notarization or trusted

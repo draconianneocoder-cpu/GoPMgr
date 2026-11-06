@@ -624,6 +624,12 @@
       "imports_internal": [],
       "notable_external_deps": []
     },
+    "gopmgr/tools/os-open-scan": {
+      "dir": "tools/os-open-scan",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
     "gopmgr/tools/sbom": {
       "dir": "tools/sbom",
       "imported_by_internal": [],

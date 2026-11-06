@@ -23,7 +23,7 @@ export CGO_ENABLED := 1
 export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
-        license-check license-check-tests clean-finder-metadata memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
+        license-check license-check-tests clean-finder-metadata memory-scan memory-scan-tests package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability pades-lock-test \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
@@ -159,7 +159,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: release-native-env-tests native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: memory-scan-tests release-native-env-tests native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -258,6 +258,9 @@ package-version-lib-test: ## Run isolated regression cases for the shared macOS 
 
 help-guide-current: ## Verify in-app Help Guide covers recent release corrections.
 	@bash scripts/check-help-guide-current.sh
+
+memory-scan-tests: ## Verify scanner failure, scope and native-environment contracts.
+	@python3 -B scripts/memory-safety-scan_test.py
 
 memory-scan: ## Run the memory-safety hardening gate.
 	@bash scripts/memory-safety-scan.sh

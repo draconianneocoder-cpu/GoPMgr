@@ -7,8 +7,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 Status: owner approved native no-replace publication; implementation and local
 qualification are recorded below. Baseline `a9decb6`,
-2026-11-06; checkout/index initially clean. No suppressions, exclusions or
-scanner-policy changes have been made.
+2026-11-06; checkout/index initially clean. No suppressions, rule exclusions or
+changes to optional advisory/strict policy have been made.
 
 The local gosec 2.30.0 JSON scan exits 1 and reproduces all fourteen findings
 over the root, internal packages and update-manifest tool. It runs through the
@@ -152,9 +152,10 @@ Windows test-mode correction. No blocking finding remains in this repair.
   Application regressions and native synthetic-key qualification now exercise
   both export handlers; the private helper remains visible to the scanner.
   Native mechanism evidence alone is not a full concurrent application exploit.
-- Scanner: native-environment propagation, erased silent helper failures and
-  root-wide traversal remain separately documented work. Its advisory/strict
-  policy remains unchanged.
+- Scanner: the [owner-approved integrity repair](memory-scan-integrity-plan.md)
+  fixes silent required-helper failure, native-environment propagation and
+  off-scope helper traversal. Remaining grep-stage operational errors and
+  standalone coverage alignment are separate. Optional policy is unchanged.
 
 Native Windows execution and actual exFAT qualification are unavailable; API
 availability or cross-compilation does not establish those results. The tested
@@ -163,3 +164,20 @@ integrity. It does not establish resistance to a hostile writer replacing the
 parent directory/staging pathname, or crash durability across power loss.
 Minimum-version OS, full release and packaging qualification remain separate.
 No push, hosted CI, tool installation or live user-data operation occurred.
+
+## Checked-in scanner helper findings (2026-11-06)
+
+The live memory scan now analyzes tools/os-open-scan as well. Gosec 2.30.0
+reports thirteen findings: the preceding eleven plus G703 at WalkDir(root)
+and G304 at os.Open(path) in the helper. The increase exposes code that was
+previously generated outside analyzed packages, not proof of two new exploits.
+Both reports remain visible; the analyzer is nonzero and the outer advisory
+warning remains explicit.
+
+Independent tracing classifies these two operations as authorized filesystem
+reader behavior under the reviewed caller/trust model. CLI users deliberately
+select roots; the repository caller passes fixed main.go/internal/tools roots.
+The helper reads discovered Go files and writes only diagnostics. Symlinks are
+refused, but concurrent hostile pathname replacement is not qualified. This
+is not universal path-safety clearance: reassess if roots become less-trusted,
+privileged or service-provided. No suppression or rule exclusion was added.

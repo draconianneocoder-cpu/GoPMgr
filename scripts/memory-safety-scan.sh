@@ -49,7 +49,8 @@ fi
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
 PMF_DIRS=(./main.go ./internal ./tools)
-GO_PACKAGES=(. ./internal/... ./tools/update-manifest)
+GO_PACKAGES=(. ./internal/... ./tools/update-manifest ./tools/os-open-scan)
+NATIVE_ENV=(python3 scripts/native-go-env.py go --)
 GO_TAGS="${GOPMGR_GO_TAGS:-production}"
 
 fail=0
@@ -76,13 +77,13 @@ optional_fail_msg() {
 # -------------------------------------------------------------------
 section "go vet -tags $GO_TAGS ${GO_PACKAGES[*]}"
 if command -v go >/dev/null 2>&1; then
-	if go vet -tags "$GO_TAGS" "${GO_PACKAGES[@]}" 2>&1; then
+	if "${NATIVE_ENV[@]}" go vet -tags "$GO_TAGS" "${GO_PACKAGES[@]}" 2>&1; then
 		ok "go vet clean"
 	else
 		fail_msg "go vet reported issues (see above)"
 	fi
 else
-	printf '%bskip%b: go not in PATH\n' "$YELLOW" "$NC"
+	fail_msg "go not in PATH; required checks cannot complete"
 fi
 
 # -------------------------------------------------------------------
@@ -108,82 +109,10 @@ fi
 # for `defer .*Close()` or `.Close()`. Misses legitimate one-shot
 # uses; flag for human review.
 section "os.Open → defer Close()"
-if ! command -v go >/dev/null 2>&1; then
-	printf '%bskip%b: go not in PATH (cannot run helper)\n' "$YELLOW" "$NC"
-	problems=""
+if "${NATIVE_ENV[@]}" go run ./tools/os-open-scan "${PMF_DIRS[@]}"; then
+	ok "no os.Open findings from the ten-line Close heuristic"
 else
-	helper_dir=$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-os-open-scan.XXXXXX")
-	helper_file="$helper_dir/main.go"
-	cat >"$helper_file" <<'EOF'
-package main
-
-import (
-    "bufio"
-    "fmt"
-    "os"
-    "path/filepath"
-    "strings"
-)
-
-func main() {
-    root, _ := os.Getwd()
-    bad := []string{}
-    filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
-        if err != nil || info.IsDir() {
-            return nil
-        }
-        if !strings.HasSuffix(p, ".go") {
-            return nil
-        }
-        if strings.Contains(p, "/vendor/") {
-            return nil
-        }
-        f, err := os.Open(p)
-        if err != nil {
-            return nil
-        }
-        defer f.Close()
-        scan := bufio.NewScanner(f)
-        scan.Buffer(make([]byte, 1<<20), 1<<20)
-        lines := []string{}
-        for scan.Scan() {
-            lines = append(lines, scan.Text())
-        }
-        for i, l := range lines {
-            if !strings.Contains(l, "os.Open(") {
-                continue
-            }
-            if strings.Contains(l, "//") {
-                // crude comment skip
-                continue
-            }
-            // Look ahead 10 lines for a Close.
-            closeFound := false
-            for j := i; j < len(lines) && j < i+10; j++ {
-                if strings.Contains(lines[j], "Close()") {
-                    closeFound = true
-                    break
-                }
-            }
-            if !closeFound {
-                bad = append(bad, fmt.Sprintf("%s:%d: %s", p, i+1, strings.TrimSpace(l)))
-            }
-        }
-        return nil
-    })
-    for _, b := range bad {
-        fmt.Println(b)
-    }
-}
-EOF
-	problems=$(go run "$helper_file" 2>&1 || true)
-	rm -rf "$helper_dir"
-fi
-if [ -n "$problems" ]; then
-	fail_msg "os.Open without an adjacent Close()"
-	printf "%s\n" "$problems"
-else
-	ok "every os.Open has a Close() within 10 lines"
+	fail_msg "os.Open helper reported findings or could not complete (see above)"
 fi
 
 # -------------------------------------------------------------------
@@ -246,7 +175,7 @@ fi
 # -------------------------------------------------------------------
 section "staticcheck (optional)"
 if command -v staticcheck >/dev/null 2>&1; then
-	if staticcheck "${GO_PACKAGES[@]}"; then
+	if "${NATIVE_ENV[@]}" staticcheck "${GO_PACKAGES[@]}"; then
 		ok "staticcheck clean"
 	else
 		optional_fail_msg "staticcheck reported issues"
@@ -261,7 +190,7 @@ fi
 # -------------------------------------------------------------------
 section "gosec (optional)"
 if command -v gosec >/dev/null 2>&1; then
-	if gosec -quiet "${GO_PACKAGES[@]}"; then
+	if "${NATIVE_ENV[@]}" gosec -quiet "${GO_PACKAGES[@]}"; then
 		ok "gosec clean"
 	else
 		optional_fail_msg "gosec flagged security issues"
@@ -275,7 +204,7 @@ fi
 # -------------------------------------------------------------------
 section "govulncheck (optional)"
 if command -v govulncheck >/dev/null 2>&1; then
-	if govulncheck "${GO_PACKAGES[@]}"; then
+	if "${NATIVE_ENV[@]}" govulncheck "${GO_PACKAGES[@]}"; then
 		ok "no known vulnerabilities"
 	else
 		optional_fail_msg "govulncheck found vulnerabilities"

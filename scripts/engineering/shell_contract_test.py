@@ -69,12 +69,14 @@ class ShellContracts(unittest.TestCase):
 
     def test_memory_scanner_preserves_package_arguments_and_strict_failures(self):
         self.copy('scripts/memory-safety-scan.sh')
+        self.copy('scripts/native-go-env.py')
         (self.root / 'main.go').write_text('package main\n')
         (self.root / 'internal').mkdir()
         (self.root / 'tools').mkdir()
         logger = ('import json,os,sys\n'
                   'with open(os.environ["ARG_LOG"],"a") as output: output.write(json.dumps(sys.argv[1:])+"\\n")\n')
-        self.stub('go', logger)
+        self.stub('go', 'import json,os,sys\n'
+                  'if sys.argv[1] == "env": print(json.dumps({"GOOS":"linux","GOHOSTOS":"linux"})); sys.exit(0)\n' + logger)
         for name in ['staticcheck', 'gosec', 'govulncheck']:
             self.stub(name, logger + 'sys.exit(1)\n')
         for strict, expected in [('0', 0), ('1', 1)]:
@@ -84,21 +86,24 @@ class ShellContracts(unittest.TestCase):
                                     env=self.env, capture_output=True, text=True)
             self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
             calls = [json.loads(line) for line in (self.root / 'arguments.json').read_text().splitlines()]
-            self.assertEqual(calls[0], ['vet', '-tags', 'production', '.', './internal/...', './tools/update-manifest'])
+            self.assertEqual(calls[0], ['vet', '-tags', 'production', '.', './internal/...', './tools/update-manifest', './tools/os-open-scan'])
             self.assertEqual(calls[-3:], [
-                ['.', './internal/...', './tools/update-manifest'],
-                ['-quiet', '.', './internal/...', './tools/update-manifest'],
-                ['.', './internal/...', './tools/update-manifest'],
+                ['.', './internal/...', './tools/update-manifest', './tools/os-open-scan'],
+                ['-quiet', '.', './internal/...', './tools/update-manifest', './tools/os-open-scan'],
+                ['.', './internal/...', './tools/update-manifest', './tools/os-open-scan'],
             ])
             self.assertNotIn('\\033', result.stdout)
             self.assertIn('Memory-safety gate', result.stdout)
 
     def test_memory_scanner_terminal_colors_are_preserved(self):
         self.copy('scripts/memory-safety-scan.sh')
+        self.copy('scripts/native-go-env.py')
         (self.root / 'main.go').write_text('package main\n')
         (self.root / 'internal').mkdir()
         (self.root / 'tools').mkdir()
-        for name in ['go', 'staticcheck', 'gosec', 'govulncheck']:
+        self.stub('go', 'import json,sys\n'
+                  'if sys.argv[1] == "env": print(json.dumps({"GOOS":"linux","GOHOSTOS":"linux"}))\n')
+        for name in ['staticcheck', 'gosec', 'govulncheck']:
             self.stub(name, 'pass\n')
         master, slave = pty.openpty()
         process = subprocess.Popen(['/bin/bash', 'scripts/memory-safety-scan.sh'], cwd=self.root,
