@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,9 +33,12 @@ func RestoreArchivalBundle(archivePath, destPath string) (manifest BackupManifes
 	if err != nil {
 		return manifest, fmt.Errorf("open backup archive: %w", err)
 	}
+	archiveClosed := false
 	defer func() {
-		if closeErr := zr.Close(); err == nil && closeErr != nil {
-			err = closeErr
+		if !archiveClosed {
+			if closeErr := zr.Close(); closeErr != nil {
+				err = errors.Join(err, fmt.Errorf("close backup archive: %w", closeErr))
+			}
 		}
 	}()
 	if len(zr.File) == 0 || len(zr.File) > maxBackupEntries {
@@ -118,21 +122,44 @@ func RestoreArchivalBundle(archivePath, destPath string) (manifest BackupManifes
 	} else if !os.IsNotExist(err) {
 		return manifest, err
 	}
-	tempPath := destPath + ".tmp.restore"
-	if err := os.Remove(tempPath); err != nil && !os.IsNotExist(err) {
-		return manifest, fmt.Errorf("remove stale restore file: %w", err)
+	staging, err := os.CreateTemp(filepath.Dir(destPath), ".gopmgr-restore-*")
+	if err != nil {
+		return manifest, fmt.Errorf("create restore staging file: %w", err)
 	}
+	tempPath := staging.Name()
 	defer func() {
-		if err != nil {
-			_ = os.Remove(tempPath)
+		if staging != nil {
+			if closeErr := staging.Close(); closeErr != nil {
+				err = errors.Join(err, fmt.Errorf("close restore staging file: %w", closeErr))
+			}
+		}
+		if tempPath != "" {
+			if cleanupErr := os.Remove(tempPath); cleanupErr != nil && !os.IsNotExist(cleanupErr) {
+				err = errors.Join(err, fmt.Errorf("remove restore staging file: %w", cleanupErr))
+			}
 		}
 	}()
-	if err := extractZipEntry(projectFile, tempPath); err != nil {
+	if err := extractZipEntry(projectFile, staging, manifest.EntrySHA256[projectEntryName]); err != nil {
 		return manifest, err
 	}
-	if err := os.Rename(tempPath, destPath); err != nil {
+	if err := staging.Sync(); err != nil {
+		return manifest, fmt.Errorf("sync restore staging file: %w", err)
+	}
+	closeErr := staging.Close()
+	staging = nil
+	if closeErr != nil {
+		return manifest, fmt.Errorf("close restore staging file: %w", closeErr)
+	}
+	archiveCloseErr := zr.Close()
+	archiveClosed = true
+	if archiveCloseErr != nil {
+		return manifest, fmt.Errorf("close backup archive: %w", archiveCloseErr)
+	}
+	if err := publishRestoredFile(tempPath, destPath); err != nil {
 		return manifest, fmt.Errorf("publish restored project: %w", err)
 	}
+	// Publication consumed staging; its former pathname is no longer ours.
+	tempPath = ""
 	return manifest, nil
 }
 
@@ -210,7 +237,7 @@ func hashZipEntry(f *zip.File) (digest string, err error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func extractZipEntry(f *zip.File, destPath string) (err error) {
+func extractZipEntry(f *zip.File, out *os.File, expectedDigest string) (err error) {
 	r, err := f.Open()
 	if err != nil {
 		return err
@@ -220,17 +247,12 @@ func extractZipEntry(f *zip.File, destPath string) (err error) {
 			err = closeErr
 		}
 	}()
-	out, err := os.OpenFile(destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := out.Close(); err == nil && closeErr != nil {
-			err = closeErr
-		}
-	}()
-	if _, err := io.Copy(out, r); err != nil {
+	h := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(out, h), r); err != nil {
 		return fmt.Errorf("extract project database: %w", err)
+	}
+	if !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), expectedDigest) {
+		return errors.New("extracted project failed its SHA-256 check")
 	}
 	return nil
 }

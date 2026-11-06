@@ -227,7 +227,9 @@
         "gopmgr/internal/sqlitedriver",
         "gopmgr/internal/wbs"
       ],
-      "notable_external_deps": []
+      "notable_external_deps": [
+        "golang.org/x/sys/unix"
+      ]
     },
     "gopmgr/internal/debug": {
       "dir": "internal/debug",

@@ -1484,3 +1484,8 @@ ignore resistance, tool identity and Make failure/recovery. Mocked output cases
 exercise JSON/schema/status failures, including a valid finding with zero exit.
 An explicit-`true` characterization records a real detection gap, not acceptable
 credential policy. See [P5 evidence and limits](engineering/adr-013-zizmor.md).
+
+### Restore publication safety (2026-11-06)
+
+- internal/db/backup_restore_safety_test.go: deterministic extraction-time destination creation, unrelated scratch preservation, understated ZIP size rejection, and CRC32-colliding archive mutation. A test-only ZIP reader triggers the boundary without production hooks or timing sleeps; initial unsafe behavior was observed before repair.
+- internal/db/publish_restore_test.go: real native no-replace publication succeeds only for an absent destination and preserves existing file bytes/mode, directory identity and dangling symlinks; failure retains staging for its owner to clean up.

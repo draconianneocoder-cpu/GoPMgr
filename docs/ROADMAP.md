@@ -86,7 +86,12 @@ module-only OpenPGP advisory while preserving existing crypto implementations.
 [Decompression dependency repair](engineering/decompression-advisory-repair.md)
 addresses the subsequently reported called Brotli/compress advisories through
 two bounded upstream pin changes. Scanner environment, helper failure handling
-and gosec adjudication remain separate follow-up work.
+remain separate follow-up work.
+[Gosec adjudication](engineering/gosec-adjudication.md) traces all fourteen
+baseline findings and repairs restore publication/scratch races with the
+owner-approved native no-replace contract. Extraction rechecks SHA-256 before
+publication; unresolved escrow length and GnuPG temporary-path questions remain
+documented without suppressions.
 [PDF/A validator qualification](engineering/verapdf-provenance.md) now checks
 the selected 1.30.2 engine before sample generation, preserves external tools
 and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)
