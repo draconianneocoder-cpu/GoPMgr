@@ -88,8 +88,11 @@ the selected 1.30.2 engine before sample generation, preserves external tools
 and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)
 confirms a macOS test/app deployment-setting mismatch. Make
 [test/race/coverage alignment](engineering/adr-013-native-make-environment.md)
-is implemented for five canonical Make paths. Direct release/helper paths remain
-separate. The owner adopted the
+is implemented for five canonical Make paths.
+[Standalone release/validator alignment](engineering/adr-013-release-native-environment.md)
+extends the guard to release race execution, encrypted-database tests and
+PDF/A/PAdES generators. Direct analysis helpers and standalone coverage remain
+outside these slices. The owner adopted the
 [macOS 26 Tahoe minimum](engineering/macos26-support-policy.md) for current
 builds and package metadata; compiler selection is unchanged. No new mandatory
 scanner target or hosted run was added.

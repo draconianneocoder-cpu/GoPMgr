@@ -48,6 +48,7 @@ class ShellContracts(unittest.TestCase):
 
     def test_release_race_preserves_arguments_and_failure(self):
         self.copy('scripts/check-release.sh')
+        self.copy('scripts/native-go-env.py')
         parser = self.root / 'internal/cli/parser.go'
         parser.parent.mkdir(parents=True)
         parser.write_text('const Version = "1.2.3"\n')
@@ -56,6 +57,7 @@ class ShellContracts(unittest.TestCase):
         self.stub('make', 'pass\n')
         self.stub('reuse', 'pass\n')
         self.stub('go', 'import json,os,sys\n'
+                  'if sys.argv[1] == "env": print(json.dumps({"GOOS":"linux","GOHOSTOS":"linux"})); sys.exit(0)\n'
                   'open(os.environ["ARG_LOG"],"w").write(json.dumps(sys.argv[1:]))\n'
                   'sys.exit(77)\n')
         result = subprocess.run(['/bin/bash', 'scripts/check-release.sh'], cwd=self.root,

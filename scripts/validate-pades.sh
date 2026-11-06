@@ -47,6 +47,8 @@ if [ -L "$SCRATCH_ROOT" ]; then
 	echo "Refusing symlinked PAdES scratch root: $SCRATCH_ROOT" >&2
 	exit 64
 fi
+# Reject an invalid native environment before creating scratch state or locks.
+python3 "$ROOT/scripts/native-go-env.py" go -- python3 -c 'pass'
 mkdir -p "$SCRATCH_ROOT"
 SCRATCH_ROOT="$(cd "$SCRATCH_ROOT" && pwd -P)"
 SAMPLE_DIR="$SCRATCH_ROOT/gopmgr-pades-test"
@@ -418,7 +420,7 @@ func byteRangeBytes(pdf []byte, br [4]int) []byte {
 }
 EOF
 
-GOPMGR_PADES_SAMPLE_DIR="$WORK_DIR" go run "$GENERATOR"
+GOPMGR_PADES_SAMPLE_DIR="$WORK_DIR" python3 "$ROOT/scripts/native-go-env.py" go -- go run "$GENERATOR"
 
 # Publish while the shared PAdES lock is held. The helper retains or restores
 # the previous sample if replacement fails, so a failed second move cannot

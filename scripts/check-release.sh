@@ -157,7 +157,7 @@ if command -v go >/dev/null 2>&1; then
 	# run merely to identify the failing package.
 	# Account/root fixtures do real memory-hard KDF work. Bound package
 	# overlap, not within-package concurrency; never reuse cached race results.
-	if ! go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
+	if ! python3 scripts/native-go-env.py go -- go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
 		echo "Race detector flagged tests. Run 'make race' for details."
 		exit 1
 	fi

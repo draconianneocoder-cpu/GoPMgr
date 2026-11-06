@@ -33,7 +33,7 @@ export CC
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
-        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests \
+        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests release-native-env-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
         shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests workflow-security workflow-security-tests
 
@@ -146,6 +146,9 @@ pades-lock-test: ## Verify PAdES lock acquisition is bounded and never reclaims 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
 	@bash scripts/validate-encrypted-db.sh
 
+release-native-env-tests: ## Verify standalone release and validator native environments.
+	@python3 -B scripts/release-native-env_test.py
+
 native-go-env-tests: ## Verify native test environments, target isolation and failure propagation.
 	@python3 -B scripts/native-go-env_test.py
 
@@ -156,7 +159,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: release-native-env-tests native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.

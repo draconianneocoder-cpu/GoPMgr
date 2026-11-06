@@ -48,6 +48,10 @@ printf '%s\n' caller-owned >"$lock/pid"
 
 cat >"$FIXTURE/bin/go" <<'EOF'
 #!/bin/bash
+if [ "${1:-}" = env ]; then
+	printf '%s\n' '{"GOOS":"linux","GOHOSTOS":"linux"}'
+	exit 0
+fi
 echo "seeded generator failure" >&2
 exit 55
 EOF

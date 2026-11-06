@@ -184,6 +184,11 @@ if ! verapdf_require_version "$VERAPDF_VERSION" "${VERAPDF_CMD[@]}"; then
 	pdfa_precondition_unmet "Validator version is unverified; expected veraPDF $VERAPDF_VERSION. Provide that version on PATH or use the pinned Docker image. No samples were generated."
 fi
 
+# Resolve native Go settings before replacing any prior sample evidence.
+if ! python3 "$ROOT/scripts/native-go-env.py" go -- python3 -c 'pass'; then
+	pdfa_precondition_unmet "Native Go environment is invalid; no PDF/A samples were generated."
+fi
+
 # --- 3. Generate representative PDFs ------------------------------------
 # We use small Go one-off programs that exercise our real renderers.
 # This keeps the gate honest.
@@ -531,21 +536,21 @@ func fail(step string, err error) {
 EOF
 
 # Compile and run the generators.
-if go run "$SAMPLE_DIR/gen_schedule.go" 2>/dev/null; then
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_schedule.go" 2>/dev/null; then
 	echo "Sample schedule report generated."
 else
 	echo "Could not generate sample PDF (missing dependencies or build issue)."
 	echo "PDF/A validation cannot run without representative samples."
 	exit 1
 fi
-if go run "$SAMPLE_DIR/gen_documents.go" 2>/dev/null; then
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_documents.go" 2>/dev/null; then
 	echo "Sample document and combined report generated."
 else
 	echo "Could not generate document PDF samples (missing dependencies or build issue)."
 	echo "PDF/A validation cannot run without representative document samples."
 	exit 1
 fi
-if go run "$SAMPLE_DIR/gen_montecarlo.go" 2>/dev/null; then
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_montecarlo.go" 2>/dev/null; then
 	echo "Sample Monte Carlo risk report generated."
 else
 	echo "Could not generate Monte Carlo risk report PDF sample (missing dependencies or build issue)."
@@ -553,7 +558,7 @@ else
 	exit 1
 fi
 
-if go run "$SAMPLE_DIR/gen_signed.go" 2>/dev/null; then
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_signed.go" 2>/dev/null; then
 	echo "Sample signed document generated."
 else
 	echo "Could not generate the signed document PDF sample (missing dependencies or build issue)."

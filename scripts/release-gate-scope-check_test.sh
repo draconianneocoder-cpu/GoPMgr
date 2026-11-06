@@ -76,6 +76,10 @@ unscoped_script="$(new_fixture unscoped-script)"
 printf '%s\n' 'go test ./...' >"$unscoped_script/scripts/quality-check.sh"
 expect_failure "$unscoped_script" "Go quality gates must use explicit first-party package roots"
 
+wrapped_script="$(new_fixture wrapped-script)"
+printf '%s\n' 'python3 scripts/native-go-env.py go -- go test ./...' >"$wrapped_script/scripts/quality-check.sh"
+expect_failure "$wrapped_script" "Go quality gates must use explicit first-party package roots"
+
 unscoped_coverage_script="$(new_fixture unscoped-coverage-script)"
 printf '%s\n' 'govulncheck ./...' >>"$unscoped_coverage_script/scripts/check-coverage-ledger-drift.sh"
 expect_failure "$unscoped_coverage_script" "Go quality gates must use explicit first-party package roots"

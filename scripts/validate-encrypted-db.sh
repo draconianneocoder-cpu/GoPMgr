@@ -17,10 +17,10 @@ cd "$ROOT"
 
 echo "=== Encrypted Database Validation Gate ==="
 
-go test -count=1 ./internal/sqlitedriver
+python3 "$ROOT/scripts/native-go-env.py" go -- go test -count=1 ./internal/sqlitedriver
 
-go test -count=1 -run 'Test(InitEncryptedDBCreatesEncryptedDatabase|InitEncryptedDBRejectsWrongKey|MigratePlaintextToEncryptedPreservesData|OpenEncryptedDBRejectsBadDEKLength|SwapInEncryptedSnapshotPreservesEncryptionAndReopensWithDEK|CreateArchivalBundlePreservesEncryptedProjectBytes)$' ./internal/db
+python3 "$ROOT/scripts/native-go-env.py" go -- go test -count=1 -run 'Test(InitEncryptedDBCreatesEncryptedDatabase|InitEncryptedDBRejectsWrongKey|MigratePlaintextToEncryptedPreservesData|OpenEncryptedDBRejectsBadDEKLength|SwapInEncryptedSnapshotPreservesEncryptionAndReopensWithDEK|CreateArchivalBundlePreservesEncryptedProjectBytes)$' ./internal/db
 
-go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' ./internal/desktop
+python3 "$ROOT/scripts/native-go-env.py" go -- go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' ./internal/desktop
 
 echo "Encrypted database validation gate PASSED."

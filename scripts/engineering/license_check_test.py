@@ -132,7 +132,8 @@ class ReleaseLicenseTests(unittest.TestCase):
         self.root.mkdir()
         self.bin.mkdir()
         for name in ('Makefile', 'scripts/check-release.sh',
-                     'scripts/check-release-tag.sh', 'scripts/check-release-tag_test.sh'):
+                     'scripts/check-release-tag.sh', 'scripts/check-release-tag_test.sh',
+                     'scripts/native-go-env.py'):
             path = self.root / name
             path.parent.mkdir(exist_ok=True)
             shutil.copyfile(ROOT / name, path)
@@ -163,7 +164,9 @@ if sys.argv[1:] == ['license-check']:
     os.execv(os.environ['REAL_MAKE'], [os.environ['REAL_MAKE'], *sys.argv[1:]])
 sys.exit('unexpected Make boundary: ' + repr(sys.argv[1:]))
 """)
-        self.tool('go', "import sys\nprint('DOWNSTREAM-GO-MARKER')\nsys.exit(77)\n")
+        self.tool('go', "import json,sys\n"
+                  "if sys.argv[1]=='env': print(json.dumps({'GOOS':'linux','GOHOSTOS':'linux'})); sys.exit(0)\n"
+                  "print('DOWNSTREAM-GO-MARKER')\nsys.exit(77)\n")
         self.install_reuse()
 
     def tool(self, name, body):

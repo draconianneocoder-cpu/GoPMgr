@@ -117,10 +117,9 @@ ignored task state. No hosted CI or publication is part of this slice.
 
 ## Remaining work
 
-Direct `scripts/check-release.sh` race compilation and validator-generated Go
-programs still need an explicit native environment when invoked outside these
-five Make paths. Next: map and align those release entry points using the same
-baseline, preserving mandatory REUSE, complete race scope, fail-closed checks
-and standalone script behavior. Test before editing; do not infer coverage
-from this Make-only slice. Minimum-version macOS 26 execution, installer and
-notarization evidence, and hosted runner suitability remain release gates.
+The subsequent [standalone release/validator slice](adr-013-release-native-environment.md)
+aligns release race execution, encrypted-database tests and PDF generators.
+Other direct analysis helpers and standalone coverage invocations still need
+their own caller review; this Make-only evidence does not qualify those paths.
+Minimum-version macOS 26 execution, installer and notarization evidence, and
+hosted runner suitability remain release gates.
