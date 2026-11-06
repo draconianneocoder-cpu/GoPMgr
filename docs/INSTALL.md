@@ -31,7 +31,7 @@ The current source targets Wails v3.1.0, including npm `@wailsio/runtime`
 3.1.0, GTK 4 and WebKitGTK 6.0. Published alpha.2 assets above are historical
 release artifacts; they do not qualify this migration. Source/frontend and
 native macOS bridge checks have passed, but package/install/upgrade and
-Windows NSIS qualification remain pending. macOS 13 and Ubuntu 24.04 remain
+Windows NSIS qualification remain pending. macOS 26 Tahoe and Ubuntu 24.04 remain
 mandatory release targets; execution on those unavailable hosts is deferred
 to the release gate, not claimed as passed. See the
 [migration design](design/wails-v3-migration-design.md).
@@ -41,7 +41,7 @@ to the release gate, not claimed as passed. See the
 | Platform | File | How you install it |
 |---|---|---|
 | Windows 10/11 (x86-64) | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
-| macOS 13 Ventura or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
+| macOS 26 Tahoe or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
 | Debian / Ubuntu (x86-64) | `gopmgr-<version>-amd64.deb` | `apt` / `dpkg` |
 | Fedora / RHEL / openSUSE (x86-64) | `gopmgr-<version>-x86_64.rpm` | `dnf` / `rpm` |
 
@@ -54,8 +54,9 @@ choose **More info → Run anyway**.
 
 ### macOS Apple Silicon (`.dmg`)
 
-Requires macOS 13 Ventura or later; the Go toolchain GoPMgr is built with does
-not support earlier macOS releases.
+Current source requires macOS 26 Tahoe or later under the owner-approved
+support policy. Earlier macOS versions are no longer supported. Historical
+release assets above retain their original requirements.
 
 1. Open the `.dmg`.
 2. Drag **GoPMgr** onto the **Applications** shortcut.

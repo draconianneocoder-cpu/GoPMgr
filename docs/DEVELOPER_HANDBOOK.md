@@ -249,7 +249,7 @@ GOOS=darwin GOARCH=arm64 bash scripts/wails-build.sh
 Linux uses GTK 4 and WebKitGTK 6.0 (`libgtk-4-dev` and
 `libwebkitgtk-6.0-dev` on Debian/Ubuntu), with no legacy backend tag.
 The pinned npm `@wailsio/runtime` is 3.1.0. Source/build evidence is separate
-from package or release qualification: macOS 13 and Ubuntu 24.04 execution
+from package or release qualification: macOS 26 Tahoe and Ubuntu 24.04 execution
 remain mandatory release gates on currently unavailable hosts, and Windows
 NSIS remains unqualified.
 
@@ -1802,7 +1802,7 @@ money, SQLCipher persistence/reopen, raw null versus explicit empty lists,
 and shutdown cleanup. The 61 migrated components retain their markup/styles;
 that source comparison is not screenshot or packaged visual evidence.
 
-Package/install/upgrade qualification remains separate. macOS 13 and Ubuntu
+Package/install/upgrade qualification remains separate. macOS 26 Tahoe and Ubuntu
 24.04 execution are mandatory release gates deferred because those hosts
 are unavailable. Linux builds and packages target GTK 4 and WebKitGTK 6.0;
 minimum-target dependency inspection and execution must qualify the result.

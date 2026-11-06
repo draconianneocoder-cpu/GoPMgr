@@ -19,7 +19,7 @@
 	<key>CFBundleIconFile</key>
 	<string>iconfile</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>13.0.0</string>
+	<string>26.0.0</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>NSHighResolutionCapable</key>

@@ -38,10 +38,10 @@ case " ${GOFLAGS:-} " in
 esac
 export CGO_ENABLED=1
 if [ "$os" = darwin ]; then
-	export MACOSX_DEPLOYMENT_TARGET=13.0
-	export CGO_CFLAGS="${CGO_CFLAGS:+$CGO_CFLAGS }-mmacosx-version-min=13.0"
-	export CGO_CXXFLAGS="${CGO_CXXFLAGS:+$CGO_CXXFLAGS }-mmacosx-version-min=13.0"
-	export CGO_LDFLAGS="${CGO_LDFLAGS:+$CGO_LDFLAGS }-mmacosx-version-min=13.0"
+	export MACOSX_DEPLOYMENT_TARGET=26.0
+	export CGO_CFLAGS="${CGO_CFLAGS:+$CGO_CFLAGS }-mmacosx-version-min=26.0"
+	export CGO_CXXFLAGS="${CGO_CXXFLAGS:+$CGO_CXXFLAGS }-mmacosx-version-min=26.0"
+	export CGO_LDFLAGS="${CGO_LDFLAGS:+$CGO_LDFLAGS }-mmacosx-version-min=26.0"
 fi
 mkdir -p build/bin
 stage="$(mktemp -d "$root/build/bin/.wails-v3.XXXXXX")"

@@ -5,6 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 ACR: macOS containment implementation gap
 
+Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
+as the minimum. Earlier macOS 13 requirements and measurements below are
+historical; see [current policy](../engineering/macos26-support-policy.md).
+
 **Status: proposed, NOT APPROVED.** No acceptance criterion changes here.
 **Owner approval:** resource-policy changes and production adoption pending.
 No privilege, new production dependency, transport

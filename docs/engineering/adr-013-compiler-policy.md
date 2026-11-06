@@ -6,9 +6,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-013 P6-E: native compiler and deployment-target characterization
 
 Date: 2026-11-05. Baseline: `ec79bc07eaeef279ab52b9c960065ebcde24dc5e`.
-Characterization complete on the available macOS and Ubuntu hosts. The proposed
-Make contract correction below awaits maintainer approval. P6-E is not complete.
-No compiler, flags, support floor, workflow or application source was changed.
+Characterization complete on the available macOS and Ubuntu hosts. These
+measurements predate the subsequent owner decision adopting macOS 26 Tahoe.
+See the [current support policy](macos26-support-policy.md). The 13.0 measurements
+below remain historical; the proposed Make correction now targets 26.0 and is
+not implemented by the support-version change. P6-E remains incomplete.
 
 ## Current behavior and evidence
 
@@ -91,12 +93,12 @@ Recommended first correction, subject to approval:
 
 1. Retain `CC := gcc`, environment/command-line precedence and existing platform
    support. Compiler-selection changes remain a separate decision.
-2. Align canonical native macOS Make Go compilation with the existing 13.0 app
+2. Align canonical native macOS Make Go compilation with the owner-approved 26.0 app
    contract. Cover test/race/coverage and native build/binding callers in a
    reviewed caller map; ordinary commands outside Make need explicit documented
    settings, not an unsupported claim of automatic coverage.
 3. Preserve existing non-target C/C++/link options and Go's `-O2 -g` defaults
-   when unset. With no target supplied, establish 13.0. Accept equivalent 13.0
+   when unset. With no target supplied, establish 26.0. Accept equivalent 26.0
    settings; reject conflicting explicit deployment targets with a diagnostic
    rather than silently rewriting them. This includes a higher target that
    would cease testing the baseline. Apply the rule to environment and Make
@@ -106,7 +108,7 @@ Recommended first correction, subject to approval:
    inputs. Cross-target handling must be explicit: do not infer target OS solely
    from host `uname`, or add mandatory Go execution while parsing `make help`.
 5. Add behavioral tests first: capture compiler environments from actual Make
-   recipes; require all four settings on native Darwin; preserve unrelated
+   recipes; require all four 26.0 settings on native Darwin; preserve unrelated
    options, existing compiler overrides, Linux/Windows inputs and help without
    Go. Add negative conflicting-floor and nested-caller cases. Keep existing
    race serialization and uncached-execution assertions intact.
@@ -129,7 +131,8 @@ implementation requirements. No owner approval or implemented correction is
 implied. REUSE 3.3 and whitespace checks pass.
 
 No hosted checks, full release, new tool installation, signing or minimum-OS
-qualification occurred. macOS 13/Ubuntu 24.04 hosts remain unavailable; Windows
+qualification occurred. At characterization time macOS 13/Ubuntu 24.04 hosts
+were unavailable; the current minimum-OS gate is macOS 26. Windows
 is unmeasured. A 13.0 load command and current-host success do not establish
 that every dependency or code path runs on macOS 13. The full suite was not
 rerun for this documentation-only characterization; it remains required for

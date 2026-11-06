@@ -39,11 +39,24 @@ cleanup() {
 	exit "$cleanup_status"
 }
 trap cleanup EXIT
-if [[ $(uname -s) == Darwin ]]; then
-	export MACOSX_DEPLOYMENT_TARGET=13.0
-	export CGO_CFLAGS="${CGO_CFLAGS:-} -mmacosx-version-min=13.0"
-	export CGO_CXXFLAGS="${CGO_CXXFLAGS:-} -mmacosx-version-min=13.0"
-	export CGO_LDFLAGS="${CGO_LDFLAGS:-} -mmacosx-version-min=13.0"
+target_os="$(go env GOOS)" || {
+	echo 'Cannot determine binding target OS.' >&2
+	exit 1
+}
+# The build wrapper already supplies the floor. A direct binding invocation
+# needs it too, without growing flags when wrappers are nested.
+macos_binding_flags() {
+	case " $1" in
+	*' -mmacosx-version-min=26.0') printf '%s' "$1" ;;
+	*) printf '%s%s' "${1:+$1 }" '-mmacosx-version-min=26.0' ;;
+	esac
+}
+if [[ "$target_os" == darwin ]]; then
+	export MACOSX_DEPLOYMENT_TARGET=26.0
+	CGO_CFLAGS="$(macos_binding_flags "${CGO_CFLAGS:-}")"
+	CGO_CXXFLAGS="$(macos_binding_flags "${CGO_CXXFLAGS:-}")"
+	CGO_LDFLAGS="$(macos_binding_flags "${CGO_LDFLAGS:-}")"
+	export CGO_CFLAGS CGO_CXXFLAGS CGO_LDFLAGS
 fi
 flags=''
 if [[ ${GOPMGR_BINDINGS_PRODUCTION:-0} == 1 ]]; then flags='-tags production'; fi

@@ -32,7 +32,7 @@ posture, and validator coverage, so keep them intentional and verified.
 The Wails migration was approved on 2026-11-03. Dated vulnerability and build
 reports below describe their measured revisions and tags, not clearance of
 the v3 graph. Refresh notices, SBOMs, advisories and native package evidence
-before release. macOS 13 and Ubuntu 24.04 execution remain mandatory release
+before release. macOS 26 Tahoe and Ubuntu 24.04 execution remain mandatory release
 gates on unavailable hosts; NSIS qualification is pending. Hosted workflow
 execution is not authorized; use local macOS/local Ubuntu checks.
 

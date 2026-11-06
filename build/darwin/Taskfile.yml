@@ -11,4 +11,4 @@ tasks:
       CGO_ENABLED: '1'
       GOOS: darwin
       GOARCH: '{{.GOPMGR_BUILD_ARCH}}'
-      MACOSX_DEPLOYMENT_TARGET: '13.0'
+      MACOSX_DEPLOYMENT_TARGET: '26.0'

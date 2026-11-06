@@ -5,6 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Wails v3 migration design
 
+Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
+as the minimum. Earlier macOS 13 requirements and measurements below are
+historical; see [current policy](../engineering/macos26-support-policy.md).
+
 Status: **Approved for implementation on 2026-11-03; release approval remains separate.** Inspected
 2026-11-03 at `e193e993c1dd6972ed9b72a4c1758d06580f1a3c` on
 `fix/import-mixed-integer-precision`. That commit is an independent import

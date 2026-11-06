@@ -28,13 +28,13 @@ cat >"$fixture/bin/go" <<'STUB'
 #!/bin/bash
 set -eu
 case "$1" in
- env) case "$2" in GOOS) echo "${GOOS:-${HOST_OS:-darwin}}";; GOHOSTOS) echo "${HOST_OS:-darwin}";; GOARCH) echo "${GOARCH:-arm64}";; esac ;;
+ env) if [ "$2" = GOOS ] && [ "${BINDING_TARGET_LOOKUP_FAIL:-0}" = 1 ]; then exit 38; fi; case "$2" in GOOS) echo "${GOOS:-${HOST_OS:-darwin}}";; GOHOSTOS) echo "${HOST_OS:-darwin}";; GOARCH) echo "${GOARCH:-arm64}";; esac ;;
  version)
    [ -f "$3" ] || exit 93
    if [ "${HOST_OS:-darwin}" = windows ]; then [[ "$3" = *.exe ]] || exit 94; fi
    printf '\tmod\tgithub.com/wailsapp/wails/v3\t%s\n' "${CLI_VERSION:-v3.1.0}" ;;
  build)
-   printf 'go %s\nC=%s\nCXX=%s\nLD=%s\nCGO=%s\n' "$*" "${CGO_CFLAGS:-}" "${CGO_CXXFLAGS:-}" "${CGO_LDFLAGS:-}" "${CGO_ENABLED:-}" >> "$FIXTURE/trace"
+   printf 'go %s\nC=%s\nCXX=%s\nLD=%s\nCGO=%s\nMIN=%s\n' "$*" "${CGO_CFLAGS:-}" "${CGO_CXXFLAGS:-}" "${CGO_LDFLAGS:-}" "${CGO_ENABLED:-}" "${MACOSX_DEPLOYMENT_TARGET:-}" >> "$FIXTURE/trace"
    [ "${COMPILE_FAIL:-0}" = 0 ] || exit 42
    while [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then shift; output=$1; fi; shift; done
    if [ "${MISSING_OUTPUT:-0}" = 0 ]; then printf '#!/bin/sh\nexit 0\n' > "$output"; chmod +x "$output"; fi ;;
@@ -48,6 +48,7 @@ printf 'wails3 %s\n' "$*" >> "$FIXTURE/trace"
 case "$1 ${2:-}" in
  'version '*) echo v3.1.0 >&2 ;;
  'generate bindings')
+   printf 'BINDING_C=%s\nBINDING_CXX=%s\nBINDING_LD=%s\nBINDING_MIN=%s\n' "${CGO_CFLAGS:-}" "${CGO_CXXFLAGS:-}" "${CGO_LDFLAGS:-}" "${MACOSX_DEPLOYMENT_TARGET:-}" >> "$FIXTURE/trace"
    [ "${BINDINGS_FAIL:-0}" = 0 ] || exit 43
    while [ "$#" -gt 0 ]; do if [ "$1" = -d ]; then shift; output=$1; fi; shift; done
    mkdir -p "$output/gopmgr/internal/desktop"
@@ -141,23 +142,45 @@ assert identity.attrib['name'] == 'dev.gopmgr.gopmgr'
 assert identity.attrib['version'] == '1.1.0.0'
 CHECK
 then failures=$((failures + 1)); fi
+# A failed target lookup must stop binding generation, rather than falling
+# through the non-Darwin branch of a conditional substitution.
+: >trace
+lookup_status=0
+BINDING_TARGET_LOOKUP_FAIL=1 bash scripts/wails-v3-qualification.sh check >output 2>&1 || lookup_status=$?
+if [ "$lookup_status" -eq 0 ] || grep -q 'generate bindings' trace; then
+	echo 'FAIL failed binding target lookup was ignored'
+	failures=$((failures + 1))
+fi
 run_case 'successful macOS build' pass
 if ! python3 - <<'PY'
 import os, plistlib
 assert 'gopmgr.app' in os.listdir('build/bin'), 'bundle name must have exact lowercase spelling'
 with open('build/bin/gopmgr.app/Contents/Info.plist','rb') as f: p=plistlib.load(f)
-assert (p['CFBundleIdentifier'],p['CFBundleShortVersionString'],p['LSMinimumSystemVersion'],p['CFBundleExecutable']) == ('dev.gopmgr.GoPMgr','1.1.0','13.0.0','gopmgr')
+assert (p['CFBundleIdentifier'],p['CFBundleShortVersionString'],p['LSMinimumSystemVersion'],p['CFBundleExecutable']) == ('dev.gopmgr.GoPMgr','1.1.0','26.0.0','gopmgr')
 PY
 then failures=$((failures + 1)); fi
-for required in 'npm ci' 'npm run build' '-ts -i -names -time-type string' '-tags production' 'C=-mmacosx-version-min=13.0' 'CXX=-mmacosx-version-min=13.0' 'LD=-mmacosx-version-min=13.0' 'CGO=1'; do
+for required in 'npm ci' 'npm run build' '-ts -i -names -time-type string' '-tags production'; do
 	if ! grep -F -- "$required" trace >/dev/null; then
 		echo "FAIL missing $required"
 		failures=$((failures + 1))
 	fi
 done
+# Exact lines prevent a binding MIN field from satisfying the compiler field.
+for field in 'C=-mmacosx-version-min=26.0' 'CXX=-mmacosx-version-min=26.0' 'LD=-mmacosx-version-min=26.0' 'BINDING_C=-mmacosx-version-min=26.0' 'BINDING_CXX=-mmacosx-version-min=26.0' 'BINDING_LD=-mmacosx-version-min=26.0' 'BINDING_MIN=26.0' 'MIN=26.0' 'CGO=1'; do
+	if ! grep -Fx -- "$field" trace >/dev/null; then
+		echo "FAIL missing exact environment field: $field"
+		failures=$((failures + 1))
+	fi
+done
 run_case 'GTK4 unavailable has no fallback' fail HOST_OS=linux GTK_FAIL=1
 run_case 'Linux compile failure' fail HOST_OS=linux COMPILE_FAIL=1
-run_case 'Linux build' pass HOST_OS=linux
+run_case 'Linux build' pass CGO_CFLAGS=-DFIXTURE_C CGO_CXXFLAGS=-DFIXTURE_CXX CGO_LDFLAGS=-Lfixture HOST_OS=linux
+for preserved in 'C=-DFIXTURE_C' 'CXX=-DFIXTURE_CXX' 'LD=-Lfixture' 'BINDING_C=-DFIXTURE_C' 'BINDING_CXX=-DFIXTURE_CXX' 'BINDING_LD=-Lfixture'; do
+	if ! grep -Fx -- "$preserved" trace >/dev/null; then
+		echo "FAIL non-Darwin option changed: $preserved"
+		failures=$((failures + 1))
+	fi
+done
 if ! grep -F 'pkg-config --exists gtk4 webkitgtk-6.0' trace >/dev/null || [ ! -x build/bin/gopmgr ]; then
 	echo 'FAIL Linux GTK4/output contract'
 	failures=$((failures + 1))
@@ -177,6 +200,7 @@ import os, plistlib
 assert 'gopmgr.app' in os.listdir('build/bin'), 'bundle name must have exact lowercase spelling'
 with open('build/bin/gopmgr.app/Contents/Info.plist','rb') as f: p=plistlib.load(f)
 assert p['NSAppTransportSecurity']['NSAllowsLocalNetworking'] is True
+assert p['LSMinimumSystemVersion'] == '26.0.0', 'development minimum OS drift'
 CHECK
 then failures=$((failures + 1)); fi
 if bash scripts/wails-build.sh -platform darwin/arm64 >output 2>&1; then

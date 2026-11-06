@@ -46,7 +46,7 @@ The Wails v3 migration was approved on 2026-11-03. Frontend check/build and
 742 tests pass against the actual 209-method bindings; native macOS bridge
 qualification covers exact money, encrypted persistence, null/empty lists, and
 cleanup. This is development evidence, not completed package or release
-qualification. macOS 13 and Ubuntu 24.04 execution remain mandatory release
+qualification. macOS 26 Tahoe and Ubuntu 24.04 execution remain mandatory release
 gates on hosts that are currently unavailable; Windows NSIS qualification is
 pending. See [the migration design](docs/design/wails-v3-migration-design.md).
 Run verification locally; workflow edits do not authorize hosted CI.

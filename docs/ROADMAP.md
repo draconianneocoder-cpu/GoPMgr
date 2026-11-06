@@ -44,7 +44,7 @@ production bridge/dialog tests pass on macOS and Ubuntu. Local package builds
 and macOS/Linux bundled GUI checks pass; Linux packaged GUI under additional outer
 containment, installed-package lifecycle and final release checks remain open.
 Final integration review uses the owner-authorized self-review fallback after
-delegated reviewers reached their usage limit. macOS 13 and Ubuntu 24.04 remain
+delegated reviewers reached their usage limit. macOS 26 Tahoe and Ubuntu 24.04 remain
 support targets; their unavailable-host execution checks are mandatory before
 release, as approved by the maintainer. No full v3 release readiness is claimed.
 
@@ -87,8 +87,10 @@ module-only OpenPGP advisory while preserving existing crypto implementations.
 the selected 1.30.2 engine before sample generation, preserves external tools
 and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)
 confirms a macOS test/app deployment-setting mismatch. The proposed Make
-correction awaits deployment-precedence approval; compiler selection is
-unchanged. No new mandatory scanner target or hosted run was added.
+correction remains separate. The owner adopted the
+[macOS 26 Tahoe minimum](engineering/macos26-support-policy.md) for current
+builds and package metadata; compiler selection is unchanged. No new mandatory
+scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
 
