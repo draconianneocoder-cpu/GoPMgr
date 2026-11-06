@@ -31,8 +31,8 @@ reported mechanism, not every security property of the surrounding feature.
 | GS-07 | G204, printing/printing.go:88 | No supported command-injection defect: Unix uses separate arguments and a listed printer; Windows uses a fixed script, printer environment value and text stdin. Existing print-command/membership tests pass. Windows trusts inherited SystemRoot and has no native execution evidence here. |
 | GS-08 | G202, db/stakeholders.go:161 | Rejected-disproven: legacyReadColumns selects from caller-fixed identifiers/defaults; file-derived schema names affect membership only. Project/category data are bound parameters. Existing stakeholder tests pass; no dedicated malicious-schema test is claimed. |
 | GS-09 | G202, db/cost_control.go:255 | Rejected-disproven: the same fixed-column/default construction applies; project ID is parameterized. Existing cost-control/migration tests pass. |
-| GS-10 | G304, desktop/app_documents.go:1310 | No direct pathname-injection path identified: ReadFile consumes the generated GnuPG temporary pathname, not a ZIP/document-provided pathname. Trust in the local GnuPG executable and writable destination parent remains a separate boundary; sibling-path race resistance is not proved by this tracing. |
-| GS-11 | G304, desktop/app_documents.go:527 | Same generated-path boundary for combined reports. Final output uses the established private no-overwrite publisher. This does not establish that the earlier GnuPG temporary-path lifecycle is race-free. |
+| GS-10 | G304, desktop/app_documents.go:1310 | No direct pathname-injection path identified: ReadFile consumes the generated GnuPG temporary pathname, not a ZIP/document-provided pathname. A subsequent native synthetic-key probe confirms that GnuPG follows a planted output symlink after temporary-name removal and overwrites its target. Accepted-fixed under the [owner-approved private staging design](gnupg-private-staging-plan.md): both handlers use an owned OS-temporary directory and structural output validation before cleanup/publication. The consolidated helper ReadFile remains reported; no suppression or same-UID isolation claim is made. |
+| GS-11 | G304, desktop/app_documents.go:527 | Same generated-path boundary for combined reports. Final output uses the established private no-overwrite publisher. The same removed-name lifecycle is affected by the confirmed GnuPG symlink mechanism; the implemented private staging helper covers both entry points. |
 | GS-12 | G304, db/backup_restore.go:223 | The caller supplies the destination; archive entry names do not become extraction paths. However, tracing exposes the confirmed publication/scratch races below. The publication/scratch races are repaired as described below; this is not protection against a hostile writer replacing parent paths. |
 | GS-13 | G110, db/backup_restore.go:232 | Reported unbounded decoded-output mechanism is constrained by entry-size checks and Go 1.27.3's ZIP checksum reader. It returns ErrFormat before forwarding a read exceeding the declared size. A small understated-size archive is rejected without creating output. No universal CPU/internal-allocation bound is claimed. |
 | GS-14 | G110, db/backup_restore.go:207 | Same size enforcement applies while hashing. The malformed archive reaches the hash read, produces the wrapped ZIP format error, and never publishes. Certificate/project/manifest limits remain unchanged. |
@@ -41,8 +41,10 @@ Focused money, analytics, crypto, printing and database safeguard tests pass.
 Independent tracing supports the arithmetic, SQL and printing classifications.
 The restore-only scan exited 1 with thirteen findings after its direct
 OpenFile sink was removed. The subsequent escrow repair scan exits 1 with
-twelve findings: GS-06 is no longer reported and the other reports remain
-visible.
+twelve findings: GS-06 is no longer reported. The subsequent GnuPG staging
+repair consolidates two reported reads into one, leaving eleven reports,
+including the private helper ReadFile. This count reduction is consolidation,
+not a separate security clearance.
 Documentation is not a suppression or a clean security-scan result.
 
 ## Confirmed restore defects and acceptance criteria
@@ -144,10 +146,12 @@ Windows test-mode correction. No blocking finding remains in this repair.
   public signatures and valid v1 bytes. Numeric boundary tests and bounded
   propagation/fault checks do not establish a general memory budget or actual
   multi-gigabyte allocation behavior. No format migration is required.
-- GnuPG temporary paths: qualify whether a sibling writer in a shared
-  destination directory can replace the removed temporary pathname before
-  GnuPG creates its output. If confirmed, use private staging and validate
-  output before publication; do not infer race resistance from random names.
+- GnuPG temporary paths: the native output-symlink mechanism is confirmed.
+  The [owner-approved private staging repair](gnupg-private-staging-plan.md) covers
+  both exports, structural output validation and cleanup before publication.
+  Application regressions and native synthetic-key qualification now exercise
+  both export handlers; the private helper remains visible to the scanner.
+  Native mechanism evidence alone is not a full concurrent application exploit.
 - Scanner: native-environment propagation, erased silent helper failures and
   root-wide traversal remain separately documented work. Its advisory/strict
   policy remains unchanged.

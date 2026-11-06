@@ -92,8 +92,12 @@ baseline findings and repairs restore publication/scratch races with the
 owner-approved native no-replace contract. Extraction rechecks SHA-256 before
 publication. The [escrow length repair](engineering/escrow-field-length.md)
 checks the existing uint32 context-prefix limit and preserves frozen v1
-ciphertexts without a format migration. GnuPG temporary-path and scanner
-helper questions remain documented without suppressions.
+ciphertexts without a format migration. The GnuPG output-symlink mechanism is
+repaired with the owner-approved
+[private staging helper](engineering/gnupg-private-staging-plan.md). Both export
+handlers validate output and finish staging cleanup before sidecar publication.
+Scanner-helper repairs remain separate.
+No finding is suppressed.
 [PDF/A validator qualification](engineering/verapdf-provenance.md) now checks
 the selected 1.30.2 engine before sample generation, preserves external tools
 and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)
