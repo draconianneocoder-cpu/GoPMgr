@@ -99,8 +99,7 @@ Keep the earlier x/crypto report's 1.30.0 result as historical evidence. This
 1.30.2 run supplies the previously missing pinned-validator evidence for this
 local source tree, not general release approval.
 
-Next planned work is ADR-013 P6-E compiler-policy characterization: inspect the
-effective compiler and deployment target on macOS and Ubuntu before proposing
-Make changes. The recorded `CC := gcc` policy and newer-object/older-target linker
-warnings need native evidence; do not infer minimum-OS compatibility or change
-toolchains from those warnings alone.
+Follow-up: [P6-E native compiler characterization](adr-013-compiler-policy.md)
+now records the actual compiler, desktop link and deployment-target comparisons.
+Its proposed Make correction awaits approval; minimum-OS compatibility and
+compiler-selection changes are not inferred from the linker warnings.

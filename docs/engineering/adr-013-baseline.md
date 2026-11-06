@@ -171,7 +171,7 @@ or changed. Workflow source hashes below bind this receipt to its inputs.
 | Mutable vulnerability scanner (P6-C) | P0 CI installed `govulncheck@latest` | Fixed in [P6-C](adr-013-govulncheck.md); immutable v1.9.0 and scanner boundary qualification |
 | License check cleanup (P6-B) | P0 Make recipe deleted `.DS_Store` | Fixed in [P6-B](adr-013-license-check.md); explicit maintenance and sentinel/failure regressions |
 | Release REUSE skips (P6-D) | P0 script tolerated missing/broken executable | Fixed in [P6-D](adr-013-release-license-plan.md); mandatory licensing, no skip mode |
-| Compiler policy (P6-E) | `CC := gcc`; current Apple compiler behavior differs by host | Characterize natively before changing it |
+| Compiler policy (P6-E) | `CC := gcc`; native probes confirm test/app deployment-setting differences | [Characterized on macOS/Ubuntu](adr-013-compiler-policy.md); correction awaits policy approval |
 | Make-only usability | Current canonical targets do not depend on mise | Preserve; no claim for not-yet-created tool checks |
 | Tool bootstrap trust | Latest API metadata only, no downloaded artifact verification | P1 gate, not a verified supply chain |
 | Review scope | Independent P0 plan review passed; inventory corrections incorporated; final evidence review approved P0 exit | P0 review does not replace native Wails release qualification |
