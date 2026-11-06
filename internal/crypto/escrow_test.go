@@ -214,13 +214,21 @@ func TestAttestationSurvivesReserializingTheEscrowKey(t *testing.T) {
 // Different fields must never encode the same, or a value bound to one
 // owner could verify for another.
 func TestBindFieldsIsUnambiguous(t *testing.T) {
-	a := bindFields("label", []byte("ab"), []byte("c"))
-	b := bindFields("label", []byte("a"), []byte("bc"))
-	c := bindFields("label", []byte("abc"))
+	bind := func(label string, fields ...string) []byte {
+		t.Helper()
+		b, err := bindFields(label, fields...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	a := bind("label", "ab", "c")
+	b := bind("label", "a", "bc")
+	c := bind("label", "abc")
 	if bytes.Equal(a, b) || bytes.Equal(a, c) || bytes.Equal(b, c) {
 		t.Fatalf("bindFields collided: %x %x %x", a, b, c)
 	}
-	if bytes.Equal(bindFields("x/v1", []byte("u")), bindFields("x/v2", []byte("u"))) {
+	if bytes.Equal(bind("x/v1", "u"), bind("x/v2", "u")) {
 		t.Fatal("bindFields ignores the label")
 	}
 }

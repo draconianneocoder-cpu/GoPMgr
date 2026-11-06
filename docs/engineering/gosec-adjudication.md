@@ -27,7 +27,7 @@ reported mechanism, not every security property of the surrounding feature.
 | GS-03 | G115, analytics/rollup.go:27 | Rejected-disproven: conversion intentionally forms the low word of signed 128-bit addition, with sign extension in the high word. PortfolioRollupOverflow covers final range errors and intermediate cancellation. |
 | GS-04 | G115, analytics/rollup.go:28 | Rejected-disproven: bits.Add64 carry is zero or one, representable as int64. The accumulator tests exercise carry/overflow behavior. |
 | GS-05 | G115, analytics/rollup.go:32 | Rejected-disproven: narrowing supplies a candidate result; the high-word sign-extension check must pass before PortfolioRollup accepts it. Overflow/underflow tests apply. |
-| GS-06 | G115, crypto/escrow.go:78 | Accepted-deferred: appendField narrows an unchecked length to uint32. Normal usernames are limited to 3–32 characters and generated IDs/keys are small, but these callers do not establish a universal bound for exported crypto APIs or persisted inputs. Exploitability is unconfirmed; do not suppress as a false positive. |
+| GS-06 | G115, crypto/escrow.go:78 | Accepted-fixed: [escrow field-length repair](escrow-field-length.md) checks the inclusive uint32 byte-length bound before narrowing/copying and propagates errors. Frozen baseline ciphertexts preserve valid v1 compatibility. Application exploitability was not demonstrated; no suppression was added. |
 | GS-07 | G204, printing/printing.go:88 | No supported command-injection defect: Unix uses separate arguments and a listed printer; Windows uses a fixed script, printer environment value and text stdin. Existing print-command/membership tests pass. Windows trusts inherited SystemRoot and has no native execution evidence here. |
 | GS-08 | G202, db/stakeholders.go:161 | Rejected-disproven: legacyReadColumns selects from caller-fixed identifiers/defaults; file-derived schema names affect membership only. Project/category data are bound parameters. Existing stakeholder tests pass; no dedicated malicious-schema test is claimed. |
 | GS-09 | G202, db/cost_control.go:255 | Rejected-disproven: the same fixed-column/default construction applies; project ID is parameterized. Existing cost-control/migration tests pass. |
@@ -39,8 +39,10 @@ reported mechanism, not every security property of the surrounding feature.
 
 Focused money, analytics, crypto, printing and database safeguard tests pass.
 Independent tracing supports the arithmetic, SQL and printing classifications.
-The post-repair scan exits 1 with thirteen findings: the direct restore
-OpenFile sink is gone, while the other rule findings remain visible.
+The restore-only scan exited 1 with thirteen findings after its direct
+OpenFile sink was removed. The subsequent escrow repair scan exits 1 with
+twelve findings: GS-06 is no longer reported and the other reports remain
+visible.
 Documentation is not a suppression or a clean security-scan result.
 
 ## Confirmed restore defects and acceptance criteria
@@ -132,17 +134,16 @@ validation order.
 
 The native publication and extraction-integrity acceptance criteria pass within
 the tested scope. The broader gosec investigation still has the explicitly open
-questions below; thirteen remaining reports are not silently waived.
+questions below; remaining reports are not silently waived.
 Independent plan, mid-work and final reviews approved the repair after the
 Windows test-mode correction. No blocking finding remains in this repair.
 
 ## Remaining plans and proof limits
 
-- Escrow: establish and enforce the uint32 field-length invariant without
-  changing existing serialized bytes or public function signatures. Trace all
-  callers and persisted values; use a length-validation seam to test the
-  2^32 boundary without allocating multi-gigabyte fixtures. Preserve existing
-  ciphertext/AAD compatibility, purpose/owner binding, and failure behavior.
+- Escrow: the [length-invariant repair](escrow-field-length.md) preserves
+  public signatures and valid v1 bytes. Numeric boundary tests and bounded
+  propagation/fault checks do not establish a general memory budget or actual
+  multi-gigabyte allocation behavior. No format migration is required.
 - GnuPG temporary paths: qualify whether a sibling writer in a shared
   destination directory can replace the removed temporary pathname before
   GnuPG creates its output. If confirmed, use private staging and validate
