@@ -309,7 +309,9 @@ Some gates use optional or required tools outside Go/npm:
 
 - `reuse`: REUSE/SPDX license checks.
 - `veraPDF`, Docker with the veraPDF image, or Java to run the SHA-256-pinned
-  veraPDF installer the gate downloads: strict PDF/A-2u validation.
+  veraPDF 1.30.2 installer the gate downloads: strict PDF/A-2u validation.
+  The selected CLI or Docker command must report that exact version and return
+  success for each sample. See [version checks and recovery](engineering/verapdf-provenance.md).
 - `qpdf`: PDF syntax validation in external PAdES checks.
 - `pdfsig`: Poppler signature validation in external PAdES checks.
 - `openssl`: CMS ASN.1 and detached signature verification.

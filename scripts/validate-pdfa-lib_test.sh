@@ -87,28 +87,139 @@ chmod +x "$probe_dir/nested/verapdf"
 assert_eq "$(find_verapdf_executable "$probe_dir")" "$probe_dir/nested/verapdf" "portable veraPDF executable lookup"
 rm -rf "$probe_dir"
 
-bad_archive="$ROOT/.tmp/not-a-valid-jar.zip"
-mkdir -p "$ROOT/.tmp"
-printf '%s\n' 'not a zip archive' >"$bad_archive"
-command -v zip_archive_is_valid >/dev/null 2>&1 || fail "zip_archive_is_valid helper is missing"
-if zip_archive_is_valid "$bad_archive"; then
-	fail "invalid veraPDF archive was accepted"
-fi
-rm -f "$bad_archive"
-
-bad_jar="$ROOT/.tmp/bad-verapdf.jar"
-bad_wrapper="$ROOT/.tmp/bad-verapdf-wrapper"
-printf '%s\n' 'not a jar' >"$bad_jar"
-cat >"$bad_wrapper" <<EOF
+# A selected validator with the wrong identity must not reach generation or
+# modify samples, even if it would return compliant XML for every document.
+identity_root="$(mktemp -d "$ROOT/.tmp/verapdf-identity.XXXXXX")"
+cleanup_identity() {
+	rm -r "$identity_root"
+}
+trap cleanup_identity EXIT
+mkdir -p "$identity_root/scripts" "$identity_root/bin" "$identity_root/.tmp/gopmgr-pdfa-test"
+cp "$ROOT/scripts/validate-pdfa.sh" "$ROOT/scripts/validate-pdfa-lib.sh" "$identity_root/scripts/"
+printf 'profile' >"$identity_root/profile.icc"
+printf 'preserve sample' >"$identity_root/.tmp/gopmgr-pdfa-test/sentinel"
+cat >"$identity_root/bin/verapdf" <<'EOF'
 #!/bin/bash
-java -jar "$bad_jar" "\$@"
-EOF
-chmod +x "$bad_wrapper"
-command -v verapdf_cli_needs_refresh >/dev/null 2>&1 || fail "verapdf_cli_needs_refresh helper is missing"
-if ! verapdf_cli_needs_refresh "$bad_wrapper" "$bad_jar"; then
-	fail "invalid veraPDF jar wrapper was not marked for refresh"
+if [ "$1" = '--version' ]; then
+	printf '%s\n' "$FAKE_IDENTITY"
+	exit "${FAKE_PROBE_STATUS:-0}"
 fi
-rm -f "$bad_jar" "$bad_wrapper"
+printf 'validation reached' >"$IDENTITY_ROOT/validated"
+printf '<isCompliant>true</isCompliant>\n'
+EOF
+cat >"$identity_root/bin/go" <<'EOF'
+#!/bin/bash
+printf 'generation reached' >"$IDENTITY_ROOT/generated"
+exit 1
+EOF
+printf '# legacy jar: %s\n' "$identity_root/.tmp/verapdf/verapdf-app.jar" >>"$identity_root/bin/verapdf"
+chmod +x "$identity_root/bin/"*
+external_hash="$(shasum -a 256 "$identity_root/bin/verapdf")"
+external_mode="$(python3 -c 'import os, sys; print(os.stat(sys.argv[1]).st_mode)' "$identity_root/bin/verapdf")"
+for mode in cli docker; do
+	if [ "$mode" = docker ]; then
+		cat >"$identity_root/bin/docker" <<'EOF'
+#!/bin/bash
+# The gate must probe the same container command it uses for validation.
+while [ "$#" -gt 0 ] && [ "$1" != 'verapdf/cli:v1.30.2' ]; do shift; done
+[ "$#" -gt 0 ] || exit 2
+shift
+exec "$IDENTITY_ROOT/bin/verapdf" "$@"
+EOF
+		chmod +x "$identity_root/bin/docker"
+	fi
+	for identity in 'veraPDF 1.30.0' 'veraPDF 1.30.20' 'not a version' $'veraPDF 1.30.2\nveraPDF 1.30.0' $'veraPDF 1.30.2\nveraPDF 1.30.2'; do
+		for strict in 1 0; do
+			status=0
+			output="$(IDENTITY_ROOT="$identity_root" FAKE_IDENTITY="$identity" GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT="$strict" GOPMGR_VERAPDF_FORCE_CLI="$([ "$mode" = cli ] && echo 1 || echo 0)" PATH="$identity_root/bin:$PATH" bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+			if [ "$strict" = 1 ]; then
+				[ "$status" -ne 0 ] || fail "$mode accepted mismatched identity"
+			else
+				[ "$status" -eq 0 ] || fail "$mode non-strict identity did not skip"
+				case "$output" in *'SKIP:'*) ;; *) fail "missing explicit skip" ;; esac
+			fi
+			case "$output" in *'expected veraPDF 1.30.2'*) ;; *) fail "$mode did not reject identity before generation: $output" ;; esac
+			[ ! -e "$identity_root/generated" ] || fail "identity failure generated PDFs"
+			[ ! -e "$identity_root/validated" ] || fail "identity failure validated PDFs"
+			assert_eq "$(cat "$identity_root/.tmp/gopmgr-pdfa-test/sentinel")" 'preserve sample' 'identity failure preserves samples'
+		done
+	done
+	for strict in 1 0; do
+		status=0
+		output="$(IDENTITY_ROOT="$identity_root" FAKE_IDENTITY='veraPDF 1.30.2' FAKE_PROBE_STATUS=1 GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT="$strict" GOPMGR_VERAPDF_FORCE_CLI="$([ "$mode" = cli ] && echo 1 || echo 0)" PATH="$identity_root/bin:$PATH" bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+		if [ "$strict" = 1 ]; then
+			[ "$status" -ne 0 ] || fail "failed version probe accepted"
+		else
+			[ "$status" -eq 0 ] || fail "failed non-strict probe did not skip"
+			case "$output" in *'SKIP:'*) ;; *) fail 'failed probe skip not explicit' ;; esac
+		fi
+		case "$output" in *'expected veraPDF 1.30.2'*) ;; *) fail "failed probe not diagnosed" ;; esac
+		[ ! -e "$identity_root/generated" ] || fail "failed probe generated PDFs"
+	done
+done
+assert_eq "$(shasum -a 256 "$identity_root/bin/verapdf")" "$external_hash" 'external executable bytes'
+assert_eq "$(python3 -c 'import os, sys; print(os.stat(sys.argv[1]).st_mode)' "$identity_root/bin/verapdf")" "$external_mode" 'external executable permissions'
+# Exercise installer failures without downloads or a global Java installation.
+# These boundary fakes model only the pinned archive and installer side effects.
+rm "$identity_root/bin/verapdf" "$identity_root/bin/docker"
+for tool in dirname mkdir awk tr cat mktemp rm mv chmod; do
+	ln -s "$(command -v "$tool")" "$identity_root/bin/$tool"
+done
+cat >"$identity_root/bin/sha256sum" <<'EOF'
+#!/bin/bash
+printf '6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838  %s\n' "$1"
+EOF
+cat >"$identity_root/bin/unzip" <<'EOF'
+#!/bin/bash
+mkdir -p "$4/verapdf-greenfield-1.30.2"
+printf 'fixture installer' >"$4/verapdf-greenfield-1.30.2/verapdf-izpack-installer-1.30.2.jar"
+EOF
+cat >"$identity_root/bin/java" <<'EOF'
+#!/bin/bash
+install_dir="${2%/installer/*}/verapdf"
+mkdir -p "$install_dir"
+cat >"$install_dir/verapdf" <<'CLI'
+#!/bin/bash
+printf 'veraPDF %s\n' "${FAKE_CANDIDATE_VERSION:-1.30.0}"
+CLI
+chmod +x "$install_dir/verapdf"
+EOF
+chmod +x "$identity_root/bin/sha256sum" "$identity_root/bin/unzip" "$identity_root/bin/java"
+mkdir -p "$identity_root/.tmp/verapdf"
+printf 'fixture archive' >"$identity_root/.tmp/verapdf/verapdf-greenfield-1.30.2-installer.zip"
+status=0
+output="$(GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT=1 GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$identity_root/bin" /bin/bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+[ "$status" -ne 0 ] || fail 'wrong installed identity accepted'
+[ ! -e "$identity_root/.tmp/verapdf/verapdf-1.30.2" ] || fail 'wrong installed identity promoted to managed cache'
+mkdir -p "$identity_root/.tmp/verapdf/verapdf-1.30.2"
+printf 'preserve cache' >"$identity_root/.tmp/verapdf/verapdf-1.30.2/sentinel"
+status=0
+output="$(GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT=1 GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$identity_root/bin" /bin/bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+[ "$status" -ne 0 ] || fail 'unusable existing cache accepted'
+assert_eq "$(cat "$identity_root/.tmp/verapdf/verapdf-1.30.2/sentinel")" 'preserve cache' 'failed installation preserves existing cache'
+# A failed promotion must not turn into a successful install, and an existing
+# symlink must never be followed or replaced by automatic cache repair.
+rm "$identity_root/.tmp/verapdf/verapdf-1.30.2/sentinel"
+rmdir "$identity_root/.tmp/verapdf/verapdf-1.30.2"
+rm "$identity_root/bin/mv"
+cat >"$identity_root/bin/mv" <<'EOF'
+#!/bin/bash
+exit 1
+EOF
+chmod +x "$identity_root/bin/mv"
+status=0
+output="$(FAKE_CANDIDATE_VERSION=1.30.2 GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT=1 GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$identity_root/bin" /bin/bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+[ "$status" -ne 0 ] || fail 'promotion failure accepted'
+case "$output" in *'Could not install the pinned veraPDF CLI'*) ;; *) fail 'promotion failure not propagated' ;; esac
+[ ! -e "$identity_root/.tmp/verapdf/verapdf-1.30.2" ] || fail 'failed promotion left managed installation'
+ln -s "$identity_root/.tmp/gopmgr-pdfa-test" "$identity_root/.tmp/verapdf/verapdf-1.30.2"
+status=0
+output="$(GOPMGR_ICC_PROFILE="$identity_root/profile.icc" GOPMGR_PDFA_STRICT=1 GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$identity_root/bin" /bin/bash "$identity_root/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+[ "$status" -ne 0 ] || fail 'unusable cache symlink accepted'
+[ -L "$identity_root/.tmp/verapdf/verapdf-1.30.2" ] || fail 'cache symlink replaced'
+assert_eq "$(cat "$identity_root/.tmp/gopmgr-pdfa-test/sentinel")" 'preserve sample' 'cache symlink target preserved'
+cleanup_identity
+trap - EXIT
 
 fake_verapdf_dir="$ROOT/.tmp/verapdf-bin-test"
 fake_verapdf="$fake_verapdf_dir/verapdf"
@@ -121,8 +232,14 @@ trap cleanup_fake_verapdf EXIT
 fake_verapdf_log="$fake_verapdf_dir/verapdf.args"
 cat >"$fake_verapdf" <<EOF
 #!/bin/bash
+if [ "\$1" = '--version' ]; then
+	printf 'WARNING: fixture Java warning\\n' >&2
+	printf 'veraPDF 1.30.2\\n'
+	exit 0
+fi
 printf '%s\\n' "\$*" >> "$fake_verapdf_log"
 printf '%s\\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
+exit "\${FAKE_VALIDATION_STATUS:-0}"
 EOF
 chmod +x "$fake_verapdf"
 
@@ -181,6 +298,13 @@ case "$gate_output" in
 	;;
 esac
 
+# A successful identity probe must not mask a later validator execution error,
+# even if the failed invocation prints a positive compliance fragment.
+status=0
+output="$(FAKE_VALIDATION_STATUS=1 GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$fake_verapdf_dir:$PATH" bash "$ROOT/scripts/validate-pdfa.sh" 2>&1)" || status=$?
+[ "$status" -ne 0 ] || fail 'validator execution failure accepted as conformance success'
+case "$output" in *'PDF/A validation gate FAILED.'*) ;; *) fail 'validation execution failure was not diagnosed' ;; esac
+
 # Exercise the Docker branch without contacting a registry. The fake records
 # the exact invocation and returns compliant XML, proving the gate selects the
 # pinned official image and translates repo-local samples to /work paths.
@@ -189,6 +313,9 @@ fake_docker_log="$fake_verapdf_dir/docker.args"
 cat >"$fake_docker" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "$GOPMGR_FAKE_DOCKER_LOG"
+case "$*" in
+*' --version') printf 'veraPDF 1.30.2\n'; exit 0 ;;
+esac
 printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
 EOF
 chmod +x "$fake_docker"

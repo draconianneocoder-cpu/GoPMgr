@@ -62,35 +62,21 @@ find_verapdf_executable() {
 	return 1
 }
 
-zip_archive_is_valid() {
-	local path
-	path="$1"
-
-	if [ ! -s "$path" ]; then
-		return 1
-	fi
-
-	if command -v unzip >/dev/null 2>&1; then
-		unzip -tq "$path" >/dev/null 2>&1
-		return $?
-	fi
-
-	return 0
-}
-
-verapdf_cli_needs_refresh() {
-	local cli jar
-	cli="$1"
-	jar="$2"
-
-	if [ ! -x "$cli" ]; then
+# Probe the selected command, including Docker arguments. Version consistency
+# is separate from the installer's SHA-256 provenance check.
+verapdf_require_version() {
+	local expected output
+	expected="$1"
+	shift
+	if output="$("$@" --version 2>&1)" &&
+		printf '%s\n' "$output" | awk -v expected="veraPDF $expected" '
+			$1 == "veraPDF" { count++; if ($0 != expected) bad = 1 }
+			END { exit !(count == 1 && !bad) }
+		'; then
 		return 0
 	fi
-
-	if grep -F "$jar" "$cli" >/dev/null 2>&1 && ! zip_archive_is_valid "$jar"; then
-		return 0
-	fi
-
+	printf 'Validator identity check failed: expected veraPDF %s from %s.\n' "$expected" "$1" >&2
+	printf '%s\n' "$output" >&2
 	return 1
 }
 

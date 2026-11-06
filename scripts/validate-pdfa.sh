@@ -71,9 +71,6 @@ VERAPDF_CACHE="$ROOT/.tmp/verapdf"
 VERAPDF_DIR="${VERAPDF_CACHE}/verapdf-${VERAPDF_VERSION}"
 VERAPDF_CLI="${VERAPDF_DIR}/verapdf"
 VERAPDF_INSTALLER_ZIP="${VERAPDF_CACHE}/verapdf-greenfield-${VERAPDF_VERSION}-installer.zip"
-# Older versions of this gate wrapped a downloaded jar in a script; such a
-# wrapper around a broken jar is replaced by a fresh install.
-VERAPDF_JAR="${VERAPDF_CACHE}/verapdf-app.jar"
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pdfa-test"
 SAMPLES=(
 	schedule.pdf
@@ -93,6 +90,10 @@ SAMPLES=(
 # half-installed CLI in place.
 install_verapdf_cli() {
 	local tmp_zip tmp_dir installer
+	if [ -e "$VERAPDF_DIR" ] || [ -L "$VERAPDF_DIR" ]; then
+		echo "Managed veraPDF cache exists but is unusable: $VERAPDF_DIR. Repair it explicitly; it will not be replaced."
+		return 1
+	fi
 	if ! command -v java >/dev/null 2>&1; then
 		echo "veraPDF needs Java, and no java command is on PATH."
 		return 1
@@ -132,8 +133,14 @@ install_verapdf_cli() {
 		echo "The veraPDF installer did not produce a verapdf command."
 		return 1
 	fi
-	rm -rf "$VERAPDF_DIR"
-	mv "$tmp_dir/verapdf" "$VERAPDF_DIR"
+	if ! verapdf_require_version "$VERAPDF_VERSION" "$tmp_dir/verapdf/verapdf"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	if ! mv "$tmp_dir/verapdf" "$VERAPDF_DIR"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
 	rm -rf "$tmp_dir"
 }
 
@@ -161,17 +168,20 @@ else
 	if command -v verapdf >/dev/null 2>&1; then
 		VERAPDF_CLI="$(command -v verapdf)"
 	fi
-	if verapdf_cli_needs_refresh "$VERAPDF_CLI" "$VERAPDF_JAR"; then
-		rm -f "$VERAPDF_CLI"
-	fi
 	if [ ! -x "$VERAPDF_CLI" ]; then
-		install_verapdf_cli || true
+		if ! install_verapdf_cli; then
+			pdfa_precondition_unmet "Could not install the pinned veraPDF CLI; inspect the diagnostic above and repair the managed cache or PATH explicitly."
+		fi
 	fi
 	if [ ! -x "$VERAPDF_CLI" ]; then
 		pdfa_precondition_unmet "Could not obtain a veraPDF CLI (no Docker, none on PATH, and the pinned installer could not be downloaded, verified, or run); cannot validate PDF/A-2u."
 	fi
 	VERAPDF_MODE="cli"
 	VERAPDF_CMD=("$VERAPDF_CLI")
+fi
+
+if ! verapdf_require_version "$VERAPDF_VERSION" "${VERAPDF_CMD[@]}"; then
+	pdfa_precondition_unmet "Validator version is unverified; expected veraPDF $VERAPDF_VERSION. Provide that version on PATH or use the pinned Docker image. No samples were generated."
 fi
 
 # --- 3. Generate representative PDFs ------------------------------------
@@ -566,8 +576,8 @@ for name in "${SAMPLES[@]}"; do
 	pdf="$SAMPLE_DIR/$name"
 	echo "  Checking $name ..."
 	sample_arg="$(verapdf_sample_arg "$VERAPDF_MODE" "$ROOT" "$pdf")"
-	output="$("${VERAPDF_CMD[@]}" --format xml -f 2u "$sample_arg" 2>&1 || true)"
-	if printf '%s\n' "$output" | verapdf_output_is_compliant; then
+	if output="$("${VERAPDF_CMD[@]}" --format xml -f 2u "$sample_arg" 2>&1)" &&
+		printf '%s\n' "$output" | verapdf_output_is_compliant; then
 		echo "    OK - $name is PDF/A-2u compliant"
 	else
 		echo "    FAIL - $name did not pass PDF/A-2u validation"

@@ -139,3 +139,7 @@ Reject a mismatched or broken executable with clear remediation. Qualify the
 approved exact artifact and PDF/A samples; preserve read-only validation and do
 not remove or replace a system-installed executable. No global tool change is
 part of this crypto dependency repair.
+
+Follow-up: [validator version enforcement](verapdf-provenance.md) now addresses
+this gap and records a separate local 1.30.2 qualification. The earlier 1.30.0
+results above remain historical evidence for the dependency repair.
