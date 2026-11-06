@@ -10,7 +10,9 @@ Characterization complete on the available macOS and Ubuntu hosts. These
 measurements predate the subsequent owner decision adopting macOS 26 Tahoe.
 See the [current support policy](macos26-support-policy.md). The 13.0 measurements
 below remain historical; the proposed Make correction now targets 26.0 and is
-not implemented by the support-version change. P6-E remains incomplete.
+not implemented by the support-version change. The subsequent
+[Make environment slice](adr-013-native-make-environment.md) implements five
+test/race/coverage paths; direct release/helper paths and full P6-E closure remain.
 
 ## Current behavior and evidence
 

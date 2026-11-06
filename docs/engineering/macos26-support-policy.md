@@ -29,10 +29,10 @@ preserved Linux options, and an actual production executable whose Mach-O
 minimum matches its bundle metadata. These requirements have local regression
 and artifact evidence; native 26 execution remains a release gate below.
 
-The wider [P6-E Make alignment proposal](adr-013-compiler-policy.md) now targets 26
-but remains separate and unimplemented. Ordinary Make tests can still compile
-with their old settings; they do not establish support below 26 or qualify the
-current app artifact. Historical 13.0 characterization has not been rewritten as
+The subsequent [P6-E Make environment slice](adr-013-native-make-environment.md)
+aligns test/race and three coverage targets with 26. Direct Go/release/helper
+commands remain outside that bounded change; no test run qualifies the current
+app artifact or minimum-OS execution by implication. Historical 13.0 characterization has not been rewritten as
 26.0 evidence.
 
 ## Verification
@@ -80,9 +80,8 @@ old measurements.
   Before hosted/release use, inspect the actual runner OS and SDK, choose an
   authorized suitable runner, and run the new app there. Do not infer the
   current value of a moving runner label. Workflows were not changed or run.
-- Next implementation priority is native Make test/race/coverage alignment with
-  the 26.0 baseline. Retain compiler rules, preserve unrelated flags/defaults,
-  define conflict handling, and test target isolation before modifying Make.
+- Make test/race/coverage alignment is recorded in the subsequent environment
+  slice linked above. Direct release/helper callers remain a separate follow-up.
   Do not hide linker warnings or patch the upstream Wails module cache.
 
 The support-policy change supersedes macOS 13 as a current release target; it

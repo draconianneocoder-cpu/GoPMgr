@@ -8,6 +8,7 @@ CC      := gcc
 GO      := go
 WAILS   := .tmp/wails-v3/bin/wails3
 NPM     := npm
+NATIVE_ENV := python3 scripts/native-go-env.py
 # Build arguments are reviewed task variables (DEV, ARCH, EXTRA_LDFLAGS),
 # never legacy Wails v2 CLI flags. GTK4 is the standard v3 CGO backend.
 WAILS_BUILD_FLAGS ?=
@@ -32,7 +33,7 @@ export CC
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
-        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests \
+        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
         shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests workflow-security workflow-security-tests
 
@@ -145,14 +146,17 @@ pades-lock-test: ## Verify PAdES lock acquisition is bounded and never reclaims 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
 	@bash scripts/validate-encrypted-db.sh
 
+native-go-env-tests: ## Verify native test environments, target isolation and failure propagation.
+	@python3 -B scripts/native-go-env_test.py
+
 test: ## Run Go unit tests.
-	$(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
+	$(NATIVE_ENV) "$(GO)" -- $(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
-	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
+	$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -170,7 +174,7 @@ coverage-ledger-current: ## Fail if a *_test.go/*.{test,spec}.{ts,js} file exist
 
 coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LEDGER.md no longer matches live `go test -cover` output. Runs separately from local `verify` because it runs the full coverage pass; the blocking CI assurance job runs it on the pinned macOS baseline used by the ledger.
 	@bash scripts/check-coverage-ledger-drift_test.sh
-	@bash scripts/check-coverage-ledger-drift.sh
+	@$(NATIVE_ENV) go -- bash scripts/check-coverage-ledger-drift.sh
 
 no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_at/updated_at TEXT column instead of its _unixnano sort-key sibling.
 	@bash scripts/check-no-text-timestamp-ordering_test.sh
@@ -181,10 +185,10 @@ no-raw-import-in-tests: ## Fail if a frontend *.test.ts/*.spec.ts file imports a
 	@bash scripts/check-no-raw-import-in-tests.sh
 
 coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go and frontend, tracked independently). Remains a manual signal; the CI assurance job currently enforces ledger-heading drift, not high-water-mark policy.
-	@bash scripts/coverage-ratchet.sh
+	@$(NATIVE_ENV) go -- bash scripts/coverage-ratchet.sh
 
 coverage-ratchet-update: ## Re-run the ratchet and record any improved marks in coverage-baseline.json. Run this after adding tests; never after a real regression.
-	@bash scripts/coverage-ratchet.sh --update
+	@$(NATIVE_ENV) go -- bash scripts/coverage-ratchet.sh --update
 
 coverage-go-cleanup-tests: ## Verify successful Go coverage runs self-clean and failed runs retain diagnostics.
 	@bash scripts/coverage-go-cleanup_test.sh

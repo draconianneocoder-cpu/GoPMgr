@@ -33,7 +33,7 @@ fi
 # maintainer command lines are release-gate candidates. No first-party
 # quality gate may use an all-package pattern that also discovers Go packages
 # embedded in generated or third-party trees such as frontend/node_modules.
-if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((go|\$\(GO\))[[:space:]]+(test|vet)|staticcheck|gosec|govulncheck)[^;&|]*[[:space:]]\./\.\.\.([[:space:]]|$)' Makefile scripts >"$go_scope_matches"; then
+if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((\$\(NATIVE_ENV\)[[:space:]]+"\$\(GO\)"[[:space:]]+--[[:space:]]+)?(go|\$\(GO\))[[:space:]]+(test|vet)|staticcheck|gosec|govulncheck)[^;&|]*[[:space:]]\./\.\.\.([[:space:]]|$)' Makefile scripts >"$go_scope_matches"; then
 	echo "release-scope: Go quality gates must use explicit first-party package roots instead of ./..." >&2
 	cat "$go_scope_matches" >&2
 	fail=1
@@ -64,8 +64,10 @@ if command -v go >/dev/null 2>&1; then
 fi
 RACE
 )"
-if [ "$race_recipe" != $'\t$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)' ] ||
+if [ "$race_recipe" != $'\t$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)' ] ||
 	[ "$release_race" != "$expected_release_race" ] ||
+	! rg -qx 'NATIVE_ENV := python3 scripts/native-go-env\.py' Makefile ||
+	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*NATIVE_ENV[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
 	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*GO_PACKAGES[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
 	! rg -qx 'GO_PACKAGES := \. \./internal/\.\.\. \./tools/\.\.\.' Makefile ||
 	[ "$(rg -c '^[[:space:]]*(export[[:space:]]+)?GO_PACKAGES=' scripts/check-release.sh)" != 1 ] ||

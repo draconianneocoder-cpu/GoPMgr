@@ -65,6 +65,13 @@ unscoped_command="$(new_fixture unscoped-command)"
 printf '%s\n' 'quality-check:' $'\tgo test ./...' >>"$unscoped_command/Makefile"
 expect_failure "$unscoped_command" "Go quality gates must use explicit first-party package roots"
 
+wrapped_unscoped="$(new_fixture wrapped-unscoped)"
+cat >>"$wrapped_unscoped/Makefile" <<'MAKE'
+quality-check:
+	$(NATIVE_ENV) "$(GO)" -- $(GO) test ./...
+MAKE
+expect_failure "$wrapped_unscoped" "Go quality gates must use explicit first-party package roots"
+
 unscoped_script="$(new_fixture unscoped-script)"
 printf '%s\n' 'go test ./...' >"$unscoped_script/scripts/quality-check.sh"
 expect_failure "$unscoped_script" "Go quality gates must use explicit first-party package roots"
@@ -103,7 +110,7 @@ for entrypoint in Makefile scripts/check-release.sh; do
 		scope) perl -0pi -e 's{\./internal/\.\.\.}{./internal/users}g' "$race_policy/$entrypoint" ;;
 		ignored-failure)
 			if [ "$entrypoint" = Makefile ]; then
-				perl -0pi -e 's/^(\t)(\$\(GO\) test -race)/$1-$2/m' "$race_policy/$entrypoint"
+				perl -0pi -e 's/^(\t)(\$\(NATIVE_ENV\) "\$\(GO\)" -- \$\(GO\) test -race)/$1-$2/m' "$race_policy/$entrypoint"
 			else
 				perl -0pi -e 's/(Race detector flagged tests[^\n]*\n\s*)exit 1/${1}exit 0/' "$race_policy/$entrypoint"
 			fi
@@ -137,6 +144,9 @@ for entrypoint in Makefile scripts/check-release.sh; do
 			fi
 			;;
 		esac
+		if cmp -s "$ROOT/$entrypoint" "$race_policy/$entrypoint"; then
+			fail "race policy mutation did not apply: $entrypoint/$mutation"
+		fi
 		expect_failure "$race_policy" 'race entrypoints must preserve uncached, bounded-package tests'
 	done
 done
