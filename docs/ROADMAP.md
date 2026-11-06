@@ -83,6 +83,10 @@ verified stable v1.9.0 release and tests text-mode failure propagation. Other
 P6 repairs and P7–P9 remain. The separately owner-approved
 [x/crypto dependency repair](engineering/xcrypto-advisory-plan.md) removes the
 module-only OpenPGP advisory while preserving existing crypto implementations.
+[Decompression dependency repair](engineering/decompression-advisory-repair.md)
+addresses the subsequently reported called Brotli/compress advisories through
+two bounded upstream pin changes. Scanner environment, helper failure handling
+and gosec adjudication remain separate follow-up work.
 [PDF/A validator qualification](engineering/verapdf-provenance.md) now checks
 the selected 1.30.2 engine before sample generation, preserves external tools
 and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)

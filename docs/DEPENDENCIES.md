@@ -390,6 +390,16 @@ regression when the embedded SQLite core changes. Do not remove the local
 replacement until an upstream driver release containing both corrections passes
 the COMMIT/ROLLBACK regressions and the same encrypted-file interchange checks.
 
+## Decompression advisory repair, 2026-11-06
+
+The selected Brotli v1.2.7 and compress v1.20.2 tags meet the fixed boundaries
+for GO-2026-6888 and GO-2026-6865. The baseline scan reported called symbols;
+these are not module-only findings. The two-version repair preserves the
+existing Parquet codecs and application formats. See the
+[repair plan, regression evidence and limits](engineering/decompression-advisory-repair.md).
+These minimum-fixed tags deliberately exclude newer patch releases pending
+separate maintenance; do not treat this dated repair as permanent clearance.
+
 ## Arrow's linked modules (2026-11-02)
 
 Replacing DuckDB with a Go-native engine made `github.com/apache/arrow-go/v18`
@@ -422,5 +432,6 @@ release binaries. Historical review evidence (2026-11-02, before Wails v3):
 - Licenses and producers come from each module's own license files and are
   recorded in `tools/sbom/components.json`; their texts are in
   `third_party/GO-MODULE-NOTICES.txt` (`make module-notices`).
-- A Parquet file is read only through the handle the import already checked,
-  with a 512 MiB allocator cap that also bounds decompression.
+- A Parquet file is read only through the handle the import already checked.
+  A 512 MiB cap bounds allocations routed through Arrow, including its page
+  buffers; it does not cover every allocation inside a compression codec.

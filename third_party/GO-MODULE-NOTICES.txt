@@ -15,7 +15,7 @@ Contents
 --------
 
   std
-  github.com/andybalholm/brotli v1.2.0
+  github.com/andybalholm/brotli v1.2.7
   github.com/apache/arrow-go/v18 v18.5.1
   github.com/apache/thrift v0.24.0
   github.com/cespare/xxhash/v2 v2.3.0
@@ -30,7 +30,7 @@ Contents
   github.com/google/flatbuffers v25.12.19+incompatible
   github.com/google/uuid v1.6.0
   github.com/gorules/zen-go v0.20.0
-  github.com/klauspost/compress v1.18.7
+  github.com/klauspost/compress v1.20.2
   github.com/klauspost/cpuid/v2 v2.3.0
   github.com/mutecomm/go-sqlcipher/v4 v4.4.2
   github.com/pierrec/lz4/v4 v4.1.25
@@ -120,7 +120,7 @@ rights granted to you under this License for this implementation of Go
 shall terminate as of the date such litigation is filed.
 
 ================================================================================
-Module: github.com/andybalholm/brotli v1.2.0
+Module: github.com/andybalholm/brotli v1.2.7
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1277,7 +1277,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER I
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-Module: github.com/klauspost/compress v1.18.7
+Module: github.com/klauspost/compress v1.20.2
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
