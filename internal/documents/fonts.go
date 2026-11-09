@@ -47,18 +47,6 @@ func registerDocumentFont(pdf *pdfdoc.PDF, mgr *fonts.Manager, family string) {
 	_ = fonts.NewManager("").RegisterAs(pdf, fonts.DefaultFamily, "Helvetica")
 }
 
-// SetFontApplier installs the hook that registers the embedded font on
-// each new document PDF. Passing nil leaves documents on fpdf's core
-// Helvetica, which is not embedded; only tests that measure core-font
-// output do that. It does not change ActiveFamily. Safe for concurrent use
-// (the Wails runtime may call this from a different goroutine than a
-// render in flight).
-func SetFontApplier(fn func(*pdfdoc.PDF)) {
-	fontMu.Lock()
-	fontApplier = fn
-	fontMu.Unlock()
-}
-
 // UseFont configures every renderer to draw document text with the named
 // font family, by registering that family under "Helvetica" on each new PDF
 // (which overrides fpdf's core font of the same name). An empty family, or

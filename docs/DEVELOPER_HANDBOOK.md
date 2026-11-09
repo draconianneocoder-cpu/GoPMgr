@@ -454,7 +454,7 @@ bridge were removed in the 2026-11-03 migration.
 Generate actual bindings before typecheck, tests or build. The build task
 uses `-ts -i -names -time-type string` and the production build context.
 Never replace missing generated modules with fake bindings or success-only
-mocks. Review all 209 methods against `code-map/app-api.json` when the
+mocks. Review every method in `code-map/app-api.json` when the
 backend API changes, then regenerate and verify callers against actual types.
 
 `domain-types.d.ts` describes editor/view models; it is not the transport

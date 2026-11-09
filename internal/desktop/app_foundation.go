@@ -206,32 +206,6 @@ func seedsRequestAgilePack(seeds []string) bool {
 	return false
 }
 
-// UpdateProjectIndustry persists changes to industry / sub-category /
-// methodology / country code on an already-open project. Used by the
-// project Settings view if the user reclassifies later.
-func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryCode string) (ProjectMetaWire, error) {
-	d := a.requireDB()
-	if d == nil {
-		return ProjectMetaWire{}, errors.New("no project open")
-	}
-	p, err := d.GetProject()
-	if err != nil {
-		return ProjectMetaWire{}, err
-	}
-	p.Industry = industry
-	p.SubCategory = subCategory
-	p.Methodology = methodology
-	p.CountryCode = countryCodeOrDefault(countryCode)
-	if !calendar.ValidTimeZone(p.CountryCode, p.TimeZone) {
-		p.TimeZone = calendar.DefaultTimeZone(p.CountryCode)
-	}
-	updated, err := d.UpsertProject(p)
-	if err != nil {
-		return ProjectMetaWire{}, err
-	}
-	return projectMetaWire(updated), nil
-}
-
 // ----- Stakeholders -----
 
 func stakeholderForProject(d *db.Database, projectID, stakeholderID string) (db.Stakeholder, error) {

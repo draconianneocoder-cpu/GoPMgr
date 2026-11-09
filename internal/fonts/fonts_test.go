@@ -321,10 +321,10 @@ func TestImportFontAndRegister(t *testing.T) {
 		t.Error("Available() did not include the imported Acme font")
 	}
 
-	// Register should call the registrar for the Bold style.
+	// RegisterAs under the real name should call the registrar for the Bold style.
 	reg := &recordingRegistrar{}
-	if err := mgr.Register(reg, "Acme"); err != nil {
-		t.Fatalf("Register: %v", err)
+	if err := mgr.RegisterAs(reg, "Acme", ""); err != nil {
+		t.Fatalf("RegisterAs: %v", err)
 	}
 	if len(reg.calls) != 1 {
 		t.Fatalf("expected 1 registrar call, got %d", len(reg.calls))
@@ -496,8 +496,8 @@ func TestRegisterAs_SkipsOversizedStyleButRegistersSiblings(t *testing.T) {
 
 	mgr := NewManager(dir)
 	reg := &recordingRegistrar{}
-	if err := mgr.Register(reg, "Acme"); err != nil {
-		t.Fatalf("Register: %v", err)
+	if err := mgr.RegisterAs(reg, "Acme", ""); err != nil {
+		t.Fatalf("RegisterAs: %v", err)
 	}
 	if len(reg.calls) != 1 {
 		t.Fatalf("expected exactly 1 registrar call (Regular only), got %d: %+v", len(reg.calls), reg.calls)
@@ -510,14 +510,14 @@ func TestRegisterAs_SkipsOversizedStyleButRegistersSiblings(t *testing.T) {
 func TestRegister_UnknownFamily(t *testing.T) {
 	mgr := NewManager(t.TempDir())
 	reg := &recordingRegistrar{}
-	if err := mgr.Register(reg, "No Such Family"); err == nil {
+	if err := mgr.RegisterAs(reg, "No Such Family", ""); err == nil {
 		t.Error("expected error registering unknown family")
 	}
 }
 
 func TestRegister_NilRegistrar(t *testing.T) {
 	mgr := NewManager(t.TempDir())
-	if err := mgr.Register(nil, "Liberation Sans"); err == nil {
+	if err := mgr.RegisterAs(nil, "Liberation Sans", ""); err == nil {
 		t.Error("expected error with nil registrar")
 	}
 }
@@ -548,8 +548,8 @@ func TestNewManager_BindsRealEmbeddedAssets(t *testing.T) {
 		t.Fatal("NewManager must bind the real assetsFS embed; bundledFS is nil")
 	}
 
-	if err := mgr.Register(reg, DefaultFamily); err != nil {
-		t.Fatalf("Register the committed %s baseline: %v", DefaultFamily, err)
+	if err := mgr.RegisterAs(reg, DefaultFamily, ""); err != nil {
+		t.Fatalf("RegisterAs the committed %s baseline: %v", DefaultFamily, err)
 	}
 	if len(reg.calls) == 0 {
 		t.Fatal("NewManager must bind the real embed; no style was registered")
@@ -577,7 +577,7 @@ func TestZeroValueManager_FallsBackToRealEmbed(t *testing.T) {
 	}
 
 	reg := &recordingRegistrar{}
-	if err := mgr.Register(reg, DefaultFamily); err != nil {
+	if err := mgr.RegisterAs(reg, DefaultFamily, ""); err != nil {
 		t.Fatalf("zero-value Manager should register the committed baseline: %v", err)
 	}
 	if len(reg.calls) == 0 {
@@ -609,9 +609,9 @@ func TestRegister_BundledWithoutAssets(t *testing.T) {
 	mgr := newManagerWithBundledFS(t.TempDir(), fstest.MapFS{})
 	reg := &recordingRegistrar{}
 
-	err := mgr.Register(reg, "Liberation Sans")
+	err := mgr.RegisterAs(reg, "Liberation Sans", "")
 	if err == nil {
-		t.Fatal("Register with an empty bundle should fail, got nil")
+		t.Fatal("RegisterAs with an empty bundle should fail, got nil")
 	}
 	if !contains(err.Error(), "make fonts") {
 		t.Errorf("error %q should guide the user to 'make fonts'", err.Error())
@@ -646,9 +646,9 @@ func TestRegister_BundledAssetsPresentButCorrupt(t *testing.T) {
 	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
 	reg := &recordingRegistrar{}
 
-	err := mgr.Register(reg, "Liberation Sans")
+	err := mgr.RegisterAs(reg, "Liberation Sans", "")
 	if err == nil {
-		t.Fatal("Register over a corrupt bundle should fail, got nil")
+		t.Fatal("RegisterAs over a corrupt bundle should fail, got nil")
 	}
 	if contains(err.Error(), "no fetched") {
 		t.Errorf("error %q misreports present-but-corrupt files as unfetched", err.Error())
@@ -681,9 +681,9 @@ func TestRegister_BundledCorruptCountsDistinctFiles(t *testing.T) {
 	}
 
 	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
-	err := mgr.Register(&recordingRegistrar{}, "Ledger")
+	err := mgr.RegisterAs(&recordingRegistrar{}, "Ledger", "")
 	if err == nil {
-		t.Fatal("Register over a corrupt bundle should fail, got nil")
+		t.Fatal("RegisterAs over a corrupt bundle should fail, got nil")
 	}
 	if !contains(err.Error(), "1 embedded .ttf file") {
 		t.Errorf("error %q should report exactly 1 embedded file for a single-file family", err.Error())
@@ -709,9 +709,9 @@ func TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp(t *testing.T) {
 	}
 
 	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
-	err := mgr.Register(&recordingRegistrar{}, "Liberation Sans")
+	err := mgr.RegisterAs(&recordingRegistrar{}, "Liberation Sans", "")
 	if err == nil {
-		t.Fatal("Register over a corrupt bundle should fail, got nil")
+		t.Fatal("RegisterAs over a corrupt bundle should fail, got nil")
 	}
 	// Assert the properties a usable remedy must have, not one substring.
 	// The first version of this test checked only for "--force", and passed

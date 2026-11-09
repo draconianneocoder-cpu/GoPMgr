@@ -364,8 +364,8 @@ func getObjectSlice(m map[string]interface{}, key string) []map[string]interface
 // re-validating it -- if s ever arrived already containing invalid
 // UTF-8 (e.g. ending in a lone lead byte with no continuation byte),
 // this function wouldn't repair it, and fpdf's UTF8-mode text path
-// (reached whenever an embedded font is registered via
-// SetFontApplier, fonts.go) reads continuation bytes by index without
+// (reached whenever an embedded font is registered, as every production
+// document does; see fonts.go) reads continuation bytes by index without
 // its own validity check -- traced concretely to
 // fpdf's utf8toutf16 (github.com/go-pdf/fpdf@v0.9.0/util.go), which
 // could read past a string's end on a sufficiently malformed trailing

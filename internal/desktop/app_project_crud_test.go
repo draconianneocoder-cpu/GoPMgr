@@ -4,6 +4,7 @@
 package desktop
 
 import (
+	"strings"
 	"testing"
 
 	"gopmgr/internal/calendar"
@@ -31,7 +32,6 @@ func TestAppMethodsRequireOpenProject(t *testing.T) {
 		{"ListResourceCalendars", func() error { _, err := app.ListResourceCalendars(); return err }},
 		{"SaveResourceCalendar", func() error { _, err := app.SaveResourceCalendar(db.ResourceCalendar{}); return err }},
 		{"DeleteResourceCalendar", func() error { return app.DeleteResourceCalendar("x") }},
-		{"UpdateProjectIndustry", func() error { _, err := app.UpdateProjectIndustry("", "", "", ""); return err }},
 		{"ListHolidays", func() error { _, err := app.ListHolidays("2026-01-01", "2026-12-31"); return err }},
 		{"ComputeBudget", func() error { _, err := app.ComputeBudget(); return err }},
 		{"BuildTimeline", func() error { _, err := app.BuildTimeline(); return err }},
@@ -182,50 +182,46 @@ func TestResourceCalendarCRUD(t *testing.T) {
 	}
 }
 
-// TestUpdateProjectIndustry covers both sides of the invalid-timezone
-// replacement guard. A fresh project's empty TimeZone is always valid
-// (ValidTimeZone treats "" as valid), so the happy-path case only exercises
-// the "no replacement needed" side. To reach the calendar.DefaultTimeZone
-// replacement branch, a timezone that's valid for one country but not
-// another is set via UpdateProjectMeta (which independently rejects an
-// outright-invalid timezone, so a bare garbage string can't be used here),
-// then UpdateProjectIndustry is called with the other country — leaving a
-// now-mismatched TimeZone for UpdateProjectIndustry's own check to catch.
-func TestUpdateProjectIndustry(t *testing.T) {
+// TestUpdateProjectMetaReclassifiesProject covers the Project Settings save
+// path for classification and country: the fields persist, an empty time
+// zone takes the country's default, and a time zone the new country's
+// business-calendar policy does not support is rejected without changing
+// the stored project.
+func TestUpdateProjectMetaReclassifiesProject(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	mustOpenProject(t, app, "Proj")
 
-	updated, err := app.UpdateProjectIndustry("construction", "civil", "waterfall", "US")
-	if err != nil {
-		t.Fatalf("UpdateProjectIndustry: %v", err)
-	}
-	if updated.Industry != "construction" || updated.SubCategory != "civil" || updated.Methodology != "waterfall" {
-		t.Fatalf("fields not set as requested: %+v", updated)
-	}
-	if updated.TimeZone == "" {
-		t.Fatal("UpdateProjectIndustry: want a non-empty TimeZone on a US project, got empty")
-	}
-
-	proj, err := app.GetProjectMeta()
+	meta, err := app.GetProjectMeta()
 	if err != nil {
 		t.Fatalf("GetProjectMeta: %v", err)
 	}
-	proj.CountryCode = "US"
-	proj.TimeZone = "America/New_York"
-	if _, err := app.UpdateProjectMeta(proj); err != nil {
+	meta.Industry, meta.SubCategory, meta.Methodology = "construction", "civil", "waterfall"
+	meta.CountryCode, meta.TimeZone = "US", ""
+	updated, err := app.UpdateProjectMeta(meta)
+	if err != nil {
 		t.Fatalf("UpdateProjectMeta: %v", err)
 	}
-
-	replaced, err := app.UpdateProjectIndustry("construction", "civil", "waterfall", "GB")
-	if err != nil {
-		t.Fatalf("UpdateProjectIndustry (mismatched tz): %v", err)
+	if updated.Industry != "construction" || updated.SubCategory != "civil" || updated.Methodology != "waterfall" {
+		t.Fatalf("classification not saved: %+v", updated)
 	}
-	want := calendar.DefaultTimeZone("GB")
-	if replaced.TimeZone != want {
-		t.Fatalf("want US timezone replaced with GB default %q on country change, got %q", want, replaced.TimeZone)
+	if want := calendar.DefaultTimeZone("US"); updated.TimeZone != want {
+		t.Fatalf("empty time zone = %q after save, want the US default %q", updated.TimeZone, want)
+	}
+
+	moved := updated
+	moved.CountryCode, moved.TimeZone = "GB", "America/New_York"
+	if _, err := app.UpdateProjectMeta(moved); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("UpdateProjectMeta(GB with a US time zone) error = %v, want an unsupported time zone", err)
+	}
+	stored, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	if stored.CountryCode != "US" || stored.TimeZone != updated.TimeZone {
+		t.Fatalf("rejected save changed the project: country %q, time zone %q", stored.CountryCode, stored.TimeZone)
 	}
 }
 
@@ -236,8 +232,13 @@ func TestListHolidays(t *testing.T) {
 	}
 	mustOpenProject(t, app, "Proj")
 
-	if _, err := app.UpdateProjectIndustry("", "", "", "US"); err != nil {
-		t.Fatalf("UpdateProjectIndustry: %v", err)
+	meta, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	meta.CountryCode, meta.TimeZone = "US", ""
+	if _, err := app.UpdateProjectMeta(meta); err != nil {
+		t.Fatalf("UpdateProjectMeta: %v", err)
 	}
 
 	events, err := app.ListHolidays("2026-01-01", "2026-12-31")

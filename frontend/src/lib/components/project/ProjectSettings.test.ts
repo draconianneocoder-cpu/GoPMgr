@@ -387,7 +387,6 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
     app.UpdateProjectMeta = vi.fn(async () =>
       projectMeta({ description: 'Edited description', updated_at: '2026-01-01T00:00:05Z' }),
     );
-    app.UpdateProjectIndustry = vi.fn();
 
     const registerSpy = vi.spyOn(autosave, 'register');
     const { findByLabelText, findByRole } = render(ProjectSettings);
@@ -409,7 +408,6 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
     await saveAndContinueNavigation();
 
     expect(app.UpdateProjectMeta).toHaveBeenCalledOnce();
-    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
     expect(autosave.hasDirty()).toBe(false);
     expect(navigation.pending).toBeNull();
     expect(navigation.error).toBe('');
@@ -420,7 +418,6 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
     app.GetProjectMeta = vi.fn(async () => projectMeta());
     const pending = pendingProjectSave();
     app.UpdateProjectMeta = vi.fn(() => pending.promise);
-    app.UpdateProjectIndustry = vi.fn();
 
     const registerSpy = vi.spyOn(autosave, 'register');
     const { findByLabelText, findByRole } = render(ProjectSettings);
@@ -461,9 +458,6 @@ describe('General Save recovery', () => {
       { country_code: 'US', name: 'United States', time_zones: ['America/Chicago'] },
       { country_code: 'CA', name: 'Canada', time_zones: ['America/Toronto'] },
     ]);
-    app.UpdateProjectIndustry = vi.fn(async () => {
-      throw new Error('General Save must not perform a second write');
-    });
     session.project = projectMeta();
     session.view = 'project_settings';
   });
@@ -493,7 +487,6 @@ describe('General Save recovery', () => {
 
     await view.findByText('Saved.');
     expect(app.UpdateProjectMeta).toHaveBeenCalledOnce();
-    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
     expect(app.UpdateProjectMeta).toHaveBeenCalledWith(projectMeta({
       name: 'Revised project', owner: 'Revised owner', description: 'Revised description',
       industry: 'construction', sub_category: 'Bridge', methodology: '', country_code: 'CA',
@@ -523,7 +516,6 @@ describe('General Save recovery', () => {
       expect(view.getByRole('button', { name: /^save details$/i })).toBeEnabled();
       expect(session.project).toEqual(projectMeta());
       expect(autosave.hasDirty()).toBe(true);
-      expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
       await fireEvent.click(view.getByRole('button', { name: /^revert details$/i }));
       expect(view.getByLabelText(/project name/i)).toHaveValue('Convergence Project');
       expect(view.getByLabelText(/^budget/i)).toHaveValue('0.00');
@@ -599,7 +591,6 @@ describe('General Save recovery', () => {
 
     expect(app.UpdateProjectMeta).toHaveBeenCalledTimes(2);
     expect(app.UpdateProjectMeta.mock.calls[1][0]).toEqual(projectMeta({ description: 'Retry this draft' }));
-    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
     expect(session.project?.description).toBe('Retry this draft');
     expect(session.view).toBe('dashboard');
     expect(navigation.pending).toBeNull();
@@ -646,7 +637,6 @@ describe('General Save recovery', () => {
       expect(view.getByRole('button', { name: /saving details/i })).toBeDisabled();
       pending.resolve(projectMeta({ description: 'Single in-flight write' }));
       await view.findByText('Saved.');
-      expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
     } finally {
       pending.resolve(projectMeta());
       await continuing;

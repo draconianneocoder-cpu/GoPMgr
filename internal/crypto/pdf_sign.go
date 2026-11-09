@@ -4,8 +4,6 @@
 package crypto
 
 import (
-	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -209,18 +207,6 @@ func splitLeafCertificate(key *rsa.PrivateKey, certs []*x509.Certificate) (*x509
 		}
 	}
 	return nil, nil, errors.New("crypto: no certificate in the P12 matches the private key")
-}
-
-// SignPDFHash returns an RSA-PKCS#1-v1.5 raw signature over the
-// SHA-256 of pdfContent. Kept for callers (or future code paths)
-// that want the raw signature; the canonical archival path is
-// SignPDFCMS below.
-func (s *Signer) SignPDFHash(pdfContent []byte) ([]byte, error) {
-	if s.PrivateKey == nil {
-		return nil, errors.New("crypto: signer has no private key")
-	}
-	hash := sha256.Sum256(pdfContent)
-	return rsa.SignPKCS1v15(rand.Reader, s.PrivateKey, crypto.SHA256, hash[:])
 }
 
 // SignPDFCMS produces a CMS SignedData (PKCS#7) blob wrapping a

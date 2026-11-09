@@ -2732,7 +2732,7 @@ func TestXmlEscape_Mixed(t *testing.T) {
 	}
 }
 
-// ----- DefaultICCProfile / HasDefaultICC -----
+// ----- DefaultICCProfile -----
 
 func TestDefaultICCProfile_NonNil(t *testing.T) {
 	got := DefaultICCProfile()
@@ -2747,12 +2747,6 @@ func TestDefaultICCProfile_ReturnsCopy(t *testing.T) {
 	b := DefaultICCProfile()
 	if b[0] == a[0] {
 		t.Error("DefaultICCProfile() returned a reference to the embedded slice, not a copy")
-	}
-}
-
-func TestHasDefaultICC_ReturnsTrue(t *testing.T) {
-	if !HasDefaultICC() {
-		t.Error("HasDefaultICC() = false, want true")
 	}
 }
 
