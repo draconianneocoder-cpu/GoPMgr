@@ -17,7 +17,7 @@ import (
 
 func run(roots []string, out, errOut io.Writer) int {
 	if len(roots) == 0 {
-		fmt.Fprintln(errOut, "os-open-scan: at least one source root is required")
+		_, _ = fmt.Fprintln(errOut, "os-open-scan: at least one source root is required")
 		return 2
 	}
 	findings := false
@@ -43,7 +43,7 @@ func run(roots []string, out, errOut io.Writer) int {
 			return err
 		})
 		if err != nil {
-			fmt.Fprintf(errOut, "os-open-scan: %v\n", err)
+			_, _ = fmt.Fprintf(errOut, "os-open-scan: %v\n", err)
 			return 2
 		}
 	}
@@ -59,7 +59,8 @@ func scanFile(path string, out io.Writer) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
+	// Read-only handle: a Close error cannot lose scanned data.
+	defer func() { _ = file.Close() }()
 	scanner := bufio.NewScanner(file)
 	// Preserve the previous helper's token limit, but report incomplete scans.
 	scanner.Buffer(make([]byte, 4096), 1<<20)
