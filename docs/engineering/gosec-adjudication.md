@@ -154,8 +154,9 @@ Windows test-mode correction. No blocking finding remains in this repair.
   Native mechanism evidence alone is not a full concurrent application exploit.
 - Scanner: the [owner-approved integrity repair](memory-scan-integrity-plan.md)
   fixes silent required-helper failure, native-environment propagation and
-  off-scope helper traversal. Remaining grep-stage operational errors and
-  standalone coverage alignment are separate. Optional policy is unchanged.
+  off-scope helper traversal; its grep stages now fail on operational errors
+  (2026-11-09). Standalone coverage alignment is separate. Optional policy is
+  unchanged.
 
 Native Windows execution and actual exFAT qualification are unavailable; API
 availability or cross-compilation does not establish those results. The tested

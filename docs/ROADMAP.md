@@ -100,9 +100,9 @@ repaired with the owner-approved
 handlers validate output and finish staging cleanup before sidecar publication.
 The [scanner-integrity repair](engineering/memory-scan-integrity-plan.md)
 propagates required check failures, scopes the checked-in reader and applies
-the native environment guard. Optional scanner policy remains unchanged;
-remaining grep-stage operational errors and standalone coverage alignment
-remain separate.
+the native environment guard; its grep-based stages fail on operational
+errors (2026-11-09). Optional scanner policy remains unchanged; standalone
+coverage alignment remains separate.
 No finding is suppressed.
 [PDF/A validator qualification](engineering/verapdf-provenance.md) now checks
 the selected 1.30.2 engine before sample generation, preserves external tools

@@ -91,7 +91,8 @@ The opt-in `make shellcheck shfmt-check` uses the provisioned pinned tools.
 The [scanner-integrity repair](memory-scan-integrity-plan.md) now guards direct
 memory-scan Go and installed analyzer execution, rejects mandatory failures and
 qualifies the new explicit-root reader. Optional advisory/strict behavior is
-unchanged. Remaining grep-stage operational errors are a separate follow-up.
+unchanged. Grep-stage operational errors were repaired in a
+[later follow-up](memory-scan-integrity-plan.md#follow-up-grep-stage-operational-errors-2026-11-09).
 Standalone coverage-script invocation still remains outside these slices;
 canonical Make coverage is already guarded.
 
