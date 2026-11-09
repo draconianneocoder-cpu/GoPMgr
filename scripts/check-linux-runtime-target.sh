@@ -41,7 +41,10 @@ require_not_contains .github/workflows/release.yml "libwebkit2gtk-4.0-dev"
 
 # Keep the existing build-old/run-new packaging baseline. This checks
 # configuration consistency, not clean-minimum-target native execution.
-require_contains .github/workflows/release.yml "os: ubuntu-24.04"
+require_contains .github/workflows/release.yml "os: ubuntu-26.04"
+# Ubuntu 26.04 is the Linux minimum (owner decision 2026-11-09); packages
+# built on an older runner would link older libraries than the target.
+require_not_contains .github/workflows/release.yml "ubuntu-24.04"
 
 require_not_contains Makefile "webkit2_41"
 require_not_contains Makefile "gtk3"
@@ -99,4 +102,4 @@ for file in "${release_docs[@]}"; do
 	require_not_contains "$file" "WebKit2GTK 4.0"
 done
 
-echo "check-linux-runtime-target: CI on Ubuntu 26.04, Linux packaging pinned to Ubuntu 24.04, GTK4/WebKitGTK6 throughout -- configuration consistent."
+echo "check-linux-runtime-target: CI and Linux packaging on Ubuntu 26.04, GTK4/WebKitGTK6 throughout -- configuration consistent."

@@ -25,7 +25,7 @@ import (
 // This file is darwin-only via a build constraint, not a runtime
 // t.Skip(runtime.GOOS != "darwin"): syscall.Chflags does not exist in the
 // syscall package on linux at all, so referencing it unconditionally
-// broke compilation (not just execution) on this repo's ubuntu-24.04 CI
+// broke compilation (not just execution) on this repo's Linux CI (then ubuntu-24.04)
 // the moment these tests were added -- a runtime skip guard doesn't
 // prevent a compile error. Discovered when CI actually ran against a
 // commit including this file for the first time; confirmed via
@@ -95,7 +95,7 @@ func TestSwapInSnapshot_RenameLiveToCorruptFailureIsReported(t *testing.T) {
 // forceable only via macOS's non-POSIX chflags(UF_IMMUTABLE), which
 // blocks renaming a specific file regardless of directory
 // permissions; syscall.Chflags does not exist on Linux, where this
-// repository's CI runs (ubuntu-24.04) -- hence this whole file's
+// repository's Linux CI runs (ubuntu-26.04) -- hence this whole file's
 // //go:build darwin constraint, not a per-test runtime skip.
 func TestSwapInSnapshot_RollsBackLiveFileWhenFinalRenameFails(t *testing.T) {
 	livePath := filepath.Join(t.TempDir(), "project.pmforge")

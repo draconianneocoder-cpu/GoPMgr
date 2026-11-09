@@ -449,8 +449,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Which file to download</h3>
             <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
               <li><strong>Windows</strong> — <code>GoPMgr-…-amd64-setup.exe</code> (installer)</li>
-              <li><strong>macOS (Apple Silicon)</strong> — <code>GoPMgr-…-arm64.dmg</code></li>
-              <li><strong>Debian / Ubuntu</strong> — <code>gopmgr-…-amd64.deb</code></li>
+              <li><strong>macOS 26 or later (Apple Silicon)</strong> — <code>GoPMgr-…-arm64.dmg</code></li>
+              <li><strong>Ubuntu 26.04 or later</strong> — <code>gopmgr-…-amd64.deb</code></li>
               <li><strong>Fedora / RHEL / openSUSE</strong> — <code>gopmgr-…-x86_64.rpm</code></li>
             </ul>
           </section>

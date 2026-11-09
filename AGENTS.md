@@ -130,8 +130,9 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   `@wailsio/runtime` 3.1.0. Product metadata is `build/config.yml` `info.version`.
   CGO Linux builds use GTK 4 and WebKitGTK 6.0 without legacy backend tags.
 - The migration was approved on 2026-11-03; package/release qualification is
-  separate. macOS 26 Tahoe and Ubuntu 24.04 execution remain mandatory release gates
-  on currently unavailable hosts. Windows NSIS qualification remains pending.
+  separate. macOS 26 Tahoe and Ubuntu 26.04 execution remain mandatory release gates
+  (Ubuntu 26.04 is the Linux minimum since 2026-11-09; the macOS 26 host is
+  currently unavailable). Windows NSIS qualification remains pending.
   Run CI-equivalent checks on local macOS/local Ubuntu; do not launch hosted CI.
 - `system.db` stores local account metadata. Per-project `.gopmgr`
   databases hold project data and are SQLCipher-capable through

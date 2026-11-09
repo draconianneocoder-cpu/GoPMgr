@@ -31,9 +31,9 @@ The current source targets Wails v3.1.0, including npm `@wailsio/runtime`
 3.1.0, GTK 4 and WebKitGTK 6.0. Published alpha.2 assets above are historical
 release artifacts; they do not qualify this migration. Source/frontend and
 native macOS bridge checks have passed, but package/install/upgrade and
-Windows NSIS qualification remain pending. macOS 26 Tahoe and Ubuntu 24.04 remain
-mandatory release targets; execution on those unavailable hosts is deferred
-to the release gate, not claimed as passed. See the
+Windows NSIS qualification remain pending. macOS 26 Tahoe and Ubuntu 26.04 remain
+mandatory release targets; their execution is deferred to the release gate,
+not claimed as passed. See the
 [migration design](design/wails-v3-migration-design.md).
 
 ## Which file do I download?
@@ -79,8 +79,10 @@ sudo apt install ./gopmgr-<version>-amd64.deb
 For the Wails v3 migration, Debian/Ubuntu packages require `libgtk-4-1` and
 `libwebkitgtk-6.0-4`. `apt` resolves declared dependencies; verify the built
 package and its runtime requirements on the minimum target before release.
-Ubuntu 24.04 remains the minimum-target release gate, with no current
-execution evidence. Do not install an incompatible package by substituting
+Ubuntu 26.04 is the minimum target since 2026-11-09 (see the
+[owner decision](review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md)); its
+installed-package release gate has not passed yet. Older Ubuntu releases are
+not supported. Do not install an incompatible package by substituting
 GTK 3 or older WebKit runtimes. The published alpha.2 package has its own
 historical dependency/evidence record.
 

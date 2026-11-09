@@ -44,9 +44,11 @@ production bridge/dialog tests pass on macOS and Ubuntu. Local package builds
 and macOS/Linux bundled GUI checks pass; Linux packaged GUI under additional outer
 containment, installed-package lifecycle and final release checks remain open.
 Final integration review uses the owner-authorized self-review fallback after
-delegated reviewers reached their usage limit. macOS 26 Tahoe and Ubuntu 24.04 remain
-support targets; their unavailable-host execution checks are mandatory before
-release, as approved by the maintainer. No full v3 release readiness is claimed.
+delegated reviewers reached their usage limit. macOS 26 Tahoe and Ubuntu 26.04 remain
+support targets; their execution checks are mandatory before release, as
+approved by the maintainer. On 2026-11-09 the maintainer raised the Linux
+minimum from Ubuntu 24.04 to 26.04
+([decision](review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md)). No full v3 release readiness is claimed.
 
 ## Engineering build assurance (ADR-013, 2026-11-04)
 
