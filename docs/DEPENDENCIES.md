@@ -300,6 +300,28 @@ malformed-workbook or uncontrolled-coordinate sinks. This is not a claim
 that Excelize is universally safe. Reassess before adding an Excelize import
 path, and replace the pseudo-version only through compatibility verification.
 
+### Advisory review, 2026-11-09
+
+Two open Dependabot alerts concern development-only packages in
+`frontend/package-lock.json`; neither ships in the application bundle.
+
+- **minimatch 10.2.6, GHSA-g3hv-75wg-m249 (medium).** Pattern amplification
+  needs `optimizationLevel` 2 or higher. minimatch defaults to 1, and neither
+  ESLint 10.14.0 nor typescript-eslint 8.72.1 sets the option; the patterns
+  they match come from this repository's own lint and TypeScript
+  configuration. The only fix is minimatch 11.0.1, outside the `^10` range
+  that ESLint, `@eslint/config-array` and typescript-eslint declare. An
+  override would run those packages against an untested major version, so
+  none is applied. Refresh the lockfile when ESLint or typescript-eslint
+  accept minimatch 11.
+- **deepmerge 4.3.1, GHSA-gcqx-w48m-w2h4 (low).** Pulled in by
+  `@sveltejs/vite-plugin-svelte` 7.3.1 to merge build configuration. No
+  patched version exists. Recorded earlier in
+  [read-only project access](testing/read-only-project-access.md).
+
+No suppression or alert dismissal was made; closing the alerts requires the
+upstream releases above.
+
 ## External Tools
 
 Some gates use optional or required tools outside Go/npm:
