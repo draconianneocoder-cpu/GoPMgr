@@ -5,7 +5,7 @@
 # Build Linux installers from the Wails Linux binary at build/bin/gopmgr:
 #   - .deb and .rpm via nfpm (build/linux/nfpm.yaml)
 #
-# Run `wails build -platform linux/amd64` first. VERSION defaults to
+# Run `make build (on Linux amd64)` first. VERSION defaults to
 # scripts/package-version-lib.sh's release_version() -- the same derivation
 # package-macos.sh/package-macos-installer.sh use, so a build past its
 # nearest tag gets an honest "-<N>-g<sha>" suffix instead of silently
@@ -26,11 +26,11 @@ VERSION="$(release_version)"
 export VERSION
 
 if [ ! -x build/bin/gopmgr ]; then
-	echo "package-linux: build/bin/gopmgr missing — run 'wails build -platform linux/amd64' first." >&2
+	echo "package-linux: build/bin/gopmgr missing — run 'make build (on Linux amd64)' first." >&2
 	exit 1
 fi
 # A stray non-Linux or wrong-arch file at this path (e.g. leftover from a
-# `wails build -platform darwin/...` run, or a test fixture) would otherwise
+# `make build on macOS` run, or a test fixture) would otherwise
 # pass the -x check above and get silently packaged as a working release
 # artifact -- one that installs but can't run. Reads the raw ELF header
 # rather than shelling out to `file`, whose free-text output format isn't a
@@ -42,7 +42,7 @@ fi
 elf_header="$(od -An -tx1 -N20 build/bin/gopmgr 2>/dev/null | tr -d ' \n')"
 if [ "${elf_header:0:8}" != "7f454c46" ] || [ "${elf_header:8:2}" != "02" ] ||
 	[ "${elf_header:10:2}" != "01" ] || [ "${elf_header:36:4}" != "3e00" ]; then
-	echo "package-linux: build/bin/gopmgr is not a linux/amd64 ELF executable — rebuild with 'wails build -platform linux/amd64'." >&2
+	echo "package-linux: build/bin/gopmgr is not a linux/amd64 ELF executable — rebuild with 'make build (on Linux amd64)'." >&2
 	exit 1
 fi
 if ! command -v nfpm >/dev/null 2>&1; then
@@ -65,6 +65,24 @@ if [ "$actual_nfpm_version" != "$NFPM_VERSION" ]; then
 	exit 1
 fi
 
+# Inspect the shipped ELF, not just package dependency names. A GTK3 build
+# must never be repackaged as a GTK4 application. readelf is from binutils;
+# inspect NEEDED only so incidental debug strings cannot satisfy this guard.
+command -v readelf >/dev/null 2>&1 || {
+	echo 'package-linux: readelf (binutils) is required to verify GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
+	exit 1
+}
+if ! dynamic="$(readelf --dynamic build/bin/gopmgr)"; then
+	echo 'package-linux: cannot inspect GTK 4/WebKitGTK 6.0 ELF dependencies.' >&2
+	exit 1
+fi
+needed="$(printf '%s\n' "$dynamic" | sed -n 's/.*(NEEDED).*\[\([^]]*\)\].*/\1/p')"
+if ! grep -Fxq libgtk-4.so.1 <<<"$needed" || ! grep -Fxq libwebkitgtk-6.0.so.4 <<<"$needed" ||
+	grep -Eq '^(libgtk-3\.|libwebkit2gtk-|libjavascriptcoregtk-4\.)' <<<"$needed"; then
+	echo 'package-linux: binary must link GTK 4/WebKitGTK 6.0 only; legacy or missing backend dependencies rejected.' >&2
+	exit 1
+fi
+
 # Every Go module linked into the binary must have its notices in the
 # package (build/linux/nfpm.yaml ships third_party/GO-MODULE-NOTICES.txt).
 bash scripts/verify-module-notices.sh build/bin/gopmgr
@@ -76,4 +94,9 @@ nfpm package --config build/linux/nfpm.yaml --packager deb --target "build/packa
 nfpm package --config build/linux/nfpm.yaml --packager rpm --target "build/packages/gopmgr-${VERSION}-x86_64.rpm"
 
 echo "package-linux: done. Artifacts in build/packages/:"
-ls -1 build/packages/ | sed 's/^/  /'
+(
+	shopt -s nullglob
+	for artifact in build/packages/*; do
+		printf '  %q\n' "${artifact##*/}"
+	done
+)

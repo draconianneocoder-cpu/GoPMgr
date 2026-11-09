@@ -14,11 +14,11 @@ if ! command -v makensis >/dev/null 2>&1; then
 	exit 0
 fi
 
-WAILS_DIR="$(go list -m -f '{{.Dir}}' github.com/wailsapp/wails/v2)"
-WAILS_WINDOWS="$WAILS_DIR/pkg/buildassets/build/windows"
-if [ ! -f "$WAILS_WINDOWS/installer/wails_tools.nsh" ] ||
-	[ ! -f "$WAILS_WINDOWS/icon.ico" ]; then
-	echo "validate-windows-nsis-template: pinned Wails installer assets are unavailable." >&2
+WAILS_DIR="$(go list -m -f '{{.Dir}}' github.com/wailsapp/wails/v3)"
+WAILS_WINDOWS="$WAILS_DIR/internal/commands/build_assets/windows"
+cli="${WAILS3:-$ROOT/.tmp/wails-v3/bin/wails3}"
+if [ "$("$cli" version 2>&1)" != "$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)" ]; then
+	echo "validate-windows-nsis-template: matching pinned Wails v3 CLI is required." >&2
 	exit 1
 fi
 
@@ -44,25 +44,15 @@ cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$TEST_ROOT/internal/fonts/ass
 cp "$ROOT/third_party/GO-MODULE-NOTICES.txt" "$TEST_ROOT/third_party/GO-MODULE-NOTICES.txt"
 cp "$ROOT/third_party/FRONTEND-NOTICES.txt" "$TEST_ROOT/third_party/FRONTEND-NOTICES.txt"
 
-# Resolve the same Wails project fields used by the real build. Range blocks
-# are empty because GoPMgr currently declares no file associations/protocols.
-sed \
-	-e 's|{{.Name}}|gopmgr|g' \
-	-e 's|{{.Info.CompanyName}}|The GoPMgr Contributors|g' \
-	-e 's|{{.Info.ProductName}}|GoPMgr|g' \
-	-e 's|{{.Info.ProductVersion}}|1.1.0|g' \
-	-e 's|{{.Info.Copyright}}|Copyright (C) 2026 The GoPMgr Contributors|g' \
-	"$WAILS_WINDOWS/installer/wails_tools.nsh" |
-	awk '
-		/{{range[[:space:]]/ { in_range = 1; next }
-		in_range && /{{end}}/ { in_range = 0; next }
-		!in_range { print }
-	' >"$INSTALLER_DIR/wails_tools.nsh"
+# Generate the same pinned v3 macros as the real installer, in private staging.
+# Never regenerate into the source-owned build directory.
+"$cli" update build-assets -name gopmgr -binaryname gopmgr -config "$ROOT/build/config.yml" -dir "$TEST_ROOT/generated"
+cp "$TEST_ROOT/generated/windows/nsis/wails_tools.nsh" "$INSTALLER_DIR/wails_tools.nsh"
 
 # NSIS only embeds these fixtures; they are never executed during compilation.
 # Keep them non-empty because native Windows makensis rejects an empty File
 # input differently from Homebrew NSIS.
-printf 'GoPMgr WebView bootstrap fixture\n' >"$INSTALLER_DIR/tmp/MicrosoftEdgeWebview2Setup.exe"
+printf 'GoPMgr WebView bootstrap fixture\n' >"$INSTALLER_DIR/MicrosoftEdgeWebview2Setup.exe"
 fixture_binary="$TEST_ROOT/build/bin/gopmgr.exe"
 printf 'GoPMgr application fixture\n' >"$fixture_binary"
 

@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: '3'
+tasks:
+  package:
+    desc: Package an existing Windows executable through GoPMgr-owned NSIS policy
+    cmds:
+      - bash scripts/package-windows.sh
+  compile:
+    preconditions:
+      - test -n "$GOPMGR_BUILD_STAGE"
+    cmds:
+      - go build {{if eq .GOPMGR_BUILD_DEV "true"}}-gcflags=all=-l{{else}}-tags production -trimpath{{end}} -buildvcs=false -ldflags "{{if ne .GOPMGR_BUILD_DEV "true"}}-w -s -H windowsgui {{end}}$GOPMGR_BUILD_LDFLAGS" -o "$GOPMGR_BUILD_STAGE/gopmgr.exe" .
+    env:
+      CGO_ENABLED: '1'
+      GOOS: windows
+      GOARCH: '{{.GOPMGR_BUILD_ARCH}}'

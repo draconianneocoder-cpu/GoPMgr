@@ -13,6 +13,12 @@ vi.mock('../../autosave.svelte', () => ({
 import CauseEffectEditor from './CauseEffectEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Added 2026-08-19, identical disposition to WBSEditor.test.ts's new row —
 // see that file's header comment. This file mirrors WBSEditor's UX (its own
 // header comment says so) and shares the exact same "Delete" button pattern.
@@ -44,7 +50,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { nodes: [], edges: [], width: 0, height: 0 } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

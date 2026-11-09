@@ -11,7 +11,7 @@
 //	go run ./tools/module-notices -check   # fail if that file is out of date
 //
 // The module set comes from `go list -deps` on the root package, once per
-// release target, with the build tags `wails build` uses. The texts come from
+// release target, with the build tags `repository production build` uses. The texts come from
 // the module cache, or from a local replacement directory. A module
 // contributes the license-like files in its root and in each directory
 // between its root and a linked package: the places `go mod vendor` copies
@@ -39,7 +39,7 @@ import (
 
 const defaultOutput = "third_party/GO-MODULE-NOTICES.txt"
 
-// target is one release build. wails build adds the desktop and production
+// target is one release build. repository production build adds the desktop and production
 // tags to the ones the release workflow passes.
 type target struct {
 	GOOS, GOARCH, Tags string
@@ -48,11 +48,11 @@ type target struct {
 func (t target) String() string { return t.GOOS + "/" + t.GOARCH }
 
 // releaseTargets mirrors the package matrix in .github/workflows/release.yml
-// and the tags of its wails build steps. A test keeps the platforms in step.
+// and the tags of its repository production build steps. A test keeps the platforms in step.
 var releaseTargets = []target{
-	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production"},
-	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,webkit2_41"},
-	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production"},
+	{GOOS: "darwin", GOARCH: "arm64", Tags: "production"},
+	{GOOS: "linux", GOARCH: "amd64", Tags: "production"},
+	{GOOS: "windows", GOARCH: "amd64", Tags: "production"},
 }
 
 func main() {

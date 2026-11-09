@@ -22,7 +22,7 @@
 #
 # internal/applog's dialog/opendir split is 3-way (darwin/windows/other via
 # "!darwin && !windows"), and CI (.github/workflows/ci.yml) runs `make
-# verify` on ubuntu-24.04, where the *_other.go arm compiles instead of the
+# verify` on Linux CI (ubuntu-26.04), where the *_other.go arm compiles instead of the
 # *_darwin.go arm this list was first written against on a macOS dev
 # machine. All three arms are excluded so the denominator -- and therefore
 # the coverage-ratchet baseline -- is the same on every host that runs this,
@@ -34,7 +34,7 @@ internal/applog/dialog_darwin\.go
 internal/applog/dialog_windows\.go
 internal/applog/dialog_other\.go
 # internal/templates/jdm.go ("!windows") is NOT excluded: it compiles on
-# both this macOS dev machine and CI's ubuntu-24.04, so it's covered
+# both this macOS dev machine and Linux CI (ubuntu-26.04), so it's covered
 # normally like any other cross-platform file. Only its windows-only sibling
 # is platform-narrow.
 internal/templates/jdm_windows\.go

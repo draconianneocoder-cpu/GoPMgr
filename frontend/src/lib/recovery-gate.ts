@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { desktopApi } from './desktop-api';
 // New projects are encrypted, so creating or encrypting one needs a way
 // back in if the password is forgotten. recoveryGateNeeded asks the backend
 // (RecoveryCodeStatus.encryption_ready, computed by the same check that
@@ -17,7 +18,7 @@ export type RecoveryGate = 'none' | 'legacy';
 
 export async function recoveryGateNeeded(): Promise<RecoveryGate | null> {
   try {
-    const status = await window.go.desktop.App.RecoveryCodeStatus();
+    const status = await desktopApi.RecoveryCodeStatus();
     if (status.encryption_ready) return null;
     return status.legacy ? 'legacy' : 'none';
   } catch {

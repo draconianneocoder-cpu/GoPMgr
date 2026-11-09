@@ -16,6 +16,12 @@ import {
 } from '../../session.svelte';
 import { NativeCloseController } from '../../native-close';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 const stakeholder: Stakeholder = {
@@ -44,7 +50,7 @@ beforeEach(() => {
     SaveStakeholder: vi.fn(async (s: Stakeholder) => s),
     DeleteStakeholder: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

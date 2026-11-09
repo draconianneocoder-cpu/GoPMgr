@@ -6,6 +6,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import AccessNotice from './AccessNotice.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 function access(id: number, reason: string): AccountEvent {
@@ -17,7 +23,7 @@ beforeEach(() => {
     MyDataAccessNotices: vi.fn(async () => [access(7, 'Ticket 7'), access(4, 'Ticket 4')]),
     AcknowledgeDataAccessNotices: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

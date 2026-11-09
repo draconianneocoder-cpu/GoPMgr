@@ -5,7 +5,7 @@ version: "2"
 
 linters:
   # errcheck, staticcheck, and unused run as part of the golangci-lint v2
-  # default set. First-party findings were fixed in code (2026-06-23). Two
+  # default set. First-party findings were fixed in code (2026-06-23). Three
   # scoped exclusions remain, both deliberate:
   #   - node_modules: a third-party Go source vendored inside an npm package
   #     (frontend/node_modules/flatted/golang) that a bare `golangci-lint

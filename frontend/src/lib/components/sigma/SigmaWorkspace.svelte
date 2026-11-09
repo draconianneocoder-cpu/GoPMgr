@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
@@ -25,7 +26,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     loadError = '';
     try {
-      projects = await window.go.desktop.App.SigmaListProjects();
+      projects = (await desktopApi.SigmaListProjects() ?? []);
     } catch (err: any) {
       loadError = `Could not load projects: ${err}`;
     } finally {
@@ -37,7 +38,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!newTitle.trim()) return;
     creating = true;
     try {
-      const p = await window.go.desktop.App.SigmaCreateProject(newTitle, '', newBelt);
+      const p = await desktopApi.SigmaCreateProject(newTitle, '', newBelt);
       showToast(`Project "${p.title}" created`, 'success');
       newTitle = '';
       await loadProjects();

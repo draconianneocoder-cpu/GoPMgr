@@ -6,6 +6,7 @@
 // notices file. Kept apart from the Vite build so node:test can cover them.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 // The standard MIT License terms, as in LICENSES/MIT.txt after its copyright
@@ -32,6 +33,13 @@ SOFTWARE.
 // Reviewed packages that publish no license file. Each entry is pinned to the
 // version reviewed, so an update is reviewed again (it may add a file).
 export const NO_LICENSE_FILE = {
+  '@wailsio/runtime': {
+    version: '3.1.0',
+    license: 'MIT',
+    checked: 'The npm package omits its license. The exact upstream v3.1.0 root LICENSE is retained with its original copyright at third_party/wails-runtime-LICENSE.txt (https://github.com/wailsapp/wails/blob/v3.1.0/LICENSE).',
+    upstreamFile: 'third_party/wails-runtime-LICENSE.txt',
+    sha256: 'cede95c28e6e9d67d1c1e49e8ba3c20250c7d4080c3faca1579b6732327ae40d',
+  },
   'worker-f': {
     version: '0.1.16',
     license: 'MIT',
@@ -54,9 +62,13 @@ export const LICENSE_EXCERPTS = {
 };
 
 // Virtual modules a bundler injects, by the package whose code they are.
-const VIRTUAL_MODULES = [{ pattern: /^\0vite\//, pkg: 'vite', role: 'build helpers that Vite injects into the bundle' }];
+const VIRTUAL_MODULES = [
+  { pattern: /^\0vite\//, pkg: 'vite', role: 'build helpers that Vite injects into the bundle' },
+  // Reviewed against Rolldown 1.2.15 runtime-base.js and its MIT licenses.
+  { pattern: /^\0rolldown\/runtime\.js$/, pkg: 'rolldown', role: 'module interoperability helpers injected into the bundle' },
+];
 
-const NOTICE_STEMS = ['copying', 'copyleft', 'copyright', 'legal', 'licence', 'license', 'notice', 'patents', 'third_party_notices', 'third-party-notices', 'unlicense'];
+const NOTICE_STEMS = ['copying', 'copyleft', 'copyright', 'legal', 'licence', 'license', 'notice', 'patents', 'third_party_notices', 'third-party-notices', 'third-party-license', 'third_party_license', 'unlicense'];
 const NOTICE_EXTENSIONS = new Set(['', '.txt', '.md', '.markdown', '.rst']);
 
 // A license banner that a tool writes into generated output, such as
@@ -181,7 +193,7 @@ export function collectPackages({ moduleIds, assetTexts, frontendDir, nodeModule
       add(root, 'generated CSS in the bundle');
     }
   }
-  return [...found.values()].map(withNotices).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return [...found.values()].map((pkg) => withNotices(pkg, frontendDir)).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 function noticeFiles(dir) {
@@ -190,7 +202,7 @@ function noticeFiles(dir) {
     .sort();
 }
 
-function withNotices(pkg) {
+function withNotices(pkg, frontendDir) {
   const manifest = readJSON(path.join(pkg.dir, 'package.json'));
   const license = typeof manifest.license === 'string' ? manifest.license : JSON.stringify(manifest.license ?? null);
   const excerpt = LICENSE_EXCERPTS[pkg.name];
@@ -216,6 +228,15 @@ function withNotices(pkg) {
       `${pkg.name} ${pkg.version} ships no license file; review its license and, if it is ` +
         'acceptable, record it in NO_LICENSE_FILE in frontend/scripts/bundle-notices-lib.mjs',
     );
+  }
+  if (exception.upstreamFile) {
+    const bytes = readFileSync(path.resolve(frontendDir, '..', exception.upstreamFile));
+    if (createHash('sha256').update(bytes).digest('hex') !== exception.sha256) {
+      throw new Error(`${pkg.name}: reviewed upstream license checksum differs`);
+    }
+    out.note = exception.checked;
+    out.files = [{ name: 'Upstream LICENSE (verbatim pinned source)', text: normalizeText(bytes, exception.upstreamFile) }];
+    return out;
   }
   const author = typeof manifest.author === 'string' ? manifest.author : manifest.author?.name;
   if (license !== 'MIT' || !author) {

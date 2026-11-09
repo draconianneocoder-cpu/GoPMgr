@@ -37,8 +37,8 @@ expect_failure() {
 		fail "expected failure containing: $expected"
 	fi
 	case "$output" in
-		*"$expected"*) ;;
-		*) fail "failure did not contain '$expected': $output" ;;
+	*"$expected"*) ;;
+	*) fail "failure did not contain '$expected': $output" ;;
 	esac
 }
 
@@ -54,6 +54,7 @@ perl -0pi -e 's/!define MUI_WELCOMEPAGE_TITLE .*/!define MUI_WELCOMEPAGE_TITLE "
 expect_failure "$generic_branding" "project.nsi must retain GoPMgr-owned welcome branding"
 
 destructive_uninstall="$(new_fixture destructive-uninstall)"
+# shellcheck disable=SC2016 # Literal NSIS template; do not expand installer variables.
 printf '\n  RMDir /r "$DOCUMENTS\\PMForge"\n' >>"$destructive_uninstall/build/windows/installer/project.nsi"
 expect_failure "$destructive_uninstall" "uninstaller must not delete GoPMgr/PMForge project data"
 
@@ -62,12 +63,13 @@ expect_failure "$destructive_uninstall" "uninstaller must not delete GoPMgr/PMFo
 # running today writes to Documents\GoPMgr, and that's the tree most users
 # would actually have on disk to lose.
 destructive_uninstall_current="$(new_fixture destructive-uninstall-current)"
+# shellcheck disable=SC2016 # Literal NSIS template; do not expand installer variables.
 printf '\n  RMDir /r "$DOCUMENTS\\GoPMgr"\n' >>"$destructive_uninstall_current/build/windows/installer/project.nsi"
 expect_failure "$destructive_uninstall_current" "uninstaller must not delete GoPMgr/PMForge project data"
 
 changed_build="$(new_fixture changed-build)"
-perl -0pi -e 's#wails build -platform windows/amd64 -ldflags#wails build -platform windows/amd64 -tags extra -ldflags#' "$changed_build/.github/workflows/release.yml"
-expect_failure "$changed_build" "Windows installer must be built by the reviewed wails command"
+perl -0pi -e 's#bash scripts/wails-build.sh#bash scripts/wails-build.sh DEV=true#g' "$changed_build/.github/workflows/release.yml"
+expect_failure "$changed_build" "Windows installer must use the reviewed v3 build and package commands"
 
 missing_link_check="$(new_fixture missing-link-check)"
 perl -0pi -e 's#\Qbash scripts/verify-module-notices.sh build/bin/gopmgr.exe\E#echo "notice check removed"#' "$missing_link_check/.github/workflows/release.yml"
@@ -84,6 +86,6 @@ expect_failure "$ignored_manifest" ".gitignore must expose each source-owned Win
 late_scaffold_check="$(new_fixture late-scaffold-check)"
 perl -0pi -e 's#\Qbash scripts/check-windows-installer-scaffold.sh\E#echo "scaffold check moved"#' "$late_scaffold_check/.github/workflows/release.yml"
 printf '\n          bash scripts/check-windows-installer-scaffold.sh\n' >>"$late_scaffold_check/.github/workflows/release.yml"
-expect_failure "$late_scaffold_check" "workflow order must be scaffold check, NSIS fixture, build, then module-notice verification"
+expect_failure "$late_scaffold_check" "workflow order must be scaffold check, NSIS fixture, build, module-notice verification, then packaging"
 
 echo "check-windows-installer-scaffold tests passed."

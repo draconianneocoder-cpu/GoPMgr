@@ -6,6 +6,12 @@ import { fireEvent, render, waitFor, within } from '@testing-library/svelte';
 
 import ProjectLaunchpad from './ProjectLaunchpad.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const policies = [
   {
     country_code: 'US',
@@ -32,7 +38,7 @@ beforeEach(() => {
     })),
     RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false, encryption_ready: true })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 async function reachSetup(onCreated = vi.fn()) {

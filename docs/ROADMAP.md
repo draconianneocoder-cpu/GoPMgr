@@ -17,8 +17,8 @@ GoPMgr already provides local project storage, scheduling, earned-value
 analysis, charts, documents, export, SQLCipher support, and PDF signing. The
 near-term priority is making those workflows dependable for wider testing.
 
-1. Verify the Go-native analytics engine that replaced DuckDB on Linux
-   (see below).
+1. Migrate the desktop runtime to Wails v3 and GTK 4 while preserving native
+   save/recovery, data and binding contracts (see below).
 2. Prevent data loss in stateful editors and verify save, discard, and cancel
    behavior in native application workflows.
 3. Complete real-target installation and upgrade evidence for every advertised
@@ -31,6 +31,92 @@ near-term priority is making those workflows dependable for wider testing.
    `ManifestURL`/`UpdateChannelPublicKey` are actually populated in release
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
+
+## Wails v3 and GTK 4 migration (2026-11-03)
+
+The maintainer approved [Wails v3.1.0 and GTK 4 migration](design/wails-v3-migration-design.md)
+with no v2/GTK 3 fallback. The isolated shell's core close/save/recovery and
+resource-lifecycle gate passed on available macOS and Ubuntu hosts; see the
+[evidence and limits](testing/wails-v3-migration-evidence.md).
+The migration working tree now uses Wails v3.1.0, generated bindings for the
+unchanged 209 App methods, and the typed frontend runtime adapter. Local
+production bridge/dialog tests pass on macOS and Ubuntu. Local package builds
+and macOS/Linux bundled GUI checks pass; Linux packaged GUI under additional outer
+containment, installed-package lifecycle and final release checks remain open.
+Final integration review uses the owner-authorized self-review fallback after
+delegated reviewers reached their usage limit. macOS 26 Tahoe and Ubuntu 26.04 remain
+support targets; their execution checks are mandatory before release, as
+approved by the maintainer. On 2026-11-09 the maintainer raised the Linux
+minimum from Ubuntu 24.04 to 26.04
+([decision](review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md)). No full v3 release readiness is claimed.
+
+## Engineering build assurance (ADR-013, 2026-11-04)
+
+The owner approved Make-centered build assurance and bounded mise provisioning.
+The [repository ADR](design/ADR-013-engineering-build-assurance.md) reconciles the
+[submitted v0.3 plan](design/adr-013/v0.3-as-submitted/approved-phased-plan.md)
+with Wails 3.1.0 and the local-CI policy. The
+[P0 baseline](engineering/adr-013-baseline.md) is complete for the recorded
+macOS/Ubuntu hosts: exact-source clean/dirty checkout controls, cold/warm command
+measurements and independent evidence review passed. The failed spaced-TMPDIR
+fixture attempt and advisory scanner findings remain explicit follow-ups.
+P1 opt-in auxiliary provisioning is implemented with pinned mise, a genuine
+platform lock, isolated installs and Make-only recovery. See the
+[P1 setup and qualification record](engineering/adr-013-provisioning.md), including
+the safe-mode URL limitation and its enforced wrapper mitigation. Maintainer
+acceptance precedes mandatory lint adoption. P2's
+[ShellCheck inventory and adjudication](engineering/adr-013-shellcheck.md) covers
+90 tracked scripts with zero findings and approved, statement-scoped literal
+exceptions. P3's [shfmt style and read-only check](engineering/adr-013-shfmt.md)
+is implemented; 48 scripts were normalized separately, with all 90 now clean.
+P4's [local actionlint inventory and adjudication](engineering/adr-013-actionlint.md)
+is implemented for all three workflows. Eight stale-label findings are resolved
+by an exact verified label entry; the owner-approved retired G0 macOS 14 row is
+removed. P5's [local zizmor policy and mitigations](engineering/adr-013-zizmor.md) are
+implemented: all three workflows have zero reported regular-persona findings.
+P6's separately approved [checkout guard](engineering/adr-013-checkout-guard-plan.md)
+closes the explicit-true detection gap through the existing configuration gate.
+P6-B's [licensing check repair](engineering/adr-013-license-check.md) separates
+read-only validation from explicit Finder cleanup. P6-D
+[mandatory release licensing](engineering/adr-013-release-license-plan.md) requires
+successful validation at every entry point and removes implicit cleanup.
+P6-C [freezes govulncheck installation](engineering/adr-013-govulncheck.md) at the
+verified stable v1.9.0 release and tests text-mode failure propagation. Other
+P6 repairs and P7–P9 remain. The separately owner-approved
+[x/crypto dependency repair](engineering/xcrypto-advisory-plan.md) removes the
+module-only OpenPGP advisory while preserving existing crypto implementations.
+[Decompression dependency repair](engineering/decompression-advisory-repair.md)
+addresses the subsequently reported called Brotli/compress advisories through
+two bounded upstream pin changes. Scanner environment, helper failure handling
+remain separate follow-up work.
+[Gosec adjudication](engineering/gosec-adjudication.md) traces all fourteen
+baseline findings and repairs restore publication/scratch races with the
+owner-approved native no-replace contract. Extraction rechecks SHA-256 before
+publication. The [escrow length repair](engineering/escrow-field-length.md)
+checks the existing uint32 context-prefix limit and preserves frozen v1
+ciphertexts without a format migration. The GnuPG output-symlink mechanism is
+repaired with the owner-approved
+[private staging helper](engineering/gnupg-private-staging-plan.md). Both export
+handlers validate output and finish staging cleanup before sidecar publication.
+The [scanner-integrity repair](engineering/memory-scan-integrity-plan.md)
+propagates required check failures, scopes the checked-in reader and applies
+the native environment guard. Optional scanner policy remains unchanged;
+remaining grep-stage operational errors and standalone coverage alignment
+remain separate.
+No finding is suppressed.
+[PDF/A validator qualification](engineering/verapdf-provenance.md) now checks
+the selected 1.30.2 engine before sample generation, preserves external tools
+and propagates validator execution errors. P6-E [native compiler characterization](engineering/adr-013-compiler-policy.md)
+confirms a macOS test/app deployment-setting mismatch. Make
+[test/race/coverage alignment](engineering/adr-013-native-make-environment.md)
+is implemented for five canonical Make paths.
+[Standalone release/validator alignment](engineering/adr-013-release-native-environment.md)
+extends the guard to release race execution, encrypted-database tests and
+PDF/A/PAdES generators. Direct analysis helpers and standalone coverage remain
+outside these slices. The owner adopted the
+[macOS 26 Tahoe minimum](engineering/macos26-support-policy.md) for current
+builds and package metadata; compiler selection is unchanged. No new mandatory
+scanner target or hosted run was added.
 
 ## DuckDB retirement (2026-11-02)
 
@@ -55,32 +141,24 @@ For the DF0 branch, the maintainer chose on 2026-11-02 to push it, open its
 PR and merge it when checks pass, instead of holding all replacement work for
 one final PR as the 2026-11-01 instruction said.
 
-The DataFusion spike under `spikes/adr012-datafusion/` stays as isolated
-evidence for possible future columnar analytics. Its macOS containment work
-(the [containment decision request](review/ADR-012-macos-containment-ACR.md),
-[observer sandbox](testing/adr-012-df0-observer-sandbox.md) and
-[memory-only experiment](testing/adr-012-df0-memory-only.md)) and its
-[evidence record](testing/adr-012-df0-evidence.md) remain valid as records,
-but none of it gates a release any more. Its DuckDB measurement commands are
-frozen as history.
+**DataFusion concluded (2026-11-09).** The maintainer closed the DataFusion
+spike without adoption: the Go engine covers current analytics, and the
+remaining security, performance and licensing gates were large. The
+[DF0-G report](testing/adr-012-df0-g-report.md) records what DF0 established
+and why. The spike's code is archived at the tag
+`archive/adr012-datafusion-spike`; its [evidence record](testing/adr-012-df0-evidence.md)
+and raw records stay in `docs/testing/`. Reopening a columnar engine needs a
+new owner decision tied to a defined PS-09 need.
 
-Remaining follow-ups:
+Follow-ups:
 
-1. **Linux: verified on a real host on 2026-11-03.** On Ubuntu 26.04
-   (x86_64), `make build` and `make package-linux-nfpm` at `72a16cc` built
-   the app and its `.deb`/`.rpm`. The packages depend only on GTK 3 and
-   WebKitGTK 4.1 and contain nothing from DuckDB. The unpacked `.deb` binary
-   started under Xvfb with an isolated home, created its account database,
-   rendered through WebKitGTK, and on SIGINT and on SIGTERM logged "exited
-   cleanly" with status 0. That host's Xvfb crashes unless started with
-   `-extension GLX`; `xvfb-run` alone fails there. The check found that
-   the `.deb`, `.rpm` and macOS app did not carry GoPMgr's own GPL text;
-   they now do (see `LICENSES.md`). A real import through the native file
-   dialog was not exercised on either platform.
-2. The retained branch `claude/slice-b-readonly-access` belongs to closed,
-   unmerged PR #163. Review and selectively port useful read-only regression
-   fixtures before retiring it; do not merge its rejected strict-schema
-   interface wholesale.
+1. **Linux.** On 2026-11-03 the Go engine was verified on Ubuntu 26.04 with
+   the then-current GTK 3 build. Linux packaging now targets GTK 4 and
+   WebKitGTK 6.0, and Ubuntu 26.04 is the Linux minimum (see the Wails v3
+   section). A real import through the native file dialog has not been
+   exercised on either platform.
+2. **Done:** the read-only regression tests from the retired Slice B branch
+   were ported to `main` in #186 and the branch was deleted.
 
 ## Strategic direction: professional scheduling
 
@@ -106,15 +184,14 @@ Approved priority order, with today's status from the
 | PS-06 Task and Resource Usage | High | Proposed |
 | PS-07 Resource and financial planning | High, after PS-01 and PS-06 | Partial |
 | PS-08 Advanced scheduling | Medium | Partial |
-| PS-09 Analysis, comparison and reporting (ADR-012) | High, parallel | Partial |
+| PS-09 Analysis, comparison and reporting (ADR-012) | High, parallel | Partial; DataFusion not adopted (2026-11-09) |
 | PS-10 Advanced local-first capabilities | Later, separate approval | Proposed |
 
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
 stream, the proposed next implementation slice is
-PS-02 slice 1, a read-only audit, which also awaits authorization. The authorized
-DF0 priority above does not grant that scheduling implementation authority.
+PS-02 slice 1, a read-only audit, which also awaits authorization.
 
 ## Planned product work
 

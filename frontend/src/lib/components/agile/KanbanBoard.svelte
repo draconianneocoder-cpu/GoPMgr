@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { definedEntries } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // KanbanBoard renders the project's default board: N columns laid
   // out left-to-right with work-item cards in each column. Cards drag
   // between columns; the backend's MoveWorkItem persists the new
@@ -43,9 +45,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     loading = true;
     try {
-      const res = await window.go.desktop.App.EnsureDefaultBoard();
+      const res = await desktopApi.EnsureDefaultBoard();
       board = res.board;
-      columns = res.columns;
+      columns = res.columns ?? [];
       await refresh();
     } catch (err: any) {
       error = `Could not load board: ${err}`;
@@ -57,14 +59,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refresh() {
     if (!board) return;
     const [its, sps, wips] = await Promise.all([
-      window.go.desktop.App.ListWorkItems('', '', ''),
-      window.go.desktop.App.ListSprints(),
-      window.go.desktop.App.WIPCounts(),
+      desktopApi.ListWorkItems('', '', ''),
+      desktopApi.ListSprints(),
+      desktopApi.WIPCounts(),
     ]);
     // Items shown on the board: everything that is NOT in the backlog.
     items = (its ?? []).filter((i) => i.state !== 'backlog');
     sprints = sps ?? [];
-    wipCounts = wips ?? {};
+    wipCounts = definedEntries(wips);
   }
 
   function itemsInColumn(colID: string): AgileWorkItem[] {
@@ -101,7 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     opening = true;
     error = '';
     try {
-      editing = await window.go.desktop.App.GetWorkItem(item.id);
+      editing = await desktopApi.GetWorkItem(item.id);
     } catch {
       error = 'That work item no longer exists. The list has been refreshed.';
       await refresh();
@@ -145,7 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // New order_idx: append at the end of the target column.
     const newOrder = itemsInColumn(targetCol).length;
     try {
-      await window.go.desktop.App.MoveWorkItem(id, targetCol, newOrder);
+      await desktopApi.MoveWorkItem(id, targetCol, newOrder);
       // Optimistic update.
       item.state = targetCol;
       item.order_idx = newOrder;

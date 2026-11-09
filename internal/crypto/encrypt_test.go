@@ -6,6 +6,7 @@ package crypto
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"io"
 	"testing"
@@ -152,5 +153,24 @@ func TestEncryptBuffer_FreshNoncePerCall(t *testing.T) {
 
 	if bytes.Equal(blob1, blob2) {
 		t.Error("two encryptions of the same plaintext must differ (fresh salt+nonce)")
+	}
+}
+
+// Captured using x/crypto v0.58.0 before the dependency change.
+func TestDecryptBufferAcceptsPersistedV058Ciphertext(t *testing.T) {
+	blob, err := hex.DecodeString("21cf848717c4f8bdbfdea25ea97bcdc74ba008645724b50e62d167b32b59e2ac9cc8cc8961a20b8300e626702fcbf1c5cadf657de99dc9eef9c863613964e25798a00a8a52f00751a36469a2af042fdb81a314")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := DecryptBuffer(blob, "gopmgr-compatibility-test-only")
+	if err != nil || string(got) != "persisted project compatibility fixture" {
+		t.Fatalf("decrypt persisted buffer: got %q, err %v", got, err)
+	}
+	if _, err := DecryptBuffer(blob, "incorrect-password"); err == nil {
+		t.Fatal("persisted buffer accepted wrong password")
+	}
+	blob[len(blob)-1] ^= 1
+	if _, err := DecryptBuffer(blob, "gopmgr-compatibility-test-only"); err == nil {
+		t.Fatal("persisted buffer accepted a modified authentication tag")
 	}
 }

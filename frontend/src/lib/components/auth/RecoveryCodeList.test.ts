@@ -6,6 +6,12 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import RecoveryCodeList from './RecoveryCodeList.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const codes = ['AAAAAAAA-BBBBBBBB', 'CCCCCCCC-DDDDDDDD'];
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
@@ -14,7 +20,7 @@ beforeEach(() => {
     SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/codes.txt'),
     SaveRecoverySheetPDF: vi.fn(async () => '/Users/alice/sheet.pdf'),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

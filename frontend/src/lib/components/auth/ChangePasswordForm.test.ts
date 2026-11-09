@@ -6,11 +6,17 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import ChangePasswordForm from './ChangePasswordForm.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   app = { ChangePassword: vi.fn(async () => undefined) };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

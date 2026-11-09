@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // RecoveryReset is the "forgot my password" flow. The user lands
   // here from the Login screen by clicking "use a recovery code".
   // They enter their username, one of the 8 unused codes generated
@@ -57,7 +58,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     busy = true;
     try {
-      await window.go.desktop.App.ResetWithRecoveryCode(username, code, password);
+      await desktopApi.ResetWithRecoveryCode(username, code, password);
       session.signInUsername = username;
       done = true;
     } catch (err: any) {

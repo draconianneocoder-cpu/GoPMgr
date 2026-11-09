@@ -22,9 +22,9 @@ import (
 	"github.com/apache/arrow-go/v18/parquet/pqarrow"
 )
 
-// parquetMemoryLimit caps the memory Arrow may hold while reading one file,
-// including decompressed pages, so a compression bomb cannot exhaust it. A
-// variable only so tests can lower it.
+// parquetMemoryLimit caps allocations routed through Arrow while reading one
+// file, including its page buffers. Codec-internal allocations may fall outside
+// this cap. A variable only so tests can lower it.
 var parquetMemoryLimit int64 = 512 << 20
 
 // ErrParquetMemory reports a Parquet file that needs more than

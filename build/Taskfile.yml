@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: '3'
+tasks:
+  frontend:
+    # Ordered, never parallel with generation: the frontend imports bindings.
+    cmds:
+      - bash scripts/wails-v3-qualification.sh generate
+      - task: frontend:bundle
+    env:
+      GOPMGR_BINDINGS_PRODUCTION: '{{if ne .GOPMGR_BUILD_DEV "true"}}1{{else}}0{{end}}'
+  frontend:bundle:
+    dir: frontend
+    cmds:
+      - npm ci
+      - npm run build
+  dev:frontend:
+    dir: frontend
+    cmds:
+      - npm run dev -- --port 5173 --strictPort

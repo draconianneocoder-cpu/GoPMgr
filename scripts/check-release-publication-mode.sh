@@ -28,17 +28,21 @@ if [ ! -f "$WORKFLOW" ] || [ ! -f "$HELPER" ] || [ ! -f "$CHANNEL_HELPER" ]; the
 	exit 1
 fi
 
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'publication_flag="$(bash scripts/release-publication-flag.sh "$GITHUB_REF_NAME")"' \
 	"publish job must classify the validated Git tag."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" 'publication_args+=("$publication_flag")' \
 	"publish job must preserve the helper output as one gh argument."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" '"${publication_args[@]}"' \
 	"gh release create must consume the optional publication argument."
 require_literal "$WORKFLOW" '--draft' \
 	"release artifacts must remain private until their digests and claims are reviewed."
 require_literal "$HELPER" 'printf '\''%s\n'\'' "--prerelease"' \
 	"classification helper must mark SemVer suffixes as prereleases."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 channel_calls="$(grep -Fc 'channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"' "$WORKFLOW" || true)"
 if [ "$channel_calls" -ne 2 ]; then
 	echo "release-publication-mode: build and publish jobs must both derive the signed-update channel from the validated tag." >&2

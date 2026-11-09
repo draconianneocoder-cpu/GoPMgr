@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { goto } from '../../session.svelte';
   import Button from '../Button.svelte';
@@ -26,8 +27,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true; error = '';
     try {
       [vendors, items] = await Promise.all([
-        window.go.desktop.App.ListCatalogVendors(query, includeArchived),
-        window.go.desktop.App.ListCatalogItems(query, includeArchived),
+        desktopApi.ListCatalogVendors(query, includeArchived).then((values) => values ?? []),
+        desktopApi.ListCatalogItems(query, includeArchived).then((values) => values ?? []),
       ]);
     } catch (err) { error = String(err); }
     finally { loading = false; }
@@ -37,13 +38,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function saveVendor() {
     if (!vendor || !vendor.name.trim() || saving) return;
     saving = true; error = '';
-    try { await window.go.desktop.App.SaveCatalogVendor(vendor); vendor = null; await refresh(); }
+    try { await desktopApi.SaveCatalogVendor(vendor); vendor = null; await refresh(); }
     catch (err) { error = String(err); } finally { saving = false; }
   }
   async function saveItem() {
     if (!item || !item.name.trim() || saving) return;
     saving = true; error = '';
-    try { await window.go.desktop.App.SaveCatalogItem(item); item = null; await refresh(); }
+    try { await desktopApi.SaveCatalogItem(item); item = null; await refresh(); }
     catch (err) { error = String(err); } finally { saving = false; }
   }
 </script>

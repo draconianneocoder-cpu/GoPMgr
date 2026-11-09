@@ -37,7 +37,7 @@ FAKE_BIN="$(mktemp -d "$ROOT/.tmp/pades-external-bin-test.XXXXXX")"
 FAKE_LOG="$FAKE_BIN/verapdf.args"
 DSS_LOG="$FAKE_BIN/dss-validation-tool.args"
 mkdir -p "$FAKE_BIN"
-cat > "$FAKE_BIN/verapdf" <<'EOF'
+cat >"$FAKE_BIN/verapdf" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "$GOPMGR_FAKE_VERAPDF_LOG"
 case "$1" in
@@ -69,7 +69,7 @@ XML
 EOF
 chmod +x "$FAKE_BIN/verapdf"
 
-cat > "$FAKE_BIN/dss-validation-tool" <<'EOF'
+cat >"$FAKE_BIN/dss-validation-tool" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "$GOPMGR_FAKE_DSS_LOG"
 if [ "$1" != "validate" ]; then

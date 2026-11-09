@@ -5,6 +5,12 @@ import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import CostControlPanel from './CostControlPanel.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 type CostControlFixture = {
   baselines?: Array<Record<string, string | number>>;
   types?: Array<Record<string, string | boolean>>;
@@ -38,7 +44,7 @@ function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', c
     ListCatalogItems: vi.fn(async () => catalogItems),
     ListCatalogVendors: vi.fn(async () => catalogVendors),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
@@ -35,7 +36,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     (prefilled ? passwordEl : usernameEl)?.focus();
     try {
-      setup = await window.go.desktop.App.AccountSetup();
+      setup = await desktopApi.AccountSetup();
     } catch {
       setup = null; // unknown → keep the create path open
     } finally {
@@ -49,7 +50,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busy = true;
     try {
-      const acc = await window.go.desktop.App.Login(username, password);
+      const acc = await desktopApi.Login(username, password);
       session.user = acc;
       goto('portfolio');
     } catch (err: any) {

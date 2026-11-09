@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { stakeholderPayload } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // StakeholderManager is the project-level address book. Each
   // stakeholder carries (name, role, organisation, contact, category,
   // hourly_rate, contract_value, notes). The budget rollup reads
@@ -41,7 +43,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function refresh() {
     try {
-      list = (await window.go.desktop.App.ListStakeholders(filter)) ?? [];
+      list = (await desktopApi.ListStakeholders(filter)) ?? [];
     } catch (err: any) {
       error = `Could not load stakeholders: ${err}`;
     } finally {
@@ -169,7 +171,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      const saved = await window.go.desktop.App.SaveStakeholder(savePayload(savingStakeholder, baseline));
+      const saved = await desktopApi.SaveStakeholder(stakeholderPayload(savePayload(savingStakeholder, baseline)));
       const latestStakeholder = editing;
       original = JSON.stringify(saved);
       if (latestStakeholder && JSON.stringify(latestStakeholder) !== savingSnapshot) {
@@ -243,7 +245,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const s = deletingStakeholder;
     deleteBusy = true;
     try {
-      await window.go.desktop.App.DeleteStakeholder(s.id);
+      await desktopApi.DeleteStakeholder(s.id);
       deletingStakeholder = null;
       await refresh();
     } catch (err: any) {

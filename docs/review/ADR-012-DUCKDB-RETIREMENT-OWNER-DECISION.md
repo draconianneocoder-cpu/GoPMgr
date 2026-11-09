@@ -48,7 +48,9 @@ library, notice file or packaging step remains (DF-G6).
 - **SQLCipher** stays the system of record; the engine still never opens the
   encrypted project file.
 - **The DF0 spike** under `spikes/adr012-datafusion` stays as isolated
-  evidence for possible future columnar analytics. Its DuckDB measurement
+  evidence for possible future columnar analytics. (Superseded 2026-11-09: the
+  spike was concluded and archived; see the
+  [DF0-G report](../testing/adr-012-df0-g-report.md).) Its DuckDB measurement
   commands (provider A) are frozen as history, because the engine they
   measured no longer exists.
 

@@ -13,6 +13,12 @@ vi.mock('../../autosave.svelte', () => ({
 import WorkflowEditor from './WorkflowEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Narrow, targeted coverage added alongside the 2026-08-19 Button migration
 // (see TEST_COVERAGE_LEDGER.md): this file previously had zero test
 // coverage. Rather than backfill the whole editor, this pins the exact
@@ -41,7 +47,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { nodes: [], edges: [], width: 0, height: 0 } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

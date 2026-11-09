@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: CC0-1.0
+
+[tool_config]
+locked = true
+
+[tools."github:koalaman/shellcheck"]
+version = "0.11.0"
+platforms.macos-arm64 = { asset_pattern = "shellcheck-v0.11.0.darwin.aarch64.tar.xz", checksum = "sha256:56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79" }
+platforms.linux-x64 = { asset_pattern = "shellcheck-v0.11.0.linux.x86_64.tar.xz", checksum = "sha256:8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198" }
+
+[tools."github:mvdan/sh"]
+version = "3.14.1"
+rename_exe = "shfmt"
+platforms.macos-arm64 = { asset_pattern = "shfmt_v3.14.1_darwin_arm64", checksum = "sha256:b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5" }
+platforms.linux-x64 = { asset_pattern = "shfmt_v3.14.1_linux_amd64", checksum = "sha256:76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf" }
+
+[tools."github:rhysd/actionlint"]
+version = "1.7.12"
+platforms.macos-arm64 = { asset_pattern = "actionlint_1.7.12_darwin_arm64.tar.gz", checksum = "sha256:aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f" }
+platforms.linux-x64 = { asset_pattern = "actionlint_1.7.12_linux_amd64.tar.gz", checksum = "sha256:8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8" }
+
+[tools."github:zizmorcore/zizmor"]
+version = "1.32.0"
+platforms.macos-arm64 = { asset_pattern = "zizmor-aarch64-apple-darwin.tar.gz", checksum = "sha256:6efed18c4539a663fd3c851a2be9533fd8456c4e646d9416206da059154a0d3c" }
+platforms.linux-x64 = { asset_pattern = "zizmor-x86_64-unknown-linux-gnu.tar.gz", checksum = "sha256:bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b" }

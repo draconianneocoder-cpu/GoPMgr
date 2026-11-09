@@ -156,7 +156,7 @@ assert_fails_with "GoPMgr is already running" \
 
 output="$(
 	GOPMGR_CAPTURE="$capture" \
-	run_launcher --app "$app"
+		run_launcher --app "$app"
 )"
 
 retained_root="$(awk -F= '/^launch-isolated-native: retained_root=/ { print $2; exit }' <<<"$output")"

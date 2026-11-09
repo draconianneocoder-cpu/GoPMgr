@@ -182,6 +182,18 @@ go run ./tools/sbom generate -target darwin/arm64 \
   -commit "$(git rev-parse HEAD)" -out-dir build/packages
 ```
 
+To check the SPDX document against the official SPDX 3.0.1 JSON schema and
+SHACL model offline, download those three resources (their SHA-256 values are
+pinned in the script) and run, with `jsonschema`, `pyshacl` and `rdflib`
+installed:
+
+```sh
+python3 -I tools/sbom/validate_spdx3.py build/packages/<package>.spdx.json \
+  --schema spdx-json-schema.json --context spdx-context.jsonld --model spdx-model.ttl
+```
+
+`--negative-controls` also confirms that corrupted copies are rejected.
+
 ## Maintenance
 
 - Run `make sbom-check` after changing `go.mod`, the frontend dependencies or

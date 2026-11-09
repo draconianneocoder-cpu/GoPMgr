@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# actionlint 1.7.12 predates this verified GitHub-hosted label. This key
+# extends its label inventory; it does not configure or provision a runner.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

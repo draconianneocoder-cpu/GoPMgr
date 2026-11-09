@@ -507,26 +507,10 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
 		return GnuPGExportResult{}, err
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	signatureBytes, err := a.signFileWithGnuPG(pdfPath, keyID)
 	if err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
-	}
-	temporaryPath := temporary.Name()
-	if err := temporary.Close(); err != nil {
-		_ = os.Remove(temporaryPath)
-		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
-	}
-	if err := os.Remove(temporaryPath); err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
-	}
-	defer func() { _ = os.Remove(temporaryPath) }()
-	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("gpg detached signature: %v", err), "")
 		return GnuPGExportResult{}, err
-	}
-	signatureBytes, err := os.ReadFile(temporaryPath)
-	if err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
 	}
 	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
 		return GnuPGExportResult{}, err
@@ -1290,26 +1274,10 @@ func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error
 	if err := writeNewPrivateExport(pdfPath, bytes); err != nil {
 		return GnuPGExportResult{}, err
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	signatureBytes, err := a.signFileWithGnuPG(pdfPath, keyID)
 	if err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
-	}
-	temporaryPath := temporary.Name()
-	if err := temporary.Close(); err != nil {
-		_ = os.Remove(temporaryPath)
-		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
-	}
-	if err := os.Remove(temporaryPath); err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
-	}
-	defer func() { _ = os.Remove(temporaryPath) }()
-	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
 		admin.NewService(d).LogSignatureEvent(id, false, err)
 		return GnuPGExportResult{}, err
-	}
-	signatureBytes, err := os.ReadFile(temporaryPath)
-	if err != nil {
-		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
 	}
 	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
 		return GnuPGExportResult{}, err
@@ -1392,14 +1360,4 @@ func (a *App) exportDocumentPDFSignedWithRuntime(
 	signatureStatus, details := padesAuditOutcome(padesResult)
 	admin.NewService(d).LogDocumentSignatureOutcome(doc.ID, signatureStatus, details, exportArtifactName(outPath))
 	return outPath, nil
-}
-
-func (a *App) signFileWithGnuPG(inputPath, signaturePath, keyID string) error {
-	base := a.ctx
-	if base == nil {
-		base = context.Background()
-	}
-	ctx, cancel := context.WithTimeout(base, 2*time.Minute)
-	defer cancel()
-	return signing.SignDetachedASCIIArmored(ctx, signing.ExecCommandRunner, inputPath, signaturePath, strings.TrimSpace(keyID))
 }

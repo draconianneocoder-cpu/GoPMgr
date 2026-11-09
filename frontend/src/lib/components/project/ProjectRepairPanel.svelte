@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { goto, session } from '../../session.svelte';
 
   // RepairAndSwap checks the open project's database and, when it finds
@@ -23,7 +24,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     result = null;
     error = '';
     try {
-      result = await window.go.desktop.App.RepairAndSwap();
+      const loaded = await desktopApi.RepairAndSwap();
+      result = { ...loaded, log: loaded.log ?? [] };
     } catch (err: any) {
       error = String(err?.message ?? err);
       if (error.includes('the project was closed')) {

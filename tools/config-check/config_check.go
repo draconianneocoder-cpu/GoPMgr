@@ -37,7 +37,17 @@ type configSpec struct {
 }
 
 var supportedConfigs = []configSpec{
+	// Python provisioning checks acquisition policy; this registry owns format inventory.
+	{path: "mise.toml", format: formatTOML},
+	{path: "mise.lock", format: formatTOML},
+	{path: "Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/darwin/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/linux/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/windows/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
+	{path: "build/config.yml", format: formatYAML, validate: validateWailsBuild},
 	{path: ".github/dependabot.yml", format: formatYAML, validate: validateDependabot},
+	{path: ".github/actionlint.yaml", format: formatYAML},
 	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateCIAssuranceWorkflow},
 	{path: ".github/workflows/release.yml", format: formatYAML, validate: validateWorkflow},
 	{path: ".github/workflows/adr010-g0-spike.yml", format: formatYAML, validate: validateWorkflow},
@@ -45,17 +55,32 @@ var supportedConfigs = []configSpec{
 	{path: "build/linux/nfpm.yaml", format: formatYAML, validate: validateNFPM},
 	{path: ".gitleaks.toml", format: formatTOML, validate: validateGitleaks},
 	{path: "REUSE.toml", format: formatTOML, validate: validateREUSE},
-	// Isolated DF0 manifests are parsed here; Cargo owns their build semantics.
-	{path: "spikes/adr012-datafusion/rust/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/cli/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/codegen/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/engine/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/worker/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/rust-toolchain.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml", format: formatTOML},
+}
+
+func validateTaskfile(config map[string]any) error {
+	if config["version"] != "3" {
+		return fmt.Errorf("expected Taskfile version 3")
+	}
+	if tasks, ok := stringMap(config["tasks"]); !ok || len(tasks) == 0 {
+		return fmt.Errorf("tasks must be a nonempty mapping")
+	}
+	return nil
+}
+
+func validateWailsBuild(config map[string]any) error {
+	if config["version"] != "3" {
+		return fmt.Errorf("expected Wails build version 3")
+	}
+	info, ok := stringMap(config["info"])
+	if !ok {
+		return fmt.Errorf("info must be a mapping")
+	}
+	for _, name := range []string{"version", "productName", "productIdentifier"} {
+		if value, ok := info[name].(string); !ok || strings.TrimSpace(value) == "" {
+			return fmt.Errorf("info.%s must be a nonempty string", name)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -107,7 +132,7 @@ func trackedConfigPaths(root string) ([]string, error) {
 	// Include untracked, non-ignored candidates so a new config is classified
 	// before its first commit, and omit working-tree deletions so intentional
 	// removals can pass verification before they are staged.
-	cmd := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.yml", "*.yaml", "*.toml")
+	cmd := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.yml", "*.yaml", "*.toml", "mise.lock")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("list tracked YAML/TOML files: %w", err)
@@ -145,7 +170,7 @@ func validateRepositoryConfigs(files map[string][]byte, tracked []string) []erro
 			continue
 		}
 		if _, ok := specByPath[path]; !ok {
-			errs = append(errs, fmt.Errorf("%s: tracked YAML/TOML file is not classified in scripts/config_check.go", path))
+			errs = append(errs, fmt.Errorf("%s: tracked YAML/TOML file is not classified in tools/config-check/config_check.go", path))
 		}
 	}
 
@@ -253,8 +278,88 @@ func validateWorkflow(config map[string]any) error {
 	if _, ok := config["on"]; !ok {
 		return fmt.Errorf("on trigger is required")
 	}
-	if jobs, ok := stringMap(config["jobs"]); !ok || len(jobs) == 0 {
+	jobs, ok := stringMap(config["jobs"])
+	if !ok || len(jobs) == 0 {
 		return fmt.Errorf("jobs must contain at least one job")
+	}
+	names := make([]string, 0, len(jobs))
+	for name := range jobs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		job, ok := stringMap(jobs[name])
+		if !ok {
+			return fmt.Errorf("jobs.%s must be a mapping", name)
+		}
+		rawSteps, present := job["steps"]
+		if !present {
+			continue
+		}
+		steps, ok := rawSteps.([]any)
+		if !ok {
+			return fmt.Errorf("jobs.%s.steps must be a sequence", name)
+		}
+		for i, rawStep := range steps {
+			if err := validateCheckoutStep(rawStep); err != nil {
+				return fmt.Errorf("jobs.%s.steps[%d] %w", name, i, err)
+			}
+		}
+	}
+	return nil
+}
+
+func validateCheckoutStep(rawStep any) error {
+	step, ok := stringMap(rawStep)
+	if !ok {
+		return fmt.Errorf("must be a mapping")
+	}
+	rawUses, present := step["uses"]
+	if !present {
+		return nil
+	}
+	uses, ok := rawUses.(string)
+	if !ok || strings.TrimSpace(uses) == "" {
+		return fmt.Errorf("uses must be a nonempty string")
+	}
+	if uses != strings.TrimSpace(uses) {
+		return fmt.Errorf("uses must not contain surrounding whitespace")
+	}
+	if strings.HasPrefix(uses, "./") || strings.HasPrefix(uses, `.\`) || strings.HasPrefix(uses, "docker://") {
+		return nil
+	}
+	repository, ref, hasRef := strings.Cut(uses, "@")
+	// Match the runner's owner/repository split, including optional action paths.
+	parts := strings.FieldsFunc(repository, func(r rune) bool { return r == '/' || r == '\\' })
+	if len(parts) < 2 || !strings.EqualFold(parts[0], "actions") || !strings.EqualFold(parts[1], "checkout") {
+		return nil
+	}
+	if !hasRef || strings.TrimSpace(ref) == "" || strings.Contains(ref, "@") {
+		return fmt.Errorf("checkout reference must include a nonempty ref")
+	}
+	rawInputs, present := step["with"]
+	if !present {
+		return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
+	}
+	inputs, ok := stringMap(rawInputs)
+	if !ok {
+		return fmt.Errorf("checkout with must be a mapping")
+	}
+	found := false
+	for name, value := range inputs {
+		if !strings.EqualFold(name, "persist-credentials") {
+			continue
+		}
+		// The runner treats input names case-insensitively. Require every
+		// spelling to be safe so map order cannot hide a conflicting value.
+		persist, ok := value.(bool)
+		if !ok || persist {
+			return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("checkout persist-credentials must be YAML boolean false")
 	}
 	return nil
 }
@@ -288,8 +393,10 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if value, ok := assurance["continue-on-error"]; ok && value != false {
 		return fmt.Errorf("jobs.assurance continue-on-error must be absent or false")
 	}
-	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-15" {
-		return fmt.Errorf("jobs.assurance must run on macos-15")
+	// macOS 26 is the supported minimum; test binaries built for it do not
+	// launch on an older runner.
+	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-26" {
+		return fmt.Errorf("jobs.assurance must run on macos-26")
 	}
 	if hasDefaultRunShell(assurance) {
 		return fmt.Errorf("jobs.assurance defaults.run.shell must not be defined")

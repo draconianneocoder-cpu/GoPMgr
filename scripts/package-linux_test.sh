@@ -1,384 +1,123 @@
 #!/bin/bash
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT"
-
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-package-linux-test.XXXXXX")"
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/scripts" "$fixture/build/bin" "$fixture/build/linux" "$fixture/internal/fonts/assets" "$fixture/third_party/go-sqlcipher" "$fixture/LICENSES" "$fixture/bin"
+cp "$ROOT/scripts/"{package-linux.sh,package-version-lib.sh,release-tool-versions.env,verify-module-notices.sh} "$fixture/scripts/"
+cp "$ROOT/build/linux/"{nfpm.yaml,gopmgr.desktop} "$fixture/build/linux/"
+cp "$ROOT/build/appicon.png" "$fixture/build/"
+cp "$ROOT/third_party/"{GO-MODULE-NOTICES.txt,FRONTEND-NOTICES.txt} "$fixture/third_party/"
+cp "$ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt" "$fixture/third_party/go-sqlcipher/"
+cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$fixture/internal/fonts/assets/"
+cp "$ROOT/LICENSES/GPL-3.0-or-later.txt" "$fixture/LICENSES/"
+cd "$fixture"
+printf 'package main\nfunc main() {}\n' >main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/bin/gopmgr main.go
+cp build/bin/gopmgr good-binary
+# The cross-built fixture has real Go/ELF metadata but cannot link Linux CGO
+# on macOS. Control only external readelf output for ABI rejection tests.
+cat >bin/readelf <<'STUB'
+#!/bin/bash
+case "${ELF_BACKEND:-gtk4}" in
+ gtk4) printf ' 0x00000001 (NEEDED) Shared library: [libgtk-4.so.1]\n 0x00000001 (NEEDED) Shared library: [libwebkitgtk-6.0.so.4]\n' ;;
+ gtk3) printf ' 0x00000001 (NEEDED) Shared library: [libgtk-3.so.0]\n 0x00000001 (NEEDED) Shared library: [libwebkit2gtk-4.1.so.0]\n' ;;
+ mixed) printf ' (NEEDED) Shared library: [libgtk-4.so.1]\n (NEEDED) Shared library: [libwebkitgtk-6.0.so.4]\n (NEEDED) Shared library: [libgtk-3.so.0]\n' ;;
+ missing) exit 0 ;;
+ failed) exit 1 ;;
+esac
+STUB
+chmod +x bin/readelf
+# Backend/header rejection does not require a real packager. Supply only that
+# prerequisite's build metadata, then remove the doubles before nFPM rejection
+# and real package-content checks. All application metadata uses the real Go.
+REAL_GO="$(command -v go)"
+FAKE_NFPM_VERSION="$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env)"
+FAKE_NFPM_BINARY="$fixture/bin/nfpm"
+export REAL_GO FAKE_NFPM_VERSION FAKE_NFPM_BINARY
+printf '#!/bin/sh\nexit 98\n' >bin/nfpm
+cat >bin/go <<'STUB'
+#!/bin/bash
+if [ "${1:-}" = version ] && [ "${2:-}" = -m ] && [ "${3:-}" = "$FAKE_NFPM_BINARY" ]; then
+    printf '\tmod\tgithub.com/goreleaser/nfpm/v2\t%s\n' "$FAKE_NFPM_VERSION"
+    exit 0
+fi
+exec "$REAL_GO" "$@"
+STUB
+chmod +x bin/go bin/nfpm
+export PATH="$fixture/bin:$PATH"
 fail() {
-	echo "FAIL: $*" >&2
+	echo "FAIL $*" >&2
 	exit 1
 }
-
-backup_root="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-package-linux-test.XXXXXX")"
-stub_bin="$backup_root/bin"
-mkdir -p "$stub_bin"
-
-restore_path() {
-	local path="$1"
-	local backup="$2"
-	rm -rf "$path"
-	if [ -e "$backup" ]; then
-		mv "$backup" "$path"
-	fi
+reject() {
+	local name=$1 diagnostic=$2
+	shift 2
+	if env VERSION=1.2.0-3-gabc1234 "$@" bash scripts/package-linux.sh >output 2>&1; then fail "accepted $name"; fi
+	grep -F "$diagnostic" output >/dev/null || {
+		cat output
+		fail "$name diagnostic"
+	}
+	[ ! -d build/packages ] || fail "$name published package"
+	echo "PASS rejects $name"
 }
-
-cleanup() {
-	restore_path "$ROOT/build/bin" "$backup_root/build-bin.backup"
-	restore_path "$ROOT/build/packages" "$backup_root/build-packages.backup"
-	rm -rf "$backup_root"
-}
-trap cleanup EXIT
-
-if [ -e build/bin ]; then
-	mv build/bin "$backup_root/build-bin.backup"
-fi
-if [ -e build/packages ]; then
-	mv build/packages "$backup_root/build-packages.backup"
-fi
-
-mkdir -p build/bin build/packages
-
-# A real cross-compiled linux/amd64 ELF, used as the fixture for every case
-# below that expects package-linux.sh to accept build/bin/gopmgr and needs
-# packaging to actually proceed -- package-linux.sh's ELF-header content
-# check (added alongside R6/R7 below) rejects the plain shell-script stub
-# this file used to stage here. CGO_ENABLED=0 keeps this to the pure-Go
-# cross-compiler, no C toolchain needed. gopmgr_elf_arm64 is the same
-# trivial program built for a different architecture, used by R7 to prove
-# the check's machine-type comparison is load-bearing, not just its ELF-
-# magic check.
-fixture_src="$backup_root/fixture-src"
-mkdir -p "$fixture_src"
-printf 'package main\nfunc main() {}\n' > "$fixture_src/main.go"
-gopmgr_elf_amd64="$backup_root/gopmgr-elf-amd64"
-gopmgr_elf_arm64="$backup_root/gopmgr-elf-arm64"
-(cd "$fixture_src" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$gopmgr_elf_amd64" main.go) ||
-	fail "could not cross-compile the linux/amd64 ELF test fixture -- this test needs a working Go toolchain with cross-compilation enabled (CGO_ENABLED=0 needs no C cross-compiler)"
-(cd "$fixture_src" && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o "$gopmgr_elf_arm64" main.go) ||
-	fail "could not cross-compile the linux/arm64 ELF test fixture (used by R7's wrong-architecture case) -- same requirement as the amd64 fixture above"
-
-cp "$gopmgr_elf_amd64" build/bin/gopmgr
+for backend in gtk3 mixed missing failed; do reject "$backend backend" 'GTK 4/WebKitGTK 6.0' ELF_BACKEND="$backend"; done
+mv build/bin/gopmgr saved-binary
+reject 'missing binary' 'build/bin/gopmgr missing'
+mv saved-binary build/bin/gopmgr
+printf '#!/bin/sh\n' >build/bin/gopmgr
 chmod +x build/bin/gopmgr
-
-# A hyphenated, untagged-past-its-nearest-tag version, matching real
-# `git describe --tags` output (without --abbrev=0) for a checkout that
-# isn't exactly on a tag -- the exact shape package-version-lib.sh's
-# release_version() produces and package-macos.sh already relies on. Proves
-# package-linux.sh now derives VERSION the same way rather than silently
-# reusing --abbrev=0's bare-tag-name behavior.
-test_version="1.2.0-3-gabc1234"
-
-# --- Negative-path guards (run unconditionally -- none of these need a real
-# nfpm on PATH, unlike Case 1/2 below, so they must not sit behind the
-# nfpm-availability skip). Each is a pre-existing guard in package-linux.sh
-# that predates this session and had zero dynamic test coverage before now;
-# scripts/check-installer-tool-pins.sh only checks the *source* contains
-# certain literal substrings, it never runs the guards against a real
-# mismatched/missing tool. ---
-
-# R3: build/bin/gopmgr missing must hard-fail with an actionable message,
-# not silently package a stale binary from a previous run or crash mid-way.
-mv build/bin/gopmgr "$backup_root/gopmgr-saved"
-r3_output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r3_output" >&2
-	fail "R3: package-linux.sh should fail when build/bin/gopmgr is missing, but it succeeded"
-}
-case "$r3_output" in
-*"build/bin/gopmgr missing"*) ;;
-*)
-	printf '%s\n' "$r3_output" >&2
-	fail "R3: package-linux.sh's missing-binary error did not mention build/bin/gopmgr"
-	;;
-esac
-mv "$backup_root/gopmgr-saved" build/bin/gopmgr
-
-# R4: nfpm absent from PATH must hard-fail with install instructions, not a
-# confusing raw "command not found" further down. Restrict PATH to bare
-# system dirs so this doesn't depend on -- or get fooled by -- whatever the
-# invoking host actually has installed.
-r4_output="$(VERSION="$test_version" PATH=/usr/bin:/bin bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r4_output" >&2
-	fail "R4: package-linux.sh should fail when nfpm is not on PATH, but it succeeded"
-}
-case "$r4_output" in
-*"nfpm not found"*) ;;
-*)
-	printf '%s\n' "$r4_output" >&2
-	fail "R4: package-linux.sh's nfpm-missing error did not say 'nfpm not found'"
-	;;
-esac
-
-# R5: an nfpm on PATH whose Go module build metadata doesn't match the
-# pinned NFPM_VERSION must hard-fail *before* packaging runs -- the
-# anti-drift guard that stops an untrusted/wrong nfpm binary from silently
-# building release artifacts. The stub below is a plain shell script, not a
-# real Go binary, so `go version -m` on it reports no module info and
-# actual_nfpm_version resolves empty -- this proves the guard rejects an
-# nfpm whose version can't be verified, which is the guard's actual
-# contract; it does NOT prove the comparison discriminates between two
-# specific version strings (that would need a second real pinned nfpm
-# build, which needs network access this test doesn't assume). The sentinel
-# proves the guard fires before `nfpm package` ever runs, not just that the
-# run eventually fails.
-nfpm_called_sentinel="$backup_root/nfpm-called"
-cat > "$stub_bin/nfpm" << 'STUB'
-#!/bin/bash
-: > "${NFPM_CALLED_SENTINEL:?NFPM_CALLED_SENTINEL not set}"
-exit 0
-STUB
-chmod +x "$stub_bin/nfpm"
-rm -f "$nfpm_called_sentinel"
-r5_output="$(VERSION="$test_version" PATH="$stub_bin:$PATH" NFPM_CALLED_SENTINEL="$nfpm_called_sentinel" bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r5_output" >&2
-	fail "R5: package-linux.sh should fail when nfpm's module version can't be verified, but it succeeded"
-}
-case "$r5_output" in
-*"is required; found"*) ;;
-*)
-	printf '%s\n' "$r5_output" >&2
-	fail "R5: package-linux.sh's nfpm-version-mismatch error did not say 'is required; found'"
-	;;
-esac
-if [ -f "$nfpm_called_sentinel" ]; then
-	fail "R5: package-linux.sh invoked nfpm despite an unverifiable version -- the version guard did not block packaging"
-fi
-
-# R6: build/bin/gopmgr present but not an ELF binary at all (e.g. a stray
-# script, or a non-Linux binary left over from another platform's build)
-# must hard-fail rather than being silently packaged -- the exact defect
-# this guard exists to close (docs/beta-release-backlog.md's
-# package-linux.sh row, found 2026-08-27 while testing R5 above).
-printf '#!/bin/bash\necho fake gopmgr\n' > build/bin/gopmgr
-chmod +x build/bin/gopmgr
-r6_output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r6_output" >&2
-	fail "R6: package-linux.sh should fail when build/bin/gopmgr is not an ELF binary, but it succeeded"
-}
-case "$r6_output" in
-*"is not a linux/amd64 ELF executable"*) ;;
-*)
-	printf '%s\n' "$r6_output" >&2
-	fail "R6: package-linux.sh's non-ELF error did not say 'is not a linux/amd64 ELF executable'"
-	;;
-esac
-cp "$gopmgr_elf_amd64" build/bin/gopmgr
-chmod +x build/bin/gopmgr
-
-# R7: build/bin/gopmgr present, a genuine ELF binary, but for the wrong
-# architecture (arm64 instead of amd64) must also hard-fail -- proves the
-# guard actually compares e_machine rather than just checking ELF magic.
-cp "$gopmgr_elf_arm64" build/bin/gopmgr
-chmod +x build/bin/gopmgr
-r7_output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r7_output" >&2
-	fail "R7: package-linux.sh should fail when build/bin/gopmgr is the wrong ELF architecture, but it succeeded"
-}
-case "$r7_output" in
-*"is not a linux/amd64 ELF executable"*) ;;
-*)
-	printf '%s\n' "$r7_output" >&2
-	fail "R7: package-linux.sh's wrong-arch error did not say 'is not a linux/amd64 ELF executable'"
-	;;
-esac
-cp "$gopmgr_elf_amd64" build/bin/gopmgr
-chmod +x build/bin/gopmgr
-
-# R2 (malformed NFPM_VERSION in release-tool-versions.env) is deliberately
-# not covered here: scripts/check-installer-tool-pins.sh already validates
-# NFPM_VERSION against the identical regex from the same file, and runs
-# inside `make verify` on every commit -- a malformed pin can't reach this
-# script without that check already having failed first. What's untested is
-# package-linux.sh's own duplicate re-validation of the same value, which
-# only matters if someone runs this script directly without `make verify`;
-# lower value than R3/R4/R5 above and skipped to bound this pass's scope.
-
-if ! command -v nfpm >/dev/null 2>&1; then
-	# Safe to skip Case 1/2 below: they build real .deb/.rpm via the actual
-	# pinned nfpm and need it on PATH. package-linux.sh itself hard-fails
-	# with a clear error if nfpm is missing (just proven above by R4), so
-	# this isn't a path that can go green without exercising the real
-	# check -- only the positive-path artifact-building cases are skipped.
-	echo "package-linux_test: nfpm not found on PATH, skipping Case 1/2 (install with" >&2
-	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@\$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env))." >&2
-	echo "package-linux negative-path tests (R3/R4/R5) passed; Case 1/2 skipped." >&2
+reject 'non ELF' 'not a linux/amd64 ELF'
+cp good-binary build/bin/gopmgr
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/bin/gopmgr main.go
+reject 'wrong architecture' 'not a linux/amd64 ELF'
+cp good-binary build/bin/gopmgr
+rm bin/go bin/nfpm
+reject 'missing nfpm' 'nfpm not found' PATH=/usr/bin:/bin
+printf '#!/bin/sh\nexit 0\n' >bin/nfpm
+chmod +x bin/nfpm
+reject 'unverifiable nfpm' 'is required; found'
+rm bin/nfpm
+if ! command -v nfpm >/dev/null; then
+	echo 'SKIP package contents: pinned nfpm unavailable'
 	exit 0
 fi
-
-output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" || {
-	printf '%s\n' "$output" >&2
-	fail "package-linux.sh failed with an explicit hyphenated VERSION"
+cp third_party/GO-MODULE-NOTICES.txt notices.saved
+grep -vx 'Module: std' notices.saved >third_party/GO-MODULE-NOTICES.txt
+reject 'missing module notices' 'no Go standard library section'
+mv notices.saved third_party/GO-MODULE-NOTICES.txt
+VERSION=1.2.0-3-gabc1234 bash scripts/package-linux.sh >output 2>&1 || {
+	cat output
+	fail 'valid packaging'
 }
-
-deb="build/packages/gopmgr-${test_version}-amd64.deb"
-rpm="build/packages/gopmgr-${test_version}-x86_64.rpm"
-
-if [ ! -f "$deb" ]; then
-	fail "package-linux.sh did not produce the expected .deb at $deb"
-fi
-if [ ! -f "$rpm" ]; then
-	fail "package-linux.sh did not produce the expected .rpm at $rpm"
-fi
-# The .rpm's own internal Version: metadata is NOT independently inspected
-# here (macOS has no rpm/rpm2cpio/dnf and no such Python library) -- this
-# only runs on macOS in practice, since Case 1/2 above are gated on nfpm
-# being present. docs/beta-release-backlog.md row 52 records a real Linux
-# host (rpm 6.0.1, Ubuntu 26.04, 2026-08-27) inspecting this directly:
-# nfpm's .rpm sanitization is NOT the same as its .deb sanitization from
-# the same VERSION input. The .deb keeps every hyphen after the first as a
-# literal "-" (only the first becomes "~"); the .rpm additionally replaces
-# every hyphen AFTER the first with "_" (e.g. "1.2.0-3-gabc1234" becomes
-# "1.2.0~3-gabc1234" for the .deb but "1.2.0~3_gabc1234" for the .rpm),
-# because RPM's Version field forbids "-" entirely (it's the Version/Release
-# delimiter in EVR), while Debian only forbids an unescaped "-" before the
-# final component. Do not infer one format's sanitization from the other's.
-# rpm/dnf's own PARSING and ORDERING of the result was also verified on that
-# host, via rpm 6.0.1's `rpm.vercmp()` and a real (sandboxed, --justdb)
-# install/upgrade/downgrade transaction sequence -- not by anything in this
-# file, which stays macOS-only.
-
-# Prove VERSION is actually threaded through to nfpm's own package metadata,
-# not just the output filename -- ar+tar for .deb (both are standard on
-# macOS/Linux); dpkg-deb is Debian-only and not assumed present.
-if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
-	extract_dir="$backup_root/deb-extract"
-	mkdir -p "$extract_dir"
-	(cd "$extract_dir" && ar x "$ROOT/$deb")
-	control_tar="$(find "$extract_dir" -maxdepth 1 -name 'control.tar.*' -print | head -1)"
-	data_tar="$(find "$extract_dir" -maxdepth 1 -name 'data.tar.*' -print | head -1)"
-	if [ -z "$control_tar" ]; then
-		fail "package-linux.sh's .deb has no control.tar.* member"
-	fi
-	if [ -z "$data_tar" ]; then
-		fail "package-linux.sh's .deb has no data.tar.* member"
-	fi
-	control_contents="$(tar -xOf "$control_tar" -C "$extract_dir" ./control 2>/dev/null || tar -xOf "$control_tar" ./control 2>/dev/null || true)"
-	notice_contents="$(tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/sqlcipher-license.txt 2>/dev/null || tar -xOf "$data_tar" ./usr/share/doc/gopmgr/sqlcipher-license.txt 2>/dev/null || true)"
-	for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2008, ZETETIC LLC" "2018 segment.com"; do
-		case "$notice_contents" in
-		*"$marker"*) ;;
-		*) fail ".deb SQLCipher notices lack $marker" ;;
-		esac
-	done
-	font_notices="$(tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/font-notices.txt 2>/dev/null || tar -xOf "$data_tar" ./usr/share/doc/gopmgr/font-notices.txt 2>/dev/null || true)"
-	for marker in "IBM Corp." "Adobe" "SIL OPEN FONT LICENSE"; do
-		case "$font_notices" in
-		*"$marker"*) ;;
-		*) fail ".deb font notices lack $marker" ;;
-		esac
-	done
-	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/go-module-notices.txt 2>/dev/null ||
-		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/go-module-notices.txt 2>/dev/null || true; } >"$backup_root/go-module-notices.txt"
-	cmp -s "$backup_root/go-module-notices.txt" third_party/GO-MODULE-NOTICES.txt ||
-		fail ".deb lacks an exact copy of third_party/GO-MODULE-NOTICES.txt at /usr/share/doc/gopmgr/go-module-notices.txt"
-	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null ||
-		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null || true; } >"$backup_root/frontend-notices.txt"
-	cmp -s "$backup_root/frontend-notices.txt" third_party/FRONTEND-NOTICES.txt ||
-		fail ".deb lacks an exact copy of third_party/FRONTEND-NOTICES.txt at /usr/share/doc/gopmgr/frontend-notices.txt"
-	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null ||
-		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null || true; } >"$backup_root/LICENSE"
-	cmp -s "$backup_root/LICENSE" LICENSES/GPL-3.0-or-later.txt ||
-		fail ".deb lacks an exact copy of GoPMgr's own license (LICENSES/GPL-3.0-or-later.txt) at /usr/share/doc/gopmgr/LICENSE"
-	# nfpm sanitizes VERSION for the package's own internal metadata field
-	# (Debian version syntax forbids an unescaped "-" before the upstream
-	# version's final component): the first hyphen becomes "~", matching
-	# what a prior session observed running the same pinned nfpm directly
-	# (docs/beta-release-backlog.md row 52). The produced FILENAME still
-	# carries the raw VERSION verbatim, since --target sets it explicitly --
-	# only the in-package Version: field is sanitized.
-	sanitized_version="1.2.0~3-gabc1234"
-	case "$control_contents" in
-	*"Version: $sanitized_version"*) ;;
-	*)
-		printf '%s\n' "$control_contents" >&2
-		fail ".deb control file does not declare the expected sanitized Version: $sanitized_version"
-		;;
-	esac
-fi
-
-# Case 2: prove package-linux.sh actually WIRES UP release_version() for
-# the real (VERSION unset) path, not just that an explicit VERSION passes
-# through -- Case 1 above, like package-macos_test.sh's own cases, always
-# sets VERSION explicitly, so neither would catch a regression to the old
-# inline `git describe --tags --abbrev=0` fallback (or any other reverted
-# logic) as long as an explicit VERSION is always supplied by the caller.
-# release_version()'s own git-describe-vs-abbrev0 behavior is already
-# exhaustively tested in isolation by package-version-lib_test.sh; what's
-# unverified here is that package-linux.sh's real fallback path actually
-# calls it. package-linux.sh forces its own CWD to the real repo root
-# before calling release_version(), so that behavior can't be exercised
-# safely against this actual checkout's tags without mutating them -- copy
-# the script (and its static file dependencies) into an isolated throwaway
-# repo instead, matching package-version-lib_test.sh's own isolation
-# technique one level up the call stack.
-fake_repo="$backup_root/fake-repo"
-mkdir -p "$fake_repo/scripts" "$fake_repo/build/linux" "$fake_repo/build/bin" \
-	"$fake_repo/third_party/go-sqlcipher" "$fake_repo/internal/fonts/assets" "$fake_repo/LICENSES"
-cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env \
-	scripts/verify-module-notices.sh "$fake_repo/scripts/"
-cp build/linux/nfpm.yaml build/linux/gopmgr.desktop "$fake_repo/build/linux/"
-cp build/appicon.png "$fake_repo/build/"
-cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt \
-	"$fake_repo/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"
-cp internal/fonts/assets/FONT-NOTICES.txt "$fake_repo/internal/fonts/assets/FONT-NOTICES.txt"
-cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
-cp third_party/FRONTEND-NOTICES.txt "$fake_repo/third_party/FRONTEND-NOTICES.txt"
-cp LICENSES/GPL-3.0-or-later.txt "$fake_repo/LICENSES/GPL-3.0-or-later.txt"
-cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
-chmod +x "$fake_repo/build/bin/gopmgr"
-(
-	cd "$fake_repo"
-	git init -q
-	git config user.email "test@example.invalid"
-	git config user.name "test"
-	git add -A
-	git commit -q -m "first commit"
-	git tag v1.2.3
-	echo two > file.txt
-	git add file.txt
-	git commit -q -m "second commit, past the tag"
-)
-
-# R8: notices that do not cover the binary must stop packaging before nfpm
-# runs. scripts/verify-module-notices_test.sh covers the module comparison
-# itself; this proves package-linux.sh enforces it. The fixture binary links
-# no modules, so a notices file without the standard library stands in.
-grep -vx 'Module: std' third_party/GO-MODULE-NOTICES.txt >"$fake_repo/third_party/GO-MODULE-NOTICES.txt"
-r8_output="$(cd "$fake_repo" && env -u VERSION bash scripts/package-linux.sh 2>&1)" && {
-	printf '%s\n' "$r8_output" >&2
-	fail "R8: package-linux.sh should fail when the Go module notices do not cover the binary, but it succeeded"
+[ -f build/packages/gopmgr-1.2.0-3-gabc1234-amd64.deb ] || fail 'deb output'
+[ -f build/packages/gopmgr-1.2.0-3-gabc1234-x86_64.rpm ] || fail 'rpm output'
+mkdir extracted
+(cd extracted && ar x ../build/packages/gopmgr-1.2.0-3-gabc1234-amd64.deb)
+tar -xOf extracted/control.tar.* ./control >control
+for expected in 'Package: gopmgr' 'Version: 1.2.0~3-gabc1234' libgtk-4-1 libwebkitgtk-6.0-4; do grep -F "$expected" control >/dev/null || fail "package control missing $expected"; done
+if grep -E 'libgtk-3|libwebkit2gtk' control; then fail 'legacy runtime dependency'; fi
+for pair in 'third_party/GO-MODULE-NOTICES.txt go-module-notices.txt' 'third_party/FRONTEND-NOTICES.txt frontend-notices.txt' 'third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt sqlcipher-license.txt' 'internal/fonts/assets/FONT-NOTICES.txt font-notices.txt' 'LICENSES/GPL-3.0-or-later.txt LICENSE'; do
+	read -r src dest <<<"$pair"
+	tar -xOf extracted/data.tar.* "./usr/share/doc/gopmgr/$dest" >extracted-notice
+	cmp "$src" extracted-notice || fail "notice $dest"
+done
+# Exercise the shared version derivation through the package wrapper.
+git init -q
+git config user.email test@example.invalid
+git config user.name test
+git add main.go
+git -c commit.gpgsign=false commit -q -m fixture
+git tag v1.2.3
+echo '// next' >>main.go
+git add main.go
+git -c commit.gpgsign=false commit -q -m next
+expected="$(git describe --tags | sed 's/^v//')"
+env -u VERSION bash scripts/package-linux.sh >output 2>&1 || {
+	cat output
+	fail 'git-derived version'
 }
-case "$r8_output" in
-*"verify-module-notices: "*"no Go standard library section"*) ;;
-*)
-	printf '%s\n' "$r8_output" >&2
-	fail "R8: package-linux.sh's incomplete-notices error did not come from verify-module-notices"
-	;;
-esac
-if ls "$fake_repo"/build/packages/*.deb "$fake_repo"/build/packages/*.rpm >/dev/null 2>&1; then
-	fail "R8: package-linux.sh built a package despite incomplete Go module notices"
-fi
-cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
-
-fallback_output="$(cd "$fake_repo" && env -u VERSION bash scripts/package-linux.sh 2>&1)" || {
-	printf '%s\n' "$fallback_output" >&2
-	fail "package-linux.sh failed with VERSION unset in the isolated repo"
-}
-case "$fallback_output" in
-*"gopmgr-1.2.3-amd64.deb"* | *"gopmgr-1.2.3-x86_64.rpm"*)
-	printf '%s\n' "$fallback_output" >&2
-	fail "package-linux.sh with VERSION unset past a tag produced the bare tag name -- the --abbrev=0 regression is back"
-	;;
-*"gopmgr-1.2.3-"*"-amd64.deb"*) ;;
-*)
-	printf '%s\n' "$fallback_output" >&2
-	fail "package-linux.sh with VERSION unset did not produce a tag-distance-suffixed artifact name"
-	;;
-esac
-if ! ls "$fake_repo"/build/packages/gopmgr-1.2.3-*-amd64.deb >/dev/null 2>&1; then
-	fail "package-linux.sh (VERSION unset, isolated repo) did not create the expected distance-suffixed .deb"
-fi
-
-echo "package-linux layout test passed."
+[ -f "build/packages/gopmgr-$expected-amd64.deb" ] || fail 'version derivation'
+echo 'package-linux fixtures passed (synthetic dynamic dependencies; no native launch)'

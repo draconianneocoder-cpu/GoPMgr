@@ -42,15 +42,15 @@ PDFA_STRICT="${GOPMGR_PDFA_STRICT:-1}"
 # pdfa_precondition_unmet <human-readable reason>
 # Fails under strict mode, skips (exit 0) otherwise.
 pdfa_precondition_unmet() {
-    if [ "$PDFA_STRICT" = "1" ]; then
-        echo "FAIL: $1"
-        echo "The PDF/A-2u gate is strict: install Docker, a veraPDF CLI, or Java, and run 'make icc'."
-        echo "Set GOPMGR_PDFA_STRICT=0 to downgrade this to a local skip."
-        exit 1
-    fi
-    echo "SKIP: $1"
-    echo "(non-strict) Set GOPMGR_PDFA_STRICT=1 to make this a hard failure; the release gate does."
-    exit 0
+	if [ "$PDFA_STRICT" = "1" ]; then
+		echo "FAIL: $1"
+		echo "The PDF/A-2u gate is strict: install Docker, a veraPDF CLI, or Java, and run 'make icc'."
+		echo "Set GOPMGR_PDFA_STRICT=0 to downgrade this to a local skip."
+		exit 1
+	fi
+	echo "SKIP: $1"
+	echo "(non-strict) Set GOPMGR_PDFA_STRICT=1 to make this a hard failure; the release gate does."
+	exit 0
 }
 
 ICC_PROFILE="${GOPMGR_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
@@ -71,20 +71,17 @@ VERAPDF_CACHE="$ROOT/.tmp/verapdf"
 VERAPDF_DIR="${VERAPDF_CACHE}/verapdf-${VERAPDF_VERSION}"
 VERAPDF_CLI="${VERAPDF_DIR}/verapdf"
 VERAPDF_INSTALLER_ZIP="${VERAPDF_CACHE}/verapdf-greenfield-${VERAPDF_VERSION}-installer.zip"
-# Older versions of this gate wrapped a downloaded jar in a script; such a
-# wrapper around a broken jar is replaced by a fresh install.
-VERAPDF_JAR="${VERAPDF_CACHE}/verapdf-app.jar"
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pdfa-test"
 SAMPLES=(
-    schedule.pdf
-    document-charter.pdf
-    document-multilingual.pdf
-    document-japanese.pdf
-    document-korean.pdf
-    document-chinese.pdf
-    combined-report.pdf
-    monte-carlo-risk-report.pdf
-    signed-document.pdf
+	schedule.pdf
+	document-charter.pdf
+	document-multilingual.pdf
+	document-japanese.pdf
+	document-korean.pdf
+	document-chinese.pdf
+	combined-report.pdf
+	monte-carlo-risk-report.pdf
+	signed-document.pdf
 )
 
 # install_verapdf_cli downloads the pinned installer, refuses it unless its
@@ -92,55 +89,65 @@ SAMPLES=(
 # It installs into a fresh directory first, so a failed run never leaves a
 # half-installed CLI in place.
 install_verapdf_cli() {
-    local tmp_zip tmp_dir installer
-    if ! command -v java >/dev/null 2>&1; then
-        echo "veraPDF needs Java, and no java command is on PATH."
-        return 1
-    fi
-    mkdir -p "$VERAPDF_CACHE"
-    if ! file_has_sha256 "$VERAPDF_INSTALLER_ZIP" "$VERAPDF_INSTALLER_SHA256"; then
-        echo "Downloading the veraPDF ${VERAPDF_VERSION} installer..."
-        rm -f "$VERAPDF_INSTALLER_ZIP"
-        tmp_zip="${VERAPDF_INSTALLER_ZIP}.$$"
-        if command -v curl >/dev/null 2>&1; then
-            curl -fsSL "$VERAPDF_INSTALLER_URL" -o "$tmp_zip" 2>/dev/null || rm -f "$tmp_zip"
-        elif command -v wget >/dev/null 2>&1; then
-            wget -q "$VERAPDF_INSTALLER_URL" -O "$tmp_zip" || rm -f "$tmp_zip"
-        fi
-        if [ ! -s "$tmp_zip" ]; then
-            rm -f "$tmp_zip"
-            echo "Could not download $VERAPDF_INSTALLER_URL"
-            return 1
-        fi
-        if ! file_has_sha256 "$tmp_zip" "$VERAPDF_INSTALLER_SHA256"; then
-            rm -f "$tmp_zip"
-            echo "The downloaded veraPDF installer does not match its pinned SHA-256; refusing to run it."
-            return 1
-        fi
-        mv "$tmp_zip" "$VERAPDF_INSTALLER_ZIP"
-    fi
-    tmp_dir="$(mktemp -d "${VERAPDF_CACHE}/install.XXXXXX")"
-    installer="$tmp_dir/installer/verapdf-greenfield-${VERAPDF_VERSION}/verapdf-izpack-installer-${VERAPDF_VERSION}.jar"
-    if ! unzip -q "$VERAPDF_INSTALLER_ZIP" -d "$tmp_dir/installer" || [ ! -f "$installer" ]; then
-        rm -rf "$tmp_dir"
-        echo "The veraPDF installer archive does not contain $(basename "$installer")."
-        return 1
-    fi
-    verapdf_auto_install_xml "$tmp_dir/verapdf" > "$tmp_dir/auto-install.xml"
-    if ! java -jar "$installer" "$tmp_dir/auto-install.xml" >/dev/null 2>&1 || [ ! -x "$tmp_dir/verapdf/verapdf" ]; then
-        rm -rf "$tmp_dir"
-        echo "The veraPDF installer did not produce a verapdf command."
-        return 1
-    fi
-    rm -rf "$VERAPDF_DIR"
-    mv "$tmp_dir/verapdf" "$VERAPDF_DIR"
-    rm -rf "$tmp_dir"
+	local tmp_zip tmp_dir installer
+	if [ -e "$VERAPDF_DIR" ] || [ -L "$VERAPDF_DIR" ]; then
+		echo "Managed veraPDF cache exists but is unusable: $VERAPDF_DIR. Repair it explicitly; it will not be replaced."
+		return 1
+	fi
+	if ! command -v java >/dev/null 2>&1; then
+		echo "veraPDF needs Java, and no java command is on PATH."
+		return 1
+	fi
+	mkdir -p "$VERAPDF_CACHE"
+	if ! file_has_sha256 "$VERAPDF_INSTALLER_ZIP" "$VERAPDF_INSTALLER_SHA256"; then
+		echo "Downloading the veraPDF ${VERAPDF_VERSION} installer..."
+		rm -f "$VERAPDF_INSTALLER_ZIP"
+		tmp_zip="${VERAPDF_INSTALLER_ZIP}.$$"
+		if command -v curl >/dev/null 2>&1; then
+			curl -fsSL "$VERAPDF_INSTALLER_URL" -o "$tmp_zip" 2>/dev/null || rm -f "$tmp_zip"
+		elif command -v wget >/dev/null 2>&1; then
+			wget -q "$VERAPDF_INSTALLER_URL" -O "$tmp_zip" || rm -f "$tmp_zip"
+		fi
+		if [ ! -s "$tmp_zip" ]; then
+			rm -f "$tmp_zip"
+			echo "Could not download $VERAPDF_INSTALLER_URL"
+			return 1
+		fi
+		if ! file_has_sha256 "$tmp_zip" "$VERAPDF_INSTALLER_SHA256"; then
+			rm -f "$tmp_zip"
+			echo "The downloaded veraPDF installer does not match its pinned SHA-256; refusing to run it."
+			return 1
+		fi
+		mv "$tmp_zip" "$VERAPDF_INSTALLER_ZIP"
+	fi
+	tmp_dir="$(mktemp -d "${VERAPDF_CACHE}/install.XXXXXX")"
+	installer="$tmp_dir/installer/verapdf-greenfield-${VERAPDF_VERSION}/verapdf-izpack-installer-${VERAPDF_VERSION}.jar"
+	if ! unzip -q "$VERAPDF_INSTALLER_ZIP" -d "$tmp_dir/installer" || [ ! -f "$installer" ]; then
+		rm -rf "$tmp_dir"
+		echo "The veraPDF installer archive does not contain $(basename "$installer")."
+		return 1
+	fi
+	verapdf_auto_install_xml "$tmp_dir/verapdf" >"$tmp_dir/auto-install.xml"
+	if ! java -jar "$installer" "$tmp_dir/auto-install.xml" >/dev/null 2>&1 || [ ! -x "$tmp_dir/verapdf/verapdf" ]; then
+		rm -rf "$tmp_dir"
+		echo "The veraPDF installer did not produce a verapdf command."
+		return 1
+	fi
+	if ! verapdf_require_version "$VERAPDF_VERSION" "$tmp_dir/verapdf/verapdf"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	if ! mv "$tmp_dir/verapdf" "$VERAPDF_DIR"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	rm -rf "$tmp_dir"
 }
 
 echo "=== PDF/A-2u Validation Gate ==="
 
 if [ ! -s "$ICC_PROFILE" ]; then
-    pdfa_precondition_unmet "No ICC profile found at $ICC_PROFILE (run 'make icc' first); the PDF/A OutputIntent cannot be validated."
+	pdfa_precondition_unmet "No ICC profile found at $ICC_PROFILE (run 'make icc' first); the PDF/A OutputIntent cannot be validated."
 fi
 
 # --- 1. Try Docker first (most reliable) --------------------------------
@@ -149,29 +156,37 @@ fi
 # diagnosing a local veraPDF installation without removing Docker from PATH.
 if [ "${GOPMGR_VERAPDF_FORCE_CLI:-0}" != "1" ] &&
 	command -v docker >/dev/null 2>&1; then
-    echo "Using veraPDF via Docker ($VERAPDF_IMAGE)..."
-    VERAPDF_MODE="docker"
-    # Use veraPDF's official self-contained CLI image and bind it to the same
-    # version as the installer fallback. A mutable `latest` tag would let
-    # identical source tags produce different conformance results over time.
-    VERAPDF_CMD=(docker run --rm -v "$ROOT:/work" "$VERAPDF_IMAGE")
+	echo "Using veraPDF via Docker ($VERAPDF_IMAGE)..."
+	VERAPDF_MODE="docker"
+	# Use veraPDF's official self-contained CLI image and bind it to the same
+	# version as the installer fallback. A mutable `latest` tag would let
+	# identical source tags produce different conformance results over time.
+	VERAPDF_CMD=(docker run --rm -v "$ROOT:/work" "$VERAPDF_IMAGE")
 else
 	echo "Docker not found, falling back to veraPDF CLI..."
 	# --- 2. Ensure veraPDF CLI is available -----------------------------
 	if command -v verapdf >/dev/null 2>&1; then
 		VERAPDF_CLI="$(command -v verapdf)"
 	fi
-	if verapdf_cli_needs_refresh "$VERAPDF_CLI" "$VERAPDF_JAR"; then
-		rm -f "$VERAPDF_CLI"
-	fi
 	if [ ! -x "$VERAPDF_CLI" ]; then
-		install_verapdf_cli || true
+		if ! install_verapdf_cli; then
+			pdfa_precondition_unmet "Could not install the pinned veraPDF CLI; inspect the diagnostic above and repair the managed cache or PATH explicitly."
+		fi
 	fi
 	if [ ! -x "$VERAPDF_CLI" ]; then
 		pdfa_precondition_unmet "Could not obtain a veraPDF CLI (no Docker, none on PATH, and the pinned installer could not be downloaded, verified, or run); cannot validate PDF/A-2u."
 	fi
 	VERAPDF_MODE="cli"
 	VERAPDF_CMD=("$VERAPDF_CLI")
+fi
+
+if ! verapdf_require_version "$VERAPDF_VERSION" "${VERAPDF_CMD[@]}"; then
+	pdfa_precondition_unmet "Validator version is unverified; expected veraPDF $VERAPDF_VERSION. Provide that version on PATH or use the pinned Docker image. No samples were generated."
+fi
+
+# Resolve native Go settings before replacing any prior sample evidence.
+if ! python3 "$ROOT/scripts/native-go-env.py" go -- python3 -c 'pass'; then
+	pdfa_precondition_unmet "Native Go environment is invalid; no PDF/A samples were generated."
 fi
 
 # --- 3. Generate representative PDFs ------------------------------------
@@ -184,7 +199,7 @@ rm -rf "$SAMPLE_DIR"
 mkdir -p "$SAMPLE_DIR"
 
 # Minimal schedule report PDF (uses the export package directly)
-cat > "$SAMPLE_DIR/gen_schedule.go" << 'EOF'
+cat >"$SAMPLE_DIR/gen_schedule.go" <<'EOF'
 package main
 
 import (
@@ -213,7 +228,7 @@ func main() {
 EOF
 
 # Representative document and combined-report PDFs using public document APIs.
-cat > "$SAMPLE_DIR/gen_documents.go" << 'EOF'
+cat >"$SAMPLE_DIR/gen_documents.go" <<'EOF'
 package main
 
 import (
@@ -387,7 +402,7 @@ func main() {
 EOF
 
 # Representative Monte Carlo risk report PDF using the public export API.
-cat > "$SAMPLE_DIR/gen_montecarlo.go" << 'EOF'
+cat >"$SAMPLE_DIR/gen_montecarlo.go" <<'EOF'
 package main
 
 import (
@@ -444,7 +459,7 @@ EOF
 # A PAdES-signed document. Signing appends the final incremental update, so
 # this sample proves the signed file is still PDF/A-2u. A throwaway
 # self-signed certificate is enough: trust is the PAdES gates' concern.
-cat > "$SAMPLE_DIR/gen_signed.go" << 'EOF'
+cat >"$SAMPLE_DIR/gen_signed.go" <<'EOF'
 package main
 
 import (
@@ -521,64 +536,64 @@ func fail(step string, err error) {
 EOF
 
 # Compile and run the generators.
-if go run "$SAMPLE_DIR/gen_schedule.go" 2>/dev/null; then
-    echo "Sample schedule report generated."
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_schedule.go" 2>/dev/null; then
+	echo "Sample schedule report generated."
 else
-    echo "Could not generate sample PDF (missing dependencies or build issue)."
-    echo "PDF/A validation cannot run without representative samples."
-    exit 1
+	echo "Could not generate sample PDF (missing dependencies or build issue)."
+	echo "PDF/A validation cannot run without representative samples."
+	exit 1
 fi
-if go run "$SAMPLE_DIR/gen_documents.go" 2>/dev/null; then
-    echo "Sample document and combined report generated."
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_documents.go" 2>/dev/null; then
+	echo "Sample document and combined report generated."
 else
-    echo "Could not generate document PDF samples (missing dependencies or build issue)."
-    echo "PDF/A validation cannot run without representative document samples."
-    exit 1
+	echo "Could not generate document PDF samples (missing dependencies or build issue)."
+	echo "PDF/A validation cannot run without representative document samples."
+	exit 1
 fi
-if go run "$SAMPLE_DIR/gen_montecarlo.go" 2>/dev/null; then
-    echo "Sample Monte Carlo risk report generated."
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_montecarlo.go" 2>/dev/null; then
+	echo "Sample Monte Carlo risk report generated."
 else
-    echo "Could not generate Monte Carlo risk report PDF sample (missing dependencies or build issue)."
-    echo "PDF/A validation cannot run without the Monte Carlo risk report sample."
-    exit 1
+	echo "Could not generate Monte Carlo risk report PDF sample (missing dependencies or build issue)."
+	echo "PDF/A validation cannot run without the Monte Carlo risk report sample."
+	exit 1
 fi
 
-if go run "$SAMPLE_DIR/gen_signed.go" 2>/dev/null; then
-    echo "Sample signed document generated."
+if python3 "$ROOT/scripts/native-go-env.py" go -- go run "$SAMPLE_DIR/gen_signed.go" 2>/dev/null; then
+	echo "Sample signed document generated."
 else
-    echo "Could not generate the signed document PDF sample (missing dependencies or build issue)."
-    echo "PDF/A validation cannot run without the signed document sample."
-    exit 1
+	echo "Could not generate the signed document PDF sample (missing dependencies or build issue)."
+	echo "PDF/A validation cannot run without the signed document sample."
+	exit 1
 fi
 
 # --- 4. Run veraPDF ------------------------------------------------------
 for name in "${SAMPLES[@]}"; do
-    if [ ! -s "$SAMPLE_DIR/$name" ]; then
-        echo "FAIL: sample $name was not generated, although its generator succeeded."
-        exit 1
-    fi
+	if [ ! -s "$SAMPLE_DIR/$name" ]; then
+		echo "FAIL: sample $name was not generated, although its generator succeeded."
+		exit 1
+	fi
 done
 
 echo "Validating PDFs with veraPDF..."
 
 FAIL=0
 for name in "${SAMPLES[@]}"; do
-    pdf="$SAMPLE_DIR/$name"
-    echo "  Checking $name ..."
-    sample_arg="$(verapdf_sample_arg "$VERAPDF_MODE" "$ROOT" "$pdf")"
-	output="$("${VERAPDF_CMD[@]}" --format xml -f 2u "$sample_arg" 2>&1 || true)"
-    if printf '%s\n' "$output" | verapdf_output_is_compliant; then
-        echo "    OK - $name is PDF/A-2u compliant"
-    else
-        echo "    FAIL - $name did not pass PDF/A-2u validation"
-        printf '%s\n' "$output"
-        FAIL=1
-    fi
+	pdf="$SAMPLE_DIR/$name"
+	echo "  Checking $name ..."
+	sample_arg="$(verapdf_sample_arg "$VERAPDF_MODE" "$ROOT" "$pdf")"
+	if output="$("${VERAPDF_CMD[@]}" --format xml -f 2u "$sample_arg" 2>&1)" &&
+		printf '%s\n' "$output" | verapdf_output_is_compliant; then
+		echo "    OK - $name is PDF/A-2u compliant"
+	else
+		echo "    FAIL - $name did not pass PDF/A-2u validation"
+		printf '%s\n' "$output"
+		FAIL=1
+	fi
 done
 
 if [ $FAIL -eq 1 ]; then
-    echo "PDF/A validation gate FAILED."
-    exit 1
+	echo "PDF/A validation gate FAILED."
+	exit 1
 fi
 
 echo "PDF/A-2u validation gate PASSED."

@@ -21,6 +21,49 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			name: "accepts the supported format inventory",
 		},
 		{
+			name: "accepts tracked actionlint configuration",
+			mutate: func(_ map[string][]byte, tracked *[]string) {
+				if !containsPath(*tracked, ".github/actionlint.yaml") {
+					*tracked = append(*tracked, ".github/actionlint.yaml")
+				}
+			},
+		},
+		{
+			name: "rejects malformed actionlint configuration",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/actionlint.yaml"] = []byte("self-hosted-runner: [\n")
+			},
+			wantErrText: ".github/actionlint.yaml: parse YAML",
+		},
+		{
+			name: "rejects malformed auxiliary lockfile",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["mise.lock"] = []byte("[broken\n")
+			},
+			wantErrText: "mise.lock: parse TOML",
+		},
+		{
+			name: "rejects legacy task schema",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["Taskfile.yml"] = []byte("version: '2'\ntasks: {build: {}}\n")
+			},
+			wantErrText: "expected Taskfile version 3",
+		},
+		{
+			name: "rejects empty build tasks",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["build/Taskfile.yml"] = []byte("version: '3'\ntasks: {}\n")
+			},
+			wantErrText: "tasks must be a nonempty mapping",
+		},
+		{
+			name: "rejects missing product identity",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["build/config.yml"] = []byte("version: '3'\ninfo: {version: '1.1.0', productName: GoPMgr}\n")
+			},
+			wantErrText: "info.productIdentifier must be a nonempty string",
+		},
+		{
 			name: "rejects malformed YAML",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte("name: CI\njobs: [\n")
@@ -156,8 +199,8 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
 					string(files[".github/workflows/ci.yml"]),
-					"    runs-on: macos-15\n    steps:\n",
-					"    runs-on: macos-15\n    defaults:\n      run:\n        shell: echo {0}\n    steps:\n",
+					"    runs-on: macos-26\n    steps:\n",
+					"    runs-on: macos-26\n    defaults:\n      run:\n        shell: echo {0}\n    steps:\n",
 					1,
 				))
 			},
@@ -174,6 +217,18 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 				))
 			},
 			wantErrText: ".github/workflows/ci.yml: workflow defaults.run.shell must not override jobs.assurance",
+		},
+		{
+			name: "rejects an assurance runner older than the macOS 26 minimum",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"    runs-on: macos-26\n",
+					"    runs-on: macos-15\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must run on macos-26",
 		},
 		{
 			name: "rejects missing pipx availability check",
@@ -257,6 +312,7 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, root, "extra.toml", "enabled = true\n")
+	writeTestFile(t, root, "mise.lock", "lockfile_version = 3\n")
 
 	paths, err := trackedConfigPaths(root)
 	if err != nil {
@@ -268,48 +324,23 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 	if !containsPath(paths, "extra.toml") {
 		t.Fatalf("trackedConfigPaths() = %v, want untracked config candidate", paths)
 	}
+	if !containsPath(paths, "mise.lock") {
+		t.Fatalf("trackedConfigPaths() = %v, want auxiliary lock candidate", paths)
+	}
 	if containsPath(paths, ".gitlab-ci.yml") {
 		t.Fatalf("trackedConfigPaths() = %v, did not want working-tree deletion", paths)
 	}
 }
 
-func TestDF0RustConfigInventory(t *testing.T) {
-	paths := []string{
-		"spikes/adr012-datafusion/rust/Cargo.toml",
-		"spikes/adr012-datafusion/rust/cli/Cargo.toml",
-		"spikes/adr012-datafusion/rust/codegen/Cargo.toml",
-		"spikes/adr012-datafusion/rust/engine/Cargo.toml",
-		"spikes/adr012-datafusion/rust/worker/Cargo.toml",
-		"spikes/adr012-datafusion/rust/rust-toolchain.toml",
-		"spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml",
-	}
-	files, tracked := validConfigFixture()
-	for _, path := range paths {
-		if !containsPath(tracked, path) {
-			tracked = append(tracked, path)
-		}
-	}
-	if errs := validateRepositoryConfigs(files, tracked); len(errs) != 0 {
-		t.Fatalf("DF0 configurations rejected: %v", errs)
-	}
-	for _, path := range paths {
-		t.Run(path, func(t *testing.T) {
-			original := files[path]
-			files[path] = []byte("[broken\n")
-			defer func() { files[path] = original }()
-			errs := validateRepositoryConfigs(files, tracked)
-			if len(errs) != 1 || !strings.Contains(errs[0].Error(), path+": parse TOML") {
-				t.Fatalf("malformed spike config: %v", errs)
-			}
-		})
-	}
-}
-
 func validConfigFixture() (map[string][]byte, []string) {
 	files := map[string][]byte{
+		".github/actionlint.yaml":    []byte("self-hosted-runner: {labels: [ubuntu-26.04]}\n"),
+		"Taskfile.yml":               []byte("version: '3'\ntasks: {build: {cmds: ['bash scripts/wails-build.sh']}}\n"),
+		"build/Taskfile.yml":         []byte("version: '3'\ntasks: {frontend: {cmds: ['npm ci']}}\n"),
+		"build/darwin/Taskfile.yml":  []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/linux/Taskfile.yml":   []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/windows/Taskfile.yml": []byte("version: '3'\ntasks: {compile: {cmds: ['go build']}}\n"),
+		"build/config.yml":           []byte("version: '3'\ninfo: {version: '1.1.0', productName: GoPMgr, productIdentifier: dev.gopmgr.GoPMgr}\n"),
 		".github/dependabot.yml": []byte(`
 version: 2
 updates:
@@ -328,7 +359,7 @@ jobs:
     steps: []
   assurance:
     name: Assurance checks
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/setup-go@v7
         with:
@@ -403,21 +434,8 @@ SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
 	}
-	files["spikes/adr012-datafusion/rust/Cargo.toml"] = []byte(`[workspace]
-members = ["engine", "cli", "worker"]
-`)
-	files["spikes/adr012-datafusion/rust/rust-toolchain.toml"] = []byte(`[toolchain]
-channel = "1.99.1"
-`)
-	for _, member := range []string{"engine", "cli", "worker", "codegen"} {
-		files["spikes/adr012-datafusion/rust/"+member+"/Cargo.toml"] = []byte(`[package]
-name = "df0-` + member + `"
-version = "0.0.0"
-`)
-	}
-	for _, crate := range []string{"arrow-ipc-59.3.2", "parquet-59.3.2", "datafusion-55.2.0", "datafusion-datasource-55.2.0"} {
-		files["spikes/adr012-datafusion/third_party/"+crate+"/Cargo.toml"] = []byte("[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n")
-	}
+	files["mise.toml"] = []byte("[tools]\n")
+	files["mise.lock"] = []byte("lockfile_version = 3\n")
 	tracked := make([]string, 0, len(files))
 	for _, spec := range supportedConfigs {
 		tracked = append(tracked, spec.path)

@@ -8,9 +8,9 @@
 # or the release workflow — the git tag without the leading "v"). nfpm
 # expands ${VERSION} from the environment.
 #
-# Runtime deps are the GTK3 + WebKit2GTK shared libraries the Wails v2 binary
-# links when built on Ubuntu 24.04+ with the `webkit2_41` build tag.
-# GTK4/WebKitGTK 6.0 is a later Wails migration, not a Wails v2 package tweak.
+# Runtime dependencies match Wails v3.1's standard CGO GTK4 backend.
+# Fedora's GTK4/WebKitGTK6 providers are gtk4 and webkitgtk6.0; native
+# RPM/minimum-Ubuntu installation qualification is still required.
 name: gopmgr
 arch: amd64
 platform: linux
@@ -48,9 +48,9 @@ contents:
 overrides:
   deb:
     depends:
-      - libgtk-3-0
-      - libwebkit2gtk-4.1-0
+      - libgtk-4-1
+      - libwebkitgtk-6.0-4
   rpm:
     depends:
-      - gtk3
-      - webkit2gtk4.1
+      - gtk4
+      - webkitgtk6.0

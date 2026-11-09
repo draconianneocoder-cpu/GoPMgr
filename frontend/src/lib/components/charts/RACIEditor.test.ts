@@ -13,6 +13,12 @@ vi.mock('../../autosave.svelte', () => ({
 import RACIEditor from './RACIEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Added 2026-08-19 alongside migrating this file's header "&larr;
 // Dashboard" nav link to the new `Button variant="nav"` (design-critique
 // Priority #2 continuation — see `Button.test.ts`'s row for the full
@@ -44,7 +50,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

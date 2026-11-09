@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: nested view frame preparation
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 This isolated worker correction preserves Arrow schema, selected values, nulls
 and ordering while preparing bounded result frames. Production APIs, protocol
 versions, dependency pins, SQLCipher and release packaging are unchanged.
@@ -50,7 +55,7 @@ RSS, CPU, sandbox, parser-hardening or full confidentiality requirements.
 
 ## Evidence and proof limits
 
-The [environment and hashes](../../spikes/adr012-datafusion/evidence/df0-nested-frames-macos/environment.json)
+The [environment and hashes](adr-012-df0-records/df0-nested-frames-macos/environment.json)
 bind source, tools, the newly rebuilt macOS worker and validation results.
 Six new Rust tests cover the reproduced nested defect, all five container
 classes with string/binary views, nonzero slices, Unicode/binary data,
@@ -59,7 +64,7 @@ incremental splitting, oversized-row refusal, populated null views and hidden
 children behind null containers. These are direct worker serializer tests using
 real Arrow IPC writing/reading.
 
-The [native job record](../../spikes/adr012-datafusion/evidence/df0-nested-frames-macos/native.json)
+The [native job record](adr-012-df0-records/df0-nested-frames-macos/native.json)
 contains five authenticated Go↔Rust jobs: range and stream reads of one selected
 nested value, oversized-row refusal for each source mode, and recovery.
 Success requires source/completion digests, exact ID/value, normal exit and

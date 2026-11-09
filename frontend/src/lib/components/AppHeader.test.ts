@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from '@testing-library/svelte';
 
 import AppHeader from './AppHeader.svelte';
 import { session } from '../session.svelte';
+
+// These cases do not call the backend. Unexpected calls must fail.
+vi.mock('../desktop-api', () => ({ desktopApi: {} }));
 
 afterEach(() => {
   cleanup();

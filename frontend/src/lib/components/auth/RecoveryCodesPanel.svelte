@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onDestroy, onMount } from 'svelte';
   import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
@@ -43,7 +44,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
   onDestroy(() => {
     if (step === 'codes') {
-      void window.go.desktop.App.DiscardRecoveryCodes();
+      void desktopApi.DiscardRecoveryCodes();
       // The panel is gone, so only a toast can still reach the user.
       if (savedFiles.length > 0) showToast(unusedFileWarning(savedFiles), 'error');
     }
@@ -62,7 +63,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadStatus() {
     statusError = '';
     try {
-      status = await window.go.desktop.App.RecoveryCodeStatus();
+      status = await desktopApi.RecoveryCodeStatus();
     } catch (err: any) {
       statusError = t('recoveryPanel.statusFailed', { error: String(err?.message ?? err) });
     }
@@ -80,7 +81,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      codes = (await window.go.desktop.App.PrepareRecoveryCodes(password)) ?? [];
+      codes = (await desktopApi.PrepareRecoveryCodes(password)) ?? [];
       password = '';
       saved = false;
       step = 'codes';
@@ -98,7 +99,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.desktop.App.ConfirmRecoveryCodes();
+      await desktopApi.ConfirmRecoveryCodes();
       showToast(t('recoveryPanel.renewed'), 'success');
       finish();
       renewed = true;
@@ -117,7 +118,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function cancel() {
     if (step === 'codes') {
-      await window.go.desktop.App.DiscardRecoveryCodes();
+      await desktopApi.DiscardRecoveryCodes();
       dropSavedFiles();
     }
     finish();

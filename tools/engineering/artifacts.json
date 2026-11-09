@@ -1,0 +1,104 @@
+{
+  "mise": {
+    "version": "2026.11.0",
+    "release": "https://github.com/jdx/mise/releases/tag/v2026.11.0",
+    "platforms": {
+      "macos-arm64": {
+        "url": "https://github.com/jdx/mise/releases/download/v2026.11.0/mise-v2026.11.0-macos-arm64.tar.xz",
+        "archive_sha256": "536ca9908f021635064b9525e3ba5f60ddd5b5b4437a29bdfd4b1355ff9f6c45",
+        "member": "mise/bin/mise",
+        "executable_sha256": "0eee88353f31cf6f598084eb5fcd81191ae40e0a918ca449c45041d50ab81fcc",
+        "url_api": "https://api.github.com/repos/jdx/mise/releases/assets/706073718"
+      },
+      "linux-x64": {
+        "url": "https://github.com/jdx/mise/releases/download/v2026.11.0/mise-v2026.11.0-linux-x64.tar.xz",
+        "archive_sha256": "7f2715c2589f7d75bfc24ca759ae6793700fa9ee304f33a6f7a18269765938c4",
+        "member": "mise/bin/mise",
+        "executable_sha256": "71eb4f1b66b8bd69eb44cedcf0b22205859ea1ae2b2f557e48b35656079a94a9",
+        "url_api": "https://api.github.com/repos/jdx/mise/releases/assets/706073569"
+      }
+    }
+  },
+  "tools": {
+    "shellcheck": {
+      "backend": "github:koalaman/shellcheck",
+      "version": "0.11.0",
+      "platforms": {
+        "linux-x64": {
+          "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz",
+          "archive_sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198",
+          "member": "shellcheck-v0.11.0/shellcheck",
+          "executable_sha256": "4da528ddb3a4d1b7b24a59d4e16eb2f5fd960f4bd9a3708a15baddbdf1d5a55b",
+          "url_api": "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056942"
+        },
+        "macos-arm64": {
+          "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.xz",
+          "archive_sha256": "56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79",
+          "member": "shellcheck-v0.11.0/shellcheck",
+          "executable_sha256": "61c17246d69f012cd458ae82f244c46023dac75d1b69733ca1cc7d28fb270fd7",
+          "url_api": "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056932"
+        }
+      }
+    },
+    "shfmt": {
+      "backend": "github:mvdan/sh",
+      "version": "3.14.1",
+      "platforms": {
+        "linux-x64": {
+          "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64",
+          "archive_sha256": "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf",
+          "member": "",
+          "executable_sha256": "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf",
+          "url_api": "https://api.github.com/repos/mvdan/sh/releases/assets/547320883"
+        },
+        "macos-arm64": {
+          "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_arm64",
+          "archive_sha256": "b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5",
+          "member": "",
+          "executable_sha256": "b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5",
+          "url_api": "https://api.github.com/repos/mvdan/sh/releases/assets/547320930"
+        }
+      }
+    },
+    "actionlint": {
+      "backend": "github:rhysd/actionlint",
+      "version": "1.7.12",
+      "platforms": {
+        "linux-x64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+          "archive_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+          "member": "actionlint",
+          "executable_sha256": "c872d6db8c6bf83a8eaa704fc93999f027d55dffbc63b8a6abdccb47df5f4cd4",
+          "url_api": "https://api.github.com/repos/rhysd/actionlint/releases/assets/384924896"
+        },
+        "macos-arm64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+          "archive_sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+          "member": "actionlint",
+          "executable_sha256": "8db11704dc296f096216db4db65d86cd7f0ebfdf4c38453a1da276b137b88388",
+          "url_api": "https://api.github.com/repos/rhysd/actionlint/releases/assets/384924893"
+        }
+      }
+    },
+    "zizmor": {
+      "backend": "github:zizmorcore/zizmor",
+      "version": "1.32.0",
+      "platforms": {
+        "linux-x64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz",
+          "archive_sha256": "bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b",
+          "member": "zizmor",
+          "executable_sha256": "04d55fb88e582a8e9a9ce6b4753df723fc44c35e0d1a8e8771db9e017066c6df",
+          "url_api": "https://api.github.com/repos/zizmorcore/zizmor/releases/assets/703541932"
+        },
+        "macos-arm64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-aarch64-apple-darwin.tar.gz",
+          "archive_sha256": "6efed18c4539a663fd3c851a2be9533fd8456c4e646d9416206da059154a0d3c",
+          "member": "zizmor",
+          "executable_sha256": "fd1e0503f98714dac56fb6859ccb8ddbac2dc1eb00562dc9d174c6858994c0f1",
+          "url_api": "https://api.github.com/repos/zizmorcore/zizmor/releases/assets/703541933"
+        }
+      }
+    }
+  }
+}

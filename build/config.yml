@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+{
+  "version": "3",
+  "info": {
+    "companyName": "The GoPMgr Contributors",
+    "productName": "GoPMgr",
+    "productIdentifier": "dev.gopmgr.GoPMgr",
+    "description": "Local-first project controls desktop application.",
+    "copyright": "Copyright (C) 2026 James L. Burns and The GoPMgr Contributors. Licensed under GPL-3.0-or-later.",
+    "comments": "Local-first project controls desktop application.",
+    "version": "1.1.0"
+  },
+  "dev_mode": {
+    "root_path": ".",
+    "log_level": "warn",
+    "debounce": 1000,
+    "ignore": {
+      "dir": [".git", ".tmp", "node_modules", "frontend", "build/bin"],
+      "file": [".DS_Store", "*_test.go"],
+      "watched_extension": ["*.go"],
+      "git_ignore": true
+    },
+    "executes": [
+      {"cmd": "bash scripts/wails-build.sh DEV=true", "type": "blocking"},
+      {"cmd": ".tmp/wails-v3/bin/wails3 task common:dev:frontend", "type": "background", "readiness": {"http": "http://localhost:5173/", "timeout": "60s", "interval": "200ms"}},
+      {"cmd": ".tmp/wails-v3/bin/wails3 task run", "type": "primary", "exit_policy": "shutdown"}
+    ]
+  }
+}

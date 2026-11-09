@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { normaliseAppInfo } from '../desktop-dtos';
+  import { desktopApi } from '../desktop-api';
   // Global, per-user application settings (distinct from per-project
   // settings). Edits the default font/theme applied to newly created
   // projects, and shows read-only environment info.
@@ -84,7 +86,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // show its result immediately instead of leaving the panel blank
     // until the user clicks "Check for updates" again.
     if (session.updateStatus) updateStatus = session.updateStatus;
-    try { hasAdmin = await window.go.desktop.App.HasAnyAdmin(); } catch { hasAdmin = true; }
+    try { hasAdmin = await desktopApi.HasAnyAdmin(); } catch { hasAdmin = true; }
   });
 
   onDestroy(() => {
@@ -95,7 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     error = '';
     try {
-      const i = await window.go.desktop.App.GetAppInfo();
+      const i = normaliseAppInfo(await desktopApi.GetAppInfo());
       info = i;
       font = i.settings.default_font ?? '';
       theme = i.settings.default_theme ?? '';
@@ -121,7 +123,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     openingLogs = true;
     diagError = '';
     try {
-      await window.go.desktop.App.OpenLogsFolder();
+      await desktopApi.OpenLogsFolder();
     } catch (err: any) {
       diagError = `Could not open logs folder: ${err}`;
     } finally {
@@ -132,7 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function claimAdmin() {
     claimingAdmin = true;
     try {
-      await window.go.desktop.App.BecomeAdmin();
+      await desktopApi.BecomeAdmin();
       hasAdmin = true;
       if (session.user) session.user = { ...session.user, is_admin: true };
       showToast('You are now the administrator.', 'success');
@@ -148,7 +150,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     diagError = '';
     reportPath = '';
     try {
-      reportPath = await window.go.desktop.App.GenerateBugReport();
+      reportPath = await desktopApi.GenerateBugReport();
     } catch (err: any) {
       diagError = `Could not generate report: ${err}`;
     } finally {
@@ -162,7 +164,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     installedPath = '';
     showQuitConfirm = false;
     try {
-      updateStatus = await window.go.desktop.App.CheckLatestVersion();
+      updateStatus = await desktopApi.CheckLatestVersion();
       session.updateStatus = updateStatus;
     } catch (err: any) {
       updateStatus = {
@@ -189,7 +191,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     installedPath = '';
     showQuitConfirm = false;
     try {
-      installedPath = await window.go.desktop.App.DownloadAndInstallUpdate();
+      installedPath = await desktopApi.DownloadAndInstallUpdate();
       // Windows only: the NSIS installer cannot overwrite GoPMgr.exe while
       // it's running, so ask before closing the app out from under the
       // user. macOS's Finder-mounted .dmg needs no such step.
@@ -204,7 +206,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function confirmQuitToInstall() {
     quittingToInstall = true;
     try {
-      await window.go.desktop.App.QuitToInstallUpdate();
+      await desktopApi.QuitToInstallUpdate();
       // No further UI update expected: a successful call quits the app.
     } catch (err: any) {
       quittingToInstall = false;
@@ -218,7 +220,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     const autoVal = autoSaveOn ? autoSaveSeconds : 0;
     try {
-      await window.go.desktop.App.SaveAppSettings({
+      await desktopApi.SaveAppSettings({
         default_font: font,
         default_theme: theme,
         app_theme: appTheme,
@@ -256,7 +258,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     error = '';
     try {
-      const defaults = await window.go.desktop.App.ResetAppSettings();
+      const defaults = await desktopApi.ResetAppSettings();
       if (info) info = { ...info, settings: defaults };
       applySettings(defaults);
       status = 'Defaults restored.';

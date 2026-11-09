@@ -18,7 +18,7 @@
 #      the tag, making an untagged local build's filename honestly
 #      distinguishable from the tagged release it's built near.
 #   3. "0.0.0" if the checkout has no tags at all (e.g. a shallow clone).
-#      Deliberately not wails.json's productVersion here: that value is a
+#      Deliberately not build/config.yml's info.version here: that value is a
 #      clean major.minor.patch with no build/commit information, and using
 #      it as a silent fallback would produce a plausible-looking release
 #      version for a build that isn't one.

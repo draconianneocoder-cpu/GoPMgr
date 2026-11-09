@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 DF0 evidence
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 > **2026-11-02:** DuckDB is retired. The maintainer chose a Go-native engine
 > for both analytics operations instead of the DataFusion worker; see the
 > [retirement decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). This record is kept as history and as evidence
@@ -24,8 +29,8 @@ The later [Zstd override assessment](adr-012-df0-zstd-assessment.md) records
 the 2026-10-31 spike-only dependency remediation separately. It does not close
 the remaining DF0-C2/D/E/F/G or native-platform gates.
 
-- Code: [`spikes/adr012-datafusion/`](../../spikes/adr012-datafusion/README.md).
-- Raw records: `spikes/adr012-datafusion/evidence/`.
+- Code: [`spikes/adr012-datafusion/`](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/README.md).
+- Raw records: [`docs/testing/adr-012-df0-records/`](adr-012-df0-records/) (moved from `spikes/adr012-datafusion/evidence/` on 2026-11-09).
 
 Status words follow the specification:
 
@@ -55,7 +60,7 @@ make a blocked platform pass.
 | DF0-D / D2 security, no-spill, admission | **Partial native macOS experiment:** [no-spill controls and limits](adr-012-df0-no-spill.md). [Per-child resource accounting](adr-012-df0-resources.md) now covers native 2/4/8-worker cohorts. DF-062 remains BLOCKED on OS-wide tracing; [pre-launch reservation admission](adr-012-df0-admission.md) passes scoped native cohort checks; full DF-064 remains unqualified because actual aggregate RSS/CPU enforcement is not established. [Native macOS limit probes](adr-012-df0-macos-limits.md) distinguish VM control from RSS, qualify direct non-root fork/spawn refusal across exec and demonstrate one compatible Rust job; they do not establish aggregate enforcement. The [native observer/App Sandbox prototype](adr-012-df0-observer-sandbox.md) adds current-usage observations, missed-burst/termination controls and signed-copy Rust compatibility behind OS access restrictions; own-container writes remain permitted. The [memory-only filesystem experiment](adr-012-df0-memory-only.md) shows a zero file-size limit stops file content in the container but not names, attributes or delegated writes, so the owner kept (d) and approved (a) as the target under five conditions tracked in the ACR; DF-062 stays BLOCKED until they pass. Its isolated investigation is authorized; resource-policy relaxation and production adoption in the [containment ACR](../review/ADR-012-macos-containment-ACR.md) remain unapproved. Remaining security/platform work is NOT-RUN or independently BLOCKED |
 | DF0-E / E2 performance, numeric fidelity | E: [partial macOS portfolio backend characterization](adr-012-df0-portfolio-performance.md), 306 oracle-checked calls across three providers and three sizes; controlled cold/warm, ≥1,000-sample/multi-process, scale and acceptance qualification NOT-RUN. E2: [partial native macOS typed-cell harness](adr-012-df0-numeric-fidelity.md), 10 jobs/60 rows across two source modes, exact integer/decimal/time/null/nested-text checks and JavaScript loss controls. Full DF-065, production DTO/renderer and nested semantic decoding remain unqualified |
 | DF0-F / F2 packaging, licensing | [Partial macOS dependency/native-binary inventory](../interoperability/adr-012-rust-dependency-security-sbom.md): 268 reachable packages, source/notice hashes, fresh unfiltered Cargo advisory scan with zero findings/warnings, existing worker linkage/signature/symbol observations. Subsequent partial SPDX 3.0.1 build-input SBOM passes official schema/SHACL checks for 263 observed packages, three static archives and the hash-bound worker; all compiler artifacts were cached. A subsequent source review verifies 609 published files and 103 candidate source matches, with 13 verbatim native notice texts; attribution and legal scope remain explicitly limited. Complete composition, license/native-code audit, installed/signed/minimum-OS/update qualification and LC-GATE remain unqualified |
-| DF0-G report | NOT-RUN |
+| DF0-G report | **Done 2026-11-09: no-go.** See the [DF0-G report](adr-012-df0-g-report.md) |
 
 A subsequent [nested-frame repair](adr-012-df0-nested-frames.md) fixes selected
 child-span and hidden-null payload handling in the isolated serializer. Direct

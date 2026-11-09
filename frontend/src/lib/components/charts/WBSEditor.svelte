@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount, onDestroy, untrack } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
@@ -71,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      const loaded = await window.go.desktop.App.GetChart(session.editingId);
+      const loaded = await desktopApi.GetChart(session.editingId);
       if (!active) return;
       chart = loaded;
     } catch (err: any) {
@@ -198,13 +199,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart(submission);
+      const updated = await desktopApi.SaveChart(submission);
       if (!active) return true;
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved. Version updated at ${new Date().toLocaleTimeString()}.`;
       try {
-        const res = await window.go.desktop.App.LayoutChart(updated.id);
+        const res = await desktopApi.LayoutChart(updated.id);
         if (active) layout = (res.body as unknown) as Layout;
       } catch (err: unknown) {
         if (active) status = `Saved, but layout failed: ${err}`;

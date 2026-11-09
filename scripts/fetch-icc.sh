@@ -27,9 +27,12 @@ LIST=0
 
 for arg in "$@"; do
 	case "$arg" in
-		--force) FORCE=1 ;;
-		--list)  LIST=1 ;;
-		*) echo "unknown flag: $arg" >&2; exit 2 ;;
+	--force) FORCE=1 ;;
+	--list) LIST=1 ;;
+	*)
+		echo "unknown flag: $arg" >&2
+		exit 2
+		;;
 	esac
 done
 

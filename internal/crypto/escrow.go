@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 // Administrator escrow for ADR-004 (docs/design/ADR-004-administrator-access-
@@ -63,20 +64,38 @@ var (
 // the wrong key, a value made for another owner or purpose, or tampering.
 var ErrEscrowOpen = errors.New("crypto: escrow value does not open")
 
-// bindFields encodes a purpose label and fields unambiguously: each part is
-// preceded by its length, so different inputs never encode the same.
-func bindFields(label string, fields ...[]byte) []byte {
-	out := make([]byte, 0, 64)
-	out = appendField(out, []byte(label))
-	for _, f := range fields {
-		out = appendField(out, f)
+var errEscrowFieldTooLarge = errors.New("crypto: escrow context field exceeds uint32 length")
+
+func escrowFieldLength(length uint64) (uint32, error) {
+	if length > math.MaxUint32 {
+		return 0, errEscrowFieldTooLarge
 	}
-	return out
+	return uint32(length), nil
 }
 
-func appendField(out, field []byte) []byte {
-	out = binary.BigEndian.AppendUint32(out, uint32(len(field)))
-	return append(out, field...)
+// bindFields encodes a purpose label and fields unambiguously: each part is
+// preceded by its length, so different inputs never encode the same.
+func bindFields(label string, fields ...string) ([]byte, error) {
+	out, err := appendField(make([]byte, 0, 64), label)
+	if err != nil {
+		return nil, err
+	}
+	for _, field := range fields {
+		out, err = appendField(out, field)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func appendField(out []byte, field string) ([]byte, error) {
+	length, err := escrowFieldLength(uint64(len(field)))
+	if err != nil {
+		return nil, err
+	}
+	out = binary.BigEndian.AppendUint32(out, length)
+	return append(out, field...), nil
 }
 
 // GenerateEscrowKeyPair returns a new HPKE key pair as serialized bytes. It
@@ -138,13 +157,21 @@ func SealDEK(escrowPublicKey []byte, escrowKeyID, username string, dek []byte) (
 	if len(dek) != DEKSize {
 		return nil, ErrBadDEK
 	}
-	return sealTo(escrowPublicKey, bindFields(escrowDEKLabel, []byte(escrowKeyID), []byte(username)), dek)
+	info, err := bindFields(escrowDEKLabel, escrowKeyID, username)
+	if err != nil {
+		return nil, err
+	}
+	return sealTo(escrowPublicKey, info, dek)
 }
 
 // OpenDEK reverses SealDEK. It fails for a DEK sealed for another account
 // or escrow key.
 func OpenDEK(escrowPrivateKey []byte, escrowKeyID, username string, sealed []byte) ([]byte, error) {
-	dek, err := openWith(escrowPrivateKey, bindFields(escrowDEKLabel, []byte(escrowKeyID), []byte(username)), sealed)
+	info, err := bindFields(escrowDEKLabel, escrowKeyID, username)
+	if err != nil {
+		return nil, err
+	}
+	dek, err := openWith(escrowPrivateKey, info, sealed)
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +185,21 @@ func OpenDEK(escrowPrivateKey []byte, escrowKeyID, username string, sealed []byt
 // SealGrant seals the escrow private key escrowKeyID to administrator
 // admin's personal public key.
 func SealGrant(adminPublicKey []byte, escrowKeyID, admin string, escrowPrivateKey []byte) ([]byte, error) {
-	return sealTo(adminPublicKey, bindFields(escrowGrantLabel, []byte(escrowKeyID), []byte(admin)), escrowPrivateKey)
+	info, err := bindFields(escrowGrantLabel, escrowKeyID, admin)
+	if err != nil {
+		return nil, err
+	}
+	return sealTo(adminPublicKey, info, escrowPrivateKey)
 }
 
 // OpenGrant reverses SealGrant with the administrator's personal private
 // key. The caller must check the result against its escrow pin before use.
 func OpenGrant(adminPrivateKey []byte, escrowKeyID, admin string, sealed []byte) ([]byte, error) {
-	return openWith(adminPrivateKey, bindFields(escrowGrantLabel, []byte(escrowKeyID), []byte(admin)), sealed)
+	info, err := bindFields(escrowGrantLabel, escrowKeyID, admin)
+	if err != nil {
+		return nil, err
+	}
+	return openWith(adminPrivateKey, info, sealed)
 }
 
 // WrapPersonalKey encrypts username's personal private key under a subkey
@@ -175,11 +210,15 @@ func WrapPersonalKey(dek []byte, username string, privateKey []byte) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
+	info, err := bindFields(escrowPersonalKeyLabel, username)
+	if err != nil {
+		return nil, err
+	}
 	nonce := make([]byte, aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("crypto: personal key nonce: %w", err)
 	}
-	return aead.Seal(nonce, nonce, privateKey, bindFields(escrowPersonalKeyLabel, []byte(username))), nil
+	return aead.Seal(nonce, nonce, privateKey, info), nil
 }
 
 // UnwrapPersonalKey reverses WrapPersonalKey.
@@ -192,7 +231,11 @@ func UnwrapPersonalKey(dek []byte, username string, wrapped []byte) ([]byte, err
 		return nil, ErrEscrowOpen
 	}
 	nonce, ciphertext := wrapped[:aead.NonceSize()], wrapped[aead.NonceSize():]
-	privateKey, err := aead.Open(nil, nonce, ciphertext, bindFields(escrowPersonalKeyLabel, []byte(username)))
+	info, err := bindFields(escrowPersonalKeyLabel, username)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, err := aead.Open(nil, nonce, ciphertext, info)
 	if err != nil {
 		return nil, ErrEscrowOpen
 	}
@@ -209,7 +252,7 @@ const EscrowRecoveryCodeSize = 20
 // entropy, so no slow KDF is needed. The result is the nonce followed by the
 // ciphertext.
 func WrapEscrowRecovery(code []byte, escrowKeyID string, escrowPrivateKey []byte) ([]byte, error) {
-	aead, err := recoveryAEAD(code, escrowKeyID)
+	aead, info, err := recoveryAEAD(code, escrowKeyID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,14 +260,14 @@ func WrapEscrowRecovery(code []byte, escrowKeyID string, escrowPrivateKey []byte
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("crypto: recovery nonce: %w", err)
 	}
-	return aead.Seal(nonce, nonce, escrowPrivateKey, bindFields(escrowRecoveryLabel, []byte(escrowKeyID))), nil
+	return aead.Seal(nonce, nonce, escrowPrivateKey, info), nil
 }
 
 // OpenEscrowRecovery reverses WrapEscrowRecovery. It fails with
 // ErrEscrowOpen for another code, another key ID, or altered data. The
 // caller must check the result against a pin before use.
 func OpenEscrowRecovery(code []byte, escrowKeyID string, wrapped []byte) ([]byte, error) {
-	aead, err := recoveryAEAD(code, escrowKeyID)
+	aead, info, err := recoveryAEAD(code, escrowKeyID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,27 +275,35 @@ func OpenEscrowRecovery(code []byte, escrowKeyID string, wrapped []byte) ([]byte
 		return nil, ErrEscrowOpen
 	}
 	nonce, ciphertext := wrapped[:aead.NonceSize()], wrapped[aead.NonceSize():]
-	privateKey, err := aead.Open(nil, nonce, ciphertext, bindFields(escrowRecoveryLabel, []byte(escrowKeyID)))
+	privateKey, err := aead.Open(nil, nonce, ciphertext, info)
 	if err != nil {
 		return nil, ErrEscrowOpen
 	}
 	return privateKey, nil
 }
 
-func recoveryAEAD(code []byte, escrowKeyID string) (cipher.AEAD, error) {
+func recoveryAEAD(code []byte, escrowKeyID string) (cipher.AEAD, []byte, error) {
 	if len(code) != EscrowRecoveryCodeSize {
-		return nil, fmt.Errorf("crypto: escrow recovery code must be %d bytes", EscrowRecoveryCodeSize)
+		return nil, nil, fmt.Errorf("crypto: escrow recovery code must be %d bytes", EscrowRecoveryCodeSize)
 	}
-	key, err := hkdf.Key(sha256.New, code, nil, string(bindFields(escrowRecoveryLabel, []byte(escrowKeyID))), 32)
+	info, err := bindFields(escrowRecoveryLabel, escrowKeyID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	key, err := hkdf.Key(sha256.New, code, nil, string(info), 32)
+	if err != nil {
+		return nil, nil, err
 	}
 	defer clear(key)
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return cipher.NewGCM(block)
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+	return aead, info, nil
 }
 
 func personalKeyAEAD(dek []byte) (cipher.AEAD, error) {
@@ -276,8 +327,15 @@ func EscrowPin(dek []byte, username, escrowKeyID string, escrowPublicKey []byte)
 		return nil, err
 	}
 	defer clear(key)
+	if _, err := escrowFieldLength(uint64(len(escrowPublicKey))); err != nil {
+		return nil, err
+	}
+	info, err := bindFields(escrowPinLabel, username, escrowKeyID, string(escrowPublicKey))
+	if err != nil {
+		return nil, err
+	}
 	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write(bindFields(escrowPinLabel, []byte(username), []byte(escrowKeyID), escrowPublicKey))
+	_, _ = mac.Write(info)
 	return mac.Sum(nil), nil
 }
 
@@ -298,12 +356,19 @@ func Attestation(escrowPrivateKey []byte, username string, personalPublicKey []b
 	if len(escrowPrivateKey) == 0 {
 		return nil, errors.New("crypto: empty escrow private key")
 	}
+	if _, err := escrowFieldLength(uint64(len(personalPublicKey))); err != nil {
+		return nil, err
+	}
+	info, err := bindFields(escrowAttestLabel, username, string(personalPublicKey))
+	if err != nil {
+		return nil, err
+	}
 	keyMAC := hmac.New(sha256.New, escrowPrivateKey)
 	_, _ = keyMAC.Write([]byte(escrowAttestKeyLabel))
 	key := keyMAC.Sum(nil)
 	defer clear(key)
 	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write(bindFields(escrowAttestLabel, []byte(username), personalPublicKey))
+	_, _ = mac.Write(info)
 	return mac.Sum(nil), nil
 }
 

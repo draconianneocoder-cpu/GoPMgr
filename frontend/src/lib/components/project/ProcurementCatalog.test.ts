@@ -5,6 +5,12 @@ import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import ProcurementCatalog from './ProcurementCatalog.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 function installApp() {
   const app = {
     ListCatalogVendors: vi.fn(async () => [{ id: 'vendor-1', version: 1, name: 'Acme Supply', address: '10 Main St', phone: '555', fax: '556', email: 'orders@example.test', primary_contact: 'Dana', notes: '', archived: false, created_at: '', updated_at: '' }]),
@@ -12,7 +18,7 @@ function installApp() {
     SaveCatalogVendor: vi.fn(async (vendor) => ({ ...vendor, id: vendor.id || 'vendor-2', version: 1 })),
     SaveCatalogItem: vi.fn(async (item) => ({ ...item, id: item.id || 'item-2', version: 1 })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

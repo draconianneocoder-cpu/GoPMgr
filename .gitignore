@@ -7,18 +7,23 @@
 # wails_tools.nsh, and the WebView bootstrapper remain generated output.
 /build/*
 !/build/appicon.png
+!/build/config.yml
+!/build/Taskfile.yml
 !/build/darwin/
 /build/darwin/*
 !/build/darwin/Info.plist
 !/build/darwin/Info.dev.plist
+!/build/darwin/Taskfile.yml
 !/build/darwin/installer-components.plist
 !/build/linux/
 /build/linux/*
 !/build/linux/gopmgr.desktop
 !/build/linux/nfpm.yaml
+!/build/linux/Taskfile.yml
 !/build/windows/
 /build/windows/*
 !/build/windows/info.json
+!/build/windows/Taskfile.yml
 !/build/windows/wails.exe.manifest
 !/build/windows/installer/
 /build/windows/installer/*

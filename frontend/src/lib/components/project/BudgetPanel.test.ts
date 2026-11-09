@@ -6,6 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import BudgetPanel from './BudgetPanel.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -13,7 +19,7 @@ afterEach(() => {
 
 function installBudget(summary: BudgetSummary) {
   const app = { ComputeBudget: vi.fn(async () => summary) };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

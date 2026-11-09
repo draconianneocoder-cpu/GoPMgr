@@ -39,9 +39,10 @@ require_contains "weekly capacity and day overrides"
 require_contains "dashed capacity lines"
 require_contains "over-allocation warnings"
 require_contains "Earned Value"
-require_contains "libwebkit2gtk-4.1-dev"
-require_contains "webkit2_41"
-require_contains "GTK4/WebKitGTK 6.0 support requires a future Wails migration"
+require_contains "libwebkitgtk-6.0-dev"
+require_contains "GTK 4"
+require_contains "There is no GTK 3 fallback"
+require_not_contains "GTK4/WebKitGTK 6.0 support requires a future Wails migration"
 
 # 2026-07 user-guide overhaul: keep the new load-bearing sections present.
 require_contains "Quick Start: Your First Project"
@@ -73,12 +74,12 @@ app_file="frontend/src/App.svelte"
 
 route_phrase() {
 	case "$1" in
-		recovery_reset) printf '%s\n' "recovery code" ;;
-		burnup) printf '%s\n' "burn-up" ;;
-		burndown) printf '%s\n' "burn-down" ;;
-		cause_effect) printf '%s\n' "Cause-and-Effect Diagram" ;;
-		sigma_dashboard) printf '%s\n' "DMAIC Pack" ;;
-		*) printf '%s\n' "${1//_/ }" ;;
+	recovery_reset) printf '%s\n' "recovery code" ;;
+	burnup) printf '%s\n' "burn-up" ;;
+	burndown) printf '%s\n' "burn-down" ;;
+	cause_effect) printf '%s\n' "Cause-and-Effect Diagram" ;;
+	sigma_dashboard) printf '%s\n' "DMAIC Pack" ;;
+	*) printf '%s\n' "${1//_/ }" ;;
 	esac
 }
 

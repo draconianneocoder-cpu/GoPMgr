@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0-E: partial macOS portfolio backend characterization
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 2026-10-31. Isolated spike evidence, not a performance acceptance verdict or
 authorization to replace the production engine. The
 [DF0 specification](adr-012-datafusion-feasibility-spike.md) still requires
@@ -86,9 +91,9 @@ DF0_WORKER=/absolute/path/to/df0-worker \
   go test -race -tags duckdb -count=1 -v ./cmd/df0-performance
 ```
 
-[Raw samples](../../spikes/adr012-datafusion/evidence/df0-performance-macos/portfolio.jsonl)
+[Raw samples](adr-012-df0-records/df0-performance-macos/portfolio.jsonl)
 include fixture/oracle hashes, every phase and a final summary.
-[Environment/provenance](../../spikes/adr012-datafusion/evidence/df0-performance-macos/environment.json)
+[Environment/provenance](adr-012-df0-records/df0-performance-macos/environment.json)
 records source, runner, unchanged worker and raw-evidence hashes. Build time is
 excluded. This Go-only slice reused the previously reviewed Rust binary; it
 does not provide a new reproducible Rust build or package qualification.

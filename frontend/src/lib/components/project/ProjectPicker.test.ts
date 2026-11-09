@@ -6,6 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import ProjectPicker from './ProjectPicker.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -35,7 +41,7 @@ function installApp(opts: { projects?: ProjectFile[]; deletions?: () => Promise<
     ListProjectDeletions: vi.fn(opts.deletions ?? (async () => [])),
     DeleteProject: vi.fn(async () => {}),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 

@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { normaliseCharter, normaliseFishbone } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
 import { onMount } from 'svelte';
 import { session, goto } from '../../session.svelte';
 import { showToast } from '../../toast.svelte';
@@ -52,9 +54,9 @@ import Button from '../Button.svelte';
       if (!projectID) {
         throw new Error('Missing Six Sigma project id');
       }
-      project = await window.go.desktop.App.SigmaGetProject(projectID);
-      charter = await window.go.desktop.App.SigmaGetCharter(projectID);
-      fishboneData = await window.go.desktop.App.SigmaGetFishbone(projectID);
+      project = await desktopApi.SigmaGetProject(projectID);
+      charter = normaliseCharter(await desktopApi.SigmaGetCharter(projectID));
+      fishboneData = normaliseFishbone(await desktopApi.SigmaGetFishbone(projectID));
       await loadToolStatus();
     } catch (err: any) {
       showToast(`Failed to load project: ${err}`, 'error');
@@ -69,7 +71,7 @@ import Button from '../Button.svelte';
     status = '';
     try {
       charter.project_id = project.id;
-      await window.go.desktop.App.SigmaSaveCharter(charter);
+      await desktopApi.SigmaSaveCharter(charter);
       status = 'Charter saved.';
       showToast('Charter saved successfully', 'success');
     } catch (err: any) {
@@ -83,7 +85,7 @@ import Button from '../Button.svelte';
   async function loadCharter() {
     if (!project) return;
     try {
-      charter = await window.go.desktop.App.SigmaGetCharter(project.id);
+      charter = normaliseCharter(await desktopApi.SigmaGetCharter(project.id));
       await loadToolStatus();
     } catch (err: any) {
       showToast(`Failed to refresh charter: ${err}`, 'error');
@@ -98,12 +100,12 @@ import Button from '../Button.svelte';
         showToast('Enter at least 2 numeric values', 'error');
         return;
       }
-      descResult = await window.go.desktop.App.SigmaCalculateDescriptive(values);
+      descResult = await desktopApi.SigmaCalculateDescriptive(values);
 
       const usl = parseFloat(uslInput);
       const lsl = parseFloat(lslInput);
       if (!isNaN(usl) && !isNaN(lsl) && usl > lsl) {
-        capResult = await window.go.desktop.App.SigmaCalculateCapability(values, usl, lsl);
+        capResult = await desktopApi.SigmaCalculateCapability(values, usl, lsl);
       } else {
         capResult = null;
       }
@@ -185,7 +187,7 @@ import Button from '../Button.svelte';
         showToast('Categories and counts must match and not be empty', 'error');
         return;
       }
-      paretoItems = await window.go.desktop.App.SigmaCalculatePareto(cats, counts);
+      paretoItems = (await desktopApi.SigmaCalculatePareto(cats, counts) ?? []);
       showToast('Pareto chart calculated', 'success');
     } catch (err: any) {
       showToast(`Pareto failed: ${err}`, 'error');
@@ -195,7 +197,8 @@ import Button from '../Button.svelte';
   async function checkTollgate() {
     if (!project) return;
     try {
-      readiness = await window.go.desktop.App.SigmaCheckReadiness(project.id, project.phase);
+      const loaded = await desktopApi.SigmaCheckReadiness(project.id, project.phase);
+      readiness = { ...loaded, checks: loaded.checks ?? [] };
       showTollgate = true;
     } catch (err: any) {
       showToast(`Readiness check failed: ${err}`, 'error');
@@ -205,17 +208,17 @@ import Button from '../Button.svelte';
   async function advancePhase() {
     if (!project) return;
     try {
-      const res = await window.go.desktop.App.SigmaCheckReadiness(project.id, project.phase);
+      const res = await desktopApi.SigmaCheckReadiness(project.id, project.phase);
       if (!res.can_advance) {
         showToast(`Cannot advance: ${res.missing_list}`, 'error');
-        readiness = res;
+        readiness = { ...res, checks: res.checks ?? [] };
         showTollgate = true;
         return;
       }
       const phases = ['define', 'measure', 'analyze', 'improve', 'control'];
       const idx = phases.indexOf(project.phase);
       if (idx < phases.length - 1) {
-        await window.go.desktop.App.SigmaAdvancePhase(project.id, phases[idx + 1]);
+        await desktopApi.SigmaAdvancePhase(project.id, phases[idx + 1]);
         showToast(`Advanced to ${phases[idx + 1]} phase`, 'success');
         await loadProject();
       }
@@ -229,7 +232,8 @@ import Button from '../Button.svelte';
   async function loadToolStatus() {
     if (!project) return;
     try {
-      phaseTools = await window.go.desktop.App.SigmaGetToolStatus(project.id, project.phase);
+      const loaded = await desktopApi.SigmaGetToolStatus(project.id, project.phase);
+      phaseTools = { ...loaded, tools: loaded.tools ?? [] };
     } catch (err: any) {
       showToast(`Could not load tool status: ${err}`, 'error');
     }
@@ -238,7 +242,7 @@ import Button from '../Button.svelte';
   async function exportProjectReport() {
     if (!project) return;
     try {
-      const path = await window.go.desktop.App.SigmaExportProjectReport(project.id);
+      const path = await desktopApi.SigmaExportProjectReport(project.id);
       showToast(`Report exported: ${path}`, 'success');
     } catch (err: any) {
       if (!String(err).includes('export cancelled')) showToast(`Export failed: ${err}`, 'error');

@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0-C2: host-mediated Parquet reads
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 This is isolated feasibility evidence for DF-063. It does not authorize a
 production cutover or removal of DuckDB. Native macOS arm64 evidence passes the scoped checks below. Linux C2 has not
 been run in this slice; Windows remains blocked on its native transport/host.
@@ -90,8 +95,8 @@ This is provenance, not independent signature or publisher SHA-256 verification.
 
 ## Results (2026-10-31, native macOS arm64)
 
-Raw [job records](../../spikes/adr012-datafusion/evidence/df0-c2-macos/readat.json)
-and [build/source identity](../../spikes/adr012-datafusion/evidence/df0-c2-macos/environment.json)
+Raw [job records](adr-012-df0-records/df0-c2-macos/readat.json)
+and [build/source identity](adr-012-df0-records/df0-c2-macos/environment.json)
 record the tested source hashes, binaries, toolchain and measurements.
 
 | Query | Rows | Source requests | Materialized / RPC payload bytes | Host source bytes |

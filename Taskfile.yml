@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+version: '3'
+includes:
+  common: ./build/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+tasks:
+  build:
+    desc: Build GoPMgr with pinned Wails and native CGO
+    cmds:
+      - bash scripts/wails-build.sh 'DEV={{.DEV | default "false"}}' 'ARCH={{.ARCH | default ARCH}}'
+  run:
+    cmds:
+      - 'build/bin/{{if eq OS "darwin"}}gopmgr.app/Contents/MacOS/gopmgr{{else}}gopmgr{{exeExt}}{{end}}'

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session } from '../../session.svelte';
   import RecoveryCodesPanel from './RecoveryCodesPanel.svelte';
@@ -22,7 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      const status = await window.go.desktop.App.RecoveryCodeStatus();
+      const status = await desktopApi.RecoveryCodeStatus();
       needed = status.legacy || status.unused <= 1;
     } catch {
       // The reminder is advice; App Settings still shows the codes, so a

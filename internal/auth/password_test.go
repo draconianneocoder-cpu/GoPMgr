@@ -176,3 +176,15 @@ func TestHashVerifyPassword_RoundTrip(t *testing.T) {
 		t.Fatalf("VerifyPassword wrong: err = %v, want ErrMismatch", err)
 	}
 }
+
+// Frozen before the x/crypto upgrade, so verification cannot depend on the
+// candidate version generating the same format as itself.
+func TestVerifyPasswordAcceptsPersistedV058Hash(t *testing.T) {
+	const encoded = "$argon2id$v=19$m=65536,t=3,p=4$ws57/FXLG/e9EwgGNzb6Hg$6lEbjlLe8PzzfaBwXclK3kc3cq1ir0LZMl8wr+Q8kWo"
+	if err := VerifyPassword("gopmgr-compatibility-test-only", encoded); err != nil {
+		t.Fatalf("verify persisted password: %v", err)
+	}
+	if err := VerifyPassword("incorrect-password", encoded); !errors.Is(err, ErrMismatch) {
+		t.Fatalf("wrong password: got %v, want mismatch", err)
+	}
+}

@@ -8,6 +8,12 @@ import { autosave } from '../../autosave.svelte';
 import { cancelNavigation, navigation, requestNavigation, saveAndContinueNavigation, session } from '../../session.svelte';
 import ProjectSettings from './ProjectSettings.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 async function switchTab(
   container: HTMLElement,
   name: RegExp,
@@ -80,7 +86,7 @@ beforeEach(() => {
     ListScenarios: vi.fn(async () => []),
     SaveSettings: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   session.projectPath = null;
   session.project = null;
   session.view = 'login';

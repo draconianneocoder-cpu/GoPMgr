@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: memory-only filesystem policy for the sandboxed macOS worker
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 **Outcome:** no supported, unprivileged mechanism tested here makes the App
 Sandbox worker memory-only. One combination stops **file content** from
 reaching disk: App Sandbox plus a zero file-size limit set before exec. It
@@ -65,10 +70,10 @@ Three independent checks run after every scenario:
    ReportCrash's report on that PID, scans its bytes and deletes it. A missing
    report fails the observation rather than passing it.
 
-Raw records: [channels](../../spikes/adr012-datafusion/evidence/df0-memory-only-macos/growth-channels.json),
-[worker scenarios](../../spikes/adr012-datafusion/evidence/df0-memory-only-macos/memory-only-worker.json),
-[fault seeds](../../spikes/adr012-datafusion/evidence/df0-memory-only-macos/fault-seeds.json)
-and the [manifest](../../spikes/adr012-datafusion/evidence/df0-memory-only-macos/environment.json),
+Raw records: [channels](adr-012-df0-records/df0-memory-only-macos/growth-channels.json),
+[worker scenarios](adr-012-df0-records/df0-memory-only-macos/memory-only-worker.json),
+[fault seeds](adr-012-df0-records/df0-memory-only-macos/fault-seeds.json)
+and the [manifest](adr-012-df0-records/df0-memory-only-macos/environment.json),
 which binds sources, SDK headers and the worker by SHA-256.
 
 ## What stays open

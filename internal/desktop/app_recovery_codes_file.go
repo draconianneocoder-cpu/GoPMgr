@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"gopmgr/internal/documents"
 	"gopmgr/internal/users"
@@ -40,7 +40,7 @@ func (a *App) SaveRecoveryCodesFile(username string, codes []string) (string, er
 	if a.ctx == nil {
 		return "", errors.New("saving recovery codes needs the application window")
 	}
-	return a.saveRecoveryCodesFileWithRuntime(username, codes, recoveryCodesRuntime())
+	return a.saveRecoveryCodesFileWithRuntime(username, codes, recoveryCodesRuntime(a))
 }
 
 // SaveRecoverySheetPDF writes the codes as a one-page printable sheet, with
@@ -52,7 +52,7 @@ func (a *App) SaveRecoverySheetPDF(username string, codes []string) (string, err
 	if a.ctx == nil {
 		return "", errors.New("saving recovery codes needs the application window")
 	}
-	return a.saveRecoveryCodes(username, codes, recoveryCodesRuntime(), recoverySheetPDF)
+	return a.saveRecoveryCodes(username, codes, recoveryCodesRuntime(a), recoverySheetPDF)
 }
 
 func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, runtime exportDestinationRuntime) (string, error) {
@@ -65,7 +65,7 @@ type recoveryCodesFormat struct {
 	ext    string // lower case, with the dot
 	stem   string // default file name before "<username>-<date><ext>"
 	title  string
-	filter wailsruntime.FileFilter
+	filter application.FileFilter
 	render func(username, created string, codes []string) ([]byte, error)
 }
 
@@ -73,7 +73,7 @@ var recoveryCodesText = recoveryCodesFormat{
 	ext:    ".txt",
 	stem:   "gopmgr-recovery-codes-",
 	title:  "Save recovery codes",
-	filter: wailsruntime.FileFilter{DisplayName: "Text files", Pattern: "*.txt"},
+	filter: application.FileFilter{DisplayName: "Text files", Pattern: "*.txt"},
 	render: func(username, created string, codes []string) ([]byte, error) {
 		return []byte("GoPMgr recovery codes for " + username + "\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"), nil
 	},
@@ -83,7 +83,7 @@ var recoverySheetPDF = recoveryCodesFormat{
 	ext:    ".pdf",
 	stem:   "gopmgr-recovery-sheet-",
 	title:  "Save printable recovery sheet",
-	filter: wailsruntime.FileFilter{DisplayName: "PDF files", Pattern: "*.pdf"},
+	filter: application.FileFilter{DisplayName: "PDF files", Pattern: "*.pdf"},
 	render: func(username, created string, codes []string) ([]byte, error) {
 		return documents.RenderRecoverySheetPDF(documents.RecoverySheet{Username: username, Created: created, Codes: codes})
 	},
@@ -119,11 +119,11 @@ func (a *App) saveRecoveryCodes(username string, codes []string, runtime exportD
 	if err != nil {
 		home = ""
 	}
-	path, err := runtime.saveFileDialog(a.ctx, wailsruntime.SaveDialogOptions{
-		DefaultDirectory:     home,
-		DefaultFilename:      format.stem + username + "-" + created + format.ext,
+	path, err := runtime.saveFileDialog(a.ctx, application.SaveFileDialogOptions{
+		Directory:            home,
+		Filename:             format.stem + username + "-" + created + format.ext,
 		Title:                format.title,
-		Filters:              []wailsruntime.FileFilter{format.filter},
+		Filters:              []application.FileFilter{format.filter},
 		CanCreateDirectories: true,
 	})
 	if err != nil {

@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0-E2: typed tabular numeric fidelity on macOS
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 **Partial feasibility evidence, not production UI integration.** This slice
 uses the existing corpus `Cell {k,v}` representation, whose values are exact
 text. It does not introduce or approve a production tabular DTO. Production
@@ -24,13 +29,13 @@ result with `encoding/json`. A separate Node process runs `JSON.parse`, checks
 strict equality against the golden table, requires string payloads and
 round-trips integer text through `BigInt`.
 
-The [raw observations](../../spikes/adr012-datafusion/evidence/df0-fidelity-macos/native.json)
+The [raw observations](adr-012-df0-records/df0-fidelity-macos/native.json)
 record 10 successful jobs, 60 rows and 30 batches. Each two-row batch is below
 the negotiated 64 KiB frame cap. Every job requires verified source/completion
 digests, complete ordered rows, a normal worker exit and endpoint cleanup
 before invoking the JavaScript checker. The source SHA-256 and observed Arrow
 types accompany each table. The
-[environment and hashes](../../spikes/adr012-datafusion/evidence/df0-fidelity-macos/environment.json)
+[environment and hashes](adr-012-df0-records/df0-fidelity-macos/environment.json)
 identify the source, fixture generator, native worker and tools.
 
 | Risk | Executed check |

@@ -13,7 +13,7 @@ manual for GoPMgr developers and maintainers**
 ### Purpose
 
 GoPMgr is a local-first desktop application for project controls. It
-combines a Go backend, a Wails v2 desktop shell, and a Svelte
+combines a Go backend, a Wails v3 desktop shell, and a Svelte
 5/TypeScript frontend. The application supports planning, scheduling,
 earned-value management, resource analysis, charts, documents, local
 encrypted project storage, open-format exports, PDF/A-2u output, and
@@ -125,7 +125,7 @@ live on the user's machine rather than requiring a hosted service.
 The current repository uses:
 
 - Go 1.27.3 or later;
-- Wails v2.17.0;
+- Wails v3.1.0;
 - Svelte 5;
 - TypeScript 6;
 - Vite 8;
@@ -173,19 +173,26 @@ leaves ownership clearer.
 A normal development checkout requires:
 
 - Go 1.27.3 or later;
-- **Wails v2.17.0** (the exact CLI version, not "latest");
+- **Wails v3.1.0** (the exact CLI version, not "latest");
 - Node.js and npm;
+- Python 3 for the build wrapper and metadata query helper;
 - a C compiler and CGO-capable Go toolchain;
 - platform dependencies required by Wails.
 
 Install the matching Wails CLI:
 
 ``` sh
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
+mkdir -p .tmp/wails-v3/bin
+GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
 
 Do not use an arbitrary newer Wails CLI. The repository intentionally
 verifies that runtime, CLI, and documentation pins remain synchronized.
+
+Optional auxiliary lint tools use the explicit, task-local
+[ADR-013 provisioning procedure](engineering/adr-013-provisioning.md), which
+requires Python 3.11+. It does not provision runtime toolchains or change the
+Make build/test contract.
 
 ### 2.2 Initial checkout setup
 
@@ -193,7 +200,7 @@ From the repository root:
 
 ``` sh
 make tidy
-wails dev
+make dev
 ```
 
 `make tidy` runs `go mod tidy` and `npm --prefix frontend install`
@@ -212,10 +219,10 @@ Use:
 make dev
 ```
 
-or:
+or invoke the pinned CLI directly:
 
 ``` sh
-wails dev
+.tmp/wails-v3/bin/wails3 dev -config build/config.yml
 ```
 
 for Wails development mode with the Go backend and Svelte frontend.
@@ -228,11 +235,24 @@ Use:
 make build
 ```
 
-The production build runs the repository's Wails build wrapper. Wails
-builds the frontend, generates required bindings, embeds `frontend/dist`
-through the root `main.go` (which then calls `internal/desktop`), applies the desktop/production build
-context, links required platform frameworks, and compiles the
-CGO-enabled backend.
+The production build calls `scripts/wails-build.sh` and reviewed v3
+Taskfiles. It generates bindings before building the frontend, embeds
+`frontend/dist` through root `main.go`, and compiles with the `production`
+tag and CGO. The wrapper reads product metadata from `build/config.yml`
+(`info.version`) and preserves `GOPMGR_RELEASE_LDFLAGS` for release identity
+and update-channel public-key injection. Run it on the native target OS:
+
+```sh
+GOOS=darwin GOARCH=arm64 bash scripts/wails-build.sh
+```
+
+Linux uses GTK 4 and WebKitGTK 6.0 (`libgtk-4-dev` and
+`libwebkitgtk-6.0-dev` on Debian/Ubuntu), with no legacy backend tag.
+The pinned npm `@wailsio/runtime` is 3.1.0. Source/build evidence is separate
+from package or release qualification: macOS 26 Tahoe and Ubuntu 26.04 execution
+remain mandatory release gates (Ubuntu 26.04 is the Linux minimum since
+2026-11-09; the macOS 26 host is currently unavailable), and Windows
+NSIS remains unqualified.
 
 ### 2.5 A first verification pass
 
@@ -278,7 +298,7 @@ calls `desktop.Main`. Everything else moved to `internal/desktop` on
 
 `internal/desktop/app_*.go` files form the Wails-facing application
 layer. Every exported `App` method is frontend API
-(`window.go.desktop.App.<Method>`), listed in `code-map/app-api.json`;
+(`desktopApi.<Method>` through generated bindings), listed in `code-map/app-api.json`;
 keep helpers unexported or package-level. These files may:
 
 - validate bridge input;
@@ -367,13 +387,16 @@ components and shown/hidden by application state.
 ``` text
 frontend/src/
   App.svelte, app.css, main.ts   Application shell and global styles
-  wails-window.d.ts              Hand-written ambient bridge declarations
+  domain-types.d.ts             Frontend editor/view types (no Window.go bridge)
   lib/
     components/                  Svelte UI components, grouped by domain
       admin/ agile/ auth/ charts/ documents/ help/ project/ sigma/
     *.svelte.ts                  Svelte 5 rune-based state modules
                                   (session.svelte.ts, autosave.svelte.ts,
                                   toast.svelte.ts)
+    desktop-api.ts               Direct generated App namespace export
+    desktop-runtime.ts           Events.On envelope/unsubscribe adapter
+    desktop-dtos.ts              Explicit DTO-to-editor normalization
     *.ts                         Pure TypeScript helpers (native-close.ts,
                                   rebase-editable-changes.ts, theme.ts,
                                   terminology.ts, methodologies.ts)
@@ -419,31 +442,34 @@ The Svelte frontend should not become authoritative for:
 The frontend may perform usability validation, but the backend must
 enforce security and persistence invariants.
 
-### 4.3 Bridge declarations: hand-written vs. generated
+### 4.3 Generated service bindings and editor views
 
-Wails exposes backend methods through `window.go.desktop.App` (the Go
-package name of the bound `App`). Two
-independent artifacts describe that surface, and they are not the same
-thing:
+The pinned Wails v3.1.0 CLI generates
+`frontend/bindings/gopmgr/internal/desktop/index.ts` and `app.ts` from the
+actual Go service. `frontend/src/lib/desktop-api.ts` directly re-exports
+the generated `App` namespace as `desktopApi`; production callers import
+that module. `window.go` and the old hand-maintained `wails-window.d.ts`
+bridge were removed in the 2026-11-03 migration.
 
-- `frontend/src/wails-window.d.ts` — a **hand-written** ambient
-    TypeScript declaration. It lets Svelte components type-check before
-    `wails dev`/`wails build` has run, and it is what most frontend code
-    actually compiles against.
-- `frontend/wailsjs/` (`go/desktop/App.d.ts`, `go/models.ts`,
-    `runtime/runtime.d.ts`) — **generated** by the Wails CLI from the
-    current Go method set on every `wails dev`/`wails build`.
+Generate actual bindings before typecheck, tests or build. The build task
+uses `-ts -i -names -time-type string` and the production build context.
+Never replace missing generated modules with fake bindings or success-only
+mocks. Review all 209 methods against `code-map/app-api.json` when the
+backend API changes, then regenerate and verify callers against actual types.
 
-When an exported backend method's name, parameters, or return shape
-changes, update `wails-window.d.ts` by hand to match; nothing regenerates
-it automatically, and nothing fails loudly if it drifts from the real
-bridge. `make wails-version` (`scripts/check-wails-version.sh`) verifies
-that the installed Wails CLI and documented version pins agree — it
-does not check `wails-window.d.ts` against Go method signatures.
+`domain-types.d.ts` describes editor/view models; it is not the transport
+contract. `desktop-dtos.ts` explicitly maps nullable wire collections to empty
+editable arrays/maps and validates generated enums for outgoing payloads.
+Raw generated calls retain backend `null` versus `[]`, exact money strings,
+and timestamp strings. Saving an edited model can serialize its normalized
+empty collections as arrays; do not infer that every backend list returns
+an array.
 
-Do not treat a stale hand-written declaration as evidence of the backend
-contract. Verify the Go method and the generated bindings in
-`frontend/wailsjs/` directly.
+`desktop-runtime.ts` adapts `Events.On` through `event.data` and returns the
+real unsubscribe function. Register the native-close listener before sending
+`EnableNativeCloseGuard`; await completion and recovery calls before changing
+interaction locks. `make wails-version` checks tool/document pins, while
+actual generated DTO checks and native round trips verify the wire contract.
 
 ------------------------------------------------------------------------
 
@@ -1115,7 +1141,8 @@ The repository uses:
 - jsdom;
 - direct component tests;
 - pure TypeScript helper tests;
-- mocked `window.go.desktop.App` for selected interaction tests.
+- Vitest mocks of `desktop-api` with explicit fixture methods; missing
+  methods must fail rather than default to success.
 
 When fixing a frontend regression, add the narrowest test that
 reproduces the original failure class and retain runtime smoke coverage
@@ -1765,28 +1792,25 @@ Run it after documentation changes that affect those claims.
 
 Platform packaging has platform-specific evidence requirements.
 
-Regular CI (`.github/workflows/ci.yml`, on push/PR) runs its main verification
-and build jobs on `ubuntu-26.04`, with a separate pinned `macos-15` assurance
-job for the Darwin coverage ledger and REUSE checks. It validates `make verify`,
-linting, the PAdES harness, vulnerability scanning, and a Linux Wails build, but
-it never builds or runs the macOS or Windows installer. The three-platform
-packaging matrix
-(Linux `.deb`/`.rpm`, macOS `.dmg`, Windows `.exe`) only runs in
-`.github/workflows/release.yml`, triggered by a `v*` tag push. A change
-A change that only passed regular CI has not been exercised through the macOS or
-Windows installer paths, and has not been exercised on Windows at all.
+The workflow definitions record Linux, macOS and Windows gates, but this
+migration is validated locally. Do not launch hosted CI or tag publication
+to obtain qualification evidence. Changes to YAML are configuration work,
+not proof those jobs passed.
 
-The Linux packaging job specifically stays pinned to `ubuntu-24.04` rather
-than following the rest of CI onto `ubuntu-26.04`: GitHub's `ubuntu-26.04`
-hosted runner is still experimental, and this job only runs on a rare,
-high-stakes tag push — a poor place to absorb a beta runner's instability.
-Building on the older 24.04 baseline is deliberate build-old-run-new
-packaging practice: the resulting `.deb`/`.rpm`'s only runtime requirement
-is `libwebkit2gtk-4.1`, present on 24.04 and every release since, so it
-installs and runs correctly on this project's actual target
-audience — Ubuntu 26.04+ users — without the release pipeline itself
-depending on an experimental runner. `scripts/check-linux-runtime-target.sh`
-(run by `make check-release`) enforces this split explicitly.
+On 2026-11-03 the frontend check/build and 742 tests passed against real
+209-method bindings. Native macOS generated-App bridge checks cover exact
+money, SQLCipher persistence/reopen, raw null versus explicit empty lists,
+and shutdown cleanup. The 61 migrated components retain their markup/styles;
+that source comparison is not screenshot or packaged visual evidence.
+
+Package/install/upgrade qualification remains separate. macOS 26 Tahoe and Ubuntu
+26.04 execution are mandatory release gates; the macOS 26 host is
+unavailable, and the Ubuntu 26.04 installed-package gate has not passed. Linux builds and packages target GTK 4 and WebKitGTK 6.0;
+minimum-target dependency inspection and execution must qualify the result.
+The owned `scripts/package-windows.sh` stages the v3 macros and bootstrapper,
+then invokes NSIS around `build/bin/gopmgr.exe`. Source/macro fixtures and
+local NSIS 3.13 compilation do not qualify the pinned NSIS 3.12.0 compiler or
+native Windows install/upgrade/remove; those remain release gates.
 
 A source/template check is not equivalent to installing and exercising
 the resulting package on the target operating system.
@@ -2009,7 +2033,7 @@ reason.
 | `make tidy` | `go mod tidy` + `npm --prefix frontend install`; the real onboarding step |
 | `make dev` | Run Wails development mode |
 | `make build` | Production Wails build with repository build wrapper |
-| `make clean` | Remove build output and generated `frontend/wailsjs/` bindings; does not sweep mixed-purpose `.tmp` or shared caches |
+| `make clean` | Remove build output according to the Makefile; generated v3 bindings live in `frontend/bindings/`. Verify cleanup scope before use; do not sweep retained `.tmp` evidence or shared caches |
 | `make workspace-hygiene` | Read-only size and ownership classification for `.tmp`; unknown entries and retained evidence are preserved |
 | `make cache-maintenance` | Explicitly clear shared Go build/test cache and verify/garbage-collect npm cache; preserves module dependencies and `node_modules` |
 | `make fonts`, `make icc` | Download the optional font families / refresh the sRGB ICC profile; not needed for a clean build, because the IBM Plex and Source Sans 3 fonts and the ICC profile are committed |
@@ -2032,7 +2056,7 @@ reason.
 | `make release-scope` | Protect release/public-claim scope |
 | `make check-release` | Full release gate |
 | `make tag-preflight` | Publication-tag contract + full release gate |
-| `make package-linux`, `make package-darwin`, `make package-macos-installer`, `make package-windows` | Platform installer packaging (exercised per-platform only in `release.yml`; see 23.4) |
+| `make package-linux`, `make package-darwin`, `make package-macos-installer`, `make package-windows` | Native packaging entrypoints; artifact and installer qualification remain separate (see 23.4) |
 | `make wails-version` | Verify installed Wails CLI matches the `go.mod`/docs pin |
 | `make code-map` | Regenerate first-party package dependency/API maps |
 | `make code-map-current` | Fail if checked-in code map is stale |
@@ -2102,7 +2126,7 @@ These are high-value rules that should remain easy to find.
 ## Frontend change
 
 - [ ] Confirm Svelte/TypeScript ownership.
-- [ ] Keep Wails declarations synchronized.
+- [ ] Regenerate actual Wails bindings and verify editor DTO conversions.
 - [ ] Handle Wails promise failures explicitly.
 - [ ] Protect against stale async completion.
 - [ ] Clean up timers/listeners/subscriptions.
@@ -2172,7 +2196,7 @@ These are high-value rules that should remain easy to find.
 | Export opens but standards validation fails | Use a format-specific validator; do not rely on visual inspection |
 | PAdES becomes invalid after export processing | Check for mutation after signing |
 | Vulnerability gate changes without source changes | Inspect the live advisory and reachable symbols |
-| `wails-window.d.ts` disagrees with backend behavior | It is hand-written, not generated (4.3) — update it by hand against the Go method and `frontend/wailsjs/` |
+| Frontend types disagree with backend behavior | Regenerate actual `frontend/bindings/`, compare the Go method and editor normalization (4.3), and resolve the explicit DTO mismatch |
 | `make verify` fails on generated map/ledger | Regenerate only through the repository-owned target; inspect the diff before committing |
 | Release documentation claims fail the scope gate | Reduce/correct the claim or supply the required gate-backed evidence |
 | Cross-platform installer bug not caught by CI | Regular CI (`ci.yml`) runs Linux-only; macOS/Windows packaging only builds in `release.yml` at tag push (23.4) |

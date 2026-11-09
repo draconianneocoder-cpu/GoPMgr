@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // Landing screen for session.view === 'charts' -- reached only when
   // Dashboard.svelte's newChart()/importMSPDI() save a chart whose kind has
   // no entry in chartRoutes (`goto(chartRoutes[kind] ?? 'charts', c.id)`).
@@ -32,7 +33,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      chart = await window.go.desktop.App.GetChart(id);
+      chart = await desktopApi.GetChart(id);
     } catch {
       // The chart still exists -- only this lookup failed. Fall back to
       // generic copy below rather than claiming something went wrong with

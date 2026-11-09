@@ -16,11 +16,11 @@ host_os="$(go env GOOS)"
 host_arch="$(go env GOARCH)"
 
 case "$target" in
-	linux|windows|darwin) ;;
-	*)
-		echo "package: unsupported target '$target' (expected linux, windows, or darwin)." >&2
-		exit 2
-		;;
+linux | windows | darwin) ;;
+*)
+	echo "package: unsupported target '$target' (expected linux, windows, or darwin)." >&2
+	exit 2
+	;;
 esac
 
 if [ "$target" != "$host_os" ]; then

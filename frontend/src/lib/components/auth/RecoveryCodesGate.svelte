@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import RecoveryCodesPanel from './RecoveryCodesPanel.svelte';
   import type { RecoveryGate } from '../../recovery-gate';
@@ -31,7 +32,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.desktop.App.AcceptEncryptionWithoutRecoveryCodes();
+      await desktopApi.AcceptEncryptionWithoutRecoveryCodes();
       onready();
     } catch (err: any) {
       error = t('recoveryGate.error', { error: String(err?.message ?? err) });

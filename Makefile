@@ -6,18 +6,13 @@
 
 CC      := gcc
 GO      := go
-WAILS   := wails
+WAILS   := .tmp/wails-v3/bin/wails3
 NPM     := npm
-# Tags and flags passed to `wails build`. Bindings ARE generated (no -skipbindings):
-# Wails needs them so multi-value method results marshal correctly to the
-# frontend. The codesign "detritus" problem that -skipbindings previously
-# worked around is handled instead by scripts/wails-build.sh, which strips
-# extended attributes and ad-hoc signs the .app after the build. Production
-# builds target Ubuntu 24.04+ WebKit2GTK 4.1 on Linux. Override
-# WAILS_BUILD_TAGS only for explicit legacy-WebKit development checks.
-WAILS_BUILD_TAGS ?= webkit2_41
+NATIVE_ENV := python3 scripts/native-go-env.py
+# Build arguments are reviewed task variables (DEV, ARCH, EXTRA_LDFLAGS),
+# never legacy Wails v2 CLI flags. GTK4 is the standard v3 CGO backend.
 WAILS_BUILD_FLAGS ?=
-GO_TEST_TAGS ?= webkit2_41
+GO_TEST_TAGS ?=
 # The main package now lives at the repo root (canonical Wails layout), so
 # Go quality gates scope to the root package, internal packages, and tracked
 # tools. Avoid bare ./... because generated
@@ -28,7 +23,7 @@ export CGO_ENABLED := 1
 export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
-        license-check memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
+        license-check license-check-tests clean-finder-metadata memory-scan memory-scan-tests package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability pades-lock-test \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
@@ -38,23 +33,65 @@ export CC
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
-        frontend-notices frontend-notices-check frontend-notices-tests
+        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests release-native-env-tests \
+        tools-bootstrap tools-install tools-check tools-tests tools-qualify \
+        shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests workflow-security workflow-security-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build a production app via Wails.
-	# scripts/wails-build.sh wraps `wails build`: the CLI injects the required
-	# desktop,production tags, links the macOS frameworks (UniformTypeIdentifiers
-	# / UTType), builds the frontend, and embeds it; the wrapper then strips
-	# extended-attribute detritus and ad-hoc signs the macOS .app (Wails' own
-	# self-sign fails on iCloud-synced trees - see the script header).
-	# Output: build/bin/<ProductName>.app on macOS, build/bin/gopmgr elsewhere.
-	@bash scripts/wails-build.sh -tags "$(WAILS_BUILD_TAGS)" $(WAILS_BUILD_FLAGS)
+tools-bootstrap: ## Explicitly download and verify task-local mise (network access).
+	@python3 -B scripts/engineering/provision.py bootstrap
 
-dev: ## Run Wails in development mode (hot-reload Svelte + Go).
-	$(WAILS) dev
+tools-install: ## Explicitly install the four locked auxiliary tools (network access).
+	@python3 -B scripts/engineering/provision.py install
+
+tools-check: ## Read-only offline auxiliary binary, policy and host dependency checks.
+	@python3 -B scripts/engineering/provision.py check
+
+tools-tests: ## Run offline provisioning boundary regression tests.
+	@python3 -B scripts/engineering/provision_test.py
+
+tools-qualify: ## Opt-in real trusted/safe mise install qualification (network access).
+	@python3 -B scripts/engineering/provision_integration_test.py
+
+shellcheck: ## Opt-in, read-only analysis of tracked first-party shells; findings fail.
+	@python3 -B scripts/engineering/shellcheck.py
+
+shellcheck-inventory: ## Print tracked shell dialects and ownership exclusions as JSON.
+	@python3 -B scripts/engineering/shellcheck.py --inventory
+
+shellcheck-tests: ## Verify shell inventory, analyzer failures and repaired script contracts.
+	@python3 -B scripts/engineering/shellcheck_test.py
+	@python3 -B scripts/engineering/shell_contract_test.py
+
+shfmt-check: ## Opt-in, read-only formatting check for tracked first-party shells.
+	@python3 -B scripts/engineering/shfmt_check.py
+
+shfmt-tests: ## Verify formatting failures, scope and source/index preservation.
+	@python3 -B scripts/engineering/shfmt_check_test.py
+
+workflow-lint: ## Opt-in, read-only actionlint check of tracked workflows.
+	@python3 -B scripts/engineering/workflow_lint.py
+
+workflow-lint-tests: ## Verify workflow errors, analyzer identity and read-only boundaries.
+	@python3 -B scripts/engineering/workflow_lint_test.py
+
+workflow-security: ## Opt-in, read-only offline zizmor security check; any finding fails.
+	@python3 -B scripts/engineering/workflow_security.py
+
+workflow-security-tests: ## Verify workflow security risks, tool/output failures and recovery.
+	@python3 -B scripts/engineering/workflow_security_test.py
+
+build: ## Build the production app with pinned Wails v3 tasks and native CGO.
+	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)
+
+wails-build-tests: ## Verify build failure, bundle, signing and platform contracts in isolated fixtures.
+	@bash scripts/wails-build_test.sh
+
+dev: ## Run pinned Wails v3 development mode (Svelte + Go).
+	$(WAILS) dev -config build/config.yml --port 5173
 
 tidy: ## go mod tidy + npm install.
 	$(GO) mod tidy
@@ -109,14 +146,20 @@ pades-lock-test: ## Verify PAdES lock acquisition is bounded and never reclaims 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
 	@bash scripts/validate-encrypted-db.sh
 
+release-native-env-tests: ## Verify standalone release and validator native environments.
+	@python3 -B scripts/release-native-env_test.py
+
+native-go-env-tests: ## Verify native test environments, target isolation and failure propagation.
+	@python3 -B scripts/native-go-env_test.py
+
 test: ## Run Go unit tests.
-	$(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
+	$(NATIVE_ENV) "$(GO)" -- $(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
-	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
+	$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: memory-scan-tests release-native-env-tests native-go-env-tests wails-build-tests config-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -134,7 +177,7 @@ coverage-ledger-current: ## Fail if a *_test.go/*.{test,spec}.{ts,js} file exist
 
 coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LEDGER.md no longer matches live `go test -cover` output. Runs separately from local `verify` because it runs the full coverage pass; the blocking CI assurance job runs it on the pinned macOS baseline used by the ledger.
 	@bash scripts/check-coverage-ledger-drift_test.sh
-	@bash scripts/check-coverage-ledger-drift.sh
+	@$(NATIVE_ENV) go -- bash scripts/check-coverage-ledger-drift.sh
 
 no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_at/updated_at TEXT column instead of its _unixnano sort-key sibling.
 	@bash scripts/check-no-text-timestamp-ordering_test.sh
@@ -145,10 +188,10 @@ no-raw-import-in-tests: ## Fail if a frontend *.test.ts/*.spec.ts file imports a
 	@bash scripts/check-no-raw-import-in-tests.sh
 
 coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go and frontend, tracked independently). Remains a manual signal; the CI assurance job currently enforces ledger-heading drift, not high-water-mark policy.
-	@bash scripts/coverage-ratchet.sh
+	@$(NATIVE_ENV) go -- bash scripts/coverage-ratchet.sh
 
 coverage-ratchet-update: ## Re-run the ratchet and record any improved marks in coverage-baseline.json. Run this after adding tests; never after a real regression.
-	@bash scripts/coverage-ratchet.sh --update
+	@$(NATIVE_ENV) go -- bash scripts/coverage-ratchet.sh --update
 
 coverage-go-cleanup-tests: ## Verify successful Go coverage runs self-clean and failed runs retain diagnostics.
 	@bash scripts/coverage-go-cleanup_test.sh
@@ -197,7 +240,8 @@ windows-installer-scaffold: ## Validate GoPMgr-owned NSIS templates and Windows 
 	@bash scripts/validate-windows-nsis-template_test.sh
 	@bash scripts/validate-windows-nsis-template.sh
 
-linux-runtime-target: ## Verify Linux CI targets Ubuntu 26.04, packaging is deliberately pinned to Ubuntu 24.04+, both use WebKit2GTK 4.1.
+linux-runtime-target: ## Verify GTK4/WebKitGTK6 build and package dependencies without legacy fallback.
+	@bash scripts/check-linux-runtime-target_test.sh
 	@bash scripts/check-linux-runtime-target.sh
 
 wails-version: ## Verify Wails runtime, CLI, and current documentation pins match go.mod.
@@ -214,6 +258,9 @@ package-version-lib-test: ## Run isolated regression cases for the shared macOS 
 
 help-guide-current: ## Verify in-app Help Guide covers recent release corrections.
 	@bash scripts/check-help-guide-current.sh
+
+memory-scan-tests: ## Verify scanner failure, scope and native-environment contracts.
+	@python3 -B scripts/memory-safety-scan_test.py
 
 memory-scan: ## Run the memory-safety hardening gate.
 	@bash scripts/memory-safety-scan.sh
@@ -251,9 +298,14 @@ frontend-notices-tests: ## Unit-test the frontend notices generator.
 module-notices-tests: ## Verify the packaging check that compares a built binary with the Go module notices.
 	@bash scripts/verify-module-notices_test.sh
 
-license-check: ## Verify REUSE/SPDX compliance.
-	find . -name .DS_Store -delete
+license-check: ## Verify REUSE/SPDX compliance without repository cleanup.
 	reuse lint
+
+license-check-tests: ## Verify licensing validation preserves files and propagates failures.
+	@python3 -B scripts/engineering/license_check_test.py
+
+clean-finder-metadata: ## Explicitly delete .DS_Store entries recursively; never a verification dependency.
+	find . -name .DS_Store -delete
 
 package-tarball-tests: ## Verify the tarball layout (scripts/package.sh) and its notices with a stub build.
 	@bash scripts/package_test.sh

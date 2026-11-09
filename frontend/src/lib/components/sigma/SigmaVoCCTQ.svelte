@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
@@ -33,8 +34,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadVoC() {
     loading = true;
     try {
-      const data = await window.go.desktop.App.SigmaGetVoC(projectID);
-      vocData = data;
+      const data = await desktopApi.SigmaGetVoC(projectID);
+      vocData = { ...data, entries: data.entries ?? [] };
     } catch (e) {
       showToast('Failed to load VoC data', 'error');
     } finally {
@@ -44,7 +45,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveVoC() {
     try {
-      await window.go.desktop.App.SigmaSaveVoC(projectID, vocData);
+      await desktopApi.SigmaSaveVoC(projectID, vocData);
       showToast('VoC data saved', 'success');
       void onSaved?.();
     } catch (e) {

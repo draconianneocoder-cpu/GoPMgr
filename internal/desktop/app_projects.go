@@ -31,7 +31,7 @@ import (
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/update"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // =========================================================
@@ -170,10 +170,10 @@ func (a *App) RestoreProjectArchive() (ProjectFile, error) {
 	if a.ctx == nil {
 		return ProjectFile{}, errors.New("no context (Wails not started)")
 	}
-	archivePath, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Restore GoPMgr project backup",
-		DefaultDirectory: user.DataDir,
-		Filters: []wailsruntime.FileFilter{
+	archivePath, err := a.native.openFileDialog(a.ctx, application.OpenFileDialogOptions{
+		Title:     "Restore GoPMgr project backup",
+		Directory: user.DataDir,
+		Filters: []application.FileFilter{
 			{DisplayName: "GoPMgr backup (*.pmba)", Pattern: "*.pmba"},
 		},
 	})

@@ -8,6 +8,8 @@ set -euo pipefail
 # callers intentionally resolve from this script so the result is independent
 # of the shell's current working directory.
 repo_root="${GOPMGR_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+cli="${WAILS3:-$repo_root/.tmp/wails-v3/bin/wails3}"
+if [[ ! -f "$cli" && -f "$cli.exe" ]]; then cli="$cli.exe"; fi
 fail=0
 
 report_missing() {
@@ -37,8 +39,8 @@ require_not_contains() {
 # newer arbitrary Wails CLI can change generated bindings or packaging output.
 module_version="$(
 	awk '
-		$1 == "github.com/wailsapp/wails/v2" { print $2; exit }
-		$1 == "require" && $2 == "github.com/wailsapp/wails/v2" { print $3; exit }
+		$1 == "github.com/wailsapp/wails/v3" { print $2; exit }
+		$1 == "require" && $2 == "github.com/wailsapp/wails/v3" { print $3; exit }
 	' "$repo_root/go.mod"
 )"
 if [[ ! "$module_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -46,7 +48,21 @@ if [[ ! "$module_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 	exit 1
 fi
 
-install_command="go install github.com/wailsapp/wails/v2/cmd/wails@${module_version}"
+python3 - "$repo_root" "${module_version#v}" <<'PY'
+import json, pathlib, sys
+root, expected = pathlib.Path(sys.argv[1]), sys.argv[2]
+with (root / 'frontend/package.json').open() as file:
+    manifest = json.load(file)
+with (root / 'frontend/package-lock.json').open() as file:
+    lock = json.load(file)
+if manifest.get('dependencies', {}).get('@wailsio/runtime') != expected:
+    sys.exit(f'check-wails-version: frontend runtime must exactly match {expected}')
+packages = lock.get('packages', {})
+if packages.get('', {}).get('dependencies', {}).get('@wailsio/runtime') != expected or packages.get('node_modules/@wailsio/runtime', {}).get('version') != expected:
+    sys.exit(f'check-wails-version: lockfile runtime must exactly match {expected}')
+PY
+
+install_command="go install github.com/wailsapp/wails/v3/cmd/wails3@${module_version}"
 install_surfaces=(
 	.github/workflows/ci.yml
 	.github/workflows/release.yml
@@ -58,7 +74,7 @@ install_surfaces=(
 )
 for file in "${install_surfaces[@]}"; do
 	require_contains "$file" "$install_command"
-	require_not_contains "$file" "github.com/wailsapp/wails/v2/cmd/wails@latest"
+	require_not_contains "$file" "github.com/wailsapp/wails/v3/cmd/wails3@latest"
 done
 
 require_contains README.md "Wails: the project uses Wails ${module_version}."
@@ -69,11 +85,11 @@ require_contains docs/branding.md "Wails ${module_version%.*}"
 require_contains build/windows/installer/project.nsi "GoPMgr-owned Wails ${module_version%.*} NSIS entrypoint"
 
 if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
-	if ! command -v wails >/dev/null 2>&1; then
+	if ! command -v "$cli" >/dev/null 2>&1; then
 		echo "check-wails-version: installed Wails CLI is required; install with: $install_command" >&2
 		fail=1
 	else
-		installed_version="$(wails version 2>/dev/null | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')"
+		installed_version="$("$cli" version 2>&1 | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')"
 		if [[ "$installed_version" != "$module_version" ]]; then
 			echo "check-wails-version: installed Wails CLI is ${installed_version:-unknown}; go.mod requires ${module_version}." >&2
 			echo "check-wails-version: install with: $install_command" >&2
@@ -82,7 +98,7 @@ if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
 	fi
 fi
 
-if (( fail != 0 )); then
+if ((fail != 0)); then
 	exit "$fail"
 fi
 

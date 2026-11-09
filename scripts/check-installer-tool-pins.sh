@@ -58,27 +58,34 @@ fi
 require_literal "$WORKFLOW" \
 	"grep -E '^(NFPM_VERSION|NSIS_VERSION)=' scripts/release-tool-versions.env >> \"\$GITHUB_ENV\"" \
 	"workflow must load release-tool-versions.env before installing tools."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'go install github.com/goreleaser/nfpm/v2/cmd/nfpm@"${NFPM_VERSION}"' \
 	"nFPM install must use the declared NFPM_VERSION."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'choco install nsis --version="${NSIS_VERSION}" -y --no-progress' \
 	"NSIS install must use the declared NSIS_VERSION."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'actual_nfpm_version="$(go version -m "$(command -v nfpm)" | awk' \
 	"workflow must verify nFPM module build metadata."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'installed_nsis_version="$(choco list --exact nsis --limit-output' \
 	"workflow must verify the installed Chocolatey NSIS version."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$WORKFLOW" \
 	'test -x "$nsis_dir/makensis.exe"' \
 	"workflow must verify makensis at Chocolatey's explicit installation path."
 require_literal "$WORKFLOW" \
 	"echo 'C:\\Program Files (x86)\\NSIS' >> \"\$GITHUB_PATH\"" \
 	"workflow must publish Chocolatey's NSIS directory to later build steps."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$PACKAGE_LINUX" \
 	'echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION"' \
 	"package-linux must recommend the declared nFPM version."
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 require_literal "$PACKAGE_LINUX" \
 	'actual_nfpm_version="$(go version -m "$nfpm_binary"' \
 	"package-linux must reject an nFPM binary with mismatched module metadata."
@@ -87,7 +94,9 @@ require_literal "$PACKAGE_LINUX" \
 # following steps. Enforce ordering so a visually plausible workflow edit
 # cannot run either installer before its version reaches the environment.
 loader_line="$(line_of_literal "$WORKFLOW" "grep -E '^(NFPM_VERSION|NSIS_VERSION)='")"
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 nfpm_install_line="$(line_of_literal "$WORKFLOW" 'go install github.com/goreleaser/nfpm/v2/cmd/nfpm@"${NFPM_VERSION}"')"
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 nsis_install_line="$(line_of_literal "$WORKFLOW" 'choco install nsis --version="${NSIS_VERSION}"')"
 if [ -n "$loader_line" ] && {
 	{ [ -n "$nfpm_install_line" ] && [ "$loader_line" -ge "$nfpm_install_line" ]; } ||

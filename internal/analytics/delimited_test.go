@@ -6,8 +6,11 @@ package analytics
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -101,4 +104,76 @@ func (r *repeatReader) Read(p []byte) (int, error) {
 		r.off = (r.off + k) % len(r.chunk)
 	}
 	return n, nil
+}
+
+// A fractional value promotes a numeric column to float, but must not round
+// another row's integer. Check the concrete cells and the ordinary JSON
+// decoding used at the JavaScript boundary, without a float-based oracle.
+func TestImportDelimitedMixedNumbersKeepIntegerDigits(t *testing.T) {
+	cases := []struct {
+		name, integer string
+		want          any
+	}{
+		{"positive safe boundary", "9007199254740991", float64(9007199254740991)},
+		{"negative safe boundary", "-9007199254740991", float64(-9007199254740991)},
+		{"positive unsafe boundary", "9007199254740992", "9007199254740992"},
+		{"negative unsafe boundary", "-9007199254740992", "-9007199254740992"},
+		{"positive rounded integer", "9007199254740993", "9007199254740993"},
+		{"negative rounded integer", "-9007199254740993", "-9007199254740993"},
+		{"int64 maximum", "9223372036854775807", "9223372036854775807"},
+		{"int64 minimum", "-9223372036854775808", "-9223372036854775808"},
+	}
+	formats := []struct{ ext, delimiter string }{
+		{"csv", ","}, {"tsv", "\t"}, {"txt", ";"}, {"txt", "|"},
+	}
+	for _, format := range formats {
+		for _, tc := range cases {
+			for _, decimal := range []string{"0.5", "5e-1"} {
+				for _, reverse := range []bool{false, true} {
+					name := format.ext + format.delimiter + "/" + tc.name + "/" + decimal
+					if reverse {
+						name += "/reversed"
+					}
+					t.Run(name, func(t *testing.T) {
+						values := []string{tc.integer, decimal, "42", ""}
+						wantRows := [][]any{{tc.want, "integer"}, {0.5, "decimal"}, {float64(42), "safe"}, {nil, "empty"}}
+						labels := []string{"integer", "decimal", "safe", "empty"}
+						if reverse {
+							values[0], values[1] = values[1], values[0]
+							wantRows[0], wantRows[1] = wantRows[1], wantRows[0]
+							labels[0], labels[1] = labels[1], labels[0]
+						}
+						var input strings.Builder
+						input.WriteString("value" + format.delimiter + "label\n")
+						for i, value := range values {
+							input.WriteString(value + format.delimiter + labels[i] + "\n")
+						}
+						path := filepath.Join(t.TempDir(), "mixed."+format.ext)
+						if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+							t.Fatal(err)
+						}
+						ds, err := ImportTabular(context.Background(), path)
+						if err != nil {
+							t.Fatal(err)
+						}
+						want := Dataset{Columns: []string{"value", "label"}, Rows: wantRows}
+						if !reflect.DeepEqual(ds, want) {
+							t.Fatalf("dataset = %#v, want %#v", ds, want)
+						}
+						encoded, err := json.Marshal(ds)
+						if err != nil {
+							t.Fatal(err)
+						}
+						var decoded Dataset
+						if err := json.Unmarshal(encoded, &decoded); err != nil {
+							t.Fatal(err)
+						}
+						if !reflect.DeepEqual(decoded, want) {
+							t.Errorf("JSON dataset = %#v, want %#v", decoded, want)
+						}
+					})
+				}
+			}
+		}
+	}
 }

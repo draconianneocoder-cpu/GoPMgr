@@ -6,7 +6,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # Agent Operating Guide
 
 This repository is GoPMgr, a local-first desktop project controls
-application built with a Go backend, Wails v2, and a Svelte 5 frontend.
+application built with a Go backend, Wails v3, and a Svelte 5 frontend.
 Treat this file as the first project-local instruction source for
 automated engineering work.
 
@@ -25,6 +25,35 @@ automated engineering work.
 
 ## Work Rules
 
+For build-tool provisioning or new shell/workflow assurance gates, read
+[ADR-013](docs/design/ADR-013-engineering-build-assurance.md) and its
+[baseline](docs/engineering/adr-013-baseline.md). Make remains canonical;
+Wails' internal Taskfiles are subordinate build details. mise is approved for
+staged auxiliary provisioning only. P0 checkout/performance characterization
+is complete on the recorded macOS/Ubuntu hosts. P1 opt-in provisioning is
+implemented; see [setup and proof limits](docs/engineering/adr-013-provisioning.md).
+P2's [local ShellCheck inventory and adjudication](docs/engineering/adr-013-shellcheck.md)
+is implemented. P3's [local shfmt style and read-only check](docs/engineering/adr-013-shfmt.md)
+is implemented with separately reviewed normalization. Maintainer acceptance
+precedes mandatory lint adoption. P4's [local workflow correctness check](docs/engineering/adr-013-actionlint.md)
+is implemented. P5's [local workflow security policy](docs/engineering/adr-013-zizmor.md)
+is implemented under the approved regular-persona contract; its documented
+credential-detection gap is covered by the separately owner-approved
+[P6 configuration guard](docs/engineering/adr-013-checkout-guard-plan.md).
+P6-B makes [licensing validation read-only](docs/engineering/adr-013-license-check.md)
+with explicit Finder cleanup separate. P6-D requires
+[successful licensing at every release entry point](docs/engineering/adr-013-release-license-plan.md),
+with no skip mode. P6-C [pins the CI vulnerability scanner](docs/engineering/adr-013-govulncheck.md).
+P6-E [native Make environments](docs/engineering/adr-013-native-make-environment.md)
+align test/race and three coverage targets with macOS 26. The
+[standalone release/validator slice](docs/engineering/adr-013-release-native-environment.md)
+also guards release race execution, encrypted-database tests and PDF generators.
+The [memory-scanner repair](docs/engineering/memory-scan-integrity-plan.md)
+also guards analysis commands and the explicit-root helper. Remaining grep-stage
+operational errors and standalone coverage callers remain separate. Other P6
+repairs and P7–P9 remain separate.
+Do not infer new runtime, hosted-CI or release authority from this direction.
+
 - Plan first for any multi-file change. Keep the plan scoped to a
   reviewable slice.
 - For ADR-010 or ADR-011 work (plugins, MPXJ, worker IPC, large
@@ -38,9 +67,11 @@ automated engineering work.
   `docs/agent/adr-012-coding-agent-instructions.md` first and follow it.
   On 2026-11-02 the maintainer retired DuckDB in favour of a Go-native engine
   for both analytics operations (see
-  `docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md`). The DataFusion
-  spike under `spikes/adr012-datafusion/` stays isolated evidence; production
-  use of the Rust worker is still not authorized.
+  `docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md`). On 2026-11-09
+  the DataFusion spike was concluded without adoption
+  (`docs/testing/adr-012-df0-g-report.md`) and archived at the tag
+  `archive/adr012-datafusion-spike`; its evidence stays in `docs/testing/`.
+  No DataFusion or Rust-worker work is authorized without a new owner decision.
 - Use repository patterns instead of inventing new architecture.
 - Read existing files before editing. Do not guess APIs, versions,
   flags, commit SHAs, or package names; verify by reading code or
@@ -85,14 +116,26 @@ automated engineering work.
 
 ## Project Invariants
 
-- `go.mod` requires Go 1.27.3 or later and pins Wails v2.17.0. CGO is required.
-- The main package is the root `main.go` (required by `wails build`). It
-  only embeds the repo-root `frontend/dist` through `go:embed` and calls
-  `desktop.Main`. The Wails-bound `App` lives in `internal/desktop`; every
-  exported `App` method is frontend API (`window.go.desktop.App`), listed in
-  `code-map/app-api.json`.
-  `make build` runs `wails build`, which builds `frontend/dist`, injects the
-  `desktop,production` tags, and links the platform frameworks.
+- `go.mod` requires Go 1.27.3 or later and pins Wails v3.1.0. CGO is required.
+- The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
+  calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
+  its 209 exported methods are frontend API, listed in `code-map/app-api.json`.
+  `frontend/src/lib/desktop-api.ts` re-exports the generated App namespace from
+  `frontend/bindings/gopmgr/internal/desktop/index.ts`. Generate real bindings
+  before frontend checks; do not restore ambient `window.go` declarations.
+  `domain-types.d.ts` contains frontend editor views, and `desktop-dtos.ts`
+  explicitly normalizes nullable collections for those views. Raw generated
+  calls retain wire null/empty distinctions. `desktop-runtime.ts` adapts
+  `Events.On` and preserves listener-before-guard readiness and unsubscribe.
+- `make build` calls `scripts/wails-build.sh` and the reviewed v3 Taskfiles.
+  Use the task-local `.tmp/wails-v3/bin/wails3` CLI pinned to v3.1.0 and npm
+  `@wailsio/runtime` 3.1.0. Product metadata is `build/config.yml` `info.version`.
+  CGO Linux builds use GTK 4 and WebKitGTK 6.0 without legacy backend tags.
+- The migration was approved on 2026-11-03; package/release qualification is
+  separate. macOS 26 Tahoe and Ubuntu 26.04 execution remain mandatory release gates
+  (Ubuntu 26.04 is the Linux minimum since 2026-11-09; the macOS 26 host is
+  currently unavailable). Windows NSIS qualification remains pending.
+  Run CI-equivalent checks on local macOS/local Ubuntu; do not launch hosted CI.
 - `system.db` stores local account metadata. Per-project `.gopmgr`
   databases hold project data and are SQLCipher-capable through
   `internal/sqlitedriver`.

@@ -10,14 +10,14 @@
 // LevelResult / SplitLevelingPreview).
 export interface LevelResult {
   pinned: number;
-  unplaced_labels?: string[];
-  split_labels?: string[];
+  unplaced_labels?: string[] | null;
+  split_labels?: string[] | null;
 }
 
 export interface SplitLevelingPreview {
-  split_task_labels?: string[];
+  split_task_labels?: string[] | null;
   resolves_overallocation: boolean;
-  remaining_overallocated_resources?: string[];
+  remaining_overallocated_resources?: string[] | null;
 }
 
 // summarizeLabels renders a capped, comma-joined label list with a "+N more"

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   // WorkflowEditor renders a classic process flowchart with six node
   // shapes:
   //
@@ -83,7 +84,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.desktop.App.GetChart(session.editingId);
+      chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -107,13 +108,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.desktop.App.LayoutChart(updated.id);
+      const res = await desktopApi.LayoutChart(updated.id);
       layout = res.body as Layout;
     } catch (err: any) {
       layoutError = String(err?.message ?? err);
@@ -193,7 +194,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.desktop.App.SaveChart({
+      const updated = await desktopApi.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

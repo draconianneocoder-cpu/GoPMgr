@@ -5,6 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 transport matrix
 
+Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
+as the minimum. Earlier macOS 13 requirements and measurements below are
+historical; see [current policy](../engineering/macos26-support-policy.md).
+
 **Status:** G0 evidence, updated 2026-10-26. Spike code only: these results
 are not G1 gate passes. Each row names the commit and evidence file it
 comes from. An unrun target is **BLOCKED**, never PASS.\

@@ -7,6 +7,12 @@ import { render, waitFor } from '@testing-library/svelte';
 import SigmaProjectView from './SigmaProjectView.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
@@ -41,7 +47,7 @@ beforeEach(() => {
     SigmaGetFishbone: vi.fn(async () => ({ problem_statement: '', branches: [] })),
     SigmaGetToolStatus: vi.fn(async () => ({ phase: 'define', tools: [] })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 afterEach(() => {

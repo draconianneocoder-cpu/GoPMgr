@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
@@ -29,7 +30,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function loadCurrency() {
     try {
-      const meta = await window.go.desktop.App.GetProjectMeta();
+      const meta = await desktopApi.GetProjectMeta();
       currency = meta.currency_code ?? '';
     } catch {
       // The Cost header then names no currency; editing is unaffected.
@@ -40,7 +41,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadSolutions() {
     loading = true;
     try {
-      solutions = await window.go.desktop.App.SigmaGetSolutions(projectID);
+      solutions = (await desktopApi.SigmaGetSolutions(projectID) ?? []);
     } catch (e) {
       showToast('Failed to load solutions', 'error');
     } finally {
@@ -50,7 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveSolutions() {
     try {
-      await window.go.desktop.App.SigmaSaveSolutions(projectID, solutions);
+      await desktopApi.SigmaSaveSolutions(projectID, solutions);
       showToast('Solutions saved', 'success');
       void onSaved?.();
     } catch (e) {

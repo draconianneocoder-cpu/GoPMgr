@@ -20,7 +20,7 @@ trap 'rm -rf "$work"' EXIT
 
 real_go="$(command -v go)" || fail "this test needs a Go toolchain on PATH"
 mkdir -p "$work/bin"
-cat > "$work/bin/go" << 'STUB'
+cat >"$work/bin/go" <<'STUB'
 #!/bin/bash
 if [ "${1:-}" = version ] && [ "${2:-}" = -m ] && [ -n "${FAKE_GO_VERSION_M:-}" ]; then
 	[ "$FAKE_GO_VERSION_M" = fail ] && exit 1
@@ -32,7 +32,7 @@ STUB
 chmod +x "$work/bin/go"
 
 binary="$work/gopmgr"
-: > "$binary"
+: >"$binary"
 
 # What `go version -m` prints for a binary with one plain and one replaced
 # dependency: tab-indented fields, and an "=>" line under the replaced one.
@@ -43,10 +43,10 @@ printf '%s\n' \
 	$'\tdep\texample.com/a\tv1.0.0\th1:abc=' \
 	$'\tdep\texample.com/c/v4\tv4.4.2' \
 	$'\t=>\t./third_party/c\t\t' \
-	$'\tbuild\t-tags=desktop,production' > "$work/metadata.txt"
+	$'\tbuild\t-tags=desktop,production' >"$work/metadata.txt"
 
 notices() {
-	printf '%s\n' "Go module notices for GoPMgr" "" "$@" > "$work/notices.txt"
+	printf '%s\n' "Go module notices for GoPMgr" "" "$@" >"$work/notices.txt"
 }
 
 # run <name> <expected-exit> <expected-output-substring> [args...]
@@ -72,7 +72,7 @@ notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v
 run "complete notices" 0 "all 2 modules linked" "$binary" "$work/notices.txt"
 
 printf '%s\r\n' "Go module notices for GoPMgr" "" "Module: std" "Module: example.com/a v1.0.0" \
-	"Module: example.com/c/v4 v4.4.2" > "$work/notices.txt"
+	"Module: example.com/c/v4 v4.4.2" >"$work/notices.txt"
 run "CRLF line endings" 0 "all 2 modules linked" "$binary" "$work/notices.txt"
 
 notices "Module: std" "Module: example.com/c/v4 v4.4.2"
@@ -94,7 +94,7 @@ notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v
 FAKE=fail run "a binary without build information" 1 "carries no Go build information" "$binary" "$work/notices.txt"
 
 run "a missing notices file" 1 "notices file missing or empty" "$binary" "$work/absent.txt"
-: > "$work/empty.txt"
+: >"$work/empty.txt"
 run "an empty notices file" 1 "notices file missing or empty" "$binary" "$work/empty.txt"
 run "a missing binary" 1 "binary not found" "$work/absent-binary" "$work/notices.txt"
 run "no arguments" 2 "usage:"
@@ -102,15 +102,16 @@ run "no arguments" 2 "usage:"
 # DuckDB is retired: a binary linking any DuckDB module fails, even with
 # complete notices for it.
 for dep in github.com/duckdb/duckdb-go/v2 github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 go.duckdb.org/libduckdb/darwin-arm64; do
-	printf '%s\n' "$(cat "$work/metadata.txt")" $'\tdep\t'"$dep"$'\tv1.0.0\th1:d=' > "$work/metadata-duckdb.txt"
+	printf '%s\n' "$(cat "$work/metadata.txt")" $'\tdep\t'"$dep"$'\tv1.0.0\th1:d=' >"$work/metadata-duckdb.txt"
 	notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2" "Module: $dep v1.0.0"
-	FAKE="$work/metadata-duckdb.txt" run "a binary linking $dep" 1 "links DuckDB, which GoPMgr retired" \
+	expected_retirement=$'links DuckDB, which GoPMgr retired:\n  '"$dep v1.0.0"
+	FAKE="$work/metadata-duckdb.txt" run "a binary linking $dep" 1 "$expected_retirement" \
 		"$binary" "$work/notices.txt"
 done
 notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2"
 
 # A failed grep, even with plausible partial output, is not "no DuckDB".
-cat > "$work/bin/grep" <<'STUB'
+cat >"$work/bin/grep" <<'STUB'
 #!/bin/bash
 if [ "${1:-}" = -i ] && [ "${2:-}" = duckdb ]; then
 	if [ "${FAKE_GREP_OUTPUT:-}" = partial ]; then
@@ -130,8 +131,8 @@ rm "$work/bin/grep"
 # A real Go binary checked against the committed notices file, with the real
 # `go version -m`: proves the parsing matches the toolchain's actual format.
 mkdir -p "$work/src"
-printf 'package main\n\nfunc main() {}\n' > "$work/src/main.go"
-(cd "$work/src" && CGO_ENABLED=0 GOFLAGS= "$real_go" build -o "$work/real" main.go) ||
+printf 'package main\n\nfunc main() {}\n' >"$work/src/main.go"
+(cd "$work/src" && CGO_ENABLED=0 GOFLAGS='' "$real_go" build -o "$work/real" main.go) ||
 	fail "could not build the real Go binary fixture"
 out="$(bash "$VERIFY" "$work/real" 2>&1)" || {
 	printf '%s\n' "$out" >&2

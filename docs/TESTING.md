@@ -166,7 +166,7 @@ GitHub Actions is the CI authority; the retired `.gitlab-ci.yml` must
 not be reintroduced accidentally.
 
 The failing-on-error `assurance` job in `.github/workflows/ci.yml` runs `make
-license-check` and `make coverage-ledger-drift` on the pinned `macos-15` runner,
+license-check` and `make coverage-ledger-drift` on the pinned `macos-26` runner (the supported macOS minimum; binaries built for macOS 26 do not launch on older runners),
 matching the Darwin/macOS coverage baseline recorded by the ledger. It installs
 the pinned `reuse[charset-normalizer]==6.2.0` tool, derives its binary directory
 from `pipx`, and builds `frontend/dist` for the root `main.go`'s `go:embed`. The

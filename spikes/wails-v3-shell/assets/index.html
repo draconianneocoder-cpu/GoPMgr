@@ -1,0 +1,52 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Wails v3 qualification</title>
+<body><h1>Wails v3 native qualification</h1><label>Draft <input id="draft" value="unsaved draft"></label>
+<script type="module">
+import { Call, Events } from "/wails/runtime.js";
+let scenario, prompted = 0;
+const draft = document.getElementById("draft");
+Events.On("probe:scenario", async event => {
+ scenario = event.data;
+ if (scenario.startsWith("native-")) {
+  await Events.Emit("probe:waiting-os");
+  if (scenario.includes("dialog-cancel")) await Events.Emit("probe:open-dialog");
+  return;
+ }
+ if (scenario === "update-quit") { await Call.ByName("main.probeService.QuitToInstallUpdate"); return; }
+ if (scenario === "inflight") {
+  void Call.ByName("main.probeService.Work").catch(() => Events.Emit("probe:work-error"));
+  return;
+ }
+ await Events.Emit("probe:request");
+});
+Events.On("probe:work-started", async () => { await Events.Emit("probe:request"); });
+Events.On("probe:recover-dispatch", async () => {
+ draft.focus();
+ if (document.activeElement !== draft) throw new Error("window unusable after dispatch failure");
+ await Events.Emit("probe:dispatch-recovery");
+});
+Events.On("probe:retry-close", async () => { await Events.Emit("probe:request"); });
+Events.On("probe:cancelled", async () => { await Events.Emit("probe:request"); });
+Events.On("probe:retry", async () => { await Events.Emit("probe:save", draft.value); });
+Events.On("probe:save-result", async event => {
+ if (!event.data) {
+  if (draft.value !== "unsaved draft") throw new Error("draft changed");
+  draft.focus();
+  if (document.activeElement !== draft) throw new Error("window lost input focus");
+  await Events.Emit("probe:draft-preserved");
+  return;
+ }
+ await Events.Emit("probe:approve");
+});
+Events.On("probe:discard-result", async () => { await Events.Emit("probe:approve"); });
+Events.On("probe:prompt", async () => {
+ prompted++;
+ if (scenario === "cancel" && prompted === 1) { await Events.Emit("probe:cancel"); return; }
+ if (scenario === "discard") { await Events.Emit("probe:discard"); return; }
+ await Events.Emit("probe:save", draft.value);
+});
+window.addEventListener("load", () => { void Events.Emit("probe:ready"); }, { once: true });
+</script></body></html>

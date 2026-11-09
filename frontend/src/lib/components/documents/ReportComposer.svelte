@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { normaliseReportPreflight, normaliseReportProfile, reportOptionsPayload, signatureMethodValue } from '../../desktop-dtos';
+  import { desktopApi } from '../../desktop-api';
   // ReportComposer lets a user assemble multiple documents into one
   // PDF "Project Plan" / "Status Pack" / etc. The user names the
   // report, picks which documents to include from the project, drags
@@ -37,9 +39,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      const all = (await window.go.desktop.App.ListDocuments('')) ?? [];
+      const all = (await desktopApi.ListDocuments('')) ?? [];
       available = all;
-	  profiles = (await window.go.desktop.App.ListReportProfiles()) ?? [];
+	  profiles = ((await desktopApi.ListReportProfiles() ?? []).map(normaliseReportProfile)) ?? [];
     } catch (err: any) {
       status = `Could not load documents: ${err}`;
     }
@@ -92,8 +94,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }));
   }
 
-  function reportOptions(): CombinedReportOptions {
-    return { profile_id: profileID, mode: reportMode };
+  function reportOptions() {
+    return reportOptionsPayload({ profile_id: profileID, mode: reportMode });
   }
 
   async function runPreflight() {
@@ -102,7 +104,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      preflight = await window.go.desktop.App.PreflightCombinedReport(buildSections(), reportOptions());
+      preflight = normaliseReportPreflight(await desktopApi.PreflightCombinedReport(buildSections(), reportOptions()));
       status = preflight.ready
         ? 'Preflight complete. No blocking findings for this report mode.'
         : 'Preflight found blocking findings. Review them before a certified export.';
@@ -119,7 +121,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exporting = true;
     status = '';
     try {
-      const path = await window.go.desktop.App.ExportCombinedReportWithOptions(
+      const path = await desktopApi.ExportCombinedReportWithOptions(
         reportTitle,
         subtitle,
         buildSections(),
@@ -143,10 +145,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     let gpgKeyID = '';
     let method: SignatureMethod = 'pades';
     try {
-      const s = await window.go.desktop.App.GetSettings();
+      const s = await desktopApi.GetSettings();
       if (s?.cert_path) certPath = s.cert_path;
       if (s?.gpg_key_id) gpgKeyID = s.gpg_key_id;
-      if (s?.signature_method) method = s.signature_method;
+      if (s?.signature_method) method = signatureMethodValue(s.signature_method);
     } catch {}
     pendingSignCertPath = certPath;
     pendingGPGKeyID = gpgKeyID;
@@ -161,7 +163,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       if (options.method === 'pades') {
-        const path = await window.go.desktop.App.ExportCombinedReportSigned(
+        const path = await desktopApi.ExportCombinedReportSigned(
           reportTitle,
           subtitle,
           buildSections(),
@@ -171,7 +173,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         status = `PAdES signed report exported to ${path}`;
         showToast('PAdES signed combined report exported successfully', 'success');
       } else if (options.method === 'gpg') {
-        const result = await window.go.desktop.App.ExportCombinedReportGnuPG(
+        const result = await desktopApi.ExportCombinedReportGnuPG(
           reportTitle,
           subtitle,
           buildSections(),
@@ -180,7 +182,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         status = `Report exported to ${result.pdf_path}; GnuPG signature exported to ${result.signature_path}`;
         showToast('GnuPG detached report signature exported successfully', 'success');
       } else {
-        const path = await window.go.desktop.App.ExportCombinedReport(
+        const path = await desktopApi.ExportCombinedReport(
           reportTitle,
           subtitle,
           buildSections(),

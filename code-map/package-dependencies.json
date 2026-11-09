@@ -227,7 +227,9 @@
         "gopmgr/internal/sqlitedriver",
         "gopmgr/internal/wbs"
       ],
-      "notable_external_deps": []
+      "notable_external_deps": [
+        "golang.org/x/sys/unix"
+      ]
     },
     "gopmgr/internal/debug": {
       "dir": "internal/debug",
@@ -274,6 +276,7 @@
         "gopmgr/internal/db",
         "gopmgr/internal/debug",
         "gopmgr/internal/deletionlog",
+        "gopmgr/internal/desktop/runtimehost",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/exportfs",
@@ -295,14 +298,17 @@
         "gopmgr/internal/users"
       ],
       "notable_external_deps": [
-        "github.com/wailsapp/wails/v2",
-        "github.com/wailsapp/wails/v2/pkg/menu",
-        "github.com/wailsapp/wails/v2/pkg/menu/keys",
-        "github.com/wailsapp/wails/v2/pkg/options",
-        "github.com/wailsapp/wails/v2/pkg/options/assetserver",
-        "github.com/wailsapp/wails/v2/pkg/options/mac",
-        "github.com/wailsapp/wails/v2/pkg/runtime"
+        "github.com/wailsapp/wails/v3/pkg/application",
+        "github.com/wailsapp/wails/v3/pkg/events"
       ]
+    },
+    "gopmgr/internal/desktop/runtimehost": {
+      "dir": "internal/desktop/runtimehost",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
     },
     "gopmgr/internal/documents": {
       "dir": "internal/documents",
@@ -614,6 +620,12 @@
     },
     "gopmgr/tools/module-notices": {
       "dir": "tools/module-notices",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/tools/os-open-scan": {
+      "dir": "tools/os-open-scan",
       "imported_by_internal": [],
       "imports_internal": [],
       "notable_external_deps": []

@@ -5,6 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import SigmaSolutionMatrix from './SigmaSolutionMatrix.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 const solution: SigmaSolution = {
   id: 'sol-1',
   title: 'New fixture',
@@ -24,7 +30,7 @@ beforeEach(() => {
     SigmaGetSolutions: vi.fn(async () => [{ ...solution }]),
     GetProjectMeta: vi.fn(async () => ({ currency_code: 'EUR' })),
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
 });
 
 // Costs are in the project's reporting currency; the column used to say

@@ -5,6 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 G1 — BLOCKED tests and resource plan
 
+Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
+as the minimum. Earlier macOS 13 requirements and measurements below are
+historical; see [current policy](../engineering/macos26-support-policy.md).
+
 **Status:** live list, kept up to date during G1. Created 2026-10-26 under
 the maintainer's [P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md),
 decision 6.

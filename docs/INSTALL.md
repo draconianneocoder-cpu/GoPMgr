@@ -25,12 +25,23 @@ remains available below, as does building the installers yourself.
 > notarization, Authenticode, or the platform's trust checks. Evaluate that
 > limitation before choosing whether to override a platform warning.
 
+## Migration source status (2026-11-03)
+
+The current source targets Wails v3.1.0, including npm `@wailsio/runtime`
+3.1.0, GTK 4 and WebKitGTK 6.0. Published alpha.2 assets above are historical
+release artifacts; they do not qualify this migration. Source/frontend and
+native macOS bridge checks have passed, but package/install/upgrade and
+Windows NSIS qualification remain pending. macOS 26 Tahoe and Ubuntu 26.04 remain
+mandatory release targets; their execution is deferred to the release gate,
+not claimed as passed. See the
+[migration design](design/wails-v3-migration-design.md).
+
 ## Which file do I download?
 
 | Platform | File | How you install it |
 |---|---|---|
 | Windows 10/11 (x86-64) | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
-| macOS 13 Ventura or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
+| macOS 26 Tahoe or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
 | Debian / Ubuntu (x86-64) | `gopmgr-<version>-amd64.deb` | `apt` / `dpkg` |
 | Fedora / RHEL / openSUSE (x86-64) | `gopmgr-<version>-x86_64.rpm` | `dnf` / `rpm` |
 
@@ -43,8 +54,9 @@ choose **More info → Run anyway**.
 
 ### macOS Apple Silicon (`.dmg`)
 
-Requires macOS 13 Ventura or later; the Go toolchain GoPMgr is built with does
-not support earlier macOS releases.
+Current source requires macOS 26 Tahoe or later under the owner-approved
+support policy. Earlier macOS versions are no longer supported. Historical
+release assets above retain their original requirements.
 
 1. Open the `.dmg`.
 2. Drag **GoPMgr** onto the **Applications** shortcut.
@@ -64,10 +76,15 @@ directory.
 sudo apt install ./gopmgr-<version>-amd64.deb
 ```
 
-`apt` pulls in the GTK/WebKit runtime automatically. Linux packages target
-Ubuntu 24.04+ (`libwebkit2gtk-4.1-0`). On older systems use `sudo dpkg -i …`
-followed by `sudo apt -f install` to resolve dependencies; older WebKit2GTK
-runtimes are no longer the release target.
+For the Wails v3 migration, Debian/Ubuntu packages require `libgtk-4-1` and
+`libwebkitgtk-6.0-4`. `apt` resolves declared dependencies; verify the built
+package and its runtime requirements on the minimum target before release.
+Ubuntu 26.04 is the minimum target since 2026-11-09 (see the
+[owner decision](review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md)); its
+installed-package release gate has not passed yet. Older Ubuntu releases are
+not supported. Do not install an incompatible package by substituting
+GTK 3 or older WebKit runtimes. The published alpha.2 package has its own
+historical dependency/evidence record.
 
 ### Fedora / RHEL / openSUSE (`.rpm`)
 
@@ -110,13 +127,19 @@ test root instead of the platform default.
 
 Prerequisites:
 
-- **Go** (version in `go.mod`) and **Node** with `npm`.
-- The **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`.
-- **Linux only:** Wails v2 GTK/WebKit dev packages for Ubuntu 24.04+, e.g. on
-  Debian/Ubuntu:
-  `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config`.
-  GoPMgr builds with the Wails `webkit2_41` tag. Wails v2 still links GTK3;
-  true GTK4/WebKitGTK 6.0 support requires a future Wails migration.
+- **Go** (version in `go.mod`), **Node** with `npm`, and **Python 3** for
+  build-metadata rendering and release-version queries.
+- The **Wails CLI**, pinned to the runtime and installed into the local tool
+  directory from the repository root:
+
+  ```sh
+  mkdir -p .tmp/wails-v3/bin
+  GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+  ```
+
+- **Linux only:** GTK 4 and WebKitGTK 6.0 development packages, for example
+  `sudo apt install libgtk-4-dev libwebkitgtk-6.0-dev pkg-config` on
+  Debian/Ubuntu. The standard Wails v3 CGO backend needs no legacy backend tag.
 
 Then:
 
@@ -148,12 +171,18 @@ On the matching OS, after `make build`:
 - **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
   (uses the built-in `hdiutil` image path with an Applications shortcut;
   `GOPMGR_FANCY_DMG=1` opts into a locally installed `create-dmg`).
-- **Windows** (`.exe`): run `make windows-installer-scaffold`, then
-  `wails build -platform windows/amd64 -nsis` (requires NSIS
-  3.12.0 for parity with the release workflow).
+- **Windows**: on a native Windows host, run
+  `GOOS=windows GOARCH=amd64 bash scripts/wails-build.sh`, then
+  `GOARCH=amd64 bash scripts/package-windows.sh`. The second command consumes
+  `build/bin/gopmgr.exe` and writes `build/bin/gopmgr-amd64-installer.exe`.
+  NSIS 3.12.0 is the pinned release tool. The v3 source/macro path has local
+  fixture coverage, including compilation with NSIS 3.13; that does not
+  qualify NSIS 3.12.0 or native Windows install/upgrade/remove and trust checks.
+  Those remain release gates. Do not use retired v2 installer flags.
 
-The release workflow (`.github/workflows/release.yml`) runs all of these on
-native runners automatically when you push a `v*` tag.
+The release workflow (`.github/workflows/release.yml`) records a native
+platform packaging matrix. During migration, run checks locally. Do not push
+a tag or launch hosted automation to obtain missing qualification evidence.
 
 ### Local macOS PKG testing
 

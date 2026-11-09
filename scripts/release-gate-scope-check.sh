@@ -8,8 +8,8 @@ cd "$(dirname "$0")/.."
 fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
-readme_text="$(tr '\n' ' ' < README.md)"
-agent_text="$(tr '\n' ' ' < docs/DEVELOPER_HANDBOOK.md)"
+readme_text="$(tr '\n' ' ' <README.md)"
+agent_text="$(tr '\n' ' ' <docs/DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
 # The scope matcher is intentionally narrower than a general documentation
@@ -33,7 +33,7 @@ fi
 # maintainer command lines are release-gate candidates. No first-party
 # quality gate may use an all-package pattern that also discovers Go packages
 # embedded in generated or third-party trees such as frontend/node_modules.
-if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((go|\$\(GO\))[[:space:]]+(test|vet)|staticcheck|gosec|govulncheck)[^;&|]*[[:space:]]\./\.\.\.([[:space:]]|$)' Makefile scripts >"$go_scope_matches"; then
+if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((\$\(NATIVE_ENV\)[[:space:]]+"\$\(GO\)"[[:space:]]+--[[:space:]]+|python3[[:space:]]+[^[:space:]]*native-go-env\.py"?[[:space:]]+go[[:space:]]+--[[:space:]]+)?(go|\$\(GO\))[[:space:]]+(test|vet)|staticcheck|gosec|govulncheck)[^;&|]*[[:space:]]\./\.\.\.([[:space:]]|$)' Makefile scripts >"$go_scope_matches"; then
 	echo "release-scope: Go quality gates must use explicit first-party package roots instead of ./..." >&2
 	cat "$go_scope_matches" >&2
 	fail=1
@@ -53,22 +53,25 @@ release_race="$(awk '
     active && NF && $0 !~ /^[[:space:]]*#/ { print }
     END { if (starts != 1 || ends != 1) print "invalid race section count" }
 ' scripts/check-release.sh)"
-expected_release_race="$(cat <<'RACE'
+expected_release_race="$(
+	cat <<'RACE'
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race -p=1 -count=1 -tags webkit2_41 $GO_PACKAGES; then
-        echo "Race detector flagged tests. Run 'make race' for details."
-        exit 1
-    fi
-    echo "Race detector clean."
+	if ! python3 scripts/native-go-env.py go -- go test -race -p=1 -count=1 "${GO_PACKAGES[@]}"; then
+		echo "Race detector flagged tests. Run 'make race' for details."
+		exit 1
+	fi
+	echo "Race detector clean."
 fi
 RACE
 )"
-if [ "$race_recipe" != $'\t$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)' ] ||
+if [ "$race_recipe" != $'\t$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)' ] ||
 	[ "$release_race" != "$expected_release_race" ] ||
+	! rg -qx 'NATIVE_ENV := python3 scripts/native-go-env\.py' Makefile ||
+	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*NATIVE_ENV[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
 	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*GO_PACKAGES[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
 	! rg -qx 'GO_PACKAGES := \. \./internal/\.\.\. \./tools/\.\.\.' Makefile ||
 	[ "$(rg -c '^[[:space:]]*(export[[:space:]]+)?GO_PACKAGES=' scripts/check-release.sh)" != 1 ] ||
-	! rg -qx 'GO_PACKAGES="\. \./internal/\.\.\. \./tools/update-manifest"' scripts/check-release.sh; then
+	! rg -qx 'GO_PACKAGES=\(\. \./internal/\.\.\. \./tools/update-manifest\)' scripts/check-release.sh; then
 	echo "release-scope: race entrypoints must preserve uncached, bounded-package tests, complete scope and failure propagation." >&2
 	fail=1
 fi
@@ -184,6 +187,7 @@ if ! grep -Eq 'sudo apt-get install -y .*ripgrep' .github/workflows/release.yml 
 	fail=1
 fi
 
+# shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 if ! grep -Fq 'pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"' .github/workflows/release.yml ||
 	grep -Fq 'python3 -m site --user-base' .github/workflows/release.yml; then
 	echo "release-scope: Release preflight must add pipx's configured binary directory, not Python's user-base bin." >&2

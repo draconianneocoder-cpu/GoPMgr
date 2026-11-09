@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onDestroy } from 'svelte';
   import Button from '../Button.svelte';
 
@@ -57,8 +58,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saveError = '';
     try {
       savedPath = await (kind === 'sheet'
-        ? window.go.desktop.App.SaveRecoverySheetPDF(username, codes)
-        : window.go.desktop.App.SaveRecoveryCodesFile(username, codes));
+        ? desktopApi.SaveRecoverySheetPDF(username, codes)
+        : desktopApi.SaveRecoveryCodesFile(username, codes));
       savedKind = kind;
       onsaved?.(savedPath);
     } catch (err: any) {

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
@@ -45,7 +46,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     usernameEl?.focus();
     try {
-      firstAccount = !(await window.go.desktop.App.AccountSetup()).has_accounts;
+      firstAccount = !(await desktopApi.AccountSetup()).has_accounts;
     } catch {
       firstAccount = false;
     }
@@ -73,13 +74,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // The first account on this machine is always the administrator; the
       // backend ignores the role argument for it and refuses anyone else
       // who is not signed in as an administrator.
-      const acc = await window.go.desktop.App.CreateAccount(username, displayName || username, password, false);
+      const acc = await desktopApi.CreateAccount(username, displayName || username, password, false);
       session.user = acc;
       // Issue and show recovery codes before entering the app. A failure here
       // is non-fatal — the account exists and is signed in — so surface it and
       // let the user continue and create codes in App Settings, under Account.
       try {
-        codes = (await window.go.desktop.App.IssueRecoveryCodes()) ?? [];
+        codes = (await desktopApi.IssueRecoveryCodes()) ?? [];
       } catch (err: any) {
         codesError = String(err?.message ?? err);
       }

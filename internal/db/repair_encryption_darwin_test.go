@@ -27,7 +27,7 @@ import (
 // This file is darwin-only via a build constraint, not a runtime
 // t.Skip(runtime.GOOS != "darwin"): syscall.Chflags does not exist in the
 // syscall package on linux at all, so referencing it unconditionally
-// broke compilation (not just execution) on this repo's ubuntu-24.04 CI
+// broke compilation (not just execution) on this repo's Linux CI (then ubuntu-24.04)
 // the moment these tests were added -- a runtime skip guard doesn't
 // prevent a compile error.
 func TestSwapInEncryptedSnapshot_RenameLiveToCorruptFailureIsReported(t *testing.T) {

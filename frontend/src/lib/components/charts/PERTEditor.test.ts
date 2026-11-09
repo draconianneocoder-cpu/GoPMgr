@@ -13,6 +13,12 @@ vi.mock('../../autosave.svelte', () => ({
 import PERTEditor from './PERTEditor.svelte';
 import { session } from '../../session.svelte';
 
+const desktopApiMock = vi.hoisted(() => {
+  const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
+  return state;
+});
+vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.current; } }));
+
 // Added 2026-08-19 to close the residual gap the prior cycle disclosed:
 // _layered_editor_shell.test.ts (see that file's row in
 // TEST_COVERAGE_LEDGER.md) closed the "two untested consumers" risk Gate C
@@ -22,7 +28,7 @@ import { session } from '../../session.svelte';
 // closes that specifically, mirroring _layered_editor_shell.test.ts's
 // NetworkEditor-based test exactly, substituting PERTEditor as the mount
 // target: same installApp/mountLoaded pattern (GetChart/SaveChart/
-// LayoutChart on window.go.desktop.App are the shell's only 3 backend calls,
+// LayoutChart on desktopApi are the shell's only 3 backend calls,
 // confirmed via grep — PERTEditor itself has no onMount/backend calls of its
 // own, only its nodeContent/nodeDetailPanel snippets, which never execute
 // with an empty node list on initial mount). Does not cover PERTEditor's own
@@ -46,7 +52,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [], edges: [], width: 0, height: 0 } } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
+  desktopApiMock.current = app;
   return app;
 }
 
