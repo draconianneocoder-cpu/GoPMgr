@@ -102,7 +102,11 @@ jobs:
 
   assurance:
     name: Assurance checks (REUSE + coverage ledger)
-    runs-on: macos-15
+    # macOS 26 is the minimum supported macOS: `make coverage-ledger-drift`
+    # builds with a 26.0 deployment target (scripts/native-go-env.py), and
+    # macOS refuses to launch such binaries on an older runner. Pin the
+    # versioned label, not the moving macos-latest.
+    runs-on: macos-26
     # These checks are intentionally separate from `make verify`: the
     # coverage ledger is a Darwin/macOS baseline. A job-level failure blocks the workflow; no step here may
     # be allowed to fail without failing this job. Repository branch protection
@@ -132,7 +136,7 @@ jobs:
         # python-magic, file-magic, charset_normalizer, chardet in that order
         # and raises NoEncodingModuleError at import time if none load. Ubuntu
         # runners preinstall libmagic1, macOS runners do not -- so on this
-        # macos-15 job a bare `reuse==6.2.0` makes every reuse invocation exit
+        # macOS assurance job a bare `reuse==6.2.0` makes every reuse invocation exit
         # 1. charset_normalizer is pure Python and needs no system library.
         run: |
           command -v pipx >/dev/null

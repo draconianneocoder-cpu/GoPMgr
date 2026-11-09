@@ -199,8 +199,8 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
 					string(files[".github/workflows/ci.yml"]),
-					"    runs-on: macos-15\n    steps:\n",
-					"    runs-on: macos-15\n    defaults:\n      run:\n        shell: echo {0}\n    steps:\n",
+					"    runs-on: macos-26\n    steps:\n",
+					"    runs-on: macos-26\n    defaults:\n      run:\n        shell: echo {0}\n    steps:\n",
 					1,
 				))
 			},
@@ -217,6 +217,18 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 				))
 			},
 			wantErrText: ".github/workflows/ci.yml: workflow defaults.run.shell must not override jobs.assurance",
+		},
+		{
+			name: "rejects an assurance runner older than the macOS 26 minimum",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"    runs-on: macos-26\n",
+					"    runs-on: macos-15\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must run on macos-26",
 		},
 		{
 			name: "rejects missing pipx availability check",
@@ -347,7 +359,7 @@ jobs:
     steps: []
   assurance:
     name: Assurance checks
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/setup-go@v7
         with:

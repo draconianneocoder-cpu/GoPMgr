@@ -75,11 +75,11 @@ old measurements.
   Ubuntu 24.04 and Windows qualification retain their separately documented gaps.
 - Installer/install/upgrade, notarization and full release evidence remain open.
   No release or hosted execution is authorized or claimed by this change.
-- The hosted assurance source still names `macos-15`, and release source uses
-  `macos-latest`. Neither label establishes a macOS 26 qualification environment.
-  Before hosted/release use, inspect the actual runner OS and SDK, choose an
-  authorized suitable runner, and run the new app there. Do not infer the
-  current value of a moving runner label. Workflows were not changed or run.
+- **Resolved 2026-11-09:** the CI assurance job and the release macOS package
+  job now pin the versioned `macos-26` label (GitHub's macOS 26 Arm64 image,
+  listed with Xcode 26.6 on 2026-11-09) instead of `macos-15` and the moving
+  `macos-latest`; `make config-check` enforces the assurance pin. A hosted run
+  is still not macOS 26 release qualification of the installed app.
 - Make test/race/coverage alignment is recorded in the subsequent environment
   slice linked above. Direct release/helper callers remain a separate follow-up.
   Do not hide linker warnings or patch the upstream Wails module cache.

@@ -108,7 +108,7 @@ jobs:
           - os: ubuntu-26.04
             label: linux/amd64 (.deb/.rpm)
             platform: linux/amd64
-          - os: macos-latest
+          - os: macos-26
             label: darwin/arm64 (.dmg)
             platform: darwin/arm64
           - os: windows-latest

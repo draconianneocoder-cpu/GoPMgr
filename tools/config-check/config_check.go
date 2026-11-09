@@ -393,8 +393,10 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if value, ok := assurance["continue-on-error"]; ok && value != false {
 		return fmt.Errorf("jobs.assurance continue-on-error must be absent or false")
 	}
-	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-15" {
-		return fmt.Errorf("jobs.assurance must run on macos-15")
+	// macOS 26 is the supported minimum; test binaries built for it do not
+	// launch on an older runner.
+	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-26" {
+		return fmt.Errorf("jobs.assurance must run on macos-26")
 	}
 	if hasDefaultRunShell(assurance) {
 		return fmt.Errorf("jobs.assurance defaults.run.shell must not be defined")
