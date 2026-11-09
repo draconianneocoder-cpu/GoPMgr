@@ -792,3 +792,44 @@ func TestRepointUnixNanoIndex_FailsLoudlyOnUnexpectedShape(t *testing.T) {
 		t.Fatal("repointUnixNanoIndex should fail loudly when the on-disk index shape doesn't match unixNanoIndexTargets, not silently rebuild a narrower index")
 	}
 }
+
+// TestRetrofitTimestampColumn_IsAllOrNothing proves one column's rewrite is
+// a single transaction: when a later row's update fails, rows already
+// rewritten roll back instead of leaving the column half-normalized. A
+// trigger rejects the last row, which the scan reaches after the others.
+func TestRetrofitTimestampColumn_IsAllOrNothing(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Timestamps"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	const legacy = "2026-01-01T10:00:00Z"
+	var ids []string
+	for i := 0; i < 3; i++ {
+		chart, err := d.SaveChart(Chart{ProjectID: project.ID, Kind: "cpm", Title: "T"})
+		if err != nil {
+			t.Fatalf("SaveChart: %v", err)
+		}
+		if _, err := d.Conn.Exec(`UPDATE charts SET updated_at = ? WHERE id = ?`, legacy, chart.ID); err != nil {
+			t.Fatalf("seed legacy timestamp: %v", err)
+		}
+		ids = append(ids, chart.ID)
+	}
+	if _, err := d.Conn.Exec(`CREATE TRIGGER reject_last BEFORE UPDATE OF updated_at ON charts
+		WHEN OLD.id = '` + ids[2] + `' BEGIN SELECT RAISE(ABORT, 'injected failure'); END`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	if err := d.retrofitTimestampColumn("charts", "id", "updated_at"); err == nil {
+		t.Fatal("retrofitTimestampColumn succeeded despite the injected failure")
+	}
+	for _, id := range ids {
+		var got string
+		if err := d.Conn.QueryRow(`SELECT updated_at FROM charts WHERE id = ?`, id).Scan(&got); err != nil {
+			t.Fatalf("read back %s: %v", id, err)
+		}
+		if got != legacy {
+			t.Fatalf("chart %s updated_at = %q after a failed retrofit, want the untouched %q", id, got, legacy)
+		}
+	}
+}

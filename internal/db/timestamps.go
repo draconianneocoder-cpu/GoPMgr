@@ -216,12 +216,41 @@ func (db *Database) retrofitTimestampColumn(table, idCol, tsCol string) error {
 	}
 
 	updateSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", table, tsCol, idCol) // #nosec G201 -- same fixed, hardcoded identifiers as the query above; both values are parameterized.
-	for _, u := range updates {
-		if _, err := db.Conn.Exec(updateSQL, u.newVal, u.id); err != nil {
+	values := make([][2]any, len(updates))
+	for i, u := range updates {
+		values[i] = [2]any{u.newVal, u.id}
+	}
+	return db.updateRowsInTx(updateSQL, values)
+}
+
+// updateRowsInTx runs updateSQL once per row, binding each row's two values,
+// in a single transaction: one commit for the whole column instead of one per
+// row, and no half-rewritten column if a write fails.
+func (db *Database) updateRowsInTx(updateSQL string, rows [][2]any) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(updateSQL)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	for _, row := range rows {
+		if _, err := stmt.Exec(row[0], row[1]); err != nil {
+			_ = stmt.Close()
+			_ = tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	if err := stmt.Close(); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 // unixNanoIndexTargets lists the (index name, table, id column, sort
@@ -339,12 +368,11 @@ func (db *Database) backfillUnixNanoColumn(table, idCol, tsCol string) error {
 	}
 
 	updateSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", table, unixCol, idCol) // #nosec G201 -- same fixed, hardcoded identifiers as above; both values are parameterized.
-	for _, u := range updates {
-		if _, err := db.Conn.Exec(updateSQL, u.unixNano, u.id); err != nil {
-			return err
-		}
+	values := make([][2]any, len(updates))
+	for i, u := range updates {
+		values[i] = [2]any{u.unixNano, u.id}
 	}
-	return nil
+	return db.updateRowsInTx(updateSQL, values)
 }
 
 // indexColumns returns indexName's columns in definition order via
