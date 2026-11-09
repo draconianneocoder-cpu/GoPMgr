@@ -38,7 +38,7 @@ The maintainer approved [Wails v3.1.0 and GTK 4 migration](design/wails-v3-migra
 with no v2/GTK 3 fallback. The isolated shell's core close/save/recovery and
 resource-lifecycle gate passed on available macOS and Ubuntu hosts; see the
 [evidence and limits](testing/wails-v3-migration-evidence.md).
-The migration working tree now uses Wails v3.1.0, generated bindings for the
+The migration was merged into `main` on 2026-11-09. It uses Wails v3.1.0, generated bindings for the
 unchanged 209 App methods, and the typed frontend runtime adapter. Local
 production bridge/dialog tests pass on macOS and Ubuntu. Local package builds
 and macOS/Linux bundled GUI checks pass; Linux packaged GUI under additional outer
