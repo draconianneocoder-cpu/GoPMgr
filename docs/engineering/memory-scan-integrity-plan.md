@@ -110,8 +110,9 @@ scanned roots. Git inventory currently shows no tracked symlinks in these roots.
 Preserve the optional-tool policy: this slice
 does not make optional findings fatal by default or require absent analyzers.
 Do not invent new file-size budgets or claim the heuristic proves resource
-ownership. Operational-error hardening of the remaining grep-based stages is
-a separate follow-up; do not imply it is completed here. Minimum-OS and full release
+ownership. Operational-error hardening of the remaining grep-based stages was
+a separate follow-up, completed on 2026-11-09 (see
+[the follow-up](#follow-up-grep-stage-operational-errors-2026-11-09)). Minimum-OS and full release
 qualification remain separate; local macOS/local Ubuntu are the test hosts.
 
 Independent plan review requested two corrections, both accepted: define the
@@ -172,8 +173,9 @@ the repository caller supplies fixed first-party roots. Reassess its trust
 boundary if it becomes elevated, service-exposed or consumes less-trusted
 roots. It does not defend against hostile concurrent pathname replacement,
 prove ownership/lifetime correctness, qualify minimum macOS 26/Ubuntu 24.04 or
-Windows, or complete release readiness. Remaining grep-stage operational-error
-handling and standalone coverage environment alignment remain separate work.
+Windows, or complete release readiness. Grep-stage operational-error handling
+was completed later (below); standalone coverage environment alignment remains
+separate work.
 Pinned upstream Linux compiler deprecations require separate dependency
 maintenance; this repair does not modify vendored/platform code to silence them.
 No push, hosted CI, release or live user-data operation occurred.
@@ -182,3 +184,45 @@ Final review corrected the source-receipt wording after the agent-guide update:
 Ubuntu verified its complete transferred snapshot, while the later guide change
 is documentation-only and the qualified source/build hashes remain unchanged.
 No additional code finding was identified.
+
+## Follow-up: grep-stage operational errors (2026-11-09)
+
+Stages 2 (`unsafe.Pointer`), 4 (`sql.Open`), 5 (mutex copies) and 6
+(goroutine inventory) ran `grep … 2>/dev/null | … || true`. An unreadable
+source file, a missing root or any other grep error left an empty result, so
+the stage reported OK and the gate could pass without having read the code.
+
+Each search now writes to a private temporary file through `run_grep`: exit
+status 0 or 1 is a result, a higher status fails the gate with a "could not
+complete" message, and grep's own diagnostic stays visible. The secondary
+filters in stages 5 and 6 are checked the same way. Stage 4 reads its match
+list in the parent shell, takes each 30-line window with `sed`, treats a
+`sed` failure or an unparseable match location as an operational error, and
+no longer reports a read failure as a missing-Close finding. Stage 6 still
+never fails on findings, but an incomplete inventory now fails the gate.
+
+Two corrections came with the repair:
+
+- `grep_sources` checks that every root exists. macOS BSD grep applies
+  `--include='*.go'` to command-line operands too, so it skipped a missing
+  root with exit status 0; GNU grep reports it.
+- Vendored code is excluded by directory name (`--exclude-dir=vendor`, the
+  same rule as `tools/os-open-scan`). The old `grep -v '/vendor/'` filtered on
+  the whole output line, so a first-party line that merely contained
+  `/vendor/` was hidden. The dead `.md`/`.sh` filters, unreachable under
+  `--include='*.go'`, were removed.
+
+The heuristics are otherwise unchanged; on the repository tree the output of
+stages 2–6 is byte-identical to the previous script. One blind spot is now
+pinned by a test rather than fixed: stage 5 still drops any line that also
+contains a `.mu.` selector.
+
+`scripts/memory-safety-scan_test.py` adds a characterization table for every
+grep stage, logged fault injection that makes one grep call (or one filter)
+exit 2 per stage, an unreadable file beside a readable match, a missing
+root, a `sed` failure and a colon in a source path. Seeded faults (ignoring
+grep status, dropping the root check, the vendor exclusion, the `.mu.`
+filter, the location guard or the `sed` status, or widening the window) each
+fail the intended test. The 15 tests and `make memory-scan` pass on macOS
+27.2 (BSD grep) and on Ubuntu 26.04.1 (GNU grep 3.12, GNU sed 4.9, uutils
+mktemp 0.10.0, non-root); ShellCheck and shfmt report no findings.

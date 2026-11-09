@@ -89,19 +89,24 @@ func main() {
 		fmt.Fprintf(os.Stderr, "config-check: %v\n", err)
 		os.Exit(1)
 	}
+	os.Exit(run(root, os.Stdout, os.Stderr))
+}
 
+// run validates every YAML/TOML configuration under root and returns the
+// process exit status. It reports every validation error, not just the first.
+func run(root string, stdout, stderr io.Writer) int {
 	tracked, err := trackedConfigPaths(root)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "config-check: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "config-check: %v\n", err)
+		return 1
 	}
 
 	files := make(map[string][]byte, len(tracked))
 	for _, path := range tracked {
 		data, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 		if readErr != nil {
-			fmt.Fprintf(os.Stderr, "config-check: read %s: %v\n", path, readErr)
-			os.Exit(1)
+			_, _ = fmt.Fprintf(stderr, "config-check: read %s: %v\n", path, readErr)
+			return 1
 		}
 		files[path] = data
 	}
@@ -109,12 +114,13 @@ func main() {
 	errs := validateRepositoryConfigs(files, tracked)
 	if len(errs) != 0 {
 		for _, checkErr := range errs {
-			fmt.Fprintf(os.Stderr, "config-check: %v\n", checkErr)
+			_, _ = fmt.Fprintf(stderr, "config-check: %v\n", checkErr)
 		}
-		os.Exit(1)
+		return 1
 	}
 
-	fmt.Printf("config-check: %d tracked YAML/TOML configurations validated.\n", len(supportedConfigs))
+	_, _ = fmt.Fprintf(stdout, "config-check: %d tracked YAML/TOML configurations validated.\n", len(supportedConfigs))
+	return 0
 }
 
 func repositoryRoot() (string, error) {

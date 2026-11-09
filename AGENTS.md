@@ -49,8 +49,8 @@ align test/race and three coverage targets with macOS 26. The
 [standalone release/validator slice](docs/engineering/adr-013-release-native-environment.md)
 also guards release race execution, encrypted-database tests and PDF generators.
 The [memory-scanner repair](docs/engineering/memory-scan-integrity-plan.md)
-also guards analysis commands and the explicit-root helper. Remaining grep-stage
-operational errors and standalone coverage callers remain separate. Other P6
+also guards analysis commands and the explicit-root helper, and its grep stages
+fail on operational errors. Standalone coverage callers remain separate. Other P6
 repairs and P7–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
