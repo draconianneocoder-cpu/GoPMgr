@@ -17,8 +17,9 @@ GoPMgr already provides local project storage, scheduling, earned-value
 analysis, charts, documents, export, SQLCipher support, and PDF signing. The
 near-term priority is making those workflows dependable for wider testing.
 
-1. Migrate the desktop runtime to Wails v3 and GTK 4 while preserving native
-   save/recovery, data and binding contracts (see below).
+1. Qualify the Wails v3 and GTK 4 runtime, merged on 2026-11-09, for release:
+   native save/recovery, data and binding contracts on the macOS 26 and
+   Ubuntu 26.04 minimums, and Windows installer checks (see below).
 2. Prevent data loss in stateful editors and verify save, discard, and cancel
    behavior in native application workflows.
 3. Complete real-target installation and upgrade evidence for every advertised
