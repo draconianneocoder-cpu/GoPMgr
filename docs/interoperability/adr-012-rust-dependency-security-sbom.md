@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 Rust dependency and native-worker review input
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](../testing/adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](../testing/adr-012-df0-records/).
+
 2026-11-01 UTC: partial DF0-F/F2 evidence for the isolated macOS arm64 spike.
 This fills the inventory document named by the
 [DF0 specification](../testing/adr-012-datafusion-feasibility-spike.md).
@@ -13,7 +18,7 @@ Production still uses DuckDB; no release package or dependency pin changed.
 
 ## Dependency scope and provenance
 
-The [dependency manifest](../../spikes/adr012-datafusion/evidence/df0-f-macos/dependencies.json)
+The [dependency manifest](../testing/adr-012-df0-records/df0-f-macos/dependencies.json)
 contains **268 packages and 1,051 relationships** reachable from `df0-worker`
 without development edges, using locked, offline Cargo metadata filtered for
 `aarch64-apple-darwin`. The workspace graph has 269 packages; the separate CLI
@@ -31,7 +36,7 @@ custom-build targets; declared targets are not proof they executed in this
 binary build. Workspace feature unification is not a worker-only feature proof.
 
 There are 262 registry packages and six repository-local packages: the worker,
-engine and four [approved temporary source overrides](../../spikes/adr012-datafusion/third_party/GOPMGR.md).
+engine and four [approved temporary source overrides](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/third_party/GOPMGR.md).
 The overrides remain spike-only, with their existing provenance, source-tree
 integrity tests and removal conditions. No source was relabeled as an upstream
 release. Registry and local sources remain distinguishable after private paths
@@ -56,7 +61,7 @@ platform libraries, source overrides and the installed package.
 
 ## Artifact-bound SPDX build-input SBOM
 
-The [worker build SBOM](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/worker.spdx.json)
+The [worker build SBOM](../testing/adr-012-df0-records/df0-sbom-macos/worker.spdx.json)
 now passes the official SPDX 3.0.1 JSON schema and SHACL model, with Core,
 Software, Build and Simple Licensing profiles. This is a **partial build-input
 SBOM**, separate from the earlier custom manifest. It identifies the same
@@ -64,7 +69,7 @@ reviewed worker hash below, 263 observed Cargo packages, three static archive in
 and three system dynamic-library references. Its build relationships do not
 assert exact retained linker composition or complete runtime/dev dependency edges.
 
-The [redacted build observations](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/build-observations.json)
+The [redacted build observations](../testing/adr-012-df0-records/df0-sbom-macos/build-observations.json)
 contain 301 compiler-artifact events and 34 build-script events. All 301
 compiler artifacts were cached (`fresh=true`): this was a successful locked,
 offline Cargo build invocation, **not a clean rebuild**. Five packages in the
@@ -80,7 +85,7 @@ checks the resulting expressions separately. It records declared licenses only;
 there are no concluded-license relationships. The repository already dedicates
 DF0 evidence metadata to CC0-1.0; this does not relicense any component.
 
-[Native input evidence](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/native-inputs.json)
+[Native input evidence](../testing/adr-012-df0-records/df0-sbom-macos/native-inputs.json)
 records archive hashes, object members, build-script and selected source/notice
 hashes for Zstd, liblzma and the stack helper. In particular, liblzma's bundled
 XZ source has its own 0BSD statement; the Rust wrapper's MIT/Apache declaration
@@ -88,7 +93,7 @@ is not blanket native-source clearance. Zstd's root and nested notices have
 different copyright scopes. These bounded inspections do not finish the
 per-source audit or choose distribution licenses.
 
-[Upstream notice provenance](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/upstream-notices.json)
+[Upstream notice provenance](../testing/adr-012-df0-records/df0-sbom-macos/upstream-notices.json)
 locates root license texts for `alloc-stdlib`, `flatbuffers` and `tonic-prost`
 at the VCS commits recorded in their published crates. Each downloaded crate
 checksum matched `Cargo.lock`, and its VCS record matched the cached source.
@@ -96,14 +101,14 @@ This resolves where those texts can be inspected, while final notice assembly
 and obligations remain open. Upstream URLs and text hashes are recorded;
 third-party license texts are not copied into this CC0 evidence directory.
 
-The [validation report](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/validation.json)
+The [validation report](../testing/adr-012-df0-records/df0-sbom-macos/validation.json)
 records schema/SHACL success and rejection controls for missing relationship
 targets, invalid hash algorithms, duplicate identities and wrong creator classes.
-The [expression check](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/license-expressions.json)
+The [expression check](../testing/adr-012-df0-records/df0-sbom-macos/license-expressions.json)
 validates 21 distinct SPDX expressions and rejects an invented license ID;
 it does not determine legal compatibility. Official schema/model validation
 also does not substitute for license-expression or legal review.
-[Provenance](../../spikes/adr012-datafusion/evidence/df0-sbom-macos/provenance.json)
+[Provenance](../testing/adr-012-df0-records/df0-sbom-macos/provenance.json)
 pins input/source/artifact hashes, validator versions and fault controls.
 
 The offline validator hashes the official schema, context and model before
@@ -114,7 +119,7 @@ is unchanged. See the [SPDX serialization requirements](https://spdx.github.io/s
 and [Cargo license field](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields).
 This validates this generated document; it is not a general hostile-input
 JSON-LD validator. Reproduction commands and tool setup are in the
-[spike README](../../spikes/adr012-datafusion/README.md#artifact-bound-spdx-build-input-export).
+[spike README](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/README.md#artifact-bound-spdx-build-input-export).
 
 The compiler standard library, SDK inputs, complete bundled/native source and
 installed/signed application composition remain incomplete. F2, DF-049 and
@@ -123,7 +128,7 @@ unavailable independent reviewer quota; it is not independent review.
 
 ## Native-source provenance and notice review bundle
 
-The [source review manifest](../../spikes/adr012-datafusion/evidence/df0-native-source-macos/source-review.json)
+The [source review manifest](../testing/adr-012-df0-records/df0-native-source-macos/source-review.json)
 verifies all **609 published files** in `zstd-sys 2.1.2+zstd.1.5.7`,
 `liblzma-sys 0.4.9` and `psm 0.1.32` against their locked `.crate` checksums
 and extracted cache bytes. This includes Rust/build code, native sources,
@@ -140,7 +145,7 @@ proof or a final-linker map. Missing or ambiguous candidates fail; no first-matc
 fallback is used. Full-package file hashes also retain potential header/source
 inputs beyond those candidates.
 
-The [13-text review bundle](../../spikes/adr012-datafusion/notices/NATIVE-REVIEW-NOTICES.txt)
+The [13-text review bundle](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/notices/NATIVE-REVIEW-NOTICES.txt)
 preserves the discovered license/copying texts byte for byte within labeled
 sections. Its hash is bound into the manifest. It lives outside the blanket
 CC0 evidence directory and follows the repository's `LicenseRef-Third-Party-Notices`
@@ -172,7 +177,7 @@ An existing output is preserved. Temporary output is removed after an injected
 write failure. Inputs are trusted local Cargo records and a stable source/cache;
 this is not a concurrent hostile-filesystem or arbitrary-archive service.
 
-[Validation evidence](../../spikes/adr012-datafusion/evidence/df0-native-source-macos/verification.json)
+[Validation evidence](../testing/adr-012-df0-records/df0-native-source-macos/verification.json)
 records five tests, fourteen source/build refusal cases, three malformed-archive
 cases, interrupted-output cleanup, existing-output preservation and seven
 executed controlled faults in disposable copies. It also records independent
@@ -183,7 +188,7 @@ assembly remain open. This is not DF-049 or LC-GATE PASS.
 
 ## Advisory scan
 
-The [unfiltered Cargo audit](../../spikes/adr012-datafusion/evidence/df0-f-macos/cargo-audit.json)
+The [unfiltered Cargo audit](../testing/adr-012-df0-records/df0-f-macos/cargo-audit.json)
 completed with **zero vulnerabilities and zero informational warnings** using
 `cargo-audit 0.22.2`, no ignored advisory IDs and database commit
 `2295466c4e9df26647fd67d8fa1c705ac2fc7f81` (last updated 2026-10-30).
@@ -192,7 +197,7 @@ not clear Go/frontend dependency alerts or qualify bundled native code.
 
 ## Existing native macOS worker
 
-[Binary observations](../../spikes/adr012-datafusion/evidence/df0-f-macos/native-worker.json)
+[Binary observations](../testing/adr-012-df0-records/df0-f-macos/native-worker.json)
 are tied to the unchanged reviewed worker SHA-256
 `337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204`.
 It is 120,839,344 bytes (about 115.2 MiB), thin arm64, with three observed
@@ -245,7 +250,7 @@ Also run locally: `cargo tree -e features` with the pinned launcher, lock,
 offline mode, worker package and target; `cargo-audit audit --file
 spikes/adr012-datafusion/rust/Cargo.lock --format json`; `otool -L`, `otool -l`,
 `nm`, and `codesign` display/strict verification on the reviewed worker.
-[Environment and hashes](../../spikes/adr012-datafusion/evidence/df0-f-macos/environment.json)
+[Environment and hashes](../testing/adr-012-df0-records/df0-f-macos/environment.json)
 identify source, artifacts, tools, feature-tree fingerprint and proof limits.
 
 Focused tests, the full native spike race suite, Go vet, source-override

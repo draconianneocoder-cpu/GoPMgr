@@ -12,6 +12,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Governing interpretation
 
+**2026-11-09:** DF0 is concluded with a no-go ([DF0-G report](../testing/adr-012-df0-g-report.md)) and the spike is archived at the tag `archive/adr012-datafusion-spike`. No DataFusion or Rust-worker work is authorized; reopening needs a new owner decision. The rest of this directive applies only if that happens.
+
 The owner accepted ADR-012 v0.2 and authorized isolated DF0 on 2026-10-26; the [acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md) defines that authority. On 2026-11-02 the owner allocated both analytics operations to a Go-native engine and retired DuckDB ([decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)). That supersedes the limits below on changing `internal/analytics`, the main `go.mod`, build tags and release pipelines **for that retirement only**. Production use of a DataFusion worker remains unapproved, and the other limits still apply. The authoritative v0.2 plan supersedes the *draft* v0.1 text; preserved reference copies are historical. Every earlier DF-001–DF-060 test remains valid, and DF-061–DF-065 are added. Treat LC-GATE (distribution licensing) as independent of DF-G0–DF-G6 (technical/functional migration).
 
 ## Mission

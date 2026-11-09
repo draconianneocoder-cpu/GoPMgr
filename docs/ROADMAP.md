@@ -141,32 +141,24 @@ For the DF0 branch, the maintainer chose on 2026-11-02 to push it, open its
 PR and merge it when checks pass, instead of holding all replacement work for
 one final PR as the 2026-11-01 instruction said.
 
-The DataFusion spike under `spikes/adr012-datafusion/` stays as isolated
-evidence for possible future columnar analytics. Its macOS containment work
-(the [containment decision request](review/ADR-012-macos-containment-ACR.md),
-[observer sandbox](testing/adr-012-df0-observer-sandbox.md) and
-[memory-only experiment](testing/adr-012-df0-memory-only.md)) and its
-[evidence record](testing/adr-012-df0-evidence.md) remain valid as records,
-but none of it gates a release any more. Its DuckDB measurement commands are
-frozen as history.
+**DataFusion concluded (2026-11-09).** The maintainer closed the DataFusion
+spike without adoption: the Go engine covers current analytics, and the
+remaining security, performance and licensing gates were large. The
+[DF0-G report](testing/adr-012-df0-g-report.md) records what DF0 established
+and why. The spike's code is archived at the tag
+`archive/adr012-datafusion-spike`; its [evidence record](testing/adr-012-df0-evidence.md)
+and raw records stay in `docs/testing/`. Reopening a columnar engine needs a
+new owner decision tied to a defined PS-09 need.
 
-Remaining follow-ups:
+Follow-ups:
 
-1. **Linux: verified on a real host on 2026-11-03.** On Ubuntu 26.04
-   (x86_64), `make build` and `make package-linux-nfpm` at `72a16cc` built
-   the app and its `.deb`/`.rpm`. The packages depend only on GTK 3 and
-   WebKitGTK 4.1 and contain nothing from DuckDB. The unpacked `.deb` binary
-   started under Xvfb with an isolated home, created its account database,
-   rendered through WebKitGTK, and on SIGINT and on SIGTERM logged "exited
-   cleanly" with status 0. That host's Xvfb crashes unless started with
-   `-extension GLX`; `xvfb-run` alone fails there. The check found that
-   the `.deb`, `.rpm` and macOS app did not carry GoPMgr's own GPL text;
-   they now do (see `LICENSES.md`). A real import through the native file
-   dialog was not exercised on either platform.
-2. The retained branch `claude/slice-b-readonly-access` belongs to closed,
-   unmerged PR #163. Review and selectively port useful read-only regression
-   fixtures before retiring it; do not merge its rejected strict-schema
-   interface wholesale.
+1. **Linux.** On 2026-11-03 the Go engine was verified on Ubuntu 26.04 with
+   the then-current GTK 3 build. Linux packaging now targets GTK 4 and
+   WebKitGTK 6.0, and Ubuntu 26.04 is the Linux minimum (see the Wails v3
+   section). A real import through the native file dialog has not been
+   exercised on either platform.
+2. **Done:** the read-only regression tests from the retired Slice B branch
+   were ported to `main` in #186 and the branch was deleted.
 
 ## Strategic direction: professional scheduling
 
@@ -192,15 +184,14 @@ Approved priority order, with today's status from the
 | PS-06 Task and Resource Usage | High | Proposed |
 | PS-07 Resource and financial planning | High, after PS-01 and PS-06 | Partial |
 | PS-08 Advanced scheduling | Medium | Partial |
-| PS-09 Analysis, comparison and reporting (ADR-012) | High, parallel | Partial |
+| PS-09 Analysis, comparison and reporting (ADR-012) | High, parallel | Partial; DataFusion not adopted (2026-11-09) |
 | PS-10 Advanced local-first capabilities | Later, separate approval | Proposed |
 
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
 stream, the proposed next implementation slice is
-PS-02 slice 1, a read-only audit, which also awaits authorization. The authorized
-DF0 priority above does not grant that scheduling implementation authority.
+PS-02 slice 1, a read-only audit, which also awaits authorization.
 
 ## Planned product work
 

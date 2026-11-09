@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: host-observed child resources on macOS
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 This corrects a measurement defect before aggregate admission work. The Rust
 worker's self-report reads Linux `/proc/self/status`; on macOS it returned zero.
 The Go live-process fallback was also unavailable. Failed or killed jobs lacked
@@ -29,11 +34,11 @@ three measurements unknown and still removes the private endpoint.
 
 ## Native evidence and reproducibility
 
-The [environment and hashes](../../spikes/adr012-datafusion/evidence/df0-resources-macos/environment.json)
+The [environment and hashes](adr-012-df0-records/df0-resources-macos/environment.json)
 identify the code and unchanged release worker. The
-[lifecycle observations](../../spikes/adr012-datafusion/evidence/df0-resources-macos/lifecycle.json)
+[lifecycle observations](adr-012-df0-records/df0-resources-macos/lifecycle.json)
 cover the eight spill/denial/normal/cancel/kill/recovery scenarios. The
-[concurrent observations](../../spikes/adr012-datafusion/evidence/df0-resources-macos/concurrent.json)
+[concurrent observations](adr-012-df0-records/df0-resources-macos/concurrent.json)
 cover 2, 4 and 8 launched Rust children, held behind a bootstrap barrier before
 release. Every child returns independently verified generated rows, records its
 own resources, exits and removes its endpoint. These are accounting cohorts,

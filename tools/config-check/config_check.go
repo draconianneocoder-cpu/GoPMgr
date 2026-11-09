@@ -55,17 +55,6 @@ var supportedConfigs = []configSpec{
 	{path: "build/linux/nfpm.yaml", format: formatYAML, validate: validateNFPM},
 	{path: ".gitleaks.toml", format: formatTOML, validate: validateGitleaks},
 	{path: "REUSE.toml", format: formatTOML, validate: validateREUSE},
-	// Isolated DF0 manifests are parsed here; Cargo owns their build semantics.
-	{path: "spikes/adr012-datafusion/rust/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/cli/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/codegen/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/engine/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/worker/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/rust/rust-toolchain.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml", format: formatTOML},
-	{path: "spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml", format: formatTOML},
 }
 
 func validateTaskfile(config map[string]any) error {

@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0 Zstd security assessment
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 Assessment date: 2026-10-31. Source baseline:
 `d880056262fc3234a4d137fc575fe29b1be14317`.
 The maintainer approved temporary source overrides confined to the isolated
@@ -185,7 +190,7 @@ it adds no package or enabled feature. All other resolved dependency edges,
 versions and features are preserved except the four redirected Zstd edges
 and removal of the old pair.
 
-[GOPMGR.md](../../spikes/adr012-datafusion/third_party/GOPMGR.md) records archive
+[GOPMGR.md](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/third_party/GOPMGR.md) records archive
 checksums, licensing, GoPMgr maintainer ownership, byte-preserving Git attributes,
 source checks and the removal procedure. Source guards run in `make config-check`
 without requiring Rust on the root application's builders. They reject source

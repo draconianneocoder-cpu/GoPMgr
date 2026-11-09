@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: native macOS observation and App Sandbox feasibility
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 On 2026-11-01 the owner authorized native monitoring/termination design and
 measurement, then requested stronger isolation as well. This isolated experiment
 implements both sets of building blocks. It does not approve a resource-policy
@@ -13,7 +18,7 @@ relaxation, production integration, final budgets or DuckDB removal. The
 
 ## What ran
 
-The [environment and source manifest](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/environment.json)
+The [environment and source manifest](adr-012-df0-records/df0-observer-sandbox-macos/environment.json)
 binds integration baseline `298f6b9`, macOS 27.2 arm64, installed SDK/compiler
 headers, the system App Sandbox profile and the unchanged Rust worker input.
 The C probe is a separate executable, never cgo or Rust FFI. No production
@@ -28,11 +33,11 @@ launcher, dependency, entitlement, source grant or transport changed.
 | Own-container positive control | Sandboxed helper writes a marker and connects to a host UDS inside its container, while outside-file and TCP access remain denied | Standard App Sandbox permits container writes. This does **not** enforce memory-only spill. The [follow-up](adr-012-df0-memory-only.md) characterizes what a zero file-size limit does and does not stop |
 | Real Rust compatibility | A task-only signed worker copy behind the NPROC=0 launcher completes generation (128 rows) and host-mediated Parquet (2,048 exact ID/value pairs), with matching digests, normal exits and endpoint cleanup. Direct reading of that Parquet path is denied to the helper | Same-PID launcher readback is before exec; Rust does not itself report its inherited NPROC value. The C probe demonstrates direct fork denial separately. No general parser/operator, cross-job or production G1 qualification |
 
-Raw observations: [cohorts](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/cohorts.json),
-[reaction](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/termination.json),
-[missed burst](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/missed-burst.json),
-[access controls](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/sandbox-access.json),
-[native jobs and artifact hashes](../../spikes/adr012-datafusion/evidence/df0-observer-sandbox-macos/sandbox-native.json).
+Raw observations: [cohorts](adr-012-df0-records/df0-observer-sandbox-macos/cohorts.json),
+[reaction](adr-012-df0-records/df0-observer-sandbox-macos/termination.json),
+[missed burst](adr-012-df0-records/df0-observer-sandbox-macos/missed-burst.json),
+[access controls](adr-012-df0-records/df0-observer-sandbox-macos/sandbox-access.json),
+[native jobs and artifact hashes](adr-012-df0-records/df0-observer-sandbox-macos/sandbox-native.json).
 Timings are individual development-machine observations, not latency budgets
 or statistically qualified tails. The CPU trigger is cumulative time; interval
 core-equivalent usage is descriptive, not a CPU-rate control.

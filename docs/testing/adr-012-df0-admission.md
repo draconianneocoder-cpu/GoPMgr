@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: pre-launch reservation admission
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 This isolated Go host slice follows [native resource accounting](adr-012-df0-resources.md).
 It adds one shared `Admission` controller for configured job, memory-byte and
 CPU-slot reservations. It is not the production G1 supervisor or a replacement
@@ -38,9 +43,9 @@ reaps a child when running a deliberately broken disposable copy.
 
 ## Evidence
 
-The [environment record](../../spikes/adr012-datafusion/evidence/df0-admission-macos/environment.json)
+The [environment record](adr-012-df0-records/df0-admission-macos/environment.json)
 contains source and unchanged-worker hashes. The
-[native cohorts](../../spikes/adr012-datafusion/evidence/df0-admission-macos/cohorts.json)
+[native cohorts](adr-012-df0-records/df0-admission-macos/cohorts.json)
 hold 2, 4 and 8 launched Rust children behind a bootstrap barrier, verify the
 full reservation snapshot, reject one excess claim before launch, then release
 and verify every child's rows, resources, exit and endpoint cleanup. A subsequent
@@ -48,7 +53,7 @@ real worker must succeed with zero claims afterward. The fixture reserves
 64 MiB and one CPU slot per job; these are experimental settings, not approved
 product budgets or proof of actual memory/CPU use.
 
-The [lifecycle record](../../spikes/adr012-datafusion/evidence/df0-admission-macos/lifecycle.json)
+The [lifecycle record](adr-012-df0-records/df0-admission-macos/lifecycle.json)
 runs the eight earlier pressure/denial/cancel/kill/recovery cases through a
 shared controller and checks zero claims after every result. Existing C2 and
 resource-accounting regressions remain intact. Native tests use barriers and

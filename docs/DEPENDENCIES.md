@@ -88,10 +88,9 @@ platform/publication limits are recorded in
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
 - `gopkg.in/yaml.v3` and `github.com/pelletier/go-toml/v2`: build-time
-  configuration parsing for `make config-check`. The isolated DF0 Cargo and
-  Rust toolchain files are included in that syntax inventory; Cargo retains
-  responsibility for their build semantics. These parser packages are imported
-  only by the `scripts` command and are not linked into the GoPMgr desktop binary.
+  configuration parsing for `make config-check`. These parser packages are
+  imported only by the `tools/config-check` command and are not linked into the
+  GoPMgr desktop binary.
 - `github.com/apache/arrow-go/v18`: the Parquet reader behind the Go-native
   analytics engine's Parquet import (`internal/analytics`), which replaced
   DuckDB on 2026-11-02
@@ -220,16 +219,14 @@ The dependency review §3 lists the artifacts.
 `spikes/adr010-g0-transport/worker/pom.xml` belongs to the isolated transport
 proof, not a shipped worker.
 
-### ADR-012 isolated Rust dependency security gate
+### ADR-012 DataFusion spike (archived)
 
-The DF0 workspace is outside the application build. Its four temporary source
-overrides select `zstd` 0.14.3 and `zstd-safe` 8.2.0 without retaining the old
-vulnerable pair. The upstream edits are five dependency constraints and marked
-modification notices; Rust code and features are preserved. The [maintenance record](../spikes/adr012-datafusion/third_party/GOPMGR.md)
-records origin checksums, licensing, source guards, ownership and removal.
-The [Zstd assessment](testing/adr-012-df0-zstd-assessment.md) distinguishes the
-earlier vulnerable baseline from adoption evidence. This is spike-only
-authorization, not a dependency waiver or production replacement approval.
+The DF0 Rust workspace and its four Apache-2.0 source overrides (Zstd
+remediation, see the [Zstd assessment](testing/adr-012-df0-zstd-assessment.md))
+were never part of the application build. They were removed with the spike on
+2026-11-09 and are preserved at the tag `archive/adr012-datafusion-spike`
+([DF0-G report](testing/adr-012-df0-g-report.md)). No Rust dependency is
+part of GoPMgr today.
 
 ## Frontend Dependencies
 

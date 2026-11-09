@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 ACR: macOS containment implementation gap
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](../testing/adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](../testing/adr-012-df0-records/).
+
 Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
 as the minimum. Earlier macOS 13 requirements and measurements below are
 historical; see [current policy](../engineering/macos26-support-policy.md).

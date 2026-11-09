@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012: Rust 1.99.1 qualification
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 The maintainer directed active Rust tooling to use 1.99.1 on 2026-10-30.
 This updates the isolated DF0 spike, not the production application. The
 workspace and code generator retain MSRV 1.94 and their existing dependency,

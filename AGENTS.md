@@ -67,9 +67,11 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   `docs/agent/adr-012-coding-agent-instructions.md` first and follow it.
   On 2026-11-02 the maintainer retired DuckDB in favour of a Go-native engine
   for both analytics operations (see
-  `docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md`). The DataFusion
-  spike under `spikes/adr012-datafusion/` stays isolated evidence; production
-  use of the Rust worker is still not authorized.
+  `docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md`). On 2026-11-09
+  the DataFusion spike was concluded without adoption
+  (`docs/testing/adr-012-df0-g-report.md`) and archived at the tag
+  `archive/adr012-datafusion-spike`; its evidence stays in `docs/testing/`.
+  No DataFusion or Rust-worker work is authorized without a new owner decision.
 - Use repository patterns instead of inventing new architecture.
 - Read existing files before editing. Do not guess APIs, versions,
   flags, commit SHAs, or package names; verify by reading code or

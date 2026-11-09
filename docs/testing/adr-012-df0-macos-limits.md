@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DF0: native macOS limit primitives
 
+> **Archived 2026-11-09.** The DataFusion spike was concluded without adoption
+> ([DF0-G report](adr-012-df0-g-report.md)). Its code is preserved at the tag
+> `archive/adr012-datafusion-spike`; run the commands below from a checkout of
+> that tag. Raw records are in [adr-012-df0-records](adr-012-df0-records/).
+
 These isolated, synthetic probes expose insufficient containment mechanisms
 before a production launcher is selected. They are not DataFusion enforcement,
 aggregate admission, installed-app or minimum-macOS qualification. DF-033 and
@@ -13,9 +18,9 @@ requirement, production policy, entitlement or dependency changes here.
 
 ## Observations
 
-The [environment and source hashes](../../spikes/adr012-datafusion/evidence/df0-limits-macos/environment.json)
+The [environment and source hashes](adr-012-df0-records/df0-limits-macos/environment.json)
 freeze main `6102a28`, macOS 27.2 arm64, Go 1.27.3 and the exact probe source.
-The [primitive records](../../spikes/adr012-datafusion/evidence/df0-limits-macos/primitives.json)
+The [primitive records](adr-012-df0-records/df0-limits-macos/primitives.json)
 were produced by a native race-enabled run:
 
 | Probe | Observed result | Supported conclusion |
@@ -27,7 +32,7 @@ were produced by a native race-enabled run:
 | Parent and child CPU | Each inherited/set the one-second soft limit; both completed about 0.6 CPU seconds, totaling 1,203,635,000 ns | Both stayed below their own soft limit and rejected any observed `SIGXCPU`; no shared CPU-time budget followed |
 | Group escape | A member joined a controlled group, called `setsid`, then answered a handshake after the old group's control process terminated from its group `SIGKILL` | Signaling a process group does not contain members that leave it |
 
-The [group record](../../spikes/adr012-datafusion/evidence/df0-limits-macos/process-group.json)
+The [group record](adr-012-df0-records/df0-limits-macos/process-group.json)
 contains ephemeral IDs, not secrets or user data. Both group processes are
 owned directly by the test and waited for on normal and failure paths. No
 orphan or privileged observer is needed. All children have bounded parent
@@ -49,7 +54,7 @@ soft-limit signal. No timeout was relabelled as successful enforcement.
 
 The 2026-11-01 follow-up uses a standalone C image before a fresh `exec`,
 avoiding Go runtime signal/mapping assumptions. The
-[environment, source hashes and fault results](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/environment.json)
+[environment, source hashes and fault results](adr-012-df0-records/df0-exec-limits-macos/environment.json)
 identify the run on macOS 27.2 arm64, the unchanged reviewed Rust worker and
 the source baseline. This is development-machine evidence, not minimum-OS or
 installed-app qualification.
@@ -64,9 +69,9 @@ installed-app qualification.
 | Real-worker launch requesting 8 GiB AS, alone or combined | Setup failed before Rust exec: exit 78, zero rows, host outcome `worker_exit_before_stream`, endpoint removed | Local setup refusal, not typed gRPC `RESOURCE_LIMIT`. The combined case stops at AS failure and does not establish both controls |
 | Subsequent unrestricted Rust job | All 128 rows verified, exit 0 and cleanup | Demonstrates recovery after these setup refusals |
 
-Raw records: [AS](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/absolute-exec.json),
-[child creation](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/child-creation.json),
-[Rust jobs](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/native-worker.json).
+Raw records: [AS](adr-012-df0-records/df0-exec-limits-macos/absolute-exec.json),
+[child creation](adr-012-df0-records/df0-exec-limits-macos/child-creation.json),
+[Rust jobs](adr-012-df0-records/df0-exec-limits-macos/native-worker.json).
 Parent AS/NPROC limits remained unchanged in the corresponding synthetic tests.
 These numbers are observations, not approved product budgets. A different OS
 result must be investigated rather than relabelled as equivalent enforcement.
@@ -120,10 +125,10 @@ declares resource inspection, but the inspected headers do not declare
 that every CPU-control API is unavailable.
 
 The SDK **does** declare `task_set_phys_footprint_limit`. A separate
-[standalone C probe](../../spikes/adr012-datafusion/tools/macos_footprint_probe.c)
+[standalone C probe](https://github.com/draconianneocoder-cpu/GoPMgr/tree/archive/adr012-datafusion-spike/spikes/adr012-datafusion/tools/macos_footprint_probe.c)
 compiled against it. A normal unprivileged call to `task_info` succeeded, while
 setting the current task's footprint limit returned `KERN_NO_ACCESS` (8), as
-[recorded](../../spikes/adr012-datafusion/evidence/df0-limits-macos/footprint.json).
+[recorded](adr-012-df0-records/df0-limits-macos/footprint.json).
 The probe does not allocate after that call, grant privileges, load private
 symbols or link into either worker or Go. A declared API is not permission to
 use it; a physical-footprint measure is also not automatically RSS.

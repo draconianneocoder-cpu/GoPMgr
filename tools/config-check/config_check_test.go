@@ -320,41 +320,6 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 	}
 }
 
-func TestDF0RustConfigInventory(t *testing.T) {
-	paths := []string{
-		"spikes/adr012-datafusion/rust/Cargo.toml",
-		"spikes/adr012-datafusion/rust/cli/Cargo.toml",
-		"spikes/adr012-datafusion/rust/codegen/Cargo.toml",
-		"spikes/adr012-datafusion/rust/engine/Cargo.toml",
-		"spikes/adr012-datafusion/rust/worker/Cargo.toml",
-		"spikes/adr012-datafusion/rust/rust-toolchain.toml",
-		"spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml",
-		"spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml",
-	}
-	files, tracked := validConfigFixture()
-	for _, path := range paths {
-		if !containsPath(tracked, path) {
-			tracked = append(tracked, path)
-		}
-	}
-	if errs := validateRepositoryConfigs(files, tracked); len(errs) != 0 {
-		t.Fatalf("DF0 configurations rejected: %v", errs)
-	}
-	for _, path := range paths {
-		t.Run(path, func(t *testing.T) {
-			original := files[path]
-			files[path] = []byte("[broken\n")
-			defer func() { files[path] = original }()
-			errs := validateRepositoryConfigs(files, tracked)
-			if len(errs) != 1 || !strings.Contains(errs[0].Error(), path+": parse TOML") {
-				t.Fatalf("malformed spike config: %v", errs)
-			}
-		})
-	}
-}
-
 func validConfigFixture() (map[string][]byte, []string) {
 	files := map[string][]byte{
 		".github/actionlint.yaml":    []byte("self-hosted-runner: {labels: [ubuntu-26.04]}\n"),
@@ -459,21 +424,6 @@ SPDX-License-Identifier = "GPL-3.0-or-later"
 	}
 	files["mise.toml"] = []byte("[tools]\n")
 	files["mise.lock"] = []byte("lockfile_version = 3\n")
-	files["spikes/adr012-datafusion/rust/Cargo.toml"] = []byte(`[workspace]
-members = ["engine", "cli", "worker"]
-`)
-	files["spikes/adr012-datafusion/rust/rust-toolchain.toml"] = []byte(`[toolchain]
-channel = "1.99.1"
-`)
-	for _, member := range []string{"engine", "cli", "worker", "codegen"} {
-		files["spikes/adr012-datafusion/rust/"+member+"/Cargo.toml"] = []byte(`[package]
-name = "df0-` + member + `"
-version = "0.0.0"
-`)
-	}
-	for _, crate := range []string{"arrow-ipc-59.3.2", "parquet-59.3.2", "datafusion-55.2.0", "datafusion-datasource-55.2.0"} {
-		files["spikes/adr012-datafusion/third_party/"+crate+"/Cargo.toml"] = []byte("[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n")
-	}
 	tracked := make([]string, 0, len(files))
 	for _, spec := range supportedConfigs {
 		tracked = append(tracked, spec.path)

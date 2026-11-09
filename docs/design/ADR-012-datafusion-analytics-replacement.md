@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012: Replace DuckDB analytics with an Apache DataFusion/Arrow worker
 
+> **2026-11-09:** The DataFusion spike is concluded: **no-go**, not adopted
+> ([DF0-G report](../testing/adr-012-df0-g-report.md)). Its code is archived at the tag
+> `archive/adr012-datafusion-spike`. Reopening a columnar engine needs a new
+> owner decision tied to a defined PS-09 need.
+
 > **2026-11-02:** DuckDB is retired. The maintainer chose a Go-native engine
 > for both analytics operations instead of the DataFusion worker; see the
 > [retirement decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). This record is kept as history and as evidence
