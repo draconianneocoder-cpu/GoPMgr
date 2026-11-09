@@ -96,7 +96,7 @@ needs the same update here.
 
 ---
 
-## `internal/desktop` — 74.0%
+## `internal/desktop` — 74.4%
 
 The application layer: the Wails-bound App struct (reached from the frontend
 as `window.go.desktop.App`), its window, menu and lifecycle, and CLI/headless
@@ -371,9 +371,9 @@ GNU-style CLI flag parsing (`--version`, `--export`, `--repair`, etc.).
 | --- | --- | --- | --- | --- |
 | `parser_test.go` | 9 | `ParseFlags` (all 18 flags + positional project-path arg), `PrintVersion` | table-driven | Added 2026-08-04 (`dd9bf01`) — `ParseFlags` itself had zero tests despite `Config`/`PrintVersion` being tested in the same file. Uses the standard `flag.CommandLine`-reset technique to test code built on Go's package-level `flag` state without any production code changes. |
 
-## `internal/crypto` — 89.8%
+## `internal/crypto` — 89.7%
 
-Up from 86.4% on 2026-11-09: `escrow_input_test.go` and three `pdf_sign_test.go`
+Up from 86.4% on 2026-11-09 (89.8%, then 89.7% once the unused `SignPDFHash` was removed): `escrow_input_test.go` and three `pdf_sign_test.go`
 tests cover the reachable input checks (malformed and low-order keys, a
 wrong-length DEK sealed with the public key, wrong-size DEKs and recovery codes,
 non-regular, unreadable and weak-key certificates, an unparseable SignedData).
@@ -418,7 +418,7 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 77.9%
+## `internal/db` — 78.0%
 
 Candidate additions: `readonly_legacy_test.go` has six file-backed tests for
 required project columns, additive defaults, legacy timestamp ordering,
@@ -933,7 +933,7 @@ Shared CSV/spreadsheet formula-injection neutralization, used by every CSV-produ
 | --- | --- | --- | --- | --- |
 | `exportsafe_test.go` | 2 | `Cell` neutralization | unit, table-driven | Same vulnerability class as `internal/export/csv_test.go` but at the shared-helper level; also asserts safe values pass through completely unmodified (no over-aggressive escaping that would corrupt legitimate data starting with, e.g., a minus sign). |
 
-## `internal/fonts` — 89.4%
+## `internal/fonts` — 89.3%
 
 TrueType font catalog/embedding for generated PDFs.
 
