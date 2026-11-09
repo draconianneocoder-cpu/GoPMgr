@@ -38,7 +38,7 @@ isn't asserted as verified.
 
 ## Authentication
 
-[`Login`](../app_session.go) collapses "no such user" and "wrong password"
+[`Login`](../internal/desktop/app_session.go) collapses "no such user" and "wrong password"
 into one identical `"invalid credentials"` error, closing username
 enumeration via distinguishable error messages as a checked property.
 
@@ -47,7 +47,7 @@ critical functions haven't been independently audited this review.
 
 ## Authorization
 
-[`projectPathFor`](../app_projects.go) rejects any path whose parent
+[`projectPathFor`](../internal/desktop/app_projects.go) rejects any path whose parent
 directory isn't the signed-in user's own `projects/` directory (or an
 immediate subfolder of it) — the primary access-control boundary for
 project-file access. Correction, 2026-09-22: that check is made on the path

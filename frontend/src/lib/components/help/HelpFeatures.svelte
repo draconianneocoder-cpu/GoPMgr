@@ -312,7 +312,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm text-slate-300">
               Name, description, owner, industry, sub-category, methodology, country code,
               lifecycle status, phase, start/end dates, and the budget cap. The classification
-              fields drive terminology, Launchpad rules, and the country's holiday calendar on the
+              fields drive Launchpad rules and the country's holiday calendar on the
               <Button variant="link" onclick={() => nav('timeline')}>Timeline</Button>.
             </p>
           </section>
