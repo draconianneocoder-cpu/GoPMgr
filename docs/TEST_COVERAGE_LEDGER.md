@@ -1174,7 +1174,7 @@ tag precedence and recovery. It stops deliberately at the race gate after
 successful licensing, without packaging. Controlled exits test caller boundaries,
 not REUSE internals or full release success.
 
-## `tools/config-check` — 76.6%
+## `tools/config-check` — 76.9%
 
 `make config-check`: parses tracked YAML/TOML and enforces each tool's supported
 format. Moved from `scripts/` on 2026-11-03 so `scripts/` holds only shell
@@ -1182,7 +1182,7 @@ scripts.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `config_check_test.go` | 2 | Repository config-file validation (the DF0 Cargo/toolchain manifest test was removed with the spike on 2026-11-09), version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE with a required encoding-module extra and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
+| `config_check_test.go` | 2 | Repository config-file validation (the DF0 Cargo/toolchain manifest test was removed with the spike on 2026-11-09; since 2026-11-09 the assurance job must run on `macos-26`, and a `macos-15` runner is rejected), version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE with a required encoding-module extra and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
 | `tools/config-check/checkout_test.go` | 3 table-driven tests | Effective checkout credential policy, aliases/merges and malformed input, independent registration of all three workflows, stable job/step diagnostics | Real YAML parser and repository validator fixtures | Prevent explicit credential persistence or skipped malformed structures from passing the configuration gate; preserve unrelated actions and reusable jobs. |
 | `tools/config-check/govulncheck_test.go` | 1 table-driven test | Decoded real CI install/scan step execution with exact immutable module selector and text-scan arguments; zero/nonzero boundary outcomes and retained diagnostics | Controlled tool executables, real YAML consumer and Bash failure semantics | Catch floating/wrong pins, suppressed install or scanner errors, and accidental output-mode/scope changes; actual scanner finding qualification is separate. |
 | `scripts/pades-lock_test.sh` | 1 shell matrix | PAdES noclobber file-lock exclusion and bounded abandoned-lock refusal | shell unit, concurrency | Proves owner recording, preservation of existing file/legacy-directory locks, zero-wait refusal, and exclusion even when a fake mkdir reports success for an existing path. Start-barrier contenders and the concurrent harness exercise exclusion separately. |
