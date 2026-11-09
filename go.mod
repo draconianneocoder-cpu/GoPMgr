@@ -31,7 +31,7 @@ require (
 	// days when emitting iCal events.
 	github.com/rickar/cal/v2 v2.1.32
 	github.com/wailsapp/wails/v3 v3.1.0
-	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
+	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
 	golang.org/x/mod v0.42.0
 	golang.org/x/sys v0.49.0
@@ -60,13 +60,13 @@ require (
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
-	github.com/richardlehane/mscfb v1.0.8 // indirect
+	github.com/richardlehane/mscfb v1.0.9 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
-	github.com/xuri/efp v0.0.2 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
