@@ -140,6 +140,10 @@ root_re = re.compile(r'^## Root package \(`gopmgr`, package `main`\) — (.+)$',
 # build (their own go.mod under spikes/); their coverage is recorded in the
 # spike's evidence, not checked here.
 NON_PACKAGE_HEADINGS = {"Purpose", "Known gaps (cross-reference)", "Isolated spike modules (outside the GoPMgr build)"}
+# ADR-013 phase sections ("## ADR-013 P2 shell assurance (2026-11-04)", ...)
+# are prose assurance records for shell and workflow checks, not package
+# coverage; each phase adds one, so they are recognized by prefix.
+NON_PACKAGE_HEADING_PREFIXES = ("ADR-013 ",)
 FRONTEND_HEADING_PREFIX = "Frontend (`frontend/src`)"
 
 # Packages whose heading is known, by inspection, not to be a bare "NN.N%"
@@ -200,7 +204,7 @@ for m in generic_pkg_re.finditer(content):
 for heading_text in all_heading_re.findall(content):
     if heading_text in consumed_heading_text:
         continue
-    if heading_text in NON_PACKAGE_HEADINGS:
+    if heading_text in NON_PACKAGE_HEADINGS or heading_text.startswith(NON_PACKAGE_HEADING_PREFIXES):
         continue
     if heading_text.startswith(FRONTEND_HEADING_PREFIX):
         continue

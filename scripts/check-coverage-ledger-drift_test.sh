@@ -175,6 +175,10 @@ Fixture ledger for check-coverage-ledger-drift_test.sh, not the real repo's.
 ## Known gaps (cross-reference)
 
 None.
+
+## ADR-013 P9 example assurance (2026-01-01)
+
+Prose record, not package coverage.
 EOF
 }
 
