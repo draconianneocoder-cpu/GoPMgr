@@ -384,3 +384,61 @@ func TestRunHeadlessRepairExplainsTheRebuiltCopy(t *testing.T) {
 		t.Fatalf("--repair changed the project file (read err %v)", err)
 	}
 }
+
+// seedHeadlessProjectFile creates a plaintext project file, closes it, and
+// returns its path for runHeadless to open.
+func seedHeadlessProjectFile(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "project.gopmgr")
+	d, err := db.InitDB(path)
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	if _, err := d.UpsertProject(db.Project{Name: "Headless Demo", Status: "planning", Phase: "planning"}); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	return path
+}
+
+// TestRunHeadlessReturnsExitStatus covers the command-line mode's exit
+// statuses. runHeadless returns instead of calling os.Exit or log.Fatal, so
+// its deferred Close runs on every path; a reintroduced exit would end this
+// test binary rather than fail one case.
+func TestRunHeadlessReturnsExitStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  func(path string) *cli.Config
+		want int
+	}{
+		{"check passes on a healthy project", func(p string) *cli.Config { return &cli.Config{ProjectPath: p, CheckOnly: true} }, 0},
+		{"vacuum succeeds", func(p string) *cli.Config { return &cli.Config{ProjectPath: p, Vacuum: true} }, 0},
+		{"repair of a healthy project succeeds", func(p string) *cli.Config { return &cli.Config{ProjectPath: p, Repair: true} }, 0},
+		{"a missing project file fails", func(p string) *cli.Config {
+			return &cli.Config{ProjectPath: filepath.Join(filepath.Dir(p), "missing.gopmgr"), CheckOnly: true}
+		}, 1},
+		{"an audit export that cannot be written fails", func(p string) *cli.Config {
+			return &cli.Config{ProjectPath: p, ExportAuditPath: filepath.Join(filepath.Dir(p), "no-such-dir", "audit.csv")}
+		}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := seedHeadlessProjectFile(t)
+			if got := runHeadless(tt.cfg(path)); got != tt.want {
+				t.Fatalf("runHeadless() = %d, want %d", got, tt.want)
+			}
+			// A read-write connection removes SQLite's write-ahead log when
+			// it closes, so a leftover -wal file means Close did not run.
+			// Read-only opens cannot remove it, so only they are skipped.
+			cfg := tt.cfg(path)
+			if !cfg.Vacuum && !cfg.Repair {
+				return
+			}
+			if _, err := os.Stat(path + "-wal"); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("%s-wal remains after runHeadless (stat error %v); the database was not closed", path, err)
+			}
+		})
+	}
+}

@@ -327,8 +327,7 @@ func Main(assets fs.FS) {
 	// open directly; encrypted files require --username plus
 	// --password-env so the user's DEK can be unlocked from system.db.
 	if cfg.ProjectPath != "" && headlessProjectMode(cfg) {
-		runHeadless(cfg)
-		return
+		os.Exit(runHeadless(cfg))
 	}
 
 	// GUI mode.
@@ -471,10 +470,14 @@ func inferHeadlessRootDir(projectPath, username string) (string, error) {
 	return filepath.Dir(userDir), nil
 }
 
-func runHeadless(cfg *cli.Config) {
+// runHeadless runs one command-line operation on a project file and returns
+// the process exit status. It returns instead of exiting so the deferred
+// Close always runs: os.Exit and log.Fatal skip deferred calls.
+func runHeadless(cfg *cli.Config) int {
 	d, err := openHeadlessDB(cfg)
 	if err != nil {
-		log.Fatalf("init db: %v", err)
+		log.Printf("init db: %v", err)
+		return 1
 	}
 	defer func() { _ = d.Close() }()
 
@@ -482,49 +485,56 @@ func runHeadless(cfg *cli.Config) {
 	case cfg.CheckOnly:
 		ok, err := d.CheckIntegrity()
 		if err != nil {
-			log.Fatalf("integrity check: %v", err)
+			log.Printf("integrity check: %v", err)
+			return 1
 		}
 		if ok {
 			fmt.Println("ok")
-			return
+			return 0
 		}
 		fmt.Println("CORRUPT")
-		os.Exit(1)
+		return 1
 	case cfg.Repair:
 		damaged, err := runHeadlessRepair(d, cfg.ProjectPath, os.Stdout)
 		if err != nil {
-			log.Fatalf("repair: %v", err)
+			log.Printf("repair: %v", err)
+			return 1
 		}
 		if damaged {
 			// The project file is still damaged; exit 1 like --check so
-			// scripts notice, after closing the database cleanly.
-			_ = d.Close()
-			os.Exit(1)
+			// scripts notice.
+			return 1
 		}
 	case cfg.Vacuum:
 		if err := d.Vacuum(); err != nil {
-			log.Fatalf("vacuum: %v", err)
+			log.Printf("vacuum: %v", err)
+			return 1
 		}
 	case cfg.ExportAuditPath != "":
 		if err := d.ExportAuditCSV(cfg.ExportAuditPath); err != nil {
-			log.Fatalf("export audit: %v", err)
+			log.Printf("export audit: %v", err)
+			return 1
 		}
 		fmt.Printf("audit log written to %s\n", cfg.ExportAuditPath)
 	case cfg.ShowStats:
 		if err := printHeadlessStats(d); err != nil {
-			log.Fatalf("stats: %v", err)
+			log.Printf("stats: %v", err)
+			return 1
 		}
 	case cfg.SchemaDump:
 		schema, err := d.DumpSchema()
 		if err != nil {
-			log.Fatalf("schema dump: %v", err)
+			log.Printf("schema dump: %v", err)
+			return 1
 		}
 		fmt.Print(schema)
 	case cfg.ExportPath != "":
 		if err := runHeadlessExport(cfg, d); err != nil {
-			log.Fatalf("export: %v", err)
+			log.Printf("export: %v", err)
+			return 1
 		}
 	}
+	return 0
 }
 
 // printHeadlessStats writes a compact project summary to stdout for the
