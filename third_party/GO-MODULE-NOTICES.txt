@@ -16,25 +16,24 @@ Contents
 
   std
   github.com/andybalholm/brotli v1.2.7
-  github.com/apache/arrow-go/v18 v18.5.1
+  github.com/apache/arrow-go/v18 v18.8.0
   github.com/apache/thrift v0.24.0
   github.com/cespare/xxhash/v2 v2.3.0
   github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
   github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
   github.com/go-ole/go-ole v1.3.0
   github.com/go-pdf/fpdf v0.9.0
-  github.com/goccy/go-json v0.10.5
+  github.com/goccy/go-json v0.10.6
   github.com/godbus/dbus/v5 v5.2.2
-  github.com/golang/snappy v1.0.0
   github.com/gomutex/godocx v0.1.5
   github.com/google/flatbuffers v25.12.19+incompatible
   github.com/google/uuid v1.6.0
   github.com/gorules/zen-go v0.20.0
   github.com/klauspost/compress v1.20.2
-  github.com/klauspost/cpuid/v2 v2.3.0
+  github.com/klauspost/cpuid/v2 v2.4.0
   github.com/mutecomm/go-sqlcipher/v4 v4.4.2
-  github.com/pierrec/lz4/v4 v4.1.25
-  github.com/richardlehane/mscfb v1.0.8
+  github.com/pierrec/lz4/v4 v4.1.29
+  github.com/richardlehane/mscfb v1.0.9
   github.com/richardlehane/msoleps v1.0.6
   github.com/rickar/cal/v2 v2.1.32
   github.com/tidwall/gjson v1.17.1
@@ -42,8 +41,8 @@ Contents
   github.com/tidwall/pretty v1.2.0
   github.com/tiendc/go-deepcopy v1.7.2
   github.com/wailsapp/wails/v3 v3.1.0
-  github.com/xuri/efp v0.0.2
-  github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
+  github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec
+  github.com/xuri/excelize/v2 v2.11.1
   github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9
   github.com/zeebo/xxh3 v1.1.0
   golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
@@ -53,7 +52,6 @@ Contents
   golang.org/x/sync v0.24.0
   golang.org/x/sys v0.49.0
   golang.org/x/text v0.43.0
-  golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
   gonum.org/v1/gonum v0.17.0
   google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1
   google.golang.org/grpc v1.85.0
@@ -146,7 +144,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ================================================================================
-Module: github.com/apache/arrow-go/v18 v18.5.1
+Module: github.com/apache/arrow-go/v18 v18.8.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE.txt -----
@@ -893,7 +891,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-Module: github.com/goccy/go-json v0.10.5
+Module: github.com/goccy/go-json v0.10.6
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -951,40 +949,6 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-================================================================================
-Module: github.com/golang/snappy v1.0.0
-Linked into: darwin/arm64, linux/amd64, windows/amd64
-
------ LICENSE -----
-
-Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-   * Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-   * Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following disclaimer
-in the documentation and/or other materials provided with the
-distribution.
-   * Neither the name of Google Inc. nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 Module: github.com/gomutex/godocx v0.1.5
@@ -1587,6 +1551,67 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+----- s2/LICENSE -----
+
+Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
+Copyright (c) 2019 Klaus Post. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+----- snappy/LICENSE -----
+
+Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 ----- internal/snapref/LICENSE -----
 
 Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
@@ -1643,7 +1668,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-Module: github.com/klauspost/cpuid/v2 v2.3.0
+Module: github.com/klauspost/cpuid/v2 v2.4.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1913,7 +1938,7 @@ public-domain Rijndael implementation by Vincent Rijmen, Antoon Bosselaers,
 and Paulo Barreto.
 
 ================================================================================
-Module: github.com/pierrec/lz4/v4 v4.1.25
+Module: github.com/pierrec/lz4/v4 v4.1.29
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1947,7 +1972,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-Module: github.com/richardlehane/mscfb v1.0.8
+Module: github.com/richardlehane/mscfb v1.0.9
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE.txt -----
@@ -2575,7 +2600,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
-Module: github.com/xuri/efp v0.0.2
+Module: github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -2610,7 +2635,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-Module: github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
+Module: github.com/xuri/excelize/v2 v2.11.1
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -3077,65 +3102,6 @@ Linked into: darwin/arm64, linux/amd64, windows/amd64
 ----- LICENSE -----
 
 Copyright 2009 The Go Authors.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-   * Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-   * Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following disclaimer
-in the documentation and/or other materials provided with the
-distribution.
-   * Neither the name of Google LLC nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
------ PATENTS -----
-
-Additional IP Rights Grant (Patents)
-
-"This implementation" means the copyrightable works distributed by
-Google as part of the Go project.
-
-Google hereby grants to You a perpetual, worldwide, non-exclusive,
-no-charge, royalty-free, irrevocable (except as stated in this section)
-patent license to make, have made, use, offer to sell, sell, import,
-transfer and otherwise run, modify and propagate the contents of this
-implementation of Go, where such license applies only to those patent
-claims, both currently owned or controlled by Google and acquired in
-the future, licensable by Google that are necessarily infringed by this
-implementation of Go.  This grant does not include claims that would be
-infringed only as a consequence of further modification of this
-implementation.  If you or your agent or exclusive licensee institute or
-order or agree to the institution of patent litigation against any
-entity (including a cross-claim or counterclaim in a lawsuit) alleging
-that this implementation of Go or any code incorporated within this
-implementation of Go constitutes direct or contributory patent
-infringement, or inducement of patent infringement, then any patent
-rights granted to you under this License for this implementation of Go
-shall terminate as of the date such litigation is filed.
-
-================================================================================
-Module: golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
-Linked into: darwin/arm64, linux/amd64, windows/amd64
-
------ LICENSE -----
-
-Copyright 2019 The Go Authors.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are

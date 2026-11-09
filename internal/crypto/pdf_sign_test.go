@@ -15,6 +15,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -83,6 +84,30 @@ func TestLoadCertificate_TwoBagRegression(t *testing.T) {
 func TestLoadCertificate_FileNotFound(t *testing.T) {
 	if _, err := LoadCertificate("testdata/does-not-exist.p12", testP12Password); err == nil {
 		t.Fatal("expected an error for a nonexistent P12 path")
+	}
+}
+
+func TestLoadCertificate_RejectsANonRegularFile(t *testing.T) {
+	_, err := LoadCertificate(t.TempDir(), testP12Password)
+	if err == nil || !strings.Contains(err.Error(), "is not a regular file") {
+		t.Fatalf("LoadCertificate(directory) error = %v, want a non-regular-file refusal", err)
+	}
+}
+
+func TestLoadCertificate_ReportsAnUnreadableFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can read a mode-000 file")
+	}
+	data, err := os.ReadFile("testdata/testonly-rsa-2bag.p12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "locked.p12")
+	if err := os.WriteFile(path, data, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCertificate(path, testP12Password); !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("LoadCertificate(unreadable) error = %v, want a permission error", err)
 	}
 }
 
@@ -424,6 +449,39 @@ func assertSigningCertificateV2Attribute(t *testing.T, p7 *pkcs7.PKCS7, signerCe
 	}
 	if got := certID.IssuerSerial.Issuer[0]; got.Class != asn1.ClassContextSpecific || got.Tag != 4 || !bytes.Equal(got.Bytes, signerCert.RawIssuer) {
 		t.Fatalf("signingCertificateV2 issuer does not match signer RawIssuer")
+	}
+}
+
+// A legacy PKCS#12 bundle can carry an RSA key below Go's 1024-bit
+// minimum. Signing must fail rather than produce a weak PAdES signature.
+// GODEBUG=rsa1024min=0 is set only to create the fixture key and its
+// self-signed certificate, then restored to the default before signing.
+func TestSignPDFCMSRefusesAnRSAKeyBelowTheMinimumSize(t *testing.T) {
+	t.Setenv("GODEBUG", "rsa1024min=0")
+	key, err := rsa.GenerateKey(rand.Reader, 512)
+	if err != nil {
+		t.Fatalf("generate 512-bit RSA key: %v", err)
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "GoPMgr weak-key signer"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create certificate: %v", err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatalf("parse certificate: %v", err)
+	}
+	t.Setenv("GODEBUG", "")
+
+	signer := &Signer{Cert: cert, PrivateKey: key}
+	cms, err := signer.SignPDFCMS([]byte("content"))
+	if err == nil || cms != nil || !strings.Contains(err.Error(), "insecure") {
+		t.Fatalf("SignPDFCMS with a 512-bit key = %d bytes, %v; want the RSA minimum-size refusal", len(cms), err)
 	}
 }
 

@@ -41,11 +41,9 @@ const (
 //
 // The salt is fresh per call (so the same password produces different
 // ciphertext each time), and the key is derived from the password with
-// Argon2id. Decrypt with DecryptBuffer below.
-//
-// This replaces the placeholder from the Gemini transcript, which
-// `copy(key, password)`'d the password directly into the AES key — a
-// flaw that defeats the entire point of using AES in the first place.
+// Argon2id. Decrypt with DecryptBuffer below. Never use the password bytes
+// as the AES key directly: that skips key stretching and makes a short or
+// guessable password the key itself.
 func EncryptBuffer(data []byte, password string) ([]byte, error) {
 	if password == "" {
 		return nil, errors.New("crypto: empty password")

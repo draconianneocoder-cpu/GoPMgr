@@ -238,6 +238,11 @@ func TestParseDetachedPAdESCMS_RejectsMalformedStructure(t *testing.T) {
 			wantError: "detached id-data",
 		},
 		{
+			name:      "SignedData content does not parse",
+			cms:       signedDataWrapperForTest(t, []byte{0x02, 0x01, 0x05}),
+			wantError: "parse CMS SignedData",
+		},
+		{
 			name:      "signer has no signature value",
 			cms:       mutateEncryptedDigestForTest(t, baselineCMS, nil),
 			wantError: "no signature value",
@@ -254,6 +259,20 @@ func TestParseDetachedPAdESCMS_RejectsMalformedStructure(t *testing.T) {
 			}
 		})
 	}
+}
+
+// signedDataWrapperForTest wraps content, which need not be a SignedData
+// value, in an outer ContentInfo that claims to hold SignedData.
+func signedDataWrapperForTest(t *testing.T, content []byte) []byte {
+	t.Helper()
+	der, err := asn1.Marshal(cmsContentInfo{
+		ContentType: pkcs7.OIDSignedData,
+		Content:     asn1.RawValue{Class: asn1.ClassContextSpecific, Tag: 0, IsCompound: true, Bytes: content},
+	})
+	if err != nil {
+		t.Fatalf("asn1.Marshal() error = %v", err)
+	}
+	return der
 }
 
 // mutateOuterContentTypeForTest rewrites the outer ContentInfo's

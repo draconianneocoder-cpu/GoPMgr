@@ -83,7 +83,7 @@ platform/publication limits are recorded in
 - `github.com/go-pdf/fpdf`: PDF generation (community-maintained continuation
   of the archived jung-kurt/gofpdf; see ADR-003).
 - `github.com/gomutex/godocx`: DOCX generation.
-- `github.com/xuri/excelize/v2`: XLSX generation.
+- `github.com/xuri/excelize/v2`: XLSX generation (released v2.11.1).
 - `github.com/rickar/cal/v2`: Country holiday calendars.
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
@@ -268,7 +268,11 @@ index searches. Attacker-controlled CSS Modules therefore retain the
 reported CPU-exhaustion path; a resolved-package refresh or override does
 not replace that embedded code. No desktop request-path exploit was
 established. Check the published bundle and exercise Vite's `.module.css`
-pipeline before claiming an eventual fix.
+pipeline before claiming an eventual fix. On 2026-11-09 the Vite 8.3.6 build
+chunk (`dist/node/chunks/build.js`) names an embedded
+`postcss-selector-parser@7.1.6`, the release the lockfile already resolves.
+That is evidence of a version change in the bundle only; the `.module.css`
+pipeline was not exercised.
 
 The former Excelize v2.11.0 pin was affected by 15 package-level advisories
 in the 2026-10-11 GitHub snapshot. The stable release list still ends at
@@ -298,7 +302,40 @@ formulas. Sigma XLSX import instead uses `read-excel-file/browser`. The prior
 reachability review did not demonstrate a production route to the reported
 malformed-workbook or uncontrolled-coordinate sinks. This is not a claim
 that Excelize is universally safe. Reassess before adding an Excelize import
-path, and replace the pseudo-version only through compatibility verification.
+path.
+
+**Released v2.11.1 (2026-11-09).** The pseudo-version above is replaced by
+the released v2.11.1 (published 2026-11-02), which contains that revision:
+it is 13 commits ahead and none behind. The added commits fix formula
+functions, add read APIs (`GetShapes`, `GetEmbeddedObjects`), normalize
+negative zero, and correct EDATE and early-1900 dates; GoPMgr calls none of
+the changed functions. It requires Go 1.26 and moves `mscfb` to 1.0.9. Its
+`efp` dependency is now the pre-release
+`v0.0.3-0.20260924042702-217b81952dec`, which v2.11.1 itself requires. The
+exporter's raw worksheet XML tests, including the negative-zero and
+15-digit cases, pass unchanged with v2.11.1.
+
+### Advisory review, 2026-11-09
+
+Two open Dependabot alerts concern development-only packages in
+`frontend/package-lock.json`; neither ships in the application bundle.
+
+- **minimatch 10.2.6, GHSA-g3hv-75wg-m249 (medium).** Pattern amplification
+  needs `optimizationLevel` 2 or higher. minimatch defaults to 1, and neither
+  ESLint 10.14.0 nor typescript-eslint 8.72.1 sets the option; the patterns
+  they match come from this repository's own lint and TypeScript
+  configuration. The only fix is minimatch 11.0.1, outside the `^10` range
+  that ESLint, `@eslint/config-array` and typescript-eslint declare. An
+  override would run those packages against an untested major version, so
+  none is applied. Refresh the lockfile when ESLint or typescript-eslint
+  accept minimatch 11.
+- **deepmerge 4.3.1, GHSA-gcqx-w48m-w2h4 (low).** Pulled in by
+  `@sveltejs/vite-plugin-svelte` 7.3.1 to merge build configuration. No
+  patched version exists. Recorded earlier in
+  [read-only project access](testing/read-only-project-access.md).
+
+No suppression or alert dismissal was made; closing the alerts requires the
+upstream releases above.
 
 ## External Tools
 
@@ -402,22 +439,23 @@ separate maintenance; do not treat this dated repair as permanent clearance.
 Replacing DuckDB with a Go-native engine made `github.com/apache/arrow-go/v18`
 a direct dependency, for Parquet import only. Its `parquet/pqarrow` package
 links these modules into every release binary; the versions are those in
-`go.mod`. Several (brotli, Thrift, snappy, xxhash and others) were not
-listed in `go.mod` before the change.
+`go.mod`. Several (brotli, Thrift, xxhash and others) were not listed in
+`go.mod` before the change. Since arrow-go 18.8.0 (2026-11-09) the Snappy
+page codec comes from `klauspost/compress`, and `github.com/golang/snappy` and
+`golang.org/x/xerrors` are no longer linked.
 
 | Module | License (as declared) | Linked because |
 |---|---|---|
 | `github.com/apache/arrow-go/v18` | Apache-2.0 | Arrow arrays and the Parquet reader |
 | `github.com/apache/thrift` | Apache-2.0 | Parquet file metadata encoding |
 | `github.com/google/flatbuffers` | Apache-2.0 | Arrow schema encoding |
-| `github.com/klauspost/compress` | BSD-3-Clause AND Apache-2.0 AND MIT | zstd and gzip page codecs |
+| `github.com/klauspost/compress` | BSD-3-Clause AND Apache-2.0 AND MIT | zstd, gzip and Snappy page codecs |
 | `github.com/klauspost/cpuid/v2` | MIT | CPU feature detection for those codecs |
-| `github.com/golang/snappy` | BSD-3-Clause | Snappy page codec |
 | `github.com/pierrec/lz4/v4` | BSD-3-Clause | LZ4 page codec |
 | `github.com/andybalholm/brotli` | MIT | Brotli page codec |
 | `github.com/cespare/xxhash/v2`, `github.com/zeebo/xxh3` | MIT; BSD-2-Clause | Parquet hashing |
 | `github.com/goccy/go-json` | MIT | Arrow's JSON helpers |
-| `golang.org/x/exp`, `golang.org/x/sync`, `golang.org/x/xerrors` | BSD-3-Clause | Arrow internals |
+| `golang.org/x/exp`, `golang.org/x/sync` | BSD-3-Clause | Arrow internals |
 | `google.golang.org/grpc`, `google.golang.org/protobuf`, `google.golang.org/genproto/googleapis/rpc` | Apache-2.0; BSD-3-Clause; Apache-2.0 | `arrow/flight`, imported by `pqarrow`; already approved under ADR-010 G1 |
 
 `github.com/go-viper/mapstructure/v2` and the five DuckDB modules left the

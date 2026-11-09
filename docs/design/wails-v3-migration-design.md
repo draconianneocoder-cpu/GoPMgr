@@ -5,9 +5,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Wails v3 migration design
 
-Current support-policy update (2026-11-05): the owner adopted macOS 26 Tahoe
-as the minimum. Earlier macOS 13 requirements and measurements below are
-historical; see [current policy](../engineering/macos26-support-policy.md).
+Current status (2026-11-09): the migration is merged into `main` (merge
+commit `f0aef1a`, a local merge the owner approved after macOS and Ubuntu
+26.04 verification, instead of a cutover PR). The minimums are macOS 26 Tahoe
+([policy](../engineering/macos26-support-policy.md), 2026-11-05) and Ubuntu
+26.04 ([decision](../review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md), 2026-11-09). Earlier macOS 13 and Ubuntu 24.04
+requirements and measurements below are historical. Release qualification
+remains open.
 
 Status: **Approved for implementation on 2026-11-03; release approval remains separate.** Inspected
 2026-11-03 at `e193e993c1dd6972ed9b72a4c1758d06580f1a3c` on
