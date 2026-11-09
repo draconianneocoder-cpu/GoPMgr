@@ -53,10 +53,6 @@
       "license": "BSD-2-Clause",
       "producer": "Georg Reinke"
     },
-    "github.com/golang/snappy": {
-      "license": "BSD-3-Clause",
-      "producer": "The Snappy-Go Authors"
-    },
     "github.com/gomutex/godocx": {
       "license": "MIT",
       "producer": "gomutex"
@@ -163,10 +159,6 @@
       "producer": "The Go Authors"
     },
     "golang.org/x/text": {
-      "license": "BSD-3-Clause",
-      "producer": "The Go Authors"
-    },
-    "golang.org/x/xerrors": {
       "license": "BSD-3-Clause",
       "producer": "The Go Authors"
     },
