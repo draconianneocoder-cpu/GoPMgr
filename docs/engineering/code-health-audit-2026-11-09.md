@@ -169,6 +169,26 @@ scanners the first two passes had not.
 | `npm audit` (development tools) | 10 low or moderate advisories, all in ESLint's `minimatch` and the build-time `deepmerge` (**P3**). npm's suggested fix downgrades `@typescript-eslint`; do not run `npm audit fix --force`. Dependabot updates will clear them. |
 | `gosec -tags production ./...`, excluding the gitignored `.tmp/` scratch tree, spikes and tests | No actionable finding. Decompression (G110) in backup restore is bounded: each entry's declared size and the archive total are capped first, and Go's zip reader fails with `ErrFormat` once an entry decodes past its declared size, which `TestRestoreArchivalBundleRejectsUnderstatedDecodedSize` proves. The SQL concatenations (G202) insert fixed column lists with bound values. The integer conversions (G115) in `money` and `analytics` follow explicit overflow checks. The printer subprocess (G204) uses a fixed path and a validated printer name. The rest are in build tools or vendored SQLCipher. |
 
+## Fourth pass: performance (2026-11-10)
+
+Existing benchmarks show overallocation detection is already linear and
+fast (100,000 tasks in about 107 ms). The Monte Carlo schedule-risk
+simulation was not.
+
+### Fixed
+
+| Priority | Finding | Fix |
+|---|---|---|
+| P2 | Every Monte Carlo iteration cloned every task, re-sorted the unchanged network, re-derived each task's links four times (each a fresh slice and map), and returned its results in two new maps; the percentiles then copied and sorted each task's samples three times, and the finish CDF sorted the finishes 21 times. 500 tasks at 10,000 iterations (the interface's maximum) took 1.5 s and allocated 7.2 GB. | `CalculateCPM` is split into a plan (topological order and resolved links, built once) and a run (the passes, unchanged in substance). Each worker clones the network and builds the plan once, and iterations write into preallocated slices; each sample list is sorted once. Medians of five runs: 42.9 ms to 5.7 ms (100 tasks × 1,000), 165 ms to 25.9 ms (500 × 1,000), and 1.50 s to 0.29 s with 7.2 GB to 49 MB allocated (500 × 10,000). One schedule pass at 5,000 tasks: 3.25 ms to 2.87 ms. Results are bit-identical to verbatim copies of the old code on 300 seeded random networks and with any worker count. |
+
+### Recorded, not changed
+
+| Priority | Finding | Why not now |
+|---|---|---|
+| P3 | Resource leveling (`kernel/resources.go`) calls `effectiveLinks` inside its loops and re-runs `CalculateCPM`. | Not measured as a hot path; the plan type now gives it a way to reuse sorted links if a benchmark shows the need. |
+| P3 | A simulation keeps every task's samples for every iteration (tasks × iterations × 8 bytes): 40 MB at the interface's 10,000-iteration cap for 500 tasks, but 400 MB at the backend's 100,000-iteration limit. | Unchanged by this work; percentiles need the samples. A streaming quantile estimate would change results, so it needs a decision. |
+| P3 | The frontend was not profiled in this pass. | Out of scope; candidates need measurements in the packaged app. |
+
 ## Re-running the audit
 
 ```sh
