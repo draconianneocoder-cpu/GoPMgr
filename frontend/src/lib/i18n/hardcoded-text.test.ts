@@ -27,13 +27,17 @@ function svelteFiles(dir: string): string[] {
 // markup: text between tags, and the placeholder, aria-label, title, label,
 // and alt attributes. Anything inside {braces}, such as {t('key')}, is code.
 export function literalText(source: string): string[] {
-  let markup = source
-    .replace(/<script[\s\S]*?<\/script>/g, '')
-    .replace(/<style[\s\S]*?<\/style>/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '');
+  // Each removal repeats until nothing changes, so that removing one block
+  // cannot leave the start of another behind ("<scr<script></script>ipt>").
+  // Closing tags may carry spaces or attributes, in any letter case.
+  let markup = source;
   for (let previous = ''; previous !== markup; ) {
     previous = markup;
-    markup = markup.replace(/\{[^{}]*\}/g, '');
+    markup = markup
+      .replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, '')
+      .replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, '')
+      .replace(/<!--[\s\S]*?--!?>/g, '')
+      .replace(/\{[^{}]*\}/g, '');
   }
   const hasWords = (text: string) => /\p{L}{2}/u.test(text);
   const between = Array.from(markup.matchAll(/>([^<>]+)</g), (m) => m[1].trim()).filter(hasWords);
@@ -63,6 +67,16 @@ describe('literalText', () => {
 <input placeholder="Search projects" aria-label={t('search')} />
 <span>✓</span>`;
     expect(literalText(source)).toEqual(['Plain words', 'Hello !', 'Search projects']);
+  });
+
+  it('removes script, style and comment blocks however they are closed or nested', () => {
+    const source = `<SCRIPT lang="ts">const a = '<p>Upper case</p>';</SCRIPT >
+<scr<script>const b = 1;</script>ipt>const c = '<p>Rejoined tag</p>';</script foo="bar">
+<style>p::before { content: '<p>Style text</p>'; }</style
+>
+<!-<!-- inner -->- <p>Rejoined comment</p> -->
+<p>Kept words</p>`;
+    expect(literalText(source)).toEqual(['Kept words']);
   });
 });
 

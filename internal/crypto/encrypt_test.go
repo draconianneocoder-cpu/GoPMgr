@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"math"
 	"testing"
 )
 
@@ -74,6 +75,27 @@ func TestEncryptBuffer_NonceGenerationFails(t *testing.T) {
 
 // These tests call Argon2id (64 MiB per invocation) and take roughly
 // 0.5–2 s each on modern hardware. Run with -short to skip them.
+
+// The limit is lowered for the test: the real one is 64 GiB.
+func TestEncryptBuffer_RefusesInputBeyondTheMessageLimit(t *testing.T) {
+	old := maxEncryptBufferLen
+	maxEncryptBufferLen = 8
+	t.Cleanup(func() { maxEncryptBufferLen = old })
+
+	if _, err := EncryptBuffer(make([]byte, 9), "pw"); !errors.Is(err, ErrBufferTooLarge) {
+		t.Fatalf("EncryptBuffer(9 bytes) = %v, want ErrBufferTooLarge", err)
+	}
+	blob, err := EncryptBuffer(make([]byte, 8), "pw")
+	if err != nil {
+		t.Fatalf("EncryptBuffer(8 bytes) at the limit: %v", err)
+	}
+	if plain, err := DecryptBuffer(blob, "pw"); err != nil || len(plain) != 8 {
+		t.Fatalf("round trip at the limit = %d bytes, %v", len(plain), err)
+	}
+	if want := min(math.MaxInt-1024, 1<<36-32); old != want {
+		t.Errorf("maxEncryptBufferLen = %d, want %d", old, want)
+	}
+}
 
 func TestEncryptBuffer_EmptyPassword(t *testing.T) {
 	_, err := EncryptBuffer([]byte("data"), "")

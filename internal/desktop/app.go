@@ -426,7 +426,7 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	}
 	password, ok := os.LookupEnv(cfg.PasswordEnv)
 	if !ok || password == "" {
-		return nil, fmt.Errorf("password environment variable %q is not set", cfg.PasswordEnv)
+		return nil, errPasswordEnvUnset
 	}
 	rootDir, err := inferHeadlessRootDir(cfg.ProjectPath, cfg.Username)
 	if err != nil {
@@ -649,6 +649,12 @@ func parseHeadlessFormat(s string) (export.ExportFormat, error) {
 	}
 }
 
+// errPasswordEnvUnset deliberately leaves out the variable's name. The name
+// is not secret, but it comes from the same configuration field the
+// password is read through, and keeping that field out of every message
+// means no later edit can log the password by mistake.
+var errPasswordEnvUnset = errors.New("the environment variable named by --password-env is not set or is empty")
+
 // headlessExportPassword resolves the export-encryption password from the
 // environment variable named by --password-env.
 func headlessExportPassword(cfg *cli.Config) (string, error) {
@@ -657,7 +663,7 @@ func headlessExportPassword(cfg *cli.Config) (string, error) {
 	}
 	pw, ok := os.LookupEnv(cfg.PasswordEnv)
 	if !ok || pw == "" {
-		return "", fmt.Errorf("password environment variable %q is not set", cfg.PasswordEnv)
+		return "", errPasswordEnvUnset
 	}
 	return pw, nil
 }

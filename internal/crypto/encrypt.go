@@ -20,6 +20,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"math"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -34,6 +35,16 @@ const (
 	saltLen      = 16
 )
 
+// ErrBufferTooLarge is returned by EncryptBuffer for an input longer than
+// one AES-GCM message can hold.
+var ErrBufferTooLarge = errors.New("crypto: buffer is too large to encrypt in one message")
+
+// maxEncryptBufferLen is the largest input EncryptBuffer accepts: the
+// AES-GCM single-message limit of 2^36-32 bytes, or on a 32-bit platform
+// the largest int less room for the salt, nonce and tag. A variable so a
+// test can lower it instead of allocating 64 GiB.
+var maxEncryptBufferLen = min(math.MaxInt-1024, 1<<36-32)
+
 // EncryptBuffer encrypts `data` with AES-256-GCM. The output format is:
 //
 //	[salt | nonce | ciphertext+tag]
@@ -43,10 +54,16 @@ const (
 // ciphertext each time), and the key is derived from the password with
 // Argon2id. Decrypt with DecryptBuffer below. Never use the password bytes
 // as the AES key directly: that skips key stretching and makes a short or
-// guessable password the key itself.
+// guessable password the key itself. An input longer than one AES-GCM
+// message can hold is refused with ErrBufferTooLarge.
 func EncryptBuffer(data []byte, password string) ([]byte, error) {
 	if password == "" {
 		return nil, errors.New("crypto: empty password")
+	}
+	// Bound the input before the output is sized from it: that sum must
+	// not overflow int, and Seal panics beyond the AES-GCM limit.
+	if len(data) > maxEncryptBufferLen {
+		return nil, ErrBufferTooLarge
 	}
 
 	salt := make([]byte, saltLen)

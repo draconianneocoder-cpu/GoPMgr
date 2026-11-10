@@ -207,6 +207,24 @@ repository.
 | Medium | Schedule CSV export wrote the task ID without formula neutralization; an MSPDI import keeps each task's UID as its ID. | **Fixed** 2026-11-10, with a test that fails on the old code. |
 | Low | 16 findings: recovery codes left on the clipboard, a plaintext `.pre-encryption.bak` kept after encryption, no sign-in attempt limiting, sign-in timing that reveals whether a username exists, the SQLCipher key kept in the connection's DSN, development-only npm advisories, and others. | Recorded for prioritisation. |
 
+## GitHub code scanning, 2026-11-10
+
+CodeQL was enabled on the repository on 2026-11-10 and opened seven alerts
+on `main`, all rated High by rule. None was exploitable; each was closed by
+a code change rather than dismissed.
+
+| Alert | Finding | Assessment and change |
+| --- | --- | --- |
+| 7 | `internal/crypto/encrypt.go`: the output size `salt + nonce + len(data) + tag` could overflow. | Not reachable on a 64-bit build, where no slice is that long. `EncryptBuffer` now refuses an input beyond the AES-GCM single-message limit (2^36-32 bytes) with `ErrBufferTooLarge`; before, `Seal` would have panicked there. |
+| 5, 6 | `internal/desktop/app.go`: "sensitive data" from `PasswordEnv` reaches a log call. | The value is the *name* of an environment variable, not the password. The two messages no longer include the name, so nothing read through that field reaches a log. |
+| 1 to 4 | `frontend/src/lib/i18n/hardcoded-text.test.ts`: incomplete tag stripping. | The function counts interface text in the project's own Svelte files for a test; its output is never rendered. The stripping now repeats until nothing changes and accepts upper-case and spaced closing tags, with a test of nested and oddly closed blocks. The recorded baseline is unchanged. |
+
+The two open Dependabot alerts (minimatch, deepmerge) are unchanged from
+the [advisory review](../DEPENDENCIES.md#advisory-review-2026-11-09):
+development-only, and neither has a fix that the packages using them
+accept. Checked again on 2026-11-10: ESLint 10.14.0 still requires
+minimatch `^10`, and deepmerge has no patched release.
+
 ## Re-running the audit
 
 ```sh
