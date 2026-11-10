@@ -1805,13 +1805,14 @@ SPDX-FileCopyrightText: 2014, 2018-2019 Yasuhiro Matsumoto
 SPDX-FileCopyrightText: 2018-2019 G.J.R. Timmer
 SPDX-FileCopyrightText: 2018 segment.com
 SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
-SPDX-FileCopyrightText: 2008 ZETETIC LLC
+SPDX-FileCopyrightText: 2008-2025 ZETETIC LLC
 SPDX-FileCopyrightText: The SQLite contributors
 SPDX-FileCopyrightText: The LibTomCrypt contributors
 SPDX-License-Identifier: MIT AND BSD-3-Clause AND blessing AND Unlicense
 
-GoPMgr builds the following components from the go-sqlcipher v4.4.2 source
-bundle. These notices accompany every binary distribution.
+GoPMgr builds the following components: the Go bindings and LibTomCrypt files
+from the go-sqlcipher v4.4.2 source bundle, and SQLCipher 4.20.0 with its
+SQLite 3.54.1 core. These notices accompany every binary distribution.
 
 go-sqlite3 and related Go bindings
 ==================================
@@ -1873,7 +1874,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 SQLCipher
 =========
 
-Copyright (c) 2008, ZETETIC LLC
+Copyright (c) 2025, ZETETIC LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

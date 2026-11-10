@@ -5,6 +5,7 @@ package sqlitedriver
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"hash"
 	"os"
@@ -14,12 +15,24 @@ import (
 	"testing"
 )
 
+// Hashes of the vendored engine. third_party/go-sqlcipher/GOPMGR.md records
+// where each file comes from and how to rebuild sqlite3.c and sqlite3.h.
 const (
-	patchedSQLCipherAmalgamationSHA256 = "054c25f4d2637247452338f8277884eeaf67731697a18c7a46b5581c7fae8b78"
-	sqlCipherNoticesSHA256             = "afdc16e2d241db3cbada324fbd5b9ed5a06adb51b52928d7cc66b4b75372408b"
-	pristineSQLCipherRuntimeTreeSHA256 = "53b55af239a633b04a6fee66f0e5a9a76fdf2f7dc24c57b78e378d4beda6a73b"
-	patchedSQLCipherRuntimeTreeSHA256  = "f1f26fcbeb046c2b1d3f7aea78d8fdcf30337e2e596b3bbb735c1b5640ae1cb0"
+	// The amalgamation built, unmodified, from the SQLCipher v4.20.0 tag.
+	sqlCipherAmalgamationSHA256 = "8cd2347d18886fee4651153fabeeeffb7cec008700987dab1c00261febc4220f"
+	sqlCipherHeaderSHA256       = "e36eb6ed4de77e56a633866a8f84ed339785662d0cf79cf099f420b638bf28ec"
+	sqlCipherNoticesSHA256      = "02a4080bdb58c9e23bf40af02619b6e374779cb921b68ca1559e63b2ee52b9ac"
+	// Every runtime file as vendored.
+	sqlCipherRuntimeTreeSHA256 = "72c4ea6774d9760e2dd65c704217967749294ae54660f4ede10d55829b2d1ba4"
+	// The files still taken from go-sqlcipher v4.4.2: everything except the
+	// engine source, its build flags and GoPMgr's random-source file, with
+	// GoPMgr's transaction-cleanup changes to sqlite3.go reversed.
+	publishedWrapperTreeSHA256 = "86c8178235210c18cb451ae981443bae4a7cb611166229eac873d574ed707088"
 )
+
+// engineFiles are the vendored files that do not come from go-sqlcipher
+// v4.4.2 unchanged.
+var engineFiles = map[string]bool{"sqlite3.c": true, "sqlite3.h": true, "flags.go": true, "gopmgr_rng.c": true}
 
 func TestVendoredSQLCipherProvenance(t *testing.T) {
 	root := filepath.Join("..", "..", "third_party", "go-sqlcipher")
@@ -40,33 +53,64 @@ func TestVendoredSQLCipherProvenance(t *testing.T) {
 		files = append(files, entry.Name())
 	}
 	sort.Strings(files)
-	if len(files) != 92 {
-		t.Fatalf("vendored SQLCipher runtime file count = %d, want 92", len(files))
+	if len(files) != 93 {
+		t.Fatalf("vendored SQLCipher runtime file count = %d, want 93", len(files))
 	}
 
-	patched := sha256.New()
-	pristine := sha256.New()
+	tree := sha256.New()
+	wrapper := sha256.New()
 	for _, name := range files {
 		data, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		pristineData := data
-		if name == "sqlite3.c" {
-			pristineData = []byte(restorePristineWALCheckpoint(t, string(data)))
-			assertSHA256(t, name+" (patched)", data, patchedSQLCipherAmalgamationSHA256)
+		writeInventoryLine(tree, name, data)
+		switch name {
+		case "sqlite3.c":
+			assertSHA256(t, name, data, sqlCipherAmalgamationSHA256)
+			for _, version := range []string{`#define SQLITE_VERSION        "3.54.1"`, "#define CIPHER_VERSION_NUMBER 4.20.0"} {
+				if !strings.Contains(string(data), version) {
+					t.Fatalf("sqlite3.c does not contain %q", version)
+				}
+			}
+		case "sqlite3.h":
+			assertSHA256(t, name, data, sqlCipherHeaderSHA256)
+		case "sqlite3.go":
+			data = []byte(restorePristineCommitCleanup(t, string(data)))
 		}
-		if name == "sqlite3.go" {
-			pristineData = []byte(restorePristineCommitCleanup(t, string(data)))
+		if !engineFiles[name] {
+			writeInventoryLine(wrapper, name, data)
 		}
-		writeInventoryLine(patched, name, data)
-		writeInventoryLine(pristine, name, pristineData)
 	}
-	if got := hex.EncodeToString(patched.Sum(nil)); got != patchedSQLCipherRuntimeTreeSHA256 {
-		t.Fatalf("patched SQLCipher runtime tree hash = %s, want %s", got, patchedSQLCipherRuntimeTreeSHA256)
+	if got := hex.EncodeToString(tree.Sum(nil)); got != sqlCipherRuntimeTreeSHA256 {
+		t.Fatalf("SQLCipher runtime tree hash = %s, want %s", got, sqlCipherRuntimeTreeSHA256)
 	}
-	if got := hex.EncodeToString(pristine.Sum(nil)); got != pristineSQLCipherRuntimeTreeSHA256 {
-		t.Fatalf("pristine SQLCipher runtime tree hash = %s, want %s", got, pristineSQLCipherRuntimeTreeSHA256)
+	if got := hex.EncodeToString(wrapper.Sum(nil)); got != publishedWrapperTreeSHA256 {
+		t.Fatalf("go-sqlcipher v4.4.2 wrapper tree hash = %s, want %s", got, publishedWrapperTreeSHA256)
+	}
+}
+
+// TestEngineReportsTheVendoredVersions checks the versions of the engine
+// that is actually linked, not just the source text.
+func TestEngineReportsTheVendoredVersions(t *testing.T) {
+	// cipher_provider answers only on a keyed database.
+	conn, err := sql.Open(Name, compatibilityDSN(filepath.Join(t.TempDir(), "version.db"), compatibilityKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	var sqlite, cipher, provider string
+	if err := conn.QueryRow("SELECT sqlite_version()").Scan(&sqlite); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow("PRAGMA cipher_version").Scan(&cipher); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow("PRAGMA cipher_provider").Scan(&provider); err != nil {
+		t.Fatal(err)
+	}
+	if sqlite != "3.54.1" || !strings.HasPrefix(cipher, "4.20.0 ") || provider != "libtomcrypt" {
+		t.Fatalf("engine = SQLite %s, SQLCipher %q, provider %q; want 3.54.1, 4.20.0, libtomcrypt", sqlite, cipher, provider)
 	}
 }
 
@@ -83,7 +127,8 @@ func assertSHA256(t *testing.T, name string, data []byte, want string) {
 	}
 }
 
-// restorePristineCommitCleanup keeps the compatibility helper byte-identical to v4.4.2.
+// restorePristineCommitCleanup reverses GoPMgr's changes to sqlite3.go and
+// checks the result is byte-identical to go-sqlcipher v4.4.2.
 func restorePristineCommitCleanup(t *testing.T, patched string) string {
 	t.Helper()
 	for _, change := range [][2]string{

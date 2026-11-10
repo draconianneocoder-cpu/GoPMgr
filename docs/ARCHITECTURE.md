@@ -132,12 +132,13 @@ Project databases can be SQLCipher-encrypted with a per-user DEK. The
 DEK is wrapped by the login password and by each valid recovery code so
 password recovery can preserve encrypted projects.
 
-`internal/sqlitedriver` compiles the v4.4.2 SQLCipher-capable driver from the
-runtime-only source copy under `third_party/go-sqlcipher`. That copy carries a
-narrow upstream SQLite WAL-reset correction: a PASSIVE checkpoint refuses to
-backfill frames when a writer has reset the WAL generation since the
-checkpoint cached its header. The change does not alter keys, schemas, journal
-mode, database format, or existing Go driver signatures. Failed COMMITs attempt
+`internal/sqlitedriver` compiles the SQLCipher-capable driver from the
+runtime-only source copy under `third_party/go-sqlcipher`: the go-sqlcipher
+v4.4.2 Go bindings with the SQLCipher 4.20.0 engine (SQLite 3.54.1, upgraded
+2026-11-10). The upgrade did not alter keys, schemas, journal mode, database
+format, or existing Go driver signatures. A page that fails to decrypt puts
+its connection into a permanent error state, so repair rebuilds on a fresh
+connection. Failed COMMITs attempt
 rollback. A failed driver-transaction ROLLBACK uses the same cleanup rule: connections
 whose transaction remains active are refused and evicted, while already-rolled-back
 connections stay usable. See the [COMMIT](testing/sqlcipher-commit-cleanup.md)

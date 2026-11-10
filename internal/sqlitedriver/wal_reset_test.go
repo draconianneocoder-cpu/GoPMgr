@@ -5,8 +5,6 @@ package sqlitedriver
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +14,12 @@ import (
 	"time"
 )
 
-const pristineSQLCipherAmalgamationSHA256 = "f0653cb9b6a67123f1c6059fa746a6c49e23ef67eb5c1c4508b2c543eb2d35d5"
+// walResetGuard is SQLite's own check (upstream fe57e14b, in every release
+// since 3.52.0) that a writer has not reset the WAL since the checkpoint read
+// its header. Before the SQLCipher 4.20.0 upgrade GoPMgr carried it as a
+// local backport; the control below removes it to prove the harness still
+// detects the defect.
+const walResetGuard = "      int bChg = memcmp(pLive->aSalt, pWal->hdr.aSalt, sizeof(pWal->hdr.aSalt));\n"
 
 func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -31,8 +34,11 @@ func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 	if strings.Count(string(core), anchor) != 1 {
 		t.Fatal("checkpoint instrumentation anchor changed")
 	}
-	patched := string(core)
-	pristine := restorePristineWALCheckpoint(t, patched)
+	current := string(core)
+	if strings.Count(current, walResetGuard) != 1 {
+		t.Fatal("SQLite's WAL-reset guard changed; re-derive the control")
+	}
+	unguarded := strings.Replace(current, walResetGuard, "      int bChg = 0;\n", 1)
 	harness, err := os.ReadFile("testdata/wal_reset.c")
 	if err != nil {
 		t.Fatal(err)
@@ -51,15 +57,15 @@ func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, fixed := range []bool{false, true} {
-		name := "pristine-control"
+		name := "guard-removed-control"
 		if fixed {
-			name = "patched"
+			name = "vendored"
 		}
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			text := pristine
+			text := unguarded
 			if fixed {
-				text = patched
+				text = current
 			}
 			text = strings.Replace(text, anchor, "  (void)sqlite3FaultSim(660);\n"+anchor, 1)
 			for name, data := range map[string][]byte{"sqlite3.c": []byte(text), "harness.c": harness} {
@@ -69,7 +75,7 @@ func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 			}
 			binary := filepath.Join(dir, "harness")
 			args := append([]string{}, compiler[1:]...)
-			args = append(args, "-std=gnu99", "-O0", "-g", "-DSQLITE_THREADSAFE=1", "-DSQLITE_HAS_CODEC", "-DSQLCIPHER_CRYPTO_LIBTOMCRYPT", "-DLTC_NO_ASM", "-DNDEBUG", "-DSQLITE_TEMP_STORE=2", "-I"+absSource, "harness.c")
+			args = append(args, "-std=gnu99", "-O0", "-g", "-DSQLITE_THREADSAFE=1", "-DSQLITE_HAS_CODEC", "-DSQLCIPHER_CRYPTO_LIBTOMCRYPT", "-DLTC_NO_ASM", "-DNDEBUG", "-DSQLITE_TEMP_STORE=2", "-DSQLITE_EXTRA_INIT=sqlcipher_extra_init", "-DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown", "-I"+absSource, "harness.c")
 			if os.Getenv("GOPMGR_SQLCIPHER_ASAN") == "1" {
 				args = append(args, "-fsanitize=address")
 			}
@@ -97,7 +103,7 @@ func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 				t.Logf("keyed=%s: %s", keyed, out)
 				if fixed {
 					if err != nil || !strings.Contains(string(out), "WAL_RESET_PASS") {
-						t.Fatalf("patched harness: %v\n%s", err, out)
+						t.Fatalf("vendored engine: %v\n%s", err, out)
 					}
 				} else {
 					exit, ok := err.(*exec.ExitError)
@@ -108,40 +114,6 @@ func TestWALResetCheckpointPreservesCommittedData(t *testing.T) {
 			}
 		})
 	}
-}
-
-func restorePristineWALCheckpoint(t *testing.T, patched string) string {
-	t.Helper()
-	startMarker := "      WalIndexHdr *pLive = (WalIndexHdr*)walIndexHdr(pWal);\n"
-	guardMarker := "      if( 0==memcmp(pLive->aSalt, pWal->hdr.aSalt, sizeof(pWal->hdr.aSalt)) ){\n"
-	releaseMarker := "\n      /* Release the reader lock held while backfilling */"
-	start := strings.Index(patched, startMarker)
-	guard := strings.Index(patched, guardMarker)
-	release := strings.Index(patched, releaseMarker)
-	if start < 0 || guard < start || release < guard || strings.Count(patched, startMarker) != 1 || strings.Count(patched, guardMarker) != 1 {
-		t.Fatal("WAL-reset backport markers changed")
-	}
-	bodyStart := guard + len(guardMarker)
-	body := patched[bodyStart:release]
-	if !strings.HasSuffix(body, "      }\n") {
-		t.Fatal("WAL-reset backport closing guard changed")
-	}
-	body = strings.TrimSuffix(body, "      }\n")
-	lines := strings.Split(body, "\n")
-	for i, line := range lines {
-		if line != "" {
-			if !strings.HasPrefix(line, "  ") {
-				t.Fatalf("WAL-reset backport line %d cannot be unindented", i+1)
-			}
-			lines[i] = strings.TrimPrefix(line, "  ")
-		}
-	}
-	pristine := patched[:start] + strings.Join(lines, "\n") + patched[release:]
-	sum := sha256.Sum256([]byte(pristine))
-	if got := hex.EncodeToString(sum[:]); got != pristineSQLCipherAmalgamationSHA256 {
-		t.Fatalf("reconstructed pristine SQLCipher amalgamation hash = %s, want %s", got, pristineSQLCipherAmalgamationSHA256)
-	}
-	return pristine
 }
 
 func runNativeCommand(t *testing.T, dir, command string, args ...string) string {

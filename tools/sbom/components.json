@@ -80,7 +80,7 @@
     "github.com/mutecomm/go-sqlcipher/v4": {
       "license": "MIT AND BSD-3-Clause AND blessing AND Unlicense",
       "producer": "Yasuhiro Matsumoto",
-      "local_note": "Built from the repository copy in third_party/go-sqlcipher (published v4.4.2 plus GoPMgr corrections); see third_party/go-sqlcipher/GOPMGR.md"
+      "local_note": "Built from the repository copy in third_party/go-sqlcipher (published v4.4.2 bindings with the SQLCipher 4.20.0 engine and GoPMgr corrections); see third_party/go-sqlcipher/GOPMGR.md"
     },
     "github.com/pierrec/lz4/v4": {
       "license": "BSD-3-Clause",
@@ -183,19 +183,19 @@
     {
       "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
       "name": "SQLite",
-      "version": "3.33.0",
+      "version": "3.54.1",
       "producer": "",
       "license": "blessing",
-      "cpe": "cpe:2.3:a:sqlite:sqlite:3.33.0:*:*:*:*:*:*:*",
-      "note": "Compiled from the amalgamation in third_party/go-sqlcipher, with a WAL-reset correction backported from SQLite fe57e14b49f9189b56da8233ab3415ce5ff6b1ff; the SQLite authors dedicate the code to the public domain and name no copyright holder"
+      "cpe": "cpe:2.3:a:sqlite:sqlite:3.54.1:*:*:*:*:*:*:*",
+      "note": "Compiled from the unmodified SQLCipher v4.20.0 amalgamation in third_party/go-sqlcipher; the SQLite authors dedicate the code to the public domain and name no copyright holder"
     },
     {
       "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
       "name": "SQLCipher",
-      "version": "4.4.2",
+      "version": "4.20.0",
       "producer": "Zetetic LLC",
       "license": "BSD-3-Clause",
-      "cpe": "cpe:2.3:a:zetetic:sqlcipher:4.4.2:*:*:*:*:*:*:*",
+      "cpe": "cpe:2.3:a:zetetic:sqlcipher:4.20.0:*:*:*:*:*:*:*",
       "note": "Codec compiled from third_party/go-sqlcipher"
     },
     {

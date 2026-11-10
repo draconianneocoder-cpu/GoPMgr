@@ -26,11 +26,12 @@ key (DEK). The DEK is wrapped by the login password and by each valid recovery
 code. New project databases are encrypted by default; eligible plaintext
 projects can be migrated from Project Settings.
 
-The project currently builds a runtime subset of v4.4.2 with
-an upstream SQLite WAL-reset correctness backport and a Go-side transaction
-cleanup correction. This is a maintenance constraint, not a new encryption
-design: the SQLCipher version, key handling, codec provider, page format,
-journal mode, and existing public driver signatures remain unchanged.
+The project builds a runtime subset of go-sqlcipher v4.4.2 with a Go-side
+transaction cleanup correction and, since 2026-11-10, the SQLCipher 4.20.0
+engine (SQLite 3.54.1) in place of 4.4.2. This is a maintenance constraint,
+not a new encryption design: key handling, codec provider, the SQLCipher 4
+page format, journal mode, and existing public driver signatures remain
+unchanged ([upgrade evidence](../testing/sqlcipher-4.20-upgrade.md)).
 The additive `IsValid` method enables safe pool eviction. The local replacement
 may be removed only after a containing
 upstream driver release passes the causal WAL-reset and old/new encrypted-file
@@ -98,8 +99,8 @@ not yet empirically verified.
 
 `internal/crypto`, `internal/users`, and `internal/db` cover DEK wrapping,
 wrong-key rejection, encrypted opens, migration, and recovery-code behavior.
-`internal/sqlitedriver` additionally proves the pristine WAL-reset failure,
-the corrected plaintext and keyed behavior, source provenance, and bidirectional
-encrypted-file interchange with unmodified v4.4.2.
+`internal/sqlitedriver` additionally proves the WAL-reset scenario (with a
+control that removes SQLite's check), source provenance, and that files written
+by the previous 4.4.2 engine open, verify and accept writes.
 `make check-encrypted-db` and `make check-release` are the release gates for
 the encrypted database contract.

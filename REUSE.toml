@@ -129,6 +129,12 @@ SPDX-FileCopyrightText = "2026 The Compact ICC Profiles contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
+path = "internal/sqlitedriver/testdata/sqlcipher-4.4.2-*.db"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "internal/crypto/testdata/testonly-*.p12"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
@@ -313,7 +319,7 @@ SPDX-License-Identifier = "Unlicense"
 [[annotations]]
 path = "third_party/go-sqlcipher/sqlite3.c"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2008-2013 ZETETIC LLC and the SQLite contributors"
+SPDX-FileCopyrightText = "2008-2025 ZETETIC LLC and the SQLite contributors"
 SPDX-License-Identifier = "BSD-3-Clause AND blessing"
 
 [[annotations]]

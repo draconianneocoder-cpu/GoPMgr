@@ -33,7 +33,7 @@ cp "$WAILS_WINDOWS/icon.ico" "$TEST_ROOT/build/windows/icon.ico"
 cp "$ROOT/LICENSES/GPL-3.0-or-later.txt" "$TEST_ROOT/LICENSES/GPL-3.0-or-later.txt"
 cp "$ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt" \
 	"$TEST_ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"
-for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2008, ZETETIC LLC" "2018 segment.com"; do
+for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2025, ZETETIC LLC" "2018 segment.com"; do
 	if ! grep -Fq "$marker" "$TEST_ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"; then
 		echo "validate-windows-nsis-template: SQLCipher notices lack $marker." >&2
 		exit 1

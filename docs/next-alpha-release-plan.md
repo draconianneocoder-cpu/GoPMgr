@@ -73,8 +73,10 @@ Before the tag, also require:
 - a recorded recovery action for any schema or encryption migration included
   since the prior alpha.
 - `make check-encrypted-db` from the candidate commit, including the SQLCipher
-  source-provenance, pristine/fixed WAL-reset, and v4.4.2/local encrypted-file
-  interchange tests. A future SQLCipher source refresh must update the pinned
+  source-provenance, WAL-reset (with its guard-removed control), and
+  old-engine fixture tests. The Windows build of the SQLCipher 4.20.0 engine
+  must also be built and run on Windows; it is unverified
+  ([evidence](testing/sqlcipher-4.20-upgrade.md)). A future SQLCipher source refresh must update the pinned
   provenance and retain equivalent evidence before a tag.
 
 ## Platform evidence matrix
