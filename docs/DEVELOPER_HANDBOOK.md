@@ -1167,6 +1167,12 @@ runs them alongside parallel tests. In `internal/users`, every other test
 calls `t.Parallel()`, and the helpers that replace state call
 `requireSerial(t)`, which makes a parallel caller fail at once.
 
+Shared account setups in `internal/users` come from store templates built once
+in `TestMain` (`fixture_test.go`); a helper such as `escrowStore` hands each
+test its own copy. Never open a template itself: the run fails if a
+template's files change. Tests of account creation or recovery-code issuance
+should still call the real functions.
+
 ### 13.10 Encryption tests
 
 Encryption work should cover the relevant subset of:

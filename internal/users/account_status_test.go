@@ -37,13 +37,9 @@ func seedHistoricalAccount(t *testing.T, store *Store, username, statement strin
 // (standard), both created through the store directly.
 func newStatusStore(t *testing.T) *Store {
 	t.Helper()
-	store := openTestStore(t)
-	if _, err := store.CreateAccount("alice", "Alice", statusPassword, true); err != nil {
-		t.Fatalf("create alice: %v", err)
-	}
-	if _, err := store.CreateAccount("bob", "Bob", statusPassword, false); err != nil {
-		t.Fatalf("create bob: %v", err)
-	}
+	// A copy of the status template: administrator alice and standard bob
+	// (built by buildStatusTemplate).
+	store, _, _ := storeFromTemplate(t, templates.status)
 	return store
 }
 

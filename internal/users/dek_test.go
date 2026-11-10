@@ -6,7 +6,6 @@ package users
 import (
 	"bytes"
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,15 +14,10 @@ import (
 
 func newDEKTestStore(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(filepath.Join(t.TempDir(), "root"))
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = s.Close() })
-	if _, err := s.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
-	}
-	return s
+	// A copy of the DEK template: standard account alice under a root named
+	// "root" (built by buildDEKTemplate).
+	store, _, _ := storeFromTemplate(t, templates.dek)
+	return store
 }
 
 func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {

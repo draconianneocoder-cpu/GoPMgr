@@ -19,8 +19,10 @@ import (
 // created the escrow key at her first session, and alice's DEK.
 func escrowStore(t *testing.T) (*Store, []byte) {
 	t.Helper()
-	store := openTestStore(t)
-	return store, firstAdmin(t, store)
+	// A copy of the escrow template: alice, the super administrator, with
+	// her escrow session enrolled (built by buildEscrowTemplate).
+	store, dek, _ := storeFromTemplate(t, templates.escrow)
+	return store, dek
 }
 
 func firstAdmin(t *testing.T, store *Store) []byte {

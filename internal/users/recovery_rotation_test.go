@@ -15,12 +15,9 @@ import (
 // set of recovery codes.
 func newRotationStore(t *testing.T) (*Store, []byte, []string) {
 	t.Helper()
-	store, dek := newPasswordStore(t)
-	codes, err := store.IssueRecoveryCodes("alice", dek)
-	if err != nil {
-		t.Fatalf("IssueRecoveryCodes: %v", err)
-	}
-	return store, dek, codes
+	// A copy of the rotation template: the password template plus alice's
+	// recovery codes (built by buildRotationTemplate).
+	return storeFromTemplate(t, templates.rotation)
 }
 
 // resetRecoversKey resets alice's password with code and reports whether

@@ -20,14 +20,9 @@ const (
 // oldPassword.
 func newPasswordStore(t *testing.T) (*Store, []byte) {
 	t.Helper()
-	store := openTestStore(t)
-	if _, err := store.CreateAccount("alice", "Alice", oldPassword, true); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
-	}
-	dek, err := unlockDEK(store, "alice", oldPassword)
-	if err != nil {
-		t.Fatalf("UnlockDEK: %v", err)
-	}
+	// A copy of the password template: administrator alice with oldPassword,
+	// and her unlocked key (built by buildPasswordTemplate).
+	store, dek, _ := storeFromTemplate(t, templates.password)
 	return store, dek
 }
 
