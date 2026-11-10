@@ -23,22 +23,34 @@ function svelteFiles(dir: string): string[] {
   });
 }
 
+// removeAll deletes every match of pattern, again and again until a pass
+// finds none.
+function removeAll(text: string, pattern: RegExp): string {
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(pattern, '');
+  } while (text !== previous);
+  return text;
+}
+
 // literalText returns the text a person would read that is written into the
 // markup: text between tags, and the placeholder, aria-label, title, label,
 // and alt attributes. Anything inside {braces}, such as {t('key')}, is code.
 export function literalText(source: string): string[] {
-  // Each removal repeats until nothing changes, so that removing one block
-  // cannot leave the start of another behind ("<scr<script></script>ipt>").
-  // Closing tags may carry spaces or attributes, in any letter case.
+  // Removing one block can join the halves of another
+  // ("<scr<script></script>ipt>"), so every removal repeats until nothing
+  // changes, and the four repeat together for the same reason. Closing tags
+  // may carry spaces or attributes, in any letter case.
   let markup = source;
-  for (let previous = ''; previous !== markup; ) {
-    previous = markup;
-    markup = markup
-      .replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, '')
-      .replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, '')
-      .replace(/<!--[\s\S]*?--!?>/g, '')
-      .replace(/\{[^{}]*\}/g, '');
-  }
+  let before: string;
+  do {
+    before = markup;
+    markup = removeAll(markup, /<script\b[\s\S]*?<\/script\b[^>]*>/gi);
+    markup = removeAll(markup, /<style\b[\s\S]*?<\/style\b[^>]*>/gi);
+    markup = removeAll(markup, /<!--[\s\S]*?--!?>/g);
+    markup = removeAll(markup, /\{[^{}]*\}/g);
+  } while (markup !== before);
   const hasWords = (text: string) => /\p{L}{2}/u.test(text);
   const between = Array.from(markup.matchAll(/>([^<>]+)</g), (m) => m[1].trim()).filter(hasWords);
   const attributes = Array.from(

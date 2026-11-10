@@ -222,7 +222,7 @@
     {
       "method": "AdminViewCosts",
       "file": "internal/desktop/app_admin_view.go",
-      "line": 128,
+      "line": 130,
       "params": "",
       "returns": "AdminViewCostsWire, error",
       "uses_internal_packages": [
@@ -232,7 +232,7 @@
     {
       "method": "AdminViewDocuments",
       "file": "internal/desktop/app_admin_view.go",
-      "line": 166,
+      "line": 168,
       "params": "",
       "returns": "[]AdminViewDocumentWire, error",
       "uses_internal_packages": [
@@ -315,7 +315,7 @@
     {
       "method": "BuildTimeline",
       "file": "internal/desktop/app_foundation.go",
-      "line": 556,
+      "line": 558,
       "params": "",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": []
@@ -334,7 +334,7 @@
     {
       "method": "CheckLatestVersion",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1090,
+      "line": 1092,
       "params": "",
       "returns": "update.Status, error",
       "uses_internal_packages": [
@@ -352,7 +352,7 @@
     {
       "method": "ChooseCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1128,
+      "line": 1130,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -360,7 +360,7 @@
     {
       "method": "ChooseTSARootCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1148,
+      "line": 1150,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -397,7 +397,7 @@
     {
       "method": "CompareScheduleBaseline",
       "file": "internal/desktop/app_charts.go",
-      "line": 287,
+      "line": 289,
       "params": "chartID string, baselineID string",
       "returns": "map[string]kernel.ScheduleVariance, error",
       "uses_internal_packages": [
@@ -416,7 +416,7 @@
     {
       "method": "ComputeBudget",
       "file": "internal/desktop/app_foundation.go",
-      "line": 831,
+      "line": 833,
       "params": "",
       "returns": "BudgetSummaryWire, error",
       "uses_internal_packages": [
@@ -457,7 +457,7 @@
     {
       "method": "ComputeScheduleEVM",
       "file": "internal/desktop/app_charts.go",
-      "line": 340,
+      "line": 344,
       "params": "chartID string, asOfDate string",
       "returns": "kernel.EVMetrics, error",
       "uses_internal_packages": [
@@ -581,7 +581,7 @@
     {
       "method": "DeleteScheduleBaseline",
       "file": "internal/desktop/app_charts.go",
-      "line": 265,
+      "line": 267,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -633,7 +633,7 @@
     {
       "method": "DownloadAndInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1105,
+      "line": 1107,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -685,7 +685,7 @@
     {
       "method": "ExportChartMonteCarloRiskReport",
       "file": "internal/desktop/app_charts.go",
-      "line": 420,
+      "line": 426,
       "params": "chartID string, iterations int, workers int",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -767,7 +767,7 @@
     {
       "method": "ExportDocumentPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 1175,
+      "line": 1189,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -777,7 +777,7 @@
     {
       "method": "ExportDocumentPDFGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 1248,
+      "line": 1262,
       "params": "id string, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -789,7 +789,7 @@
     {
       "method": "ExportDocumentPDFSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 1291,
+      "line": 1305,
       "params": "id string, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -891,7 +891,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 766,
+      "line": 772,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1001,7 +1001,7 @@
     {
       "method": "ImportDatasetForAnalysis",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1057,
+      "line": 1059,
       "params": "",
       "returns": "analytics.Dataset, error",
       "uses_internal_packages": [
@@ -1021,7 +1021,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 895,
+      "line": 903,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1069,7 +1069,7 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 539,
+      "line": 545,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
@@ -1200,7 +1200,7 @@
     {
       "method": "ListHolidays",
       "file": "internal/desktop/app_foundation.go",
-      "line": 808,
+      "line": 810,
       "params": "fromISO string, toISO string",
       "returns": "[]calendar.HolidayEvent, error",
       "uses_internal_packages": [
@@ -1262,7 +1262,7 @@
     {
       "method": "ListScheduleBaselines",
       "file": "internal/desktop/app_charts.go",
-      "line": 249,
+      "line": 251,
       "params": "chartID string",
       "returns": "[]db.Baseline, error",
       "uses_internal_packages": []
@@ -1313,7 +1313,7 @@
     {
       "method": "MoveTimelineEntry",
       "file": "internal/desktop/app_foundation.go",
-      "line": 568,
+      "line": 570,
       "params": "kind string, sourceID string, dateISO string",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": [
@@ -1407,7 +1407,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 690,
+      "line": 696,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [
@@ -1438,7 +1438,7 @@
     {
       "method": "QuitToInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1121,
+      "line": 1123,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -1505,7 +1505,7 @@
     {
       "method": "RunChartMonteCarlo",
       "file": "internal/desktop/app_charts.go",
-      "line": 387,
+      "line": 393,
       "params": "chartID string, iterations int, workers int",
       "returns": "kernel.SimResult, error",
       "uses_internal_packages": [
@@ -1516,7 +1516,7 @@
     {
       "method": "RunPortfolioAnalytics",
       "file": "internal/desktop/app_foundation.go",
-      "line": 866,
+      "line": 868,
       "params": "",
       "returns": "PortfolioSummaryWire, error",
       "uses_internal_packages": [

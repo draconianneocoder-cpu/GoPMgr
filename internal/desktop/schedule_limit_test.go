@@ -109,16 +109,61 @@ func TestStoredOverlongChartIsRefusedByEveryReader(t *testing.T) {
 	if _, err := app.RunChartMonteCarlo(c.ID, 10, 1); err == nil || !strings.Contains(err.Error(), "longer than 18250 working days") {
 		t.Errorf("RunChartMonteCarlo = %v, want the schedule-length refusal", err)
 	}
-	// The histogram ignores the scheduling result; it must come back with a
-	// one-day profile rather than a billion-day one.
-	hist, err := app.GenerateResourceHistogram(c.ID)
+	_, err = app.GenerateResourceHistogram(c.ID)
+	assertScheduleTooLong(t, "GenerateResourceHistogram", err)
+	_, err = app.SetScheduleBaseline(c.ID, "b")
+	assertScheduleTooLong(t, "SetScheduleBaseline", err)
+	_, err = app.ComputeScheduleEVM(c.ID, "2026-01-06")
+	assertScheduleTooLong(t, "ComputeScheduleEVM", err)
+}
+
+// Each task is within the limit but the chain is not. The scheduler clears
+// every date, and earned value computed from cleared dates would count the
+// successor as planned from day one. Reports must refuse instead.
+func TestReportsRefuseAChainBeyondTheLimit(t *testing.T) {
+	app, d := scheduleLimitApp(t)
+	const chain = `{"nodes":[{"id":"A","label":"Long lead","duration":18250},` +
+		`{"id":"B","label":"Fit out","duration":1,"budgeted_cost":100}],"edges":[{"from":"A","to":"B"}]}`
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Chain", Data: chain})
 	if err != nil {
-		t.Fatalf("GenerateResourceHistogram: %v", err)
+		t.Fatalf("store chart directly: %v", err)
 	}
-	if len(hist.Data) > 4096 {
-		t.Errorf("histogram data is %d bytes; the over-long schedule was not bounded", len(hist.Data))
+	refusals := map[string]func() error{
+		"ComputeScheduleEVM":  func() error { _, err := app.ComputeScheduleEVM(c.ID, "2026-01-06"); return err },
+		"SetScheduleBaseline": func() error { _, err := app.SetScheduleBaseline(c.ID, "b"); return err },
+		"LayoutChart":         func() error { _, err := app.LayoutChart(c.ID); return err },
+		"scheduleProjectTasks": func() error {
+			tasks, err := cpmChartDataToKernelTasks(chain)
+			if err != nil {
+				return err
+			}
+			proj, err := d.GetProject()
+			if err != nil {
+				return err
+			}
+			return scheduleProjectTasks(proj, tasks)
+		},
 	}
-	if _, err := app.SetScheduleBaseline(c.ID, "b"); err != nil {
-		t.Errorf("SetScheduleBaseline: %v", err)
+	for name, call := range refusals {
+		err := call()
+		if !errors.Is(err, kernel.ErrScheduleTooLong) || !strings.Contains(err.Error(), `task "Fit out" would finish on working day 18251`) {
+			t.Errorf("%s = %v, want the schedule-length refusal naming the task", name, err)
+		}
+	}
+}
+
+func TestReportsRefuseACyclicSchedule(t *testing.T) {
+	app, d := scheduleLimitApp(t)
+	const cyclic = `{"nodes":[{"id":"A","label":"A","duration":1,"budgeted_cost":100},{"id":"B","label":"B","duration":1}],` +
+		`"edges":[{"from":"A","to":"B"},{"from":"B","to":"A"}]}`
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Cyclic", Data: cyclic})
+	if err != nil {
+		t.Fatalf("store chart directly: %v", err)
+	}
+	if _, err := app.ComputeScheduleEVM(c.ID, "2026-01-06"); !errors.Is(err, errScheduleCycle) {
+		t.Errorf("ComputeScheduleEVM = %v, want the dependency-cycle refusal", err)
+	}
+	if _, err := app.SetScheduleBaseline(c.ID, "b"); !errors.Is(err, errScheduleCycle) {
+		t.Errorf("SetScheduleBaseline = %v, want the dependency-cycle refusal", err)
 	}
 }

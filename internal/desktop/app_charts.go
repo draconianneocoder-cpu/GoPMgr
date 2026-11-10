@@ -232,7 +232,9 @@ func (a *App) SetScheduleBaseline(chartID, name string) (db.Baseline, error) {
 	if len(tasks) == 0 {
 		return db.Baseline{}, errors.New("chart has no tasks to baseline")
 	}
-	scheduleProjectTasks(proj, tasks)
+	if err := scheduleProjectTasks(proj, tasks); err != nil {
+		return db.Baseline{}, err
+	}
 	blob, err := json.Marshal(tasks)
 	if err != nil {
 		return db.Baseline{}, err
@@ -327,7 +329,9 @@ func (a *App) CompareScheduleBaseline(chartID, baselineID string) (map[string]ke
 	if err != nil {
 		return nil, err
 	}
-	scheduleProjectTasks(proj, current)
+	if err := scheduleProjectTasks(proj, current); err != nil {
+		return nil, err
+	}
 
 	return kernel.CompareSchedules(current, baseline), nil
 }
@@ -362,7 +366,9 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 	if len(tasks) == 0 {
 		return kernel.EVMetrics{}, errors.New("chart has no tasks")
 	}
-	scheduleProjectTasks(proj, tasks)
+	if err := scheduleProjectTasks(proj, tasks); err != nil {
+		return kernel.EVMetrics{}, err
+	}
 
 	asOf := time.Now().UTC()
 	if asOfDate != "" {
@@ -783,7 +789,9 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 	if len(tasks) == 0 {
 		return db.Chart{}, errors.New("chart has no tasks")
 	}
-	scheduleProjectTasks(proj, tasks)
+	if err := scheduleProjectTasks(proj, tasks); err != nil {
+		return db.Chart{}, err
+	}
 
 	usage := kernel.ResourceUsage(tasks)
 	if len(usage) == 0 {

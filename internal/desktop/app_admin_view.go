@@ -91,7 +91,9 @@ func (a *App) AdminViewSchedule() ([]AdminViewScheduleWire, error) {
 				out = append(out, sched)
 				continue
 			}
-			scheduleProjectTasks(proj, tasks)
+			if err := scheduleProjectTasks(proj, tasks); err != nil {
+				sched.Note = "This schedule could not be computed: " + err.Error() + "."
+			}
 			for _, t := range tasks {
 				sched.Tasks = append(sched.Tasks, AdminViewTaskWire{
 					ID: t.ID, Title: t.Title, StartDate: t.StartDate, FinishDate: t.FinishDate,
