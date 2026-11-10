@@ -21,6 +21,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import BaselineList from './BaselineList.svelte';
   import { GANTT_ROW_H as rowH, type GanttLayout, type GanttRow } from './gantt_geometry';
   import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
+  import { formatList, formatTime, t } from '../../i18n/i18n.svelte';
+
+  // Link-label syntax samples. They are input syntax, not text to translate.
+  const LINK_TYPE_EXAMPLE = 'FS';
+  const LINK_LAG_EXAMPLE = 'FS+1';
 
   interface GNode {
     id: string;
@@ -63,7 +68,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
-      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      loadError = t('chart.loadFailed', { error: String(err?.message ?? err) });
       return;
     }
     try {
@@ -114,7 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const saved = await refreshLayout();
     saving = false;
     if (!status) {
-      status = 'Saved';
+      status = t('chart.saved');
       clearStatusAfter(2000);
     }
     return saved;
@@ -125,7 +130,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       await desktopApi.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
-      status = 'Baseline set';
+      status = t('chart.baselineSet');
       clearStatusAfter(2000);
     } catch (err: any) {
       status = String(err?.message ?? err);
@@ -190,7 +195,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     let suffix = doc.nodes.length + 1;
     while (usedIDs.has(`task-${suffix}`)) suffix += 1;
     const id = `task-${suffix}`;
-    doc.nodes.push({ id, label: 'New task', duration: 1, percent_complete: 0 });
+    doc.nodes.push({ id, label: t('chart.newTask'), duration: 1, percent_complete: 0 });
     onEdit();
   }
 
@@ -199,7 +204,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     doc.nodes = doc.nodes.filter((n) => n.id !== id);
     doc.edges = doc.edges.filter((e) => e.from !== id && e.to !== id);
     onEdit();
-    showToast('Task deleted', {
+    showToast(t('chart.taskDeleted'), {
       type: 'info',
       undo: () => {
         doc = before;
@@ -243,24 +248,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const n = layout.rows.length;
     const critical = layout.rows.filter((r) => r.is_critical).length;
     const days = Math.max(0, Math.ceil(layout.horizon));
-    let s = `Gantt chart: ${n} task${n === 1 ? '' : 's'} across ${days} day${days === 1 ? '' : 's'}`;
-    if (critical > 0) s += `, ${critical} on the critical path`;
-    return s + '.';
+    const counts = { tasks: t('gantt.summary.tasks', { count: n }), days: t('gantt.summary.days', { count: days }) };
+    return critical > 0 ? t('gantt.summary.critical', { ...counts, critical }) : t('gantt.summary', counts);
   });
 
   function barTitle(r: GanttRow): string {
-    const parts = [r.label || '(untitled task)'];
+    const parts = [r.label || t('gantt.bar.untitled')];
     if (r.milestone) {
-      parts.push(`milestone at day ${r.es}`);
+      parts.push(t('gantt.bar.milestone', { day: r.es }));
     } else {
-      parts.push(`day ${r.es} to ${r.ef}`);
-      if (r.percent_complete > 0) parts.push(`${Math.min(100, r.percent_complete)}% complete`);
+      parts.push(t('gantt.bar.days', { start: r.es, finish: r.ef }));
+      if (r.percent_complete > 0) parts.push(t('gantt.bar.complete', { percent: Math.min(100, r.percent_complete) }));
     }
-    if (r.is_critical) parts.push('critical path');
-    if (r.overallocated) parts.push('resource overallocated');
-    if (r.constraint_violated) parts.push('constraint violated');
-    if (r.start_date && r.finish_date) parts.push(`${r.start_date} to ${r.finish_date}`);
-    return parts.join(', ') + '.';
+    if (r.is_critical) parts.push(t('gantt.bar.critical'));
+    if (r.overallocated) parts.push(t('gantt.bar.overallocated'));
+    if (r.constraint_violated) parts.push(t('gantt.bar.constraintViolated'));
+    if (r.start_date && r.finish_date) parts.push(t('gantt.bar.dates', { start: r.start_date, finish: r.finish_date }));
+    return t('common.sentence', { text: formatList(parts) });
   }
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -296,7 +300,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="text-center space-y-4 px-6">
       <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
       <Button variant="primary" size="md" onclick={() => goto('dashboard')}>
-        Back to dashboard
+        {t('chart.backToDashboard')}
       </Button>
     </div>
   </div>
@@ -305,28 +309,28 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
       <Button variant="nav" onclick={() => goto('dashboard')}>
-        &larr; Dashboard
+        {t('chart.dashboard')}
       </Button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Gantt Chart</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{t('gantt.title')}</h1>
       {#if status}<span class="text-xs text-cyan-300" role="status" aria-live="polite">{status}</span>{/if}
     </div>
     <div class="flex items-center gap-2">
       {#if lastSavedAt}
-        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
-          Saved {lastSavedAt.toLocaleTimeString()}
+        <span class="text-[10px] text-slate-500 tabular-nums" title={t('chart.autosaveHint')}>
+          {t('chart.savedAt', { time: formatTime(lastSavedAt) })}
         </span>
       {/if}
-      <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
-      <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
-      <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>
+      <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomOut')}>−</button>
+      <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomIn')}>+</button>
+      <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title={t('gantt.setBaseline.hint')}>{t('chart.setBaseline')}</button>
       {#if session.editingId}
         <BaselineList chartId={session.editingId} onchange={refreshBaseline} />
       {/if}
-      <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Check (read-only) whether splitting tasks across non-contiguous days would clear overallocation. Nothing is saved.">Preview splitting</button>
-      <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Level resources allowing tasks to be split across non-contiguous days; split tasks render as interrupted bars">Level (split)</button>
-      <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Task</button>
+      <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title={t('chart.previewSplitting.hint')}>{t('chart.previewSplitting')}</button>
+      <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title={t('gantt.levelSplit.hint')}>{t('gantt.levelSplit')}</button>
+      <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">{t('chart.addTask')}</button>
       <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
-        {saving ? 'Saving...' : 'Save'}
+        {saving ? t('common.saving') : t('common.save')}
       </button>
     </div>
   </header>
@@ -337,10 +341,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <table class="w-full text-xs">
         <thead class="text-slate-500 uppercase text-[10px] sticky top-0 bg-slate-950">
           <tr>
-            <th class="text-left p-2">Task</th>
-            <th class="w-14 p-1">Days</th>
+            <th class="text-left p-2">{t('chart.task')}</th>
+            <th class="w-14 p-1">{t('gantt.days')}</th>
             <th class="w-12 p-1">%</th>
-            <th class="w-8 p-1" title="Milestone">◆</th>
+            <th class="w-8 p-1" title={t('chart.milestone')}>◆</th>
             <th class="w-8"></th>
           </tr>
         </thead>
@@ -379,7 +383,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} class="accent-cyan-500" />
                 </td>
                 <td class="text-center">
-                  <button onclick={() => deleteTask(r.id)} class="text-slate-600 hover:text-red-400" title="Delete task">✕</button>
+                  <button onclick={() => deleteTask(r.id)} class="text-slate-600 hover:text-red-400" title={t('chart.deleteTask')}>✕</button>
                 </td>
               </tr>
             {/if}
@@ -388,14 +392,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </table>
 
       <div class="p-3 border-t border-slate-800">
-        <span class="text-[10px] uppercase text-slate-500">Links (FS/SS/FF/SF ± lag)</span>
+        <span class="text-[10px] uppercase text-slate-500">{t('gantt.links')}</span>
         {#each doc.edges as e, i (e.from + '>' + e.to)}
           <div class="flex items-center gap-1 mt-1 text-xs">
             <span class="flex-1 truncate text-slate-400">{labelFor(e.from)} → {labelFor(e.to)}</span>
             <input
               bind:value={e.label}
               onchange={onEdit}
-              placeholder="FS"
+              placeholder={LINK_TYPE_EXAMPLE}
               class="w-16 bg-slate-900 border border-slate-800 rounded p-1 font-mono outline-none focus:border-cyan-500"
             />
             <button onclick={() => deleteLink(i)} class="text-slate-600 hover:text-red-400">✕</button>
@@ -403,14 +407,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/each}
         <div class="flex items-center gap-1 mt-2">
           <select bind:value={linkFrom} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
-            <option value="">from…</option>
+            <option value="">{t('gantt.link.from')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
           <select bind:value={linkTo} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
-            <option value="">to…</option>
+            <option value="">{t('gantt.link.to')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
-          <input bind:value={linkLabel} placeholder="FS+1" class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
+          <input bind:value={linkLabel} placeholder={LINK_LAG_EXAMPLE} class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
           <button onclick={addLink} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded">+</button>
         </div>
       </div>
@@ -421,11 +425,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <GanttBars {layout} {pxPerDay} {variances} ariaLabel={ganttSummary} {barTitle} />
       {#if layout.rows.length > 0}
         <p class="text-[10px] text-slate-500 mt-2 max-w-xl">
-          Red bars are critical; teal strip = % complete; grey ghost =
-          baseline; orange outline = overallocated resource; amber ! =
-          constraint violated. Split tasks show interrupted bars. Real dates
-          appear when the project has a start date. Link labels accept
-          FS/SS/FF/SF with ±lag days.
+          {t('gantt.legend')}
         </p>
       {/if}
     </main>

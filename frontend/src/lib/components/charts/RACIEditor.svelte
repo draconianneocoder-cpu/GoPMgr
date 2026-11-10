@@ -24,6 +24,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
   import Button from '../Button.svelte';
+  import { formatTime, t } from '../../i18n/i18n.svelte';
 
   interface RACITask {
     id: string;
@@ -81,7 +82,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       chart = await desktopApi.GetChart(session.editingId);
     } catch (err: any) {
-      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      loadError = t('chart.loadFailed', { error: String(err?.message ?? err) });
       return;
     }
     try {
@@ -118,7 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const res = await desktopApi.LayoutChart(updated.id);
       layout = res.body as RACILayout;
     } catch (err: any) {
-      status = `Layout failed: ${err}`;
+      status = t('raci.layoutFailed', { error: String(err) });
     }
   }
 
@@ -130,7 +131,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const name = newRole.trim();
     if (!name) return;
     if (doc.roles.includes(name)) {
-      status = `Role ${name} already exists.`;
+      status = t('raci.roleExists', { name });
       return;
     }
     doc.roles.push(name);
@@ -147,7 +148,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       if (row) delete row[name];
     }
     void refreshLayout();
-    showToast(`Role "${name}" deleted`, {
+    showToast(t('raci.roleDeleted', { name }), {
       type: 'info',
       undo: () => {
         doc = before;
@@ -166,10 +167,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   function removeTask(id: string) {
     const before = JSON.parse(JSON.stringify(doc)) as RACIDoc;
-    doc.tasks = doc.tasks.filter((t) => t.id !== id);
+    doc.tasks = doc.tasks.filter((task) => task.id !== id);
     delete doc.assignments[id];
     void refreshLayout();
-    showToast('Task deleted', {
+    showToast(t('chart.taskDeleted'), {
       type: 'info',
       undo: () => {
         doc = before;
@@ -178,8 +179,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     });
   }
   function renameTask(id: string, title: string) {
-    const t = doc.tasks.find((x) => x.id === id);
-    if (t) t.title = title;
+    const task = doc.tasks.find((x) => x.id === id);
+    if (task) task.title = title;
   }
 
   function getCell(taskId: string, role: string): string {
@@ -212,10 +213,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       });
       chart = updated;
       lastSavedAt = new Date();
-      status = `Saved at ${new Date().toLocaleTimeString()}.`;
+      status = t('raci.savedAt', { time: formatTime(new Date()) });
       return true;
     } catch (err: any) {
-      status = `Save failed: ${err}`;
+      status = t('raci.saveFailed', { error: String(err) });
       return false;
     } finally {
       saving = false;
@@ -228,7 +229,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="text-center space-y-4 px-6">
       <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
       <Button variant="primary" size="md" onclick={() => goto('dashboard')}>
-        Back to dashboard
+        {t('chart.backToDashboard')}
       </Button>
     </div>
   </div>
@@ -237,19 +238,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
       <Button variant="nav" onclick={() => goto('dashboard')}>
-        &larr; Dashboard
+        {t('chart.dashboard')}
       </Button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">RACI Matrix</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{t('raci.title')}</h1>
       {#if layout.validation.error_count > 0}
         <span class="text-xs px-2 py-1 bg-red-900 text-red-200 rounded-full">
-          {layout.validation.error_count} issue{layout.validation.error_count === 1 ? '' : 's'}
+          {t('raci.issues', { count: layout.validation.error_count })}
         </span>
       {/if}
     </div>
     <div class="flex items-center gap-3">
       {#if lastSavedAt}
-        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
-          Saved {lastSavedAt.toLocaleTimeString()}
+        <span class="text-[10px] text-slate-500 tabular-nums" title={t('chart.autosaveHint')}>
+          {t('chart.savedAt', { time: formatTime(lastSavedAt) })}
         </span>
       {/if}
       <button
@@ -257,7 +258,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         disabled={saving}
         class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
-        {saving ? 'Saving...' : 'Save'}
+        {saving ? t('common.saving') : t('common.save')}
       </button>
     </div>
   </header>
@@ -274,10 +275,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="flex gap-2 items-end"
       >
         <label class="flex-1">
-          <span class="text-xs text-slate-500 uppercase">New role</span>
+          <span class="text-xs text-slate-500 uppercase">{t('raci.newRole')}</span>
           <input
             bind:value={newRole}
-            placeholder="e.g. Engineering Lead"
+            placeholder={t('raci.newRole.example')}
             class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
         </label>
@@ -285,7 +286,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="submit"
           class="bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs rounded"
         >
-          + Role
+          {t('raci.addRole')}
         </button>
       </form>
       <form
@@ -293,10 +294,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="flex gap-2 items-end"
       >
         <label class="flex-1">
-          <span class="text-xs text-slate-500 uppercase">New task</span>
+          <span class="text-xs text-slate-500 uppercase">{t('raci.newTask')}</span>
           <input
             bind:value={newTaskTitle}
-            placeholder="e.g. Draft the project charter"
+            placeholder={t('raci.newTask.example')}
             class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
         </label>
@@ -304,7 +305,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="submit"
           class="bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs rounded"
         >
-          + Task
+          {t('chart.addTask')}
         </button>
       </form>
     </section>
@@ -312,7 +313,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <!-- The matrix -->
     {#if doc.tasks.length === 0 || doc.roles.length === 0}
       <p class="text-sm text-slate-500 text-center py-8">
-        Add at least one role and one task to start the matrix.
+        {t('raci.empty')}
       </p>
     {:else}
       <div class="overflow-x-auto">
@@ -320,7 +321,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <thead class="bg-slate-900">
             <tr>
               <th class="text-left p-2 border-b border-slate-800 sticky left-0 bg-slate-900">
-                Task
+                {t('chart.task')}
               </th>
               {#each doc.roles as role (role)}
                 <th class="p-2 border-b border-slate-800 border-l text-center">
@@ -330,9 +331,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       variant="remove"
                       onclick={() => removeRole(role)}
                       class="text-[10px]"
-                      aria-label={`Remove role ${role}`} title={`Remove role ${role}`}
+                      aria-label={t('raci.removeRole', { role })} title={t('raci.removeRole', { role })}
                     >
-                      remove
+                      {t('raci.remove')}
                     </Button>
                   </div>
                 </th>
@@ -348,7 +349,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     value={task.title}
                     oninput={(e) => renameTask(task.id, (e.target as HTMLInputElement).value)}
                     onblur={refreshLayout}
-                    aria-label="Task name"
+                    aria-label={t('raci.taskName')}
                     class="w-full bg-transparent focus:bg-slate-900 px-2 py-1 rounded focus:outline focus:outline-cyan-500"
                   />
                 </td>
@@ -358,7 +359,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     <select
                       value={v}
                       onchange={(e) => setCell(task.id, role, (e.target as HTMLSelectElement).value)}
-                      aria-label={`${task.title || 'Task'} — ${role} responsibility`}
+                      aria-label={t('raci.cell', { task: task.title || t('chart.task'), role })}
                       class="w-full text-center font-bold rounded p-1 cursor-pointer border-none {valueTone(v)}"
                     >
                       {#each VALUES as opt (opt.value)}
@@ -372,7 +373,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     variant="remove"
                     onclick={() => removeTask(task.id)}
                     class="text-xs"
-                    aria-label="Remove task" title="Remove task"
+                    aria-label={t('raci.removeTask')} title={t('raci.removeTask')}
                   >
                     ×
                   </Button>
@@ -387,7 +388,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if layout.validation.issues && layout.validation.issues.length > 0}
         <section class="border border-red-900 bg-red-950/40 rounded p-4">
           <h2 class="text-xs font-bold tracking-widest uppercase text-red-300 mb-2">
-            Validation
+            {t('raci.validation')}
           </h2>
           <ul class="space-y-1 text-xs text-red-200">
             {#each layout.validation.issues as issue (issue)}
@@ -399,10 +400,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       <!-- Legend -->
       <section class="text-xs text-slate-500 space-y-1">
-        <div><span class="text-cyan-300 font-bold">R</span> Responsible — does the work.</div>
-        <div><span class="text-emerald-300 font-bold">A</span> Accountable — owns the outcome (exactly one per task).</div>
-        <div><span class="text-amber-300 font-bold">C</span> Consulted — provides input before work happens.</div>
-        <div><span class="text-slate-200 font-bold">I</span> Informed — kept up to date after work happens.</div>
+        <div><span class="text-cyan-300 font-bold">R</span> {t('raci.legend.responsible')}</div>
+        <div><span class="text-emerald-300 font-bold">A</span> {t('raci.legend.accountable')}</div>
+        <div><span class="text-amber-300 font-bold">C</span> {t('raci.legend.consulted')}</div>
+        <div><span class="text-slate-200 font-bold">I</span> {t('raci.legend.informed')}</div>
       </section>
     {/if}
   </main>

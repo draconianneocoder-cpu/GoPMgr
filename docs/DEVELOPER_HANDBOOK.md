@@ -399,7 +399,7 @@ frontend/src/
     desktop-dtos.ts              Explicit DTO-to-editor normalization
     *.ts                         Pure TypeScript helpers (native-close.ts,
                                   rebase-editable-changes.ts, theme.ts,
-                                  terminology.ts, methodologies.ts)
+                                  methodologies.ts)
     *.test.ts                    Colocated Vitest unit tests
 ```
 

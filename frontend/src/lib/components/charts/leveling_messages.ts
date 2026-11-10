@@ -6,6 +6,8 @@
 // the CPM and Gantt editors' action handlers are behaviour-verified by unit
 // tests rather than only type-checked.
 
+import { formatList, t } from '../../i18n/i18n.svelte';
+
 // Structural subsets of the App return shapes (see app_charts.go
 // LevelResult / SplitLevelingPreview).
 export interface LevelResult {
@@ -23,9 +25,8 @@ export interface SplitLevelingPreview {
 // summarizeLabels renders a capped, comma-joined label list with a "+N more"
 // suffix, e.g. "a, b, c +2 more".
 export function summarizeLabels(labels: string[], max = 3): string {
-  const shown = labels.slice(0, max).join(', ');
-  const more = labels.length > max ? ` +${labels.length - max} more` : '';
-  return `${shown}${more}`;
+  const shown = formatList(labels.slice(0, max));
+  return labels.length > max ? t('leveling.moreLabels', { labels: shown, count: labels.length - max }) : shown;
 }
 
 // CPM "Level resources": a transient success flash plus a persistent
@@ -40,20 +41,17 @@ export function levelResourcesMessages(res: LevelResult): LevelResourcesMessages
   const unplaced = res.unplaced_labels ?? [];
   let flash: string;
   if (res.pinned > 0) {
-    flash = `Levelled: ${res.pinned} task(s) pinned (SNET)`;
+    flash = t('leveling.pinned', { count: res.pinned });
   } else if (unplaced.length > 0) {
-    flash = 'No tasks could be shifted into free capacity';
+    flash = t('leveling.noneShifted');
   } else {
-    flash = 'Already level: nothing moved';
+    flash = t('leveling.alreadyLevel');
   }
   let warn = '';
   let warnTitle = '';
   if (unplaced.length > 0) {
-    warn = `${unplaced.length} task(s) still overallocated: ${summarizeLabels(unplaced)}`;
-    warnTitle =
-      'Demand exceeds available capacity for: ' +
-      unplaced.join(', ') +
-      '. Reduce assigned units, add resource capacity, or split the work across days.';
+    warn = t('leveling.stillOverallocated', { count: unplaced.length, labels: summarizeLabels(unplaced) });
+    warnTitle = t('leveling.stillOverallocated.hint', { labels: formatList(unplaced) });
   }
   return { flash, warn, warnTitle };
 }
@@ -68,24 +66,18 @@ export interface SplitPreviewMessage {
 export function splitPreviewMessage(p: SplitLevelingPreview): SplitPreviewMessage {
   const labels = p.split_task_labels ?? [];
   if (labels.length === 0) {
-    return { msg: 'No tasks need splitting at current capacity', title: '' };
+    return { msg: t('leveling.noSplitNeeded'), title: '' };
   }
   if (p.resolves_overallocation) {
     return {
-      msg: `Splitting ${labels.length} task(s) would clear overallocation: ${summarizeLabels(labels)}`,
-      title:
-        'Interrupting these tasks across non-contiguous days resolves all resource conflicts: ' +
-        labels.join(', ') +
-        '. Splitting is analysis-only and is not saved.',
+      msg: t('leveling.splitClears', { count: labels.length, labels: summarizeLabels(labels) }),
+      title: t('leveling.splitClears.hint', { labels: formatList(labels) }),
     };
   }
   const stuck = p.remaining_overallocated_resources ?? [];
   return {
-    msg: `Even with splitting, ${stuck.length} resource(s) stay over capacity`,
-    title:
-      'These resources have single-day demand above supply, which splitting cannot fix: ' +
-      stuck.join(', ') +
-      '. Reduce assigned units or add capacity.',
+    msg: t('leveling.splitStuck', { count: stuck.length }),
+    title: t('leveling.splitStuck.hint', { labels: formatList(stuck) }),
   };
 }
 
@@ -93,8 +85,8 @@ export function splitPreviewMessage(p: SplitLevelingPreview): SplitPreviewMessag
 export function splitLevelStatus(res: LevelResult): string {
   const split = res.split_labels ?? [];
   return split.length
-    ? `Levelled; split ${split.length} task(s): ${summarizeLabels(split)}`
-    : 'Levelled; no tasks needed splitting';
+    ? t('leveling.splitApplied', { count: split.length, labels: summarizeLabels(split) })
+    : t('leveling.splitNone');
 }
 
 // clearWorkSegments strips persisted split segments from chart nodes. A

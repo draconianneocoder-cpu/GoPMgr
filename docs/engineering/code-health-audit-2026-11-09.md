@@ -104,13 +104,17 @@ file; seeding the old exits back in, or dropping the close, fails it.
 ## Terminology decision
 
 The owner chose to wire `terminology.ts` into the interface rather than
-delete it. [ADR-008](../design/ADR-008-localization.md) already decides how:
-its methodology words become catalog entries, and translations use full
-sentences rather than joined fragments. Calling `term()` from components
-would conflict with that, so the wiring is the next ADR-008 Phase 1 slice,
-the extraction of the work-item editors. Until then the module stays unused,
-and the Help screen, user guide and coverage ledger no longer claim
-otherwise.
+delete it, through ADR-008's catalog. Before building it, the owner asked how
+other tools handle methodology wording. Azure DevOps, Jira, Microsoft
+Project, Primavera P6, monday.com and ClickUp never rename schedule rows by
+methodology; only Azure DevOps varies wording per process, and only in the
+work-item layer, from a fixed, translated set (Story Points, Effort, Size).
+Applied as written, the table would have labelled Six Sigma schedule rows
+"measurement" and the Scrum milestone checkbox "sprint goal". The owner chose
+that model, and ADR-008 slice 3 (the same day) implements it: the work-item
+editor's estimate field reads "Story points" for Scrum and Scrumban, schedule
+editors keep "task", and `terminology.ts` was replaced by
+`i18n/methodology.ts`.
 
 ## Second pass: flaky tests, inefficiency and data integrity
 
@@ -152,6 +156,18 @@ over one database. The project list and portfolio loops open each project
 file once and run one to three queries on it, which is inherent to listing
 projects. All 107 interface catalog messages are used. svelte-check, which
 reports unused CSS, passes with no warnings.
+
+## Third pass: security scans
+
+A third pass the same day, on `main` after PR #194, ran the security
+scanners the first two passes had not.
+
+| Check | Result |
+|---|---|
+| `govulncheck -tags production . ./internal/... ./tools/...` | No known vulnerabilities |
+| `npm audit --omit=dev` | No advisories in production packages |
+| `npm audit` (development tools) | 10 low or moderate advisories, all in ESLint's `minimatch` and the build-time `deepmerge` (**P3**). npm's suggested fix downgrades `@typescript-eslint`; do not run `npm audit fix --force`. Dependabot updates will clear them. |
+| `gosec -tags production ./...`, excluding the gitignored `.tmp/` scratch tree, spikes and tests | No actionable finding. Decompression (G110) in backup restore is bounded: each entry's declared size and the archive total are capped first, and Go's zip reader fails with `ErrFormat` once an entry decodes past its declared size, which `TestRestoreArchivalBundleRejectsUnderstatedDecodedSize` proves. The SQL concatenations (G202) insert fixed column lists with bound values. The integer conversions (G115) in `money` and `analytics` follow explicit overflow checks. The printer subprocess (G204) uses a fixed path and a validated printer name. The rest are in build tools or vendored SQLCipher. |
 
 ## Re-running the audit
 

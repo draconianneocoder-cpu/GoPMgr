@@ -314,11 +314,25 @@ recovery-code step. A picker fits in its header without changing that.
    password change and reset, and the administrator-access notices), plus
    `tParts`, which keeps a full sentence in the catalog while a component
    styles one placeholder's value, such as a bold name.
-   Owner decision, 2026-11-09: wire `terminology.ts` into the interface.
-   It is planned as the next slice, the work-item editors (Gantt, CPM, RACI
-   and agile work items), where its methodology words become catalog
-   messages chosen per methodology and written as full sentences. No screen
-   uses `terminology.ts` until then.
+   Slice 3 is done (2026-11-09): the work-item editors (Gantt, CPM, RACI and
+   agile work items) and the shared resource-leveling messages, 156 strings,
+   with real plural forms where the old text said "task(s)". `formatList`
+   joins short lists in the interface language.
+   Methodology wording, owner decision 2026-11-09: the owner first chose to
+   wire `terminology.ts` into the interface, then asked how other tools do
+   it. Azure DevOps, Jira, Microsoft Project, Primavera P6, monday.com and
+   ClickUp never rename schedule rows by methodology. Only Azure DevOps
+   varies wording per process, and only in the work-item layer, from a
+   fixed, translated set: Story Points (Agile), Effort (Scrum), Size (CMMI).
+   monday.com's free-text renaming cannot be translated. Applied as written,
+   `terminology.ts` would have labelled Six Sigma schedule rows "measurement"
+   and the Scrum milestone checkbox "sprint goal". The owner chose the
+   Azure DevOps model: schedule editors say "task" for every methodology,
+   and the work-item editor's estimate field reads "Story points" for Scrum
+   and Scrumban and "Points" otherwise. `i18n/methodology.ts` maps the
+   methodology to one of those catalog messages and replaced
+   `terminology.ts`. New methodology wording follows the same rule: a fixed
+   set of full catalog messages, never words joined into a sentence.
 5. [ ] Phase 2: ship the wave 1 languages.
    - Interface translations for wave 1, plus the picker.
    - IBM Plex Sans JP and KR WOFF2, with the CJK text size and line-breaking
