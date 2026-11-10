@@ -1161,6 +1161,12 @@ Avoid wall-clock dependence unless the clock is fixed or injected.
 Use deterministic fixtures for cryptographic and persistence tests where
 security properties do not require fresh randomness.
 
+Tests that replace process-wide state (a package hook, `crypto/rand.Reader`,
+an environment variable or the working directory) must stay serial; Go never
+runs them alongside parallel tests. In `internal/users`, every other test
+calls `t.Parallel()`, and the helpers that replace state call
+`requireSerial(t)`, which makes a parallel caller fail at once.
+
 ### 13.10 Encryption tests
 
 Encryption work should cover the relevant subset of:

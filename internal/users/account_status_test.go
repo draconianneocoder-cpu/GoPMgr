@@ -84,6 +84,7 @@ func lastLogin(t *testing.T, store *Store, username string) string {
 }
 
 func TestDisabledAccountCannotSignInUntilEnabled(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetDisabled("alice", "bob", true); err != nil {
 		t.Fatalf("disable bob: %v", err)
@@ -116,6 +117,7 @@ func TestDisabledAccountCannotSignInUntilEnabled(t *testing.T) {
 }
 
 func TestListReportsDisabledAccounts(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetDisabled("alice", "bob", true); err != nil {
 		t.Fatalf("disable bob: %v", err)
@@ -132,6 +134,7 @@ func TestListReportsDisabledAccounts(t *testing.T) {
 }
 
 func TestSetDisabledWithNoChangeRecordsNothing(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetDisabled("alice", "bob", false); err != nil {
 		t.Fatalf("enable an enabled account: %v", err)
@@ -153,6 +156,7 @@ func TestSetDisabledWithNoChangeRecordsNothing(t *testing.T) {
 // The guard itself still refuses taking the last enabled administrator out
 // of use, behind the super administrator rule.
 func TestLastEnabledAdminGuardItself(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t) // alice (administrator) and bob
 	ctx := t.Context()
 	if err := guardLastEnabledAdmin(ctx, store.conn, true, false); !errors.Is(err, ErrLastAdmin) {
@@ -172,6 +176,7 @@ func TestLastEnabledAdminGuardItself(t *testing.T) {
 }
 
 func TestLastEnabledAdminGuards(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetAdmin("alice", "bob", true); err != nil {
 		t.Fatalf("promote bob: %v", err)
@@ -203,6 +208,7 @@ func TestLastEnabledAdminGuards(t *testing.T) {
 }
 
 func TestHasAnyAdminIgnoresDisabledAdministrators(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", statusPassword, true); err != nil {
 		t.Fatalf("create alice: %v", err)
@@ -218,6 +224,7 @@ func TestHasAnyAdminIgnoresDisabledAdministrators(t *testing.T) {
 }
 
 func TestDisabledAdministratorCannotCreateAccounts(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetAdmin("alice", "bob", true); err != nil {
 		t.Fatalf("promote bob: %v", err)
@@ -232,6 +239,7 @@ func TestDisabledAdministratorCannotCreateAccounts(t *testing.T) {
 }
 
 func TestPurgeAccountDeletesAccountFolderAndCodes(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	dek, err := unlockDEK(store, "bob", statusPassword)
 	if err != nil {
@@ -267,6 +275,7 @@ func TestPurgeAccountDeletesAccountFolderAndCodes(t *testing.T) {
 // TestPurgeAccountDoesNotFollowSymlinks proves a link inside the account's
 // folder is removed without touching what it points to.
 func TestPurgeAccountDoesNotFollowSymlinks(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	outside := t.TempDir()
 	keep := filepath.Join(outside, "keep.txt")
@@ -287,6 +296,7 @@ func TestPurgeAccountDoesNotFollowSymlinks(t *testing.T) {
 }
 
 func TestPurgeAccountReportsFolderItCouldNotRemove(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("directory permission bits do not block removal on Windows")
 	}
@@ -326,6 +336,7 @@ func TestPurgeAccountReportsFolderItCouldNotRemove(t *testing.T) {
 // TestPurgeAccountRefusesGoPMgrsOwnFolder covers an account named "logs"
 // from before that name was reserved: its folder is the app's log folder.
 func TestPurgeAccountRefusesGoPMgrsOwnFolder(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	logs := filepath.Join(store.RootDir(), "logs")
 	if err := os.MkdirAll(filepath.Join(logs, "projects"), 0o700); err != nil {
@@ -352,6 +363,7 @@ func TestPurgeAccountRefusesGoPMgrsOwnFolder(t *testing.T) {
 }
 
 func TestAccountEventsAreAppendOnly(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.SetDisabled("alice", "bob", true); err != nil {
 		t.Fatalf("disable bob: %v", err)
@@ -368,6 +380,7 @@ func TestAccountEventsAreAppendOnly(t *testing.T) {
 // TestOpenAddsAccountStatusToAnOlderDatabase opens a system.db created
 // before disabled accounts existed.
 func TestOpenAddsAccountStatusToAnOlderDatabase(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatalf("mkdir root: %v", err)
@@ -412,6 +425,7 @@ func TestOpenAddsAccountStatusToAnOlderDatabase(t *testing.T) {
 // role inside the transaction, so a session demoted or disabled by another
 // GoPMgr process cannot still act.
 func TestOnlyEnabledAdministratorsCanDisableOrPurge(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if _, err := store.CreateAccount("carol", "Carol", statusPassword, true); err != nil {
 		t.Fatalf("create carol: %v", err)
@@ -437,6 +451,7 @@ func TestOnlyEnabledAdministratorsCanDisableOrPurge(t *testing.T) {
 // accounts created before the case-insensitive duplicate check: on a
 // case-insensitive filesystem "Bob" and "bob" share one folder.
 func TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	seedHistoricalAccount(t, store, "Bob",
 		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('Bob', 'Bob', 'x', '', '2026-06-01T00:00:00Z', 0)`,
@@ -464,6 +479,7 @@ func TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase(t *testing.T) {
 // still signs in and can be disabled and deleted: the refusal applies only
 // to new accounts.
 func TestAccountWithAWindowsDeviceNameStillWorks(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	folder := filepath.Join(store.RootDir(), "con")
 	if err := os.MkdirAll(filepath.Join(folder, "projects"), 0o700); err != nil {

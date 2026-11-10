@@ -58,6 +58,7 @@ func unreadNotices(t *testing.T, store *Store, username string) []AccountEvent {
 // A new key replaces one nobody holds. Nobody can open an account's data
 // until it signs in, and each account is told who made the key and why.
 func TestANewKeyReplacesALostKeyAndEveryAccountIsTold(t *testing.T) {
+	t.Parallel()
 	store, deks := lostKeyStore(t)
 	oldKey := activeKeyID(t, store)
 	if _, err := store.OpenUserForAdmin("bob", deks["bob"], "carol", "checking"); !errors.Is(err, ErrNoEscrowGrant) {
@@ -147,6 +148,7 @@ func bobOnly(table string) string {
 // The creator's own record of the key is not a notice, so it cannot be
 // acknowledged as one.
 func TestTheCreatorsOwnRecordIsNotANotice(t *testing.T) {
+	t.Parallel()
 	store, deks := lostKeyStore(t)
 	mustCreateNewKey(t, store, "bob", deks["bob"])
 	own := newestEvent(t, store, AccountEscrowKeyNew)
@@ -160,6 +162,7 @@ func TestTheCreatorsOwnRecordIsNotANotice(t *testing.T) {
 
 // Nothing changes when the key is not lost or the request is not allowed.
 func TestANewKeyIsRefusedWhenItIsNotNeeded(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "dave", 30)
 	before := activeKeyID(t, store)
@@ -213,6 +216,7 @@ func TestANewKeyIsRefusedWhenItIsNotNeeded(t *testing.T) {
 // With no administrator key at all, the first administrator sign-in makes
 // one; a new key is not a second way to make the first.
 func TestANewKeyNeedsAnEarlierKey(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	_, dek, err := store.CreateAccountWithKey("", "alice", "Alice", statusPassword, true, nil)
 	if err != nil {
@@ -234,6 +238,7 @@ func TestANewKeyNeedsAnEarlierKey(t *testing.T) {
 // A system.db with keys but none active (changed outside GoPMgr) is
 // repaired by a new key.
 func TestANewKeyRepairsADatabaseWithNoActiveKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	mustExec(t, store, `UPDATE escrow_keys SET retired_at = '2026-10-01T00:00:00Z'`)
 	mustCreateNewKey(t, store, "alice", aliceDEK)
@@ -247,6 +252,7 @@ func TestANewKeyRepairsADatabaseWithNoActiveKey(t *testing.T) {
 // claims the role can make a new key: a disabled administrator's leftover
 // grant does not count as holding it.
 func TestTheClaimantAfterEveryAdministratorIsDisabledCanMakeANewKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	carolDEK := addUser(t, store, "carol", openEscrow(t, store, "alice", aliceDEK))
 	mustExec(t, store, `UPDATE users SET disabled = 1 WHERE username = 'alice'`)
@@ -271,6 +277,7 @@ func TestTheClaimantAfterEveryAdministratorIsDisabledCanMakeANewKey(t *testing.T
 // The old key's recovery code no longer restores anything: its row goes
 // with the old key.
 func TestANewKeyVoidsTheOldRecoveryCode(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	code := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
 	if err := store.ConfirmEscrowRecoveryCode("alice", code); err != nil {
@@ -293,6 +300,7 @@ func TestANewKeyVoidsTheOldRecoveryCode(t *testing.T) {
 // A replacement of the new key before an account signs in again still
 // leaves the account told and sealed at its next sign-in.
 func TestAnAccountIsToldAndSealedAfterTheNewKeyIsReplacedToo(t *testing.T) {
+	t.Parallel()
 	store, deks := lostKeyStore(t)
 	mustCreateNewKey(t, store, "bob", deks["bob"])
 	if _, err := store.ReplaceEscrowKey("bob", deks["bob"], ""); err != nil {
@@ -312,6 +320,7 @@ func TestAnAccountIsToldAndSealedAfterTheNewKeyIsReplacedToo(t *testing.T) {
 // The whole change is one transaction: a failure while telling the last
 // account leaves the old key and everyone's sealed keys in place.
 func TestAFailedNewKeyChangesNothing(t *testing.T) {
+	t.Parallel()
 	store, deks := lostKeyStore(t)
 	before := activeKeyID(t, store)
 	sealed := countRows(t, store, "sealed_deks", "1 = 1")
@@ -332,6 +341,7 @@ func TestAFailedNewKeyChangesNothing(t *testing.T) {
 }
 
 func TestNoticeReadDetail(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		accesses, keys int
 		want           string
@@ -350,6 +360,7 @@ func TestNoticeReadDetail(t *testing.T) {
 
 // The reason's limit counts characters, not bytes.
 func TestANewKeyReasonIsCountedInCharacters(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	mustExec(t, store, `DELETE FROM escrow_grants`)
 	reason := strings.Repeat("é", MaxNewKeyReasonLength)

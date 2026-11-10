@@ -32,6 +32,7 @@ func rotationPending(t *testing.T, store *Store) bool {
 }
 
 func TestReplacingTheKeyReSealsEveryAccount(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	old := openEscrow(t, store, "alice", aliceDEK)
 	oldID, oldPrivate := old.id, append([]byte(nil), old.private...)
@@ -105,6 +106,7 @@ func TestReplacingTheKeyReSealsEveryAccount(t *testing.T) {
 // The new key goes to the actor and the accounts they name, never to an
 // account read from system.db.
 func TestReplacingTheKeyGrantsOnlyTheActorAndTheNamedStandby(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	// erin: a subordinate whose personal key carries a valid attestation,
@@ -142,6 +144,7 @@ func TestReplacingTheKeyGrantsOnlyTheActorAndTheNamedStandby(t *testing.T) {
 // A standby not named in a replacement loses the key, and the Succession
 // section can say so.
 func TestAStandbyNotNamedLosesTheKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	if _, err := store.ReplaceEscrowKey("alice", aliceDEK, ""); err != nil {
@@ -153,6 +156,7 @@ func TestAStandbyNotNamedLosesTheKey(t *testing.T) {
 }
 
 func TestOnlyTheSuperWithAUsableKeyReplacesIt(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK := superStore(t)
 	if _, err := store.ReplaceEscrowKey("bob", bobDEK, ""); !errors.Is(err, ErrNotSuper) {
 		t.Fatalf("ReplaceEscrowKey by a subordinate = %v, want ErrNotSuper", err)
@@ -171,6 +175,7 @@ func TestOnlyTheSuperWithAUsableKeyReplacesIt(t *testing.T) {
 // A DEK that does not open with the old key is not carried over; the
 // account is sealed again, on trust, at its next sign-in.
 func TestUnopenableDEKsAreSealedAgainAtSignIn(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	carolDEK := addUser(t, store, "carol", nil)
 	mustExec(t, store, `UPDATE sealed_deks SET sealed = x'00' WHERE username = 'carol'`)
@@ -195,6 +200,7 @@ func TestUnopenableDEKsAreSealedAgainAtSignIn(t *testing.T) {
 // A hand-over never replaces the key in the session of the person leaving:
 // the new super administrator does it at their next sign-in.
 func TestHandOverLeavesTheReplacementToTheNewSuper(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK := superStore(t)
 	oldID := activeKeyID(t, store)
 	if keyPassed, err := store.HandOverSuper("alice", aliceDEK, "bob"); err != nil || !keyPassed {
@@ -224,6 +230,7 @@ func TestHandOverLeavesTheReplacementToTheNewSuper(t *testing.T) {
 // replaces it at their next sign-in, while the super administrator holds
 // none; while the super administrator holds a key, only they do.
 func TestWhoRunsAPendingReplacement(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	oldID := activeKeyID(t, store)
@@ -265,6 +272,7 @@ func TestWhoRunsAPendingReplacement(t *testing.T) {
 // Removing a key holder in any way marks the key for replacement; the
 // super administrator's key then replaces it.
 func TestRemovingAKeyHolderMarksTheReplacement(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		remove func(s *Store) error
@@ -307,6 +315,7 @@ func TestRemovingAKeyHolderMarksTheReplacement(t *testing.T) {
 // A replacement that fails is rolled back alone: the change that triggered
 // it stands, the key is unchanged, and the replacement stays pending.
 func TestAFailedReplacementLeavesTheChangeAndStaysPending(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	oldID := activeKeyID(t, store)
@@ -337,6 +346,7 @@ func TestAFailedReplacementLeavesTheChangeAndStaysPending(t *testing.T) {
 // new account against the retired key: the App opens it in one transaction
 // and creates the account in another.
 func TestAStaleSessionEnrollsAgainstTheActiveKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	stale := openEscrow(t, store, "alice", aliceDEK)
 	if _, err := store.ReplaceEscrowKey("alice", aliceDEK, ""); err != nil {
@@ -369,6 +379,7 @@ func TestAStaleSessionEnrollsAgainstTheActiveKey(t *testing.T) {
 // must still be refused after it: the replacement must not turn it into a
 // key that is trusted on first use.
 func TestReplacingTheKeyKeepsRefusingASwappedPersonalKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	_, attackerPub := attackerKeyPair(t)

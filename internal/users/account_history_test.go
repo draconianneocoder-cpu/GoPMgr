@@ -45,6 +45,7 @@ func historyTableSQL(t *testing.T, store *Store) string {
 // TestOpenRebuildsTheOriginalHistoryTableWithoutItsCheck opens a system.db
 // whose account_events was created with the original CHECK on action.
 func TestOpenRebuildsTheOriginalHistoryTableWithoutItsCheck(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -121,6 +122,7 @@ func TestOpenRebuildsTheOriginalHistoryTableWithoutItsCheck(t *testing.T) {
 }
 
 func TestRecordAccountEventRefusesAnUnknownAction(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := recordAccountEvent(context.Background(), store.conn, "alice", "bob", "renamed", ""); err == nil {
 		t.Fatal("recordAccountEvent with an unknown action: got nil, want error")
@@ -131,6 +133,7 @@ func TestRecordAccountEventRefusesAnUnknownAction(t *testing.T) {
 }
 
 func TestAccountCreationIsRecordedWithItsRole(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccountAs("", "alice", "Alice", statusPassword, false); err != nil {
 		t.Fatalf("first account: %v", err)
@@ -162,6 +165,7 @@ func TestAccountCreationIsRecordedWithItsRole(t *testing.T) {
 }
 
 func TestRoleChangesAreRecordedOnlyForAnEnabledAdministrator(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if _, err := store.CreateAccount("carol", "Carol", statusPassword, true); err != nil {
 		t.Fatalf("create carol: %v", err)
@@ -191,6 +195,7 @@ func TestRoleChangesAreRecordedOnlyForAnEnabledAdministrator(t *testing.T) {
 }
 
 func TestClaimAdminOnlyWithNoAdministrator(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if err := store.ClaimAdmin("bob"); !errors.Is(err, ErrAdminExists) {
 		t.Fatalf("ClaimAdmin with an administrator: err = %v, want ErrAdminExists", err)
@@ -238,6 +243,7 @@ func TestClaimAdminOnlyWithNoAdministrator(t *testing.T) {
 }
 
 func TestClaimAdminRefusesADisabledOrUnknownAccount(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("bob", "Bob", statusPassword, false); err != nil {
 		t.Fatalf("create bob: %v", err)

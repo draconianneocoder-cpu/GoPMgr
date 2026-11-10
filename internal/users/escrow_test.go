@@ -32,6 +32,7 @@ func insertEscrowKey(t *testing.T, store *Store, id, retiredAt string) error {
 // Opening an existing system.db adds any missing escrow table and leaves
 // existing ones alone, however many times it runs.
 func TestEscrowTablesMigrateIdempotently(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -77,6 +78,7 @@ func TestEscrowTablesMigrateIdempotently(t *testing.T) {
 
 // At most one escrow key is active; any number may be retired.
 func TestOnlyOneEscrowKeyIsActive(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := insertEscrowKey(t, store, "key-1", ""); err != nil {
 		t.Fatalf("first active key: %v", err)
@@ -98,6 +100,7 @@ func TestOnlyOneEscrowKeyIsActive(t *testing.T) {
 // Deleting an account removes its personal key, sealed DEK, pin, and grant,
 // and leaves other accounts' rows.
 func TestDeletingAnAccountRemovesItsEscrowRows(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t) // alice (administrator) and bob
 	if err := insertEscrowKey(t, store, "key-1", ""); err != nil {
 		t.Fatalf("insert escrow key: %v", err)
@@ -136,6 +139,7 @@ func TestDeletingAnAccountRemovesItsEscrowRows(t *testing.T) {
 
 // A sealed row cannot name an escrow key that does not exist.
 func TestEscrowRowsMustNameAnExistingEscrowKey(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	if _, err := store.conn.Exec(
 		`INSERT INTO sealed_deks (username, escrow_key_id, sealed, sealed_at) VALUES ('alice', 'missing', x'01', '2026-10-02T00:00:00Z')`,
@@ -145,6 +149,7 @@ func TestEscrowRowsMustNameAnExistingEscrowKey(t *testing.T) {
 }
 
 func TestEscrowAccountEventsAreAccepted(t *testing.T) {
+	t.Parallel()
 	store := newStatusStore(t)
 	for _, action := range []string{
 		AccountAdminAccess, AccountEscrowKeyMismatch, AccountEscrowReenrolled,

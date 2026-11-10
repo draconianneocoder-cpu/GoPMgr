@@ -23,6 +23,7 @@ func mustCreateRecoveryCode(t *testing.T, store *Store, actor string, dek []byte
 }
 
 func TestARecoveryCodeRestoresTheSameKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	carolDEK := addUser(t, store, "carol", nil)
 	keyID := activeKeyID(t, store)
@@ -67,6 +68,7 @@ func TestARecoveryCodeRestoresTheSameKey(t *testing.T) {
 }
 
 func TestARecoveryCodeIsReadForgivingly(t *testing.T) {
+	t.Parallel()
 	raw, code, err := newEscrowRecoveryCode()
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +99,7 @@ func TestARecoveryCodeIsReadForgivingly(t *testing.T) {
 // A wrong code is refused and recorded, and neither the history nor
 // anything else written keeps the code.
 func TestAWrongRecoveryCodeIsRefusedAndTheCodeIsNeverRecorded(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	code := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
 	_, other, err := newEscrowRecoveryCode()
@@ -130,6 +133,7 @@ func TestAWrongRecoveryCodeIsRefusedAndTheCodeIsNeverRecorded(t *testing.T) {
 }
 
 func TestOnlyTheSuperAdministratorMakesOrUsesACode(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK := superStore(t)
 	code := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
 	if _, err := store.CreateEscrowRecoveryCode("bob", bobDEK); !errors.Is(err, ErrNotSuper) {
@@ -149,6 +153,7 @@ func TestOnlyTheSuperAdministratorMakesOrUsesACode(t *testing.T) {
 }
 
 func TestANewCodeOrANewKeyVoidsTheOldCode(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	first := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
 	second := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
@@ -182,6 +187,7 @@ func TestANewCodeOrANewKeyVoidsTheOldCode(t *testing.T) {
 // restores nothing: the key must be the one the super administrator's own
 // pin trusts.
 func TestAForgedRecoveryRowRestoresNothing(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	keyID := activeKeyID(t, store)
 	attackerPriv, attackerPub := attackerKeyPair(t)
@@ -213,6 +219,7 @@ func TestAForgedRecoveryRowRestoresNothing(t *testing.T) {
 // Recovery never trusts on first use: the super administrator needs a pin
 // of the active key, and the table must name the key the code opens.
 func TestRecoveryNeedsThePinAndTheTableToAgree(t *testing.T) {
+	t.Parallel()
 	cases := map[string]func(store *Store){
 		"no pin": func(store *Store) {
 			mustExec(t, store, `DELETE FROM escrow_pins WHERE username = 'alice'`)
@@ -248,6 +255,7 @@ func TestRecoveryNeedsThePinAndTheTableToAgree(t *testing.T) {
 
 // Restoring the key runs a pending replacement, which voids the code.
 func TestRecoveryRunsAPendingReplacement(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	code := mustCreateRecoveryCode(t, store, "alice", aliceDEK)
 	keyID := activeKeyID(t, store)

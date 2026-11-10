@@ -96,6 +96,7 @@ func requireEvent(t *testing.T, store *Store, want string) {
 }
 
 func TestFirstAdministratorCreatesTheEscrowKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 
@@ -121,6 +122,7 @@ func TestFirstAdministratorCreatesTheEscrowKey(t *testing.T) {
 // Every place a DEK is created leaves it sealed, and the sealed DEK is the
 // one the account's password unlocks (the key its encrypted projects use).
 func TestEveryDEKCreationSiteSealsTheAccountsDEK(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 
@@ -165,6 +167,7 @@ func TestEveryDEKCreationSiteSealsTheAccountsDEK(t *testing.T) {
 }
 
 func TestAccountCreatedWithTheEscrowKeyIsAttested(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	addUser(t, store, "bob", session)
@@ -183,6 +186,7 @@ func TestAccountCreatedWithTheEscrowKeyIsAttested(t *testing.T) {
 // system.db can change. An administrator's sign-in must not hand the
 // escrow key to whoever they name.
 func TestSignInNeverGrantsTheEscrowKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 	addUser(t, store, "erin", nil)
@@ -218,6 +222,7 @@ func TestSignInNeverGrantsTheEscrowKey(t *testing.T) {
 // signing in as one. (Intentional change from phase 1, where promotion
 // granted the key.)
 func TestPromotedAdministratorsHoldNoKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	bobDEK := addUser(t, store, "bob", nil)
@@ -254,6 +259,7 @@ func TestPromotedAdministratorsHoldNoKey(t *testing.T) {
 // An account is promoted only once it has signed in since enrollment
 // began, disabled or not, so a later hand-over has a key to grant to.
 func TestPromotionNeedsAnAccountThatHasSignedIn(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	if _, err := store.CreateAccount("carol", "Carol", statusPassword, false); err != nil {
 		t.Fatalf("create carol: %v", err)
@@ -275,6 +281,7 @@ func TestPromotionNeedsAnAccountThatHasSignedIn(t *testing.T) {
 // A grant left on a subordinate from before ADR-005 is removed when the
 // super administrator demotes or disables them, or at their own sign-in.
 func TestLeftoverSubordinateGrantsAreRemoved(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
@@ -309,6 +316,7 @@ func TestLeftoverSubordinateGrantsAreRemoved(t *testing.T) {
 }
 
 func TestSwappedEscrowPublicKeySealsNothing(t *testing.T) {
+	t.Parallel()
 	store, _ := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 	_, attackerPub := attackerKeyPair(t)
@@ -329,6 +337,7 @@ func TestSwappedEscrowPublicKeySealsNothing(t *testing.T) {
 // sealed to a planted key (or moved from another account) and removes it,
 // so the next sign-in seals to the real key.
 func TestAdministratorSessionFindsDEKsSealedToAPlantedKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 	addUser(t, store, "carol", nil)
@@ -369,6 +378,7 @@ func TestAdministratorSessionFindsDEKsSealedToAPlantedKey(t *testing.T) {
 }
 
 func TestForgedGrantFailsThePinCheck(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	var alicePub []byte
 	var keyID string
@@ -396,6 +406,7 @@ func TestForgedGrantFailsThePinCheck(t *testing.T) {
 }
 
 func TestSwappedPersonalKeyIsRepairedAtSignIn(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	bobDEK := addUser(t, store, "bob", session)
@@ -434,6 +445,7 @@ func TestSwappedPersonalKeyIsRepairedAtSignIn(t *testing.T) {
 }
 
 func TestAnEscrowKeyIsNeverCreatedWhileOneExists(t *testing.T) {
+	t.Parallel()
 	t.Run("planted before the first session", func(t *testing.T) {
 		store := openTestStore(t)
 		_, plantedPub := attackerKeyPair(t)
@@ -460,6 +472,7 @@ func TestAnEscrowKeyIsNeverCreatedWhileOneExists(t *testing.T) {
 }
 
 func TestAdministratorSessionFlagsAFailingAttestation(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	addUser(t, store, "bob", session)
@@ -476,6 +489,7 @@ func TestAdministratorSessionFlagsAFailingAttestation(t *testing.T) {
 // sessions create one escrow key, and enrolling one account twice at
 // once leaves one pin, one personal key, and one sealed DEK.
 func TestTwoProcessesEnrollingAtOnce(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	stores := make([]*Store, 2)
 	for i := range stores {
@@ -536,6 +550,7 @@ func TestTwoProcessesEnrollingAtOnce(t *testing.T) {
 // Enrollment is best effort: when it fails, the account and its DEK are
 // still stored, and none of the enrollment's rows are left behind.
 func TestFailedEnrollmentKeepsTheAccountAndLeavesNoEscrowRows(t *testing.T) {
+	t.Parallel()
 	store, _ := escrowStore(t)
 	// An escrow public key that cannot be sealed to.
 	mustExec(t, store, `UPDATE escrow_keys SET public_key = x'01'`)
@@ -564,6 +579,7 @@ func TestFailedEnrollmentKeepsTheAccountAndLeavesNoEscrowRows(t *testing.T) {
 // to a personal key they no longer have) is removed and recorded, and their
 // own enrollment and key repair still commit.
 func TestUnusableSuperGrantIsRemovedAndRecorded(t *testing.T) {
+	t.Parallel()
 	for name, damage := range map[string]string{
 		"corrupt grant":                 `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`,
 		"personal private key replaced": `UPDATE personal_keys SET wrapped_private_key = x'00112233' WHERE username = 'alice'`,
@@ -592,6 +608,7 @@ func TestUnusableSuperGrantIsRemovedAndRecorded(t *testing.T) {
 // A super administrator whose stored personal key no longer opens cannot
 // open data: the grant sealed to it is removed and recorded.
 func TestSuperWhosePersonalKeyDoesNotOpenLosesTheGrant(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	mustExec(t, store, `UPDATE personal_keys SET wrapped_private_key = x'00112233' WHERE username = 'alice'`)

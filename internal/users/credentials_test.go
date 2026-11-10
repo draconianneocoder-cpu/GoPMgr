@@ -29,6 +29,7 @@ func otherProcess(t *testing.T, store *Store) *Store {
 // every is set.
 func betweenCheckAndCommit(t *testing.T, every bool, change func()) {
 	t.Helper()
+	requireSerial(t)
 	old := beforeCredentialCommit
 	ran := false
 	beforeCredentialCommit = func() {
@@ -270,6 +271,7 @@ func TestSignInRechecksTheAccountAtCommit(t *testing.T) {
 // the sign-in's own writes: storing a stronger hash and a new key each
 // change it.
 func TestSignInPrincipalMatchesTheRegistry(t *testing.T) {
+	t.Parallel()
 	store := newDEKTestStore(t)
 	mustExec(t, store, `UPDATE users SET password_hash = ? WHERE username = 'alice'`, weakPasswordHash("p4ssw0rd-original"))
 	id, before := registryEntry(t, store, "alice")
@@ -317,6 +319,7 @@ func TestSignInGivesUpWhenTheAccountKeepsChanging(t *testing.T) {
 // the escrow key; headless maintenance does not. Headless still enrolls a key
 // it makes for an account that had none.
 func TestOnlyTheDesktopSignInRunsTheEscrowSession(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", statusPassword, true); err != nil {
 		t.Fatal(err)
@@ -359,6 +362,7 @@ func TestOnlyTheDesktopSignInRunsTheEscrowSession(t *testing.T) {
 // An escrow failure rolls back only the enrollment: the sign-in and the key
 // it made are kept, and the next sign-in enrolls.
 func TestSignInKeepsGoingWhenEscrowFails(t *testing.T) {
+	t.Parallel()
 	store, _ := escrowStore(t)
 	if _, err := store.CreateAccount("bob", "Bob", statusPassword, false); err != nil {
 		t.Fatal(err)

@@ -26,6 +26,7 @@ func seedLegacyRoot(t *testing.T, legacy string) {
 }
 
 func TestMigrateLegacyRootCopiesTree(t *testing.T) {
+	t.Parallel()
 	legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr")
 	newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 	seedLegacyRoot(t, legacy)
@@ -61,6 +62,7 @@ func TestMigrateLegacyRootCopiesTree(t *testing.T) {
 }
 
 func TestMigrateLegacyRootIdempotent(t *testing.T) {
+	t.Parallel()
 	legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr")
 	newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 	seedLegacyRoot(t, legacy)
@@ -75,6 +77,7 @@ func TestMigrateLegacyRootIdempotent(t *testing.T) {
 }
 
 func TestMigrateLegacyRootSkips(t *testing.T) {
+	t.Parallel()
 	t.Run("no legacy install", func(t *testing.T) {
 		legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr") // never created
 		newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
@@ -217,6 +220,7 @@ func TestMigrateLegacyRoot_FallsBackToPreRelocationInstall(t *testing.T) {
 // optimization (skips the legacyRootCandidates() call and one os.Stat per
 // candidate), not a second layer of correctness.
 func TestMigrateLegacyRoot_NewRootAlreadyInitialised(t *testing.T) {
+	t.Parallel()
 	newRoot := t.TempDir()
 	if err := os.WriteFile(filepath.Join(newRoot, "system.db"), []byte("EXISTING"), 0o600); err != nil {
 		t.Fatal(err)

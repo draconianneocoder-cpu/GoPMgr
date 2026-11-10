@@ -82,6 +82,7 @@ func latestEvent(t *testing.T, store *Store) AccountEvent {
 const day = 24 * time.Hour
 
 func TestNamingAStandbyPassesTheKeyButNotTheRole(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
 	aliceKey := append([]byte(nil), openEscrow(t, store, "alice", aliceDEK).public...)
 
@@ -112,6 +113,7 @@ func TestNamingAStandbyPassesTheKeyButNotTheRole(t *testing.T) {
 }
 
 func TestStandbyRefusals(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, daveDEK := standbyStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	_, attackerPub := attackerKeyPair(t)
@@ -164,6 +166,7 @@ func TestStandbyRefusals(t *testing.T) {
 }
 
 func TestReplacingOrRemovingTheStandbyTakesTheirKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 
@@ -205,6 +208,7 @@ func TestReplacingOrRemovingTheStandbyTakesTheirKey(t *testing.T) {
 // The standby's sign-in keeps their grant, where any other subordinate's
 // is removed, and removes one that no longer opens.
 func TestStandbyKeepsTheKeyAtSignIn(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 
@@ -224,6 +228,7 @@ func TestStandbyKeepsTheKeyAtSignIn(t *testing.T) {
 }
 
 func TestTakeoverRefusalBoundaries(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
 	base := successionState{super: "alice", days: 30, lastActive: now.Add(-30 * day)}
 	withStandby := base
@@ -261,6 +266,7 @@ func TestTakeoverRefusalBoundaries(t *testing.T) {
 // The period counts from the later of the last sign-in and the time the
 // role was given, so a hand-over or an upgrade starts it again.
 func TestTakeoverCountsFromTheLaterOfSignInAndAssignment(t *testing.T) {
+	t.Parallel()
 	store, _, bobDEK, _ := standbyStore(t)
 	mustSuper(t, store)
 	stamp := func(d time.Duration) string { return time.Now().UTC().Add(-d).Format(time.RFC3339Nano) }
@@ -286,6 +292,7 @@ func TestTakeoverCountsFromTheLaterOfSignInAndAssignment(t *testing.T) {
 }
 
 func TestStandbyTakesOverWithTheKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	superInactiveFor(t, store, 29*day)
@@ -341,6 +348,7 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 }
 
 func TestAnyAdministratorTakesOverWhenNoStandbyIsNamed(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
 	carolDEK, err := unlockDEK(store, "carol", statusPassword)
 	if err != nil {
@@ -376,6 +384,7 @@ func TestAnyAdministratorTakesOverWhenNoStandbyIsNamed(t *testing.T) {
 // The dormant-administrator case the owner asked to close: on an upgraded
 // install the earliest administrator is made super and never signs in.
 func TestAnUpgradedInstallsDormantSuperCanBeTakenOver(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	for _, name := range []string{"carol", "bob"} {
 		if _, err := store.CreateAccount(name, name, statusPassword, true); err != nil {
@@ -412,6 +421,7 @@ func TestAnUpgradedInstallsDormantSuperCanBeTakenOver(t *testing.T) {
 // Saving the same standby again while the super administrator's own key
 // does not open reports and records what the standby still holds.
 func TestNamingTheSameStandbyAgainReportsTheKeyTheyHold(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
@@ -439,6 +449,7 @@ func TestNamingTheSameStandbyAgainReportsTheKeyTheyHold(t *testing.T) {
 
 // Losing the administrator role in any way ends being the standby.
 func TestTheStandbyIsClearedWhenTheirRoleChanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		change func(store *Store, aliceDEK []byte) error
@@ -477,6 +488,7 @@ func TestTheStandbyIsClearedWhenTheirRoleChanges(t *testing.T) {
 // The standby column is plaintext like the role row: one naming someone who
 // cannot be the standby is cleared when read.
 func TestForgedStandbyRowsAreNotTrusted(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 
@@ -506,6 +518,7 @@ func TestForgedStandbyRowsAreNotTrusted(t *testing.T) {
 // grant, so a role row forged to name them does open data. It is still
 // recorded, and the user is still told.
 func TestForgedSuperRowNamingTheStandbyOpensDataAndIsRecorded(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	mustExec(t, store, `UPDATE super_admin SET username = 'bob'`)
@@ -519,6 +532,7 @@ func TestForgedSuperRowNamingTheStandbyOpensDataAndIsRecorded(t *testing.T) {
 }
 
 func TestTwoAdministratorsTakingOverAtOnce(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	stores := make([]*Store, 2)
 	for i := range stores {
@@ -581,6 +595,7 @@ func takenOver(t *testing.T, reason, note string) (store *Store, aliceDEK, bobDE
 }
 
 func TestTakeoverNeedsAReason(t *testing.T) {
+	t.Parallel()
 	store, _, bobDEK, _ := standbyStore(t)
 	superInactiveFor(t, store, 31*day)
 	for _, tc := range []struct {
@@ -614,6 +629,7 @@ func TestTakeoverNeedsAReason(t *testing.T) {
 // Each reason protects the former super administrator for its own number
 // of days (owner decisions, 2026-10-05).
 func TestEachReasonProtectsForItsDays(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		code, label string
 		days        int
@@ -643,6 +659,7 @@ func TestEachReasonProtectsForItsDays(t *testing.T) {
 }
 
 func TestProtectionBlocksDisablingDeletingAndDemotion(t *testing.T) {
+	t.Parallel()
 	store, _, _, _ := takenOver(t, "vacation", "")
 	for name, action := range map[string]func() error{
 		"disable": func() error { return store.SetDisabled("bob", "alice", true) },
@@ -674,6 +691,7 @@ func TestProtectionBlocksDisablingDeletingAndDemotion(t *testing.T) {
 }
 
 func TestProtectionBoundaries(t *testing.T) {
+	t.Parallel()
 	store, _, _, _ := takenOver(t, "vacation", "")
 	now := time.Now().UTC()
 	for _, tc := range []struct {
@@ -698,6 +716,7 @@ func TestProtectionBoundaries(t *testing.T) {
 // Handing the role back ends the protection, so a later step-down of the
 // former super administrator's own is not shielded.
 func TestHandingBackEndsTheProtection(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, _ := takenOver(t, "parental_leave", "")
 	if _, err := store.HandOverSuper("bob", bobDEK, "alice"); err != nil {
 		t.Fatalf("handing back: %v", err)
@@ -717,6 +736,7 @@ func TestHandingBackEndsTheProtection(t *testing.T) {
 // over; the standby stays named and keeps the key (owner decision,
 // 2026-10-07), so the role can later be handed to them with it.
 func TestTakeoverOnceTheStandbyIsAlsoAway(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	superInactiveFor(t, store, 31*day)
@@ -759,6 +779,7 @@ func TestTakeoverOnceTheStandbyIsAlsoAway(t *testing.T) {
 // The standby's inactivity counts from when they were named: saving the
 // same standby with a new period does not restart it; naming another does.
 func TestStandbyNamedAtChangesOnlyWithTheStandby(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	const old = "2026-01-01T00:00:00Z"
@@ -787,6 +808,7 @@ func TestStandbyNamedAtChangesOnlyWithTheStandby(t *testing.T) {
 
 // A super_succession table from before standby_named_at gains the column.
 func TestMigrationAddsStandbyNamedAt(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -815,6 +837,7 @@ func TestMigrationAddsStandbyNamedAt(t *testing.T) {
 // A protected former super administrator who takes the role back loses
 // their protection, and the one they took it from gains one.
 func TestTakingTheRoleBackMovesTheProtection(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := takenOver(t, "parental_leave", "")
 	superInactiveFor(t, store, 31*day) // now bob's
 	if _, err := store.TakeOverSuper("alice", aliceDEK, "vacation", ""); err != nil {
@@ -830,6 +853,7 @@ func TestTakingTheRoleBackMovesTheProtection(t *testing.T) {
 // that the new super administrator holds it, even when the former super
 // administrator's own key no longer opens.
 func TestHandOverToAStandbyReportsTheKeyTheyHold(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _, _ := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)

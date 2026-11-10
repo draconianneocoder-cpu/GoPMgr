@@ -54,6 +54,7 @@ func noticeReadEvents(t *testing.T, store *Store) []AccountEvent {
 }
 
 func TestAccessNoticesStayUntilAcknowledged(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	recordAccess(t, store, aliceDEK, "bob", "ticket 1")
@@ -80,6 +81,7 @@ func TestAccessNoticesStayUntilAcknowledged(t *testing.T) {
 // An access recorded while the notice was on screen was not shown, so
 // acknowledging what was shown leaves it unread.
 func TestAccessRecordedAfterTheNoticeWasShownStaysUnread(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	shown := recordAccess(t, store, aliceDEK, "bob", "ticket 1")
@@ -97,6 +99,7 @@ func TestAccessRecordedAfterTheNoticeWasShownStaysUnread(t *testing.T) {
 }
 
 func TestAcknowledgingOnlyMovesForwardAndOnlyForYourOwnAccesses(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	addUser(t, store, "carol", nil)
@@ -133,6 +136,7 @@ func TestAcknowledgingOnlyMovesForwardAndOnlyForYourOwnAccesses(t *testing.T) {
 }
 
 func TestAccessNoticesSurviveReopeningAndGoWithTheAccount(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {

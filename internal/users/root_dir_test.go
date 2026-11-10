@@ -71,6 +71,7 @@ func TestDefaultRootDirPlatformDefault_UsesGoPMgrLeaf(t *testing.T) {
 // can only ever exercise one side of (whichever OS actually runs the test)
 // gets full statement coverage on any single host, CI included.
 func TestDefaultRootDirForGOOS_BothBranches(t *testing.T) {
+	t.Parallel()
 	home := string(filepath.Separator) + "home" + string(filepath.Separator) + "alice"
 
 	if got, want := defaultRootDirForGOOS("darwin", home), filepath.Join(home, "Library", "Application Support", "GoPMgr"); got != want {
@@ -146,6 +147,7 @@ func TestLegacyRootCandidates_PrefersApplicationSupportOverDocuments(t *testing.
 // covering both the two-candidate macOS branch and the one-candidate
 // everyone-else branch regardless of which OS actually runs `go test`.
 func TestLegacyRootCandidatesForGOOS_BothBranches(t *testing.T) {
+	t.Parallel()
 	home := string(filepath.Separator) + "home" + string(filepath.Separator) + "alice"
 
 	darwin := legacyRootCandidatesForGOOS("darwin", home)
