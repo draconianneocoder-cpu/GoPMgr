@@ -189,6 +189,24 @@ simulation was not.
 | P3 | A simulation keeps every task's samples for every iteration (tasks × iterations × 8 bytes): 40 MB at the interface's 10,000-iteration cap for 500 tasks, but 400 MB at the backend's 100,000-iteration limit. | Unchanged by this work; percentiles need the samples. A streaming quantile estimate would change results, so it needs a decision. |
 | P3 | The frontend was not profiled in this pass. | Out of scope; candidates need measurements in the packaged app. |
 
+## Fifth pass: multi-agent security scan (2026-11-10)
+
+The code-modernization harden scan ran 34 agents: one finder per
+vulnerability class (injection, authentication, secrets, dependencies,
+input handling), a refuter per finding, and a second judge for High
+findings. 28 findings became 22 after refutation (1 High, 5 Medium,
+16 Low); no credentials were found. The full report stays out of the
+repository.
+
+| Priority | Finding | Status |
+|---|---|---|
+| High | The vendored SQLCipher 4.4.2 uses SQLite 3.33.0 (2020), with memory-corruption CVEs reachable from a crafted database file (for example CVE-2021-20227 and CVE-2025-6965). `govulncheck` cannot see C code built through cgo. | Needs an owner decision: upgrade SQLCipher and re-apply the patches in `third_party/go-sqlcipher/GOPMGR.md`. Interim hardening: `PRAGMA trusted_schema=OFF` and `SQLITE_DBCONFIG_DEFENSIVE` on every connection. |
+| Medium | A restored `.pmba` backup's own SQLite schema (planted triggers or views) is trusted: the archive's SHA-256 digests come from its own manifest, so they authenticate nothing. | Open. Reject unexpected triggers, views and virtual tables before migrating a restored or imported file. |
+| Medium | Nothing caps a schedule's length: an imported or typed duration of about 10^9 days makes `AnchorSchedule` and resource profiles allocate memory in proportion to it. | Open; needs a chosen limit, enforced in the scheduler rather than only at import. |
+| Medium | The project's stored certificate path is read into backups with no regular-file or size checks. | Open. |
+| Medium | Schedule CSV export wrote the task ID without formula neutralization; an MSPDI import keeps each task's UID as its ID. | **Fixed** 2026-11-10, with a test that fails on the old code. |
+| Low | 16 findings: recovery codes left on the clipboard, a plaintext `.pre-encryption.bak` kept after encryption, no sign-in attempt limiting, sign-in timing that reveals whether a username exists, the SQLCipher key kept in the connection's DSN, development-only npm advisories, and others. | Recorded for prioritisation. |
+
 ## Re-running the audit
 
 ```sh

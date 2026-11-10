@@ -31,11 +31,12 @@ func renderCSV(payload ReportPayload, _ ExportOptions) ([]byte, error) {
 
 	for _, id := range ids {
 		t := payload.Tasks[id]
-		// Title is free-text and user-controlled, so neutralize it against
-		// formula injection (CWE-1236). The remaining columns are
-		// app-generated IDs and formatted numerics/bools, not attacker text.
+		// Title and ID are text a user or an imported file controls: an
+		// MSPDI import keeps each task's UID as its ID. Both are
+		// neutralized against formula injection (CWE-1236). The remaining
+		// columns are formatted numbers and booleans.
 		err := w.Write([]string{
-			t.ID,
+			exportsafe.Cell(t.ID),
 			exportsafe.Cell(t.Title),
 			fmt.Sprintf("%.4f", t.Duration),
 			fmt.Sprintf("%.4f", t.ES),
