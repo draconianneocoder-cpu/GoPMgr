@@ -35,6 +35,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/go-pdf/fpdf"
@@ -1512,11 +1513,6 @@ func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	}
 	pdf.SetCreator(spec.CreatorTool, true)
 	if len(spec.Keywords) > 0 {
-		// simple join without pulling in strings
-		kw := spec.Keywords[0]
-		for _, k := range spec.Keywords[1:] {
-			kw += ", " + k
-		}
-		pdf.SetKeywords(kw, true)
+		pdf.SetKeywords(strings.Join(spec.Keywords, ", "), true)
 	}
 }

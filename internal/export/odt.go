@@ -10,6 +10,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"gopmgr/internal/documents"
@@ -267,11 +268,11 @@ func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]inter
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
-			line := ""
+			var line strings.Builder
 			for _, k := range keys {
-				line += fmt.Sprintf("%s: %v; ", k, obj[k])
+				fmt.Fprintf(&line, "%s: %v; ", k, obj[k])
 			}
-			writeODTPara(buf, "Bullet", "• "+line)
+			writeODTPara(buf, "Bullet", "• "+line.String())
 		}
 		return
 	}

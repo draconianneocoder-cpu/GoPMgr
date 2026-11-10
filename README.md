@@ -42,8 +42,8 @@ The Go Wails module, task-local CLI, and npm `@wailsio/runtime` are pinned to 3.
 Optional auxiliary-tool provisioning requires Python 3.11+; see the
 [ADR-013 setup and Make-only recovery guide](docs/engineering/adr-013-provisioning.md).
 
-The Wails v3 migration was approved on 2026-11-03. Frontend check/build and
-742 tests pass against the actual 209-method bindings; native macOS bridge
+The Wails v3 migration was approved on 2026-11-03 and merged on 2026-11-09.
+Frontend check/build and tests pass against the generated App bindings; native macOS bridge
 qualification covers exact money, encrypted persistence, null/empty lists, and
 cleanup. This is development evidence, not completed package or release
 qualification. macOS 26 Tahoe and Ubuntu 26.04 execution remain mandatory release

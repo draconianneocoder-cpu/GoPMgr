@@ -80,8 +80,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Methodology field (design doc §5): options are scoped to the current
   // industry, same as ProjectLaunchpad's wizard. `methodology` has no
-  // server-side whitelist (app_foundation.go's UpdateProjectIndustry
-  // stores it as a free string), so an out-of-list current value is
+  // server-side whitelist (UpdateProjectMeta stores it as a free
+  // string), so an out-of-list current value is
   // prepended as its own selectable option rather than silently dropped.
   let methodologyOptions = $derived.by(() => {
     if (!draft) return [];

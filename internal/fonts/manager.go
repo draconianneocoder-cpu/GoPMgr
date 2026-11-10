@@ -214,18 +214,15 @@ func (m *Manager) Available() []FamilyInfo {
 	return out
 }
 
-// Register loads all available styles of the named family and registers
-// them with the fpdf document via AddUTF8FontFromBytes. After a
-// successful call, the caller can SetFont(family, "B"/"I"/"BI"/"", size).
+// RegisterAs loads all available styles of the named family and registers
+// them with the fpdf document via AddUTF8FontFromBytes, under aliasName
+// instead of the real family name. After a successful call, the caller can
+// SetFont(aliasName, "B"/"I"/"BI"/"", size).
 //
-// Lookup order: bundled catalog first, then user fonts. Returns an
-// error if the family is unknown or has no usable Regular face.
-func (m *Manager) Register(r FontRegistrar, family string) error {
-	return m.RegisterAs(r, family, "")
-}
-
-// RegisterAs is like Register but registers the font under aliasName
-// instead of its real family name. This is how GoPMgr swaps the
+// Lookup order: bundled catalog first, then user fonts. Returns an error if
+// the family is unknown or has no usable Regular face.
+//
+// Registering under an alias is how GoPMgr swaps the
 // document font without touching renderer code: registering the chosen
 // family under "Helvetica" makes every existing SetFont("Helvetica",
 // ...) call use the embedded TrueType font, because fpdf

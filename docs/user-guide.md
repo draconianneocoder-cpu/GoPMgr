@@ -142,8 +142,8 @@ Every open project has a Project Settings view. Use it to edit:
   readable; protect or remove that backup only after verifying the encrypted
   project opens successfully.
 
-The classification fields feed the Launchpad rules, terminology, and
-calendar-aware timeline overlays.
+The classification fields feed the Launchpad rules and calendar-aware
+timeline overlays.
 
 ## Application Settings
 

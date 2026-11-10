@@ -314,6 +314,11 @@ recovery-code step. A picker fits in its header without changing that.
    password change and reset, and the administrator-access notices), plus
    `tParts`, which keeps a full sentence in the catalog while a component
    styles one placeholder's value, such as a bold name.
+   Owner decision, 2026-11-09: wire `terminology.ts` into the interface.
+   It is planned as the next slice, the work-item editors (Gantt, CPM, RACI
+   and agile work items), where its methodology words become catalog
+   messages chosen per methodology and written as full sentences. No screen
+   uses `terminology.ts` until then.
 5. [ ] Phase 2: ship the wave 1 languages.
    - Interface translations for wave 1, plus the picker.
    - IBM Plex Sans JP and KR WOFF2, with the CJK text size and line-breaking

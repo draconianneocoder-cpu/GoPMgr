@@ -305,7 +305,7 @@
     {
       "method": "BranchScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 440,
+      "line": 414,
       "params": "scenarioID string, chartID string, baselineID string",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -315,7 +315,7 @@
     {
       "method": "BuildTimeline",
       "file": "internal/desktop/app_foundation.go",
-      "line": 582,
+      "line": 556,
       "params": "",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": []
@@ -334,7 +334,7 @@
     {
       "method": "CheckLatestVersion",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1116,
+      "line": 1090,
       "params": "",
       "returns": "update.Status, error",
       "uses_internal_packages": [
@@ -352,7 +352,7 @@
     {
       "method": "ChooseCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1154,
+      "line": 1128,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -360,7 +360,7 @@
     {
       "method": "ChooseTSARootCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1174,
+      "line": 1148,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -386,7 +386,7 @@
     {
       "method": "CompareScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 545,
+      "line": 519,
       "params": "scenarioChartID string",
       "returns": "map[string]kernel.ScheduleVariance, error",
       "uses_internal_packages": [
@@ -416,7 +416,7 @@
     {
       "method": "ComputeBudget",
       "file": "internal/desktop/app_foundation.go",
-      "line": 857,
+      "line": 831,
       "params": "",
       "returns": "BudgetSummaryWire, error",
       "uses_internal_packages": [
@@ -561,7 +561,7 @@
     {
       "method": "DeleteResourceCalendar",
       "file": "internal/desktop/app_foundation.go",
-      "line": 349,
+      "line": 323,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -571,7 +571,7 @@
     {
       "method": "DeleteScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 419,
+      "line": 393,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -599,7 +599,7 @@
     {
       "method": "DeleteStakeholder",
       "file": "internal/desktop/app_foundation.go",
-      "line": 283,
+      "line": 257,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -633,7 +633,7 @@
     {
       "method": "DownloadAndInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1131,
+      "line": 1105,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -953,7 +953,7 @@
     {
       "method": "GetScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 383,
+      "line": 357,
       "params": "id string",
       "returns": "db.Scenario, error",
       "uses_internal_packages": [
@@ -963,7 +963,7 @@
     {
       "method": "GetScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 482,
+      "line": 456,
       "params": "id string",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1001,7 +1001,7 @@
     {
       "method": "ImportDatasetForAnalysis",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1083,
+      "line": 1057,
       "params": "",
       "returns": "analytics.Dataset, error",
       "uses_internal_packages": [
@@ -1200,7 +1200,7 @@
     {
       "method": "ListHolidays",
       "file": "internal/desktop/app_foundation.go",
-      "line": 834,
+      "line": 808,
       "params": "fromISO string, toISO string",
       "returns": "[]calendar.HolidayEvent, error",
       "uses_internal_packages": [
@@ -1236,7 +1236,7 @@
     {
       "method": "ListResourceCalendars",
       "file": "internal/desktop/app_foundation.go",
-      "line": 316,
+      "line": 290,
       "params": "",
       "returns": "[]db.ResourceCalendar, error",
       "uses_internal_packages": []
@@ -1244,7 +1244,7 @@
     {
       "method": "ListScenarioCharts",
       "file": "internal/desktop/app_foundation.go",
-      "line": 461,
+      "line": 435,
       "params": "scenarioID string",
       "returns": "[]db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1254,7 +1254,7 @@
     {
       "method": "ListScenarios",
       "file": "internal/desktop/app_foundation.go",
-      "line": 370,
+      "line": 344,
       "params": "",
       "returns": "[]db.Scenario, error",
       "uses_internal_packages": []
@@ -1278,7 +1278,7 @@
     {
       "method": "ListStakeholders",
       "file": "internal/desktop/app_foundation.go",
-      "line": 251,
+      "line": 225,
       "params": "category string",
       "returns": "[]db.Stakeholder, error",
       "uses_internal_packages": []
@@ -1313,7 +1313,7 @@
     {
       "method": "MoveTimelineEntry",
       "file": "internal/desktop/app_foundation.go",
-      "line": 594,
+      "line": 568,
       "params": "kind string, sourceID string, dateISO string",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": [
@@ -1428,7 +1428,7 @@
     {
       "method": "PromoteScenarioChartToBaseline",
       "file": "internal/desktop/app_foundation.go",
-      "line": 524,
+      "line": 498,
       "params": "scenarioChartID string, name string",
       "returns": "db.Baseline, error",
       "uses_internal_packages": [
@@ -1438,7 +1438,7 @@
     {
       "method": "QuitToInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1147,
+      "line": 1121,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -1516,7 +1516,7 @@
     {
       "method": "RunPortfolioAnalytics",
       "file": "internal/desktop/app_foundation.go",
-      "line": 892,
+      "line": 866,
       "params": "",
       "returns": "PortfolioSummaryWire, error",
       "uses_internal_packages": [
@@ -1633,7 +1633,7 @@
     {
       "method": "SaveResourceCalendar",
       "file": "internal/desktop/app_foundation.go",
-      "line": 330,
+      "line": 304,
       "params": "c db.ResourceCalendar",
       "returns": "db.ResourceCalendar, error",
       "uses_internal_packages": [
@@ -1643,7 +1643,7 @@
     {
       "method": "SaveScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 405,
+      "line": 379,
       "params": "s db.Scenario",
       "returns": "db.Scenario, error",
       "uses_internal_packages": [
@@ -1653,7 +1653,7 @@
     {
       "method": "SaveScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 503,
+      "line": 477,
       "params": "c db.ScenarioChart",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1684,7 +1684,7 @@
     {
       "method": "SaveStakeholder",
       "file": "internal/desktop/app_foundation.go",
-      "line": 264,
+      "line": 238,
       "params": "s db.Stakeholder",
       "returns": "db.Stakeholder, error",
       "uses_internal_packages": [
@@ -1964,16 +1964,6 @@
         "gopmgr/internal/charts/matrix",
         "gopmgr/internal/db",
         "gopmgr/internal/documents"
-      ]
-    },
-    {
-      "method": "UpdateProjectIndustry",
-      "file": "internal/desktop/app_foundation.go",
-      "line": 212,
-      "params": "industry string, subCategory string, methodology string, countryCode string",
-      "returns": "ProjectMetaWire, error",
-      "uses_internal_packages": [
-        "gopmgr/internal/calendar"
       ]
     },
     {

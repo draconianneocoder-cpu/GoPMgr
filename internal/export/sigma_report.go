@@ -459,13 +459,10 @@ func bulletItem(pdf *pdfdoc.PDF, marker string, markerW, lineH float64, text str
 }
 
 func sanitizeFilename(name string) string {
-	result := ""
-	for _, r := range name {
+	return strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
-			result += string(r)
-		} else {
-			result += "_"
+			return r
 		}
-	}
-	return result
+		return '_'
+	}, name)
 }

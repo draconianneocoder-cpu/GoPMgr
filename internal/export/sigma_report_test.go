@@ -208,3 +208,22 @@ func TestWithEllipsisKeepsTheLineInsideTheCell(t *testing.T) {
 		t.Errorf("withEllipsis(\"\") = %q, want a lone ellipsis", got)
 	}
 }
+
+// TestSanitizeFilenameKeepsOnlyPortableCharacters pins the report file
+// name rule: ASCII letters, digits, '-' and '_' pass through; every other
+// character, including each multi-byte or invalid UTF-8 sequence, becomes
+// one '_'.
+func TestSanitizeFilenameKeepsOnlyPortableCharacters(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"Line_2-Defects", "Line_2-Defects"},
+		{"a b/c\\d:e.f", "a_b_c_d_e_f"},
+		{"日本語", "___"},
+		{"bad\xffbyte", "bad_byte"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		if got := sanitizeFilename(tt.in); got != tt.want {
+			t.Errorf("sanitizeFilename(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

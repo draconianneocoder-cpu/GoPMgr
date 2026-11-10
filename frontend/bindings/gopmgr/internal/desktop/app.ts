@@ -1792,15 +1792,6 @@ export function SyncRiskRegisterToMatrix(documentID: string): $CancellablePromis
 }
 
 /**
- * UpdateProjectIndustry persists changes to industry / sub-category /
- * methodology / country code on an already-open project. Used by the
- * project Settings view if the user reclassifies later.
- */
-export function UpdateProjectIndustry(industry: string, subCategory: string, methodology: string, countryCode: string): $CancellablePromise<$models.ProjectMetaWire> {
-    return $Call.ByName("gopmgr/internal/desktop.App.UpdateProjectIndustry", industry, subCategory, methodology, countryCode);
-}
-
-/**
  * UpdateProjectMeta upserts the project metadata.
  */
 export function UpdateProjectMeta(wire: $models.ProjectMetaWire): $CancellablePromise<$models.ProjectMetaWire> {

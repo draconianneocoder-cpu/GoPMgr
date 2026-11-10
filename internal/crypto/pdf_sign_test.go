@@ -5,7 +5,6 @@ package crypto
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -65,19 +64,20 @@ func TestLoadCertificate_TwoBagRegression(t *testing.T) {
 		t.Fatalf("Signer.ExtraCerts = %v, want none for a 2-bag P12", signer.ExtraCerts)
 	}
 	// Prove the loaded key material is actually usable, not just parsed:
-	// a full sign+verify round-trip against the loaded certificate's
-	// public key.
-	sig, err := signer.SignPDFHash([]byte("round-trip content"))
+	// sign through the production CMS path and verify against the loaded
+	// certificate it embeds, which fails if the key and certificate differ.
+	content := []byte("round-trip content")
+	cms, err := signer.SignPDFCMS(content)
 	if err != nil {
-		t.Fatalf("SignPDFHash with loaded key: %v", err)
+		t.Fatalf("SignPDFCMS with loaded key: %v", err)
 	}
-	hash := sha256.Sum256([]byte("round-trip content"))
-	pub, ok := signer.Cert.PublicKey.(*rsa.PublicKey)
-	if !ok {
-		t.Fatalf("Signer.Cert.PublicKey is %T, want *rsa.PublicKey", signer.Cert.PublicKey)
+	p7, err := pkcs7.Parse(cms)
+	if err != nil {
+		t.Fatalf("parse CMS: %v", err)
 	}
-	if err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hash[:], sig); err != nil {
-		t.Fatalf("signature does not verify against the loaded certificate's public key: %v", err)
+	p7.Content = content
+	if err := p7.Verify(); err != nil {
+		t.Fatalf("signature does not verify against the loaded certificate: %v", err)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestLoadCertificate_AcceptsFileExactlyAtCap(t *testing.T) {
 
 // TestLoadCertificate_RejectsNonRSAKey locks in the RSA-only contract:
 // LoadCertificate must reject an EC-keyed P12 rather than silently
-// accepting a key type SignPDFHash/SignPDFCMS can't use.
+// accepting a key type SignPDFCMS can't use.
 func TestLoadCertificate_RejectsNonRSAKey(t *testing.T) {
 	_, err := LoadCertificate("testdata/testonly-ec-2bag.p12", testP12Password)
 	if err == nil {
@@ -311,36 +311,6 @@ func newTestECCertificate(t *testing.T, commonName string) *x509.Certificate {
 		t.Fatalf("parse EC certificate: %v", err)
 	}
 	return cert
-}
-
-func TestSignPDFHash_NoPrivateKey(t *testing.T) {
-	if _, err := (&Signer{}).SignPDFHash([]byte("content")); err == nil {
-		t.Fatal("expected an error when the signer has no private key")
-	}
-}
-
-// TestSignPDFHash_ProducesVerifiableSignature uses the existing
-// newTestCMSKeyAndCertificate helper (an in-memory generated key), not a
-// P12 fixture -- SignPDFHash only needs a *rsa.PrivateKey, so there's no
-// reason to route this through file-based loading.
-func TestSignPDFHash_ProducesVerifiableSignature(t *testing.T) {
-	key, cert := newTestCMSKeyAndCertificate(t, "GoPMgr SignPDFHash Test Signer")
-	signer := &Signer{Cert: cert, PrivateKey: key}
-
-	content := []byte("%PDF-1.7\n% SignPDFHash content\n")
-	sig, err := signer.SignPDFHash(content)
-	if err != nil {
-		t.Fatalf("SignPDFHash: %v", err)
-	}
-	hash := sha256.Sum256(content)
-	if err := rsa.VerifyPKCS1v15(&key.PublicKey, crypto.SHA256, hash[:], sig); err != nil {
-		t.Fatalf("signature does not verify: %v", err)
-	}
-
-	tampered := sha256.Sum256([]byte("tampered content"))
-	if err := rsa.VerifyPKCS1v15(&key.PublicKey, crypto.SHA256, tampered[:], sig); err == nil {
-		t.Fatal("signature unexpectedly verified against a different hash")
-	}
 }
 
 func TestSignPDFCMSRequiresKeyAndCert(t *testing.T) {

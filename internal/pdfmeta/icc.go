@@ -25,8 +25,3 @@ func DefaultICCProfile() []byte {
 	copy(out, sRGBICC)
 	return out
 }
-
-// HasDefaultICC reports whether the compact sRGB profile was embedded.
-func HasDefaultICC() bool {
-	return len(sRGBICC) > 0
-}

@@ -1037,3 +1037,47 @@ func TestStoreMethodsLeaveAnotherProjectsRowsAlone(t *testing.T) {
 		}
 	})
 }
+
+// TestSaveRejectsUnsupportedEnumValues covers the store's value checks: an
+// unknown work-item type or priority, or sprint status, is refused with its
+// sentinel error and nothing is written, while every supported value saves.
+// Work-item state is free-form because it names a board column.
+func TestSaveRejectsUnsupportedEnumValues(t *testing.T) {
+	_, store, _ := newAgileTestStore(t)
+
+	for _, tt := range []struct {
+		name string
+		item WorkItem
+		want error
+	}{
+		{"unknown type", WorkItem{Title: "x", Type: "feature"}, ErrWorkItemType},
+		{"type in the wrong case", WorkItem{Title: "x", Type: "Story"}, ErrWorkItemType},
+		{"unknown priority", WorkItem{Title: "x", Priority: "critical"}, ErrWorkItemPriority},
+	} {
+		if _, err := store.SaveWorkItem(tt.item); !errors.Is(err, tt.want) {
+			t.Errorf("SaveWorkItem(%s) error = %v, want %v", tt.name, err, tt.want)
+		}
+	}
+	if items, err := store.ListWorkItems("", "", ""); err != nil || len(items) != 0 {
+		t.Fatalf("after rejected saves ListWorkItems = %d items, %v; want none", len(items), err)
+	}
+	if _, err := store.SaveSprint(Sprint{Name: "S", Status: "closed"}); !errors.Is(err, ErrSprintStatus) {
+		t.Errorf("SaveSprint(unknown status) error = %v, want ErrSprintStatus", err)
+	}
+	if sprints, err := store.ListSprints(); err != nil || len(sprints) != 0 {
+		t.Fatalf("after a rejected save ListSprints = %d sprints, %v; want none", len(sprints), err)
+	}
+
+	for _, typ := range []WorkItemType{WorkItemStory, WorkItemBug, WorkItemTask, WorkItemEpic} {
+		for _, prio := range []Priority{PrioLow, PrioMedium, PrioHigh, PrioUrgent} {
+			if _, err := store.SaveWorkItem(WorkItem{Title: "ok", Type: typ, Priority: prio, State: "custom-column"}); err != nil {
+				t.Errorf("SaveWorkItem(%s, %s) = %v, want success", typ, prio, err)
+			}
+		}
+	}
+	for _, status := range []SprintStatus{SprintPlanning, SprintActive, SprintComplete} {
+		if _, err := store.SaveSprint(Sprint{Name: "ok", Status: status}); err != nil {
+			t.Errorf("SaveSprint(%s) = %v, want success", status, err)
+		}
+	}
+}

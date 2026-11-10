@@ -37,6 +37,15 @@ const (
 	WorkItemEpic  WorkItemType = "epic"
 )
 
+// Valid reports whether t is one of the canonical work-item types.
+func (t WorkItemType) Valid() bool {
+	switch t {
+	case WorkItemStory, WorkItemBug, WorkItemTask, WorkItemEpic:
+		return true
+	}
+	return false
+}
+
 // Priority enumerates the priority tiers the GUI offers.
 type Priority string
 
@@ -46,6 +55,15 @@ const (
 	PrioHigh   Priority = "high"
 	PrioUrgent Priority = "urgent"
 )
+
+// Valid reports whether p is one of the priority tiers.
+func (p Priority) Valid() bool {
+	switch p {
+	case PrioLow, PrioMedium, PrioHigh, PrioUrgent:
+		return true
+	}
+	return false
+}
 
 // WorkItem is one story / bug / task / epic on the board or backlog.
 type WorkItem struct {
@@ -95,6 +113,15 @@ const (
 	SprintActive   SprintStatus = "active"
 	SprintComplete SprintStatus = "complete"
 )
+
+// Valid reports whether s is one of the sprint lifecycle states.
+func (s SprintStatus) Valid() bool {
+	switch s {
+	case SprintPlanning, SprintActive, SprintComplete:
+		return true
+	}
+	return false
+}
 
 // Sprint is a time-boxed iteration.
 type Sprint struct {
