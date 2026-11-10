@@ -696,6 +696,12 @@ overwriting existing data. Bundled certificates are checked but are not
 automatically imported. An encrypted archive can be restored only by an
 account that can unlock its project database.
 
+The digests catch a damaged backup, not a deliberately altered one: whoever
+alters a backup can rewrite its digests too. Restore only backups you made or
+trust. As a safeguard, GoPMgr refuses a backup whose project file contains
+database triggers, views or virtual tables, which GoPMgr never creates, and
+tells you it may have been altered.
+
 Deleting a project from the project picker removes it permanently. The
 picker's **Deleted projects** list records each deletion: when and by whom,
 whether it finished, and whether the project's audit trail verified at that
