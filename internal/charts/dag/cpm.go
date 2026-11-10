@@ -4,6 +4,7 @@
 package dag
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -22,8 +23,8 @@ import (
 // use LayoutCPMScheduledWithPlan when a project start date is available.
 func LayoutCPM(doc LayeredDocument) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
-	if ok := kernel.CalculateCPM(tasks); !ok {
-		return Layout{}, ErrCycle
+	if err := scheduleCPM(tasks); err != nil {
+		return Layout{}, err
 	}
 	kernel.DetectOverallocations(tasks, nil)
 	copyCPMResults(doc, tasks)
@@ -39,13 +40,24 @@ func LayoutCPM(doc LayeredDocument) (Layout, error) {
 func LayoutCPMScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	kernel.ApplyConstraintDates(tasks, projectStart, isWorkday)
-	if ok := kernel.CalculateCPM(tasks); !ok {
-		return Layout{}, ErrCycle
+	if err := scheduleCPM(tasks); err != nil {
+		return Layout{}, err
 	}
 	kernel.DetectOverallocationsWithPlan(tasks, plan)
 	kernel.AnchorSchedule(tasks, projectStart, isWorkday)
 	copyCPMResults(doc, tasks)
 	return LayoutLayered(doc, DefaultLayeredOptions())
+}
+
+// scheduleCPM runs the kernel's CPM passes. A cyclic network is reported
+// as this package's ErrCycle, as it always has been; any other refusal
+// (kernel.ErrScheduleTooLong) is returned as the kernel gave it.
+func scheduleCPM(tasks map[string]*kernel.Task) error {
+	err := kernel.ScheduleCPM(tasks)
+	if errors.Is(err, kernel.ErrSchedulingCycle) {
+		return ErrCycle
+	}
+	return err
 }
 
 // cpmTasksFromDoc converts a LayeredDocument into the kernel task

@@ -20,8 +20,10 @@ func TestOccupiedRuns(t *testing.T) {
 		limit int
 		want  [][2]int
 	}{
-		{"a million-day span is one run",
-			&Task{Duration: 1_000_000, ES: 0, EF: 1_000_000}, 1_000_000, [][2]int{{0, 1_000_000}}},
+		{"the longest span the kernel allocates for is one run",
+			&Task{Duration: maxAllocationDays, ES: 0, EF: maxAllocationDays}, maxAllocationDays, [][2]int{{0, maxAllocationDays}}},
+		{"a span beyond the allocation limit has no run",
+			&Task{Duration: 1, ES: 0, EF: maxAllocationDays + 1}, 10, nil},
 		{"a span is clipped to the profile",
 			&Task{Duration: 50, ES: 5, EF: 55}, 10, [][2]int{{5, 10}}},
 		{"a span wholly past the profile has no run",

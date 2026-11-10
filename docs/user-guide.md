@@ -391,6 +391,11 @@ documents. Each file embeds its fonts and color profile, and its text copies,
 searches, and reads aloud correctly. A PAdES signature keeps the file
 PDF/A-2u.
 
+A schedule can be at most 50 years long (18,250 working days). GoPMgr
+refuses to save a CPM or Gantt chart, or to import a file, whose task
+duration, lag or overall length is beyond that, and names the task
+responsible.
+
 GoPMgr imports Microsoft Project XML (MSPDI, `.xml`) directly. Binary or
 serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.

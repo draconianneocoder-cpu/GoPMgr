@@ -208,6 +208,9 @@ func validateMonteCarloInputs(tasks map[string]*Task, iterations int) ([]string,
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+	if err := checkTaskLimits(tasks); err != nil {
+		return nil, fmt.Errorf("monte carlo: %w", err)
+	}
 	if _, ok := topoSort(tasks); !ok {
 		return nil, fmt.Errorf("monte carlo: task graph contains a cycle")
 	}

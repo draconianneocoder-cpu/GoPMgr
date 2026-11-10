@@ -124,6 +124,9 @@ func (a *App) SaveChart(c db.Chart) (db.Chart, error) {
 	}
 	if c.Data != "{}" {
 		if _, err := charts.Layout(charts.Kind(c.Kind), c.Data); err != nil {
+			if errors.Is(err, kernel.ErrScheduleTooLong) {
+				return db.Chart{}, scheduleTooLongErr(err)
+			}
 			return db.Chart{}, fmt.Errorf("chart data does not satisfy the %s schema: %w", c.Kind, err)
 		}
 	}
@@ -194,7 +197,7 @@ func layoutChartForProject(d *db.Database, c db.Chart, proj db.Project) (charts.
 
 	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan)
 	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
-		return charts.LayoutResult{}, err
+		return charts.LayoutResult{}, scheduleTooLongErr(err)
 	}
 	res.Title = c.Title
 	res.TimeZone = proj.TimeZone
@@ -567,8 +570,11 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		return LevelResult{}, errors.New("chart has no tasks")
 	}
 	kernel.ApplyConstraintDates(plain, start, cal.IsWorkday)
-	if !kernel.CalculateCPM(plain) {
-		return LevelResult{}, errors.New("chart contains a dependency cycle")
+	if err := kernel.ScheduleCPM(plain); err != nil {
+		if errors.Is(err, kernel.ErrSchedulingCycle) {
+			return LevelResult{}, errors.New("chart contains a dependency cycle")
+		}
+		return LevelResult{}, scheduleTooLongErr(err)
 	}
 
 	// Levelling pass on a fresh copy.
@@ -592,7 +598,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	// stay visible to the overallocation badges. Any other unexpected error
 	// is surfaced.
 	if levelErr != nil && !errors.Is(levelErr, kernel.ErrLevelingHorizonExceeded) {
-		return LevelResult{}, levelErr
+		return LevelResult{}, scheduleTooLongErr(levelErr)
 	}
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
 
@@ -929,6 +935,32 @@ func mspdiImportTooLargeErr() error {
 		maxMSPDIImportSize>>20)
 }
 
+// scheduleTooLongError is kernel.ErrScheduleTooLong worded for the person
+// who has to shorten the schedule. The kernel's detail (which task, which
+// value) follows the fixed sentence.
+type scheduleTooLongError struct{ cause error }
+
+func (e *scheduleTooLongError) Error() string {
+	msg := fmt.Sprintf(
+		"the schedule is longer than GoPMgr's limit of 50 years (%d working days); "+
+			"shorten the task durations or lags", kernel.MaxScheduleDays)
+	if detail := strings.TrimPrefix(e.cause.Error(), kernel.ErrScheduleTooLong.Error()+": "); detail != e.cause.Error() {
+		msg += " (" + detail + ")"
+	}
+	return msg
+}
+
+func (e *scheduleTooLongError) Unwrap() error { return e.cause }
+
+// scheduleTooLongErr rewords err if it is kernel.ErrScheduleTooLong and
+// returns any other error unchanged.
+func scheduleTooLongErr(err error) error {
+	if !errors.Is(err, kernel.ErrScheduleTooLong) {
+		return err
+	}
+	return &scheduleTooLongError{cause: err}
+}
+
 // importScheduleFileWithOptions routes an imported project file by
 // extension. MS Project XML (MSPDI, *.xml) is parsed directly.
 // Binary/serialized formats (.mpp, .pod) and the legacy .mpx text format
@@ -1024,6 +1056,13 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return db.Chart{}, err
+	}
+	// Refuse a file whose schedule is beyond the kernel's limit before
+	// anything is stored, including the project start date below. Other
+	// layout errors (a dependency cycle) are left for the editor, where
+	// they can be corrected.
+	if _, err := charts.Layout(charts.KindCPM, string(blob)); errors.Is(err, kernel.ErrScheduleTooLong) {
+		return db.Chart{}, fmt.Errorf("this file was not imported: %w", scheduleTooLongErr(err))
 	}
 
 	title := imported.Title

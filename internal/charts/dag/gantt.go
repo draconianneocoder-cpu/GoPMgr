@@ -52,8 +52,8 @@ type GanttLayout struct {
 // rows sorted by (ES, ID). Un-anchored: day offsets only.
 func LayoutGantt(doc LayeredDocument) (GanttLayout, error) {
 	tasks := cpmTasksFromDoc(doc)
-	if ok := kernel.CalculateCPM(tasks); !ok {
-		return GanttLayout{}, ErrCycle
+	if err := scheduleCPM(tasks); err != nil {
+		return GanttLayout{}, err
 	}
 	kernel.DetectOverallocations(tasks, nil)
 	copyCPMResults(doc, tasks)
@@ -67,8 +67,8 @@ func LayoutGantt(doc LayeredDocument) (GanttLayout, error) {
 func LayoutGanttScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (GanttLayout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	kernel.ApplyConstraintDates(tasks, projectStart, isWorkday)
-	if ok := kernel.CalculateCPM(tasks); !ok {
-		return GanttLayout{}, ErrCycle
+	if err := scheduleCPM(tasks); err != nil {
+		return GanttLayout{}, err
 	}
 	kernel.DetectOverallocationsWithPlan(tasks, plan)
 	kernel.AnchorSchedule(tasks, projectStart, isWorkday)

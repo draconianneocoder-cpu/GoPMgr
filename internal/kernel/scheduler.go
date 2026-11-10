@@ -229,15 +229,11 @@ func effectiveLinks(t *Task) []Link {
 // its late dates. Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
 //
-// If the graph contains a cycle, CalculateCPM returns false and changes
-// no task.
+// CalculateCPM returns false, leaving no CPM results on any task, if the
+// graph contains a cycle or the schedule is longer than MaxScheduleDays.
+// ScheduleCPM does the same work and says which.
 func CalculateCPM(tasks map[string]*Task) bool {
-	plan, ok := newCPMPlan(tasks)
-	if !ok {
-		return false
-	}
-	plan.run()
-	return true
+	return ScheduleCPM(tasks) == nil
 }
 
 // cpmPlan is the part of CalculateCPM that depends only on the network's
