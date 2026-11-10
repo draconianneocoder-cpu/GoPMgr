@@ -60,12 +60,13 @@ platform/publication limits are recorded in
   The matching `@wailsio/runtime` npm package is pinned to 3.1.0; generated
   bindings feed the frontend `desktop-api` namespace and narrow event adapter.
 - `github.com/mutecomm/go-sqlcipher/v4`: SQLCipher-capable SQLite driver
-  registered through `internal/sqlitedriver`. The v4.4.2 module is replaced by
-  the runtime-only copy in `third_party/go-sqlcipher` to carry SQLite's
-  WAL-reset generation-check correction and failed driver-transaction cleanup. The
-  replacement retains SQLite 3.33.0, SQLCipher 4.4.2, the LibTomCrypt provider, and the existing encrypted
-  file format; provenance, hashes, and the removal procedure are recorded in
-  `third_party/go-sqlcipher/GOPMGR.md`.
+  registered through `internal/sqlitedriver`. The published module stopped at
+  v4.4.2 (SQLCipher 4.4.2, SQLite 3.33.0), so it is replaced by the
+  runtime-only copy in `third_party/go-sqlcipher`: the v4.4.2 Go bindings and
+  LibTomCrypt provider, the SQLCipher 4.20.0 engine (SQLite 3.54.1, upgraded
+  2026-11-10) and failed driver-transaction cleanup. The encrypted file format
+  is unchanged; provenance, hashes, the rebuild steps and the refresh procedure
+  are recorded in `third_party/go-sqlcipher/GOPMGR.md`.
 - `golang.org/x/crypto` v0.58.1-0.20261009181718-2f1f834330b2: Argon2id and
   PKCS#12 support. The owner-approved upstream commit separates the deprecated
   OpenPGP module, resolving the selected main-module advisory without adding an
@@ -419,8 +420,9 @@ fallback. License selection does not change the linked-module inventory.
 
 For SQLCipher specifically, remember that the selected driver owns the
 SQLite implementation in the binary. Driver changes need encryption
-tests, migration tests, build checks, packaging review, and a causal WAL-reset
-regression when the embedded SQLite core changes. Do not remove the local
+tests, migration tests, build checks, packaging review, old-file fixture tests,
+a repair page sweep and the WAL-reset regression when the embedded SQLite core
+changes. Do not remove the local
 replacement until an upstream driver release containing both corrections passes
 the COMMIT/ROLLBACK regressions and the same encrypted-file interchange checks.
 

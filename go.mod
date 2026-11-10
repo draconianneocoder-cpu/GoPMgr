@@ -5,7 +5,8 @@ module gopmgr
 
 go 1.27.3
 
-// SQLCipher 4.4.2 with WAL-reset and transaction-cleanup corrections.
+// go-sqlcipher v4.4.2 bindings with the SQLCipher 4.20.0 engine (SQLite 3.54.1)
+// and GoPMgr's transaction-cleanup corrections.
 // Provenance and maintenance instructions: third_party/go-sqlcipher/GOPMGR.md.
 replace github.com/mutecomm/go-sqlcipher/v4 => ./third_party/go-sqlcipher
 

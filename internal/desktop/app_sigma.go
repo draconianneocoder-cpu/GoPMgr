@@ -452,7 +452,9 @@ func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.R
 		if err != nil || len(tasks) == 0 {
 			continue
 		}
-		scheduleProjectTasks(proj, tasks)
+		if scheduleProjectTasks(proj, tasks) != nil {
+			continue // no dates to measure against; the chart's editor reports why
+		}
 		metrics, err := kernel.ComputeEVM(tasks, day)
 		if err != nil {
 			return nil, fmt.Errorf("compute EVM for chart %q: %w", id, err)

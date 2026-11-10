@@ -694,21 +694,23 @@ func TestOverallocationCapacityResolution(t *testing.T) {
 
 // TestOverallocationUnassignedTaskSetsTheHorizon pins F-17 (RES-A09, RES-C10):
 // the dense profile spans every task's days, including a far task that uses
-// no resource.
+// no resource. The far task sits at the last day the kernel will size a
+// profile for; before the 50-year schedule limit it sat at day 1,000,000.
 func TestOverallocationUnassignedTaskSetsTheHorizon(t *testing.T) {
+	const far = maxAllocationDays
 	for _, d := range overallocationDetectors() {
 		t.Run(d.name, func(t *testing.T) {
 			tasks := map[string]*Task{
 				"A": resTask("A", 1, 0, 1, resAssign("r", 1)),
-				"X": resTask("X", 1, 999_999, 1_000_000),
+				"X": resTask("X", 1, far-1, far),
 			}
 			usage := d.usage(tasks)
 			profile := usage["r"]
-			if len(usage) != 1 || len(profile) != 1_000_000 {
-				t.Fatalf("usage has %d resources and len(usage[r]) = %d, want 1 and 1000000", len(usage), len(profile))
+			if len(usage) != 1 || len(profile) != far {
+				t.Fatalf("usage has %d resources and len(usage[r]) = %d, want 1 and %d", len(usage), len(profile), far)
 			}
-			if profile[0] != 1 || profile[999_999] != 0 {
-				t.Errorf("usage[r][0] = %v, usage[r][999999] = %v, want 1 and 0", profile[0], profile[999_999])
+			if profile[0] != 1 || profile[far-1] != 0 {
+				t.Errorf("usage[r][0] = %v, usage[r][%d] = %v, want 1 and 0", profile[0], far-1, profile[far-1])
 			}
 			if got := d.detect(tasks, ResourceCapacityPlan{DefaultCapacity: 1}); got != nil {
 				t.Errorf("records = %s, want nil", formatOverallocations(got))

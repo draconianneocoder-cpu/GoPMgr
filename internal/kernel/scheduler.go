@@ -229,34 +229,87 @@ func effectiveLinks(t *Task) []Link {
 // its late dates. Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
 //
-// If the graph contains a cycle, CalculateCPM returns false; the task
-// map is left in an undefined intermediate state.
+// CalculateCPM returns false, leaving no CPM results on any task, if the
+// graph contains a cycle or the schedule is longer than MaxScheduleDays.
+// ScheduleCPM does the same work and says which.
 func CalculateCPM(tasks map[string]*Task) bool {
-	order, ok := topoSort(tasks)
-	if !ok {
-		return false
-	}
+	return ScheduleCPM(tasks) == nil
+}
 
-	// --- Forward pass: ES / EF ---
-	for _, id := range order {
+// cpmPlan is the part of CalculateCPM that depends only on the network's
+// shape: the topological order and, for each task, its links resolved to
+// the tasks at their other ends. Building it once lets the Monte Carlo
+// simulation rerun the passes with new durations without re-sorting the
+// network or re-deriving its links every iteration. A plan holds pointers
+// to the tasks it was built from and is only valid while their links and
+// constraints are unchanged.
+type cpmPlan struct {
+	order []*Task
+	preds [][]cpmLink // links into order[i], in effectiveLinks order
+	succs [][]cpmLink // links out of order[i]
+}
+
+// cpmLink is one link, resolved to the task at its other end.
+type cpmLink struct {
+	task *Task
+	typ  LinkType
+	lag  float64
+}
+
+// newCPMPlan sorts tasks and resolves their links. It changes no task and
+// reports false for a cyclic network. Links to tasks missing from the map
+// are dropped. Successor lists are keyed by the predecessor's map key and
+// read by Task.ID, as the schedule pass always has; callers key the map by
+// Task.ID.
+func newCPMPlan(tasks map[string]*Task) (*cpmPlan, bool) {
+	ids, ok := topoSort(tasks)
+	if !ok {
+		return nil, false
+	}
+	plan := &cpmPlan{
+		order: make([]*Task, len(ids)),
+		preds: make([][]cpmLink, len(ids)),
+		succs: make([][]cpmLink, len(ids)),
+	}
+	successors := make(map[string][]cpmLink, len(tasks))
+	for i, id := range ids {
 		t := tasks[id]
-		t.ConstraintViolated = false
-		es := 0.0
+		plan.order[i] = t
 		for _, l := range effectiveLinks(t) {
 			p, exists := tasks[l.Pred]
 			if !exists {
 				continue
 			}
+			plan.preds[i] = append(plan.preds[i], cpmLink{task: p, typ: l.Type, lag: l.Lag})
+			successors[l.Pred] = append(successors[l.Pred], cpmLink{task: t, typ: l.Type, lag: l.Lag})
+		}
+	}
+	for i, t := range plan.order {
+		plan.succs[i] = successors[t.ID]
+	}
+	return plan, true
+}
+
+// run computes every task's dates, float and critical flag from its current
+// Duration. It reads no output of an earlier run, so it can be repeated
+// after changing durations.
+func (plan *cpmPlan) run() {
+	// --- Forward pass: ES / EF ---
+	for i, t := range plan.order {
+		t.ConstraintViolated = false
+		es := 0.0
+		for _, l := range plan.preds[i] {
+			p := l.task
 			var candidate float64
-			switch l.Type {
+			switch l.typ {
 			case StartToStart:
-				candidate = p.ES + l.Lag
+				candidate = p.ES + l.lag
 			case FinishToFinish:
-				candidate = p.EF + l.Lag - t.Duration
+				candidate = p.EF + l.lag - t.Duration
 			case StartToFinish:
-				candidate = p.ES + l.Lag - t.Duration
+				candidate = p.ES + l.lag - t.Duration
 			default: // FinishToStart
-				candidate = p.EF + l.Lag
+				candidate = p.EF + l.lag
 			}
 			if candidate > es {
 				es = candidate
@@ -287,51 +340,34 @@ func CalculateCPM(tasks map[string]*Task) bool {
 
 	// Project finish = max EF across all tasks.
 	projectEF := 0.0
-	for _, t := range tasks {
+	for _, t := range plan.order {
 		if t.EF > projectEF {
 			projectEF = t.EF
-		}
-	}
-
-	// Reverse adjacency: successors[id] = links leaving id, paired
-	// with the successor task they enter. Used in the backward pass.
-	type succLink struct {
-		succ *Task
-		typ  LinkType
-		lag  float64
-	}
-	successors := make(map[string][]succLink, len(tasks))
-	for _, t := range tasks {
-		for _, l := range effectiveLinks(t) {
-			if _, exists := tasks[l.Pred]; exists {
-				successors[l.Pred] = append(successors[l.Pred],
-					succLink{succ: t, typ: l.Type, lag: l.Lag})
-			}
 		}
 	}
 
 	// --- Backward pass: LF / LS ---
 	// Walk the topo order in reverse so every task is visited AFTER its
 	// successors.
-	for i := len(order) - 1; i >= 0; i-- {
-		t := tasks[order[i]]
+	for i := len(plan.order) - 1; i >= 0; i-- {
+		t := plan.order[i]
 		// Every task is bounded by the project finish; successor links
 		// can only tighten that. (With SS links a predecessor's finish
 		// is not constrained by its successor at all, and with leads an
 		// FS candidate can exceed the project finish — in both cases
 		// the projectEF bound is what keeps float meaningful.)
 		t.LF = projectEF
-		for _, sl := range successors[t.ID] {
+		for _, sl := range plan.succs[i] {
 			var candidate float64
 			switch sl.typ {
 			case StartToStart:
-				candidate = sl.succ.LS - sl.lag + t.Duration
+				candidate = sl.task.LS - sl.lag + t.Duration
 			case FinishToFinish:
-				candidate = sl.succ.LF - sl.lag
+				candidate = sl.task.LF - sl.lag
 			case StartToFinish:
-				candidate = sl.succ.LF - sl.lag + t.Duration
+				candidate = sl.task.LF - sl.lag + t.Duration
 			default: // FinishToStart
-				candidate = sl.succ.LS - sl.lag
+				candidate = sl.task.LS - sl.lag
 			}
 			if candidate < t.LF {
 				t.LF = candidate
@@ -369,7 +405,7 @@ func CalculateCPM(tasks map[string]*Task) bool {
 
 	// Clamp progress to its valid range (defensive against raw UI
 	// input; reporting-only, so this never moves dates).
-	for _, t := range tasks {
+	for _, t := range plan.order {
 		if t.PercentComplete < 0 {
 			t.PercentComplete = 0
 		} else if t.PercentComplete > 100 {
@@ -381,15 +417,13 @@ func CalculateCPM(tasks map[string]*Task) bool {
 	// As-late-as-possible tasks sit at their late dates, consuming
 	// their own float. Applied after both passes so no other task's
 	// dates shift (successors were computed from the early dates).
-	for _, t := range tasks {
+	for _, t := range plan.order {
 		if t.Constraint == AsLateAsPossible {
 			t.ES, t.EF = t.LS, t.LF
 			t.Float = 0
 			t.IsCritical = true
 		}
 	}
-
-	return true
 }
 
 // topoSort returns task IDs in dependency order (predecessors first).

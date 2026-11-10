@@ -543,7 +543,9 @@ func (a *App) CompareScenarioChart(scenarioChartID string) (map[string]kernel.Sc
 	if err != nil {
 		return nil, err
 	}
-	scheduleProjectTasks(p, current)
+	if err := scheduleProjectTasks(p, current); err != nil {
+		return nil, err
+	}
 	return kernel.CompareSchedules(current, baseline), nil
 }
 
@@ -1027,7 +1029,7 @@ func portfolioScheduleEVM(
 	if len(tasks) == 0 {
 		return kernel.EVMetrics{}, false, nil
 	}
-	if !scheduleProjectTasks(p, tasks) {
+	if err := scheduleProjectTasks(p, tasks); err != nil {
 		return kernel.EVMetrics{}, false, nil
 	}
 	// DayOffset compares timestamps, while portfolio EVM is a date-based

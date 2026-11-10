@@ -47,6 +47,16 @@ type ProjectFile struct {
 
 var ErrProjectRequiresEncryptionMigration = errors.New("project requires encryption migration")
 
+// errRestoreForeignSchema is the message a refused restore shows. It names
+// no object from the backup, since a crafted file chooses those names.
+type errRestoreForeignSchema struct{}
+
+func (errRestoreForeignSchema) Error() string {
+	return "the backup contains database objects GoPMgr never creates, so it may have been altered. Nothing was restored."
+}
+
+func (errRestoreForeignSchema) Unwrap() error { return db.ErrForeignSchemaObject }
+
 var ErrRecoveryCodesRequireReissue = errors.New("Create new recovery codes before creating or encrypting a project. Your current codes are from an older version and could not recover encrypted projects after a password reset.")
 
 // ErrRecoveryCodesMissing is returned when the user has no unused recovery
@@ -211,10 +221,29 @@ func (a *App) restoreProjectArchiveFrom(archivePath string, s sessionRef) (resul
 	if dekErr != nil {
 		return result, dekErr
 	}
+	encrypted, err := db.IsEncryptedFile(destPath)
+	if err != nil {
+		return result, err
+	}
+	// An archive's digests come from its own manifest, so they cannot show
+	// the file is GoPMgr's. Refuse triggers, views and virtual tables before
+	// any write: GoPMgr never creates them, and migration would run them.
+	var checkKey []byte
+	if encrypted {
+		checkKey = dek
+	}
+	if err := db.CheckForeignSchemaObjects(destPath, checkKey); err != nil {
+		var foreign *db.ForeignSchemaError
+		if errors.As(err, &foreign) {
+			// The object names come from the backup, so they go to the log
+			// and the user sees a fixed sentence.
+			log.Printf("restore refused %s: %s", archivePath, strings.Join(foreign.Objects, ", "))
+			return result, errRestoreForeignSchema{}
+		}
+		return result, fmt.Errorf("open restored project for this account: %w", err)
+	}
 	var restored *db.Database
-	if encrypted, inspectErr := db.IsEncryptedFile(destPath); inspectErr != nil {
-		return result, inspectErr
-	} else if encrypted {
+	if encrypted {
 		restored, err = db.InitEncryptedDB(destPath, dek)
 	} else {
 		restored, err = db.InitDB(destPath)

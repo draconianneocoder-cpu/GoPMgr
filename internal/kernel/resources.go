@@ -207,9 +207,12 @@ func occupiedDays(t *Task) []int {
 
 // taskSpan is the inclusive integer day range a task occupies, using
 // the same convention as AnchorSchedule (start = round(ES), last day
-// = ceil(EF)-1; zero-duration tasks occupy no days).
+// = ceil(EF)-1; zero-duration tasks occupy no days). A task whose dates
+// are not finite offsets within maxAllocationDays, which CalculateCPM
+// never produces, is reported as occupying no days, because callers size
+// slices from the span.
 func taskSpan(t *Task) (first, last int, occupies bool) {
-	if t.Duration <= 0 {
+	if t.Duration <= 0 || !withinAllocationLimit(t.ES) || !withinAllocationLimit(t.EF) {
 		return 0, 0, false
 	}
 	first = int(math.Round(t.ES))
@@ -519,8 +522,8 @@ func (m *overallocationMembers) sorted() []int {
 // Semantics and limits (documented simplifications for this first
 // leveling pass):
 //
-//   - CalculateCPM is run internally first; it returns false on a
-//     cycle and this returns ErrSchedulingCycle.
+//   - ScheduleCPM is run internally first; its error (a cycle, or a
+//     schedule beyond MaxScheduleDays) is returned unchanged.
 //   - After leveling, ES/EF are the resource-feasible dates. LS, LF
 //     and Float still describe the precedence-only schedule — float
 //     analysis of a levelled plan is a later refinement.
@@ -538,6 +541,8 @@ func (m *overallocationMembers) sorted() []int {
 //
 // Return values:
 //   - (LevelingResult{}, ErrSchedulingCycle) if the graph has a cycle.
+//   - (LevelingResult{}, ErrScheduleTooLong) if the schedule is longer
+//     than MaxScheduleDays. A Horizon above MaxScheduleDays is lowered to it.
 //   - (result, ErrLevelingHorizonExceeded) if one or more tasks could not
 //     be placed within the horizon. The schedule is still levelled as far as
 //     possible and result.UnplacedTaskIDs names the tasks left at their
@@ -549,12 +554,15 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	if horizon <= 0 {
 		horizon = DefaultLevelingHorizon
 	}
+	if horizon > MaxScheduleDays {
+		horizon = MaxScheduleDays
+	}
 	strategy := opts.Strategy
 	if strategy == "" {
 		strategy = LeastTotalFloat
 	}
-	if !CalculateCPM(tasks) {
-		return LevelingResult{}, ErrSchedulingCycle
+	if err := ScheduleCPM(tasks); err != nil {
+		return LevelingResult{}, err
 	}
 
 	// higherPriority reports whether task a should claim a contended slot

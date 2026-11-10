@@ -5,6 +5,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # SQLCipher WAL-reset correction evidence
 
+> **Superseded on 2026-11-10.** The engine was upgraded to SQLCipher 4.20.0
+> (SQLite 3.54.1), which contains this correction upstream, so GoPMgr no
+> longer carries the backport. The test described below now runs against
+> the vendored engine, with a control that removes SQLite's own check. See
+> [the upgrade evidence](sqlcipher-4.20-upgrade.md). The rest of this page
+> is the record of the backport as it was.
+
 ## Risk and correction
 
 The embedded SQLite 3.33.0 core predates SQLite's WAL-reset correction. During

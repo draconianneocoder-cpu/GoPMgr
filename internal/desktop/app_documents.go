@@ -846,7 +846,9 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		// Full scheduling pipeline: arm date constraints, run CPM,
 		// anchor onto real dates (the latter two steps only when the
 		// project has a parseable start date).
-		scheduleProjectTasks(proj, kernelTasks)
+		if err := scheduleProjectTasks(proj, kernelTasks); err != nil {
+			return "", fmt.Errorf("schedule report: %w", err)
+		}
 	}
 
 	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode}
@@ -968,25 +970,37 @@ func resourceCapacityPlan(d *db.Database, projectID string) kernel.ResourceCapac
 // and country work calendar, CPM computes the schedule, and the
 // offsets are anchored onto real dates. Projects without a parseable
 // start date still get plain CPM (date constraints stay dormant and
-// no calendar dates are emitted), preserving legacy behaviour. The
-// boolean reports whether CPM completed; callers producing analytical
-// evidence can refuse cyclic graphs while display-only callers may ignore it.
-func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) bool {
+// no calendar dates are emitted), preserving legacy behaviour.
+//
+// It returns an error, worded for the user, when the scheduler refuses the
+// tasks: a dependency cycle, or a schedule beyond kernel.MaxScheduleDays.
+// The tasks then carry no dates, so a caller that reports figures from
+// them (earned value, a baseline, a comparison) must return the error
+// instead. An empty task map is not an error.
+func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) error {
 	if len(tasks) == 0 {
-		return false
+		return nil
 	}
-	start, ok := parseProjectDate(proj.StartDate)
-	if !ok {
-		return kernel.CalculateCPM(tasks)
+	start, anchored := parseProjectDate(proj.StartDate)
+	var isWorkday kernel.WorkdayFunc
+	if anchored {
+		isWorkday = calendar.For(proj.CountryCode).IsWorkday
+		kernel.ApplyConstraintDates(tasks, start, isWorkday)
 	}
-	c := calendar.For(proj.CountryCode)
-	kernel.ApplyConstraintDates(tasks, start, c.IsWorkday)
-	if !kernel.CalculateCPM(tasks) {
-		return false
+	if err := kernel.ScheduleCPM(tasks); err != nil {
+		if errors.Is(err, kernel.ErrSchedulingCycle) {
+			return errScheduleCycle
+		}
+		return scheduleTooLongErr(err)
 	}
-	kernel.AnchorSchedule(tasks, start, c.IsWorkday)
-	return true
+	if anchored {
+		kernel.AnchorSchedule(tasks, start, isWorkday)
+	}
+	return nil
 }
+
+// errScheduleCycle is the scheduler's cycle refusal worded for the user.
+var errScheduleCycle = errors.New("the schedule contains a dependency cycle; remove it in the chart editor")
 
 // parseProjectDate accepts the two date shapes stored in
 // project.start_date: plain YYYY-MM-DD and full RFC3339.

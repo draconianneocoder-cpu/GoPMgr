@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"gonum.org/v1/gonum/stat/distuv"
 )
@@ -95,12 +96,6 @@ type SimResult struct {
 	TornadoDrivers        []TornadoDriver       `json:"tornado_drivers"`
 }
 
-type monteCarloIteration struct {
-	finish    float64
-	critical  map[string]bool
-	durations map[string]float64
-}
-
 // RunMonteCarlo samples task durations, runs CPM for each sampled
 // network, and aggregates finish percentiles plus critical-path
 // frequency. Sampling is deterministic by iteration index, so results
@@ -135,55 +130,50 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 		return result
 	}
 
+	// Each iteration writes only its own slot in finishes and samples, so
+	// workers share them without locking. Critical-path counts are kept per
+	// worker and summed after every worker has finished.
+	finishes := make([]float64, iterations)
+	samples := make([][]float64, len(taskIDs))
+	for k := range samples {
+		samples[k] = make([]float64, iterations)
+	}
+	criticalCounts := make([][]int, workers)
 	jobs := make(chan int)
-	results := make(chan monteCarloIteration, workers)
-
+	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
+		sim := newMonteCarloWorker(tasks, taskIDs)
+		criticalCounts[w] = sim.criticalCounts
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for iteration := range jobs {
-				results <- runMonteCarloIteration(tasks, taskIDs, iteration)
+				finishes[iteration] = sim.run(iteration, samples)
 			}
 		}()
 	}
-
-	go func() {
-		for iteration := 0; iteration < iterations; iteration++ {
-			jobs <- iteration
-		}
-		close(jobs)
-	}()
-
-	finishes := make([]float64, 0, iterations)
-	criticalCounts := make(map[string]int, len(taskIDs))
-	durationSamples := make(map[string][]float64, len(taskIDs))
-	for _, id := range taskIDs {
-		durationSamples[id] = make([]float64, 0, iterations)
+	for iteration := 0; iteration < iterations; iteration++ {
+		jobs <- iteration
 	}
+	close(jobs)
+	wg.Wait()
 
-	for i := 0; i < iterations; i++ {
-		iter := <-results
-		finishes = append(finishes, iter.finish)
-		for id, critical := range iter.critical {
-			if critical {
-				criticalCounts[id]++
-			}
-		}
-		for id, duration := range iter.durations {
-			durationSamples[id] = append(durationSamples[id], duration)
-		}
-	}
-
-	result.P50 = percentile(finishes, 0.50)
-	result.P80 = percentile(finishes, 0.80)
-	result.P90 = percentile(finishes, 0.90)
+	sort.Float64s(finishes)
+	result.P50 = sortedPercentile(finishes, 0.50)
+	result.P80 = sortedPercentile(finishes, 0.80)
+	result.P90 = sortedPercentile(finishes, 0.90)
 	result.FinishCDF = finishCDF(finishes)
-	for _, id := range taskIDs {
-		result.CriticalPathFrequency[id] = float64(criticalCounts[id]) / float64(iterations)
-		samples := durationSamples[id]
+	for k, id := range taskIDs {
+		critical := 0
+		for _, counts := range criticalCounts {
+			critical += counts[k]
+		}
+		result.CriticalPathFrequency[id] = float64(critical) / float64(iterations)
+		sort.Float64s(samples[k])
 		result.DurationPercentiles[id] = [3]float64{
-			percentile(samples, 0.50),
-			percentile(samples, 0.80),
-			percentile(samples, 0.90),
+			sortedPercentile(samples[k], 0.50),
+			sortedPercentile(samples[k], 0.80),
+			sortedPercentile(samples[k], 0.90),
 		}
 	}
 	result.TornadoDrivers = tornadoDrivers(taskIDs, result.CriticalPathFrequency, result.DurationPercentiles)
@@ -218,6 +208,9 @@ func validateMonteCarloInputs(tasks map[string]*Task, iterations int) ([]string,
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+	if err := checkTaskLimits(tasks); err != nil {
+		return nil, fmt.Errorf("monte carlo: %w", err)
+	}
 	if _, ok := topoSort(tasks); !ok {
 		return nil, fmt.Errorf("monte carlo: task graph contains a cycle")
 	}
@@ -244,37 +237,58 @@ func validateDurationEstimate(task *Task) error {
 	return nil
 }
 
-func runMonteCarloIteration(tasks map[string]*Task, taskIDs []string, iteration int) monteCarloIteration {
+// monteCarloWorker reruns the schedule pass on its own copy of the
+// network. The copy and its plan are built once; each iteration only sets
+// new durations, because the pass recomputes every output from them.
+type monteCarloWorker struct {
+	originals      []*Task // by taskIDs index, for sampling
+	clones         []*Task // by taskIDs index, scheduled each iteration
+	plan           *cpmPlan
+	criticalCounts []int // by taskIDs index
+}
+
+func newMonteCarloWorker(tasks map[string]*Task, taskIDs []string) *monteCarloWorker {
+	sim := &monteCarloWorker{
+		originals:      make([]*Task, len(taskIDs)),
+		clones:         make([]*Task, len(taskIDs)),
+		criticalCounts: make([]int, len(taskIDs)),
+	}
+	network := make(map[string]*Task, len(taskIDs))
+	for k, id := range taskIDs {
+		sim.originals[k] = tasks[id]
+		sim.clones[k] = cloneTaskForSimulation(tasks[id])
+		network[id] = sim.clones[k]
+	}
+	// validateMonteCarloInputs has already rejected a cyclic network.
+	sim.plan, _ = newCPMPlan(network)
+	return sim
+}
+
+// run samples and schedules one iteration, records each task's sampled
+// duration in samples[k][iteration], counts critical tasks, and returns
+// the project finish. Sampling depends only on the iteration index, so the
+// result does not depend on which worker runs it.
+func (sim *monteCarloWorker) run(iteration int, samples [][]float64) float64 {
 	// #nosec G115 -- iteration is bounded [0, maxMonteCarloIterations] by
 	// validateMonteCarloInputs, so the int->uint64 conversion cannot
 	// overflow; and this seeds a statistical PRNG, not a security boundary.
 	src := rand.NewPCG(monteCarloSeedA+uint64(iteration)*0x9e3779b97f4a7c15, monteCarloSeedB^uint64(iteration))
-	sampled := make(map[string]*Task, len(tasks))
-	durations := make(map[string]float64, len(taskIDs))
-
-	for _, id := range taskIDs {
-		original := tasks[id]
-		task := cloneTaskForSimulation(original)
-		task.Duration = sampleDuration(original, src)
-		durations[id] = task.Duration
-		sampled[id] = task
+	for k, original := range sim.originals {
+		duration := sampleDuration(original, src)
+		sim.clones[k].Duration = duration
+		samples[k][iteration] = duration
 	}
-
-	CalculateCPM(sampled)
-	critical := make(map[string]bool, len(taskIDs))
+	sim.plan.run()
 	finish := 0.0
-	for _, id := range taskIDs {
-		task := sampled[id]
+	for k, task := range sim.clones {
 		if task.EF > finish {
 			finish = task.EF
 		}
-		critical[id] = task.IsCritical
+		if task.IsCritical {
+			sim.criticalCounts[k]++
+		}
 	}
-	return monteCarloIteration{
-		finish:    finish,
-		critical:  critical,
-		durations: durations,
-	}
+	return finish
 }
 
 func cloneTaskForSimulation(original *Task) *Task {
@@ -318,12 +332,12 @@ func normalizedDistribution(name DistributionName) DistributionName {
 	return normalized
 }
 
-func percentile(values []float64, q float64) float64 {
-	if len(values) == 0 {
+// sortedPercentile interpolates the q-quantile of values, which must be
+// sorted in ascending order.
+func sortedPercentile(sorted []float64, q float64) float64 {
+	if len(sorted) == 0 {
 		return 0
 	}
-	sorted := append([]float64(nil), values...)
-	sort.Float64s(sorted)
 	if len(sorted) == 1 {
 		return sorted[0]
 	}
@@ -337,6 +351,7 @@ func percentile(values []float64, q float64) float64 {
 	return sorted[lower]*(1-weight) + sorted[upper]*weight
 }
 
+// finishCDF expects finishes sorted in ascending order.
 func finishCDF(finishes []float64) []ProbabilityPoint {
 	const points = 21
 	if len(finishes) == 0 {
@@ -346,7 +361,7 @@ func finishCDF(finishes []float64) []ProbabilityPoint {
 	for i := 0; i < points; i++ {
 		probability := float64(i) / float64(points-1)
 		curve = append(curve, ProbabilityPoint{
-			Day:         percentile(finishes, probability),
+			Day:         sortedPercentile(finishes, probability),
 			Probability: probability,
 		})
 	}

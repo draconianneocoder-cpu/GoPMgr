@@ -23,18 +23,34 @@ function svelteFiles(dir: string): string[] {
   });
 }
 
+// removeAll deletes every match of pattern, again and again until a pass
+// finds none.
+function removeAll(text: string, pattern: RegExp): string {
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(pattern, '');
+  } while (text !== previous);
+  return text;
+}
+
 // literalText returns the text a person would read that is written into the
 // markup: text between tags, and the placeholder, aria-label, title, label,
 // and alt attributes. Anything inside {braces}, such as {t('key')}, is code.
 export function literalText(source: string): string[] {
-  let markup = source
-    .replace(/<script[\s\S]*?<\/script>/g, '')
-    .replace(/<style[\s\S]*?<\/style>/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '');
-  for (let previous = ''; previous !== markup; ) {
-    previous = markup;
-    markup = markup.replace(/\{[^{}]*\}/g, '');
-  }
+  // Removing one block can join the halves of another
+  // ("<scr<script></script>ipt>"), so every removal repeats until nothing
+  // changes, and the four repeat together for the same reason. Closing tags
+  // may carry spaces or attributes, in any letter case.
+  let markup = source;
+  let before: string;
+  do {
+    before = markup;
+    markup = removeAll(markup, /<script\b[\s\S]*?<\/script\b[^>]*>/gi);
+    markup = removeAll(markup, /<style\b[\s\S]*?<\/style\b[^>]*>/gi);
+    markup = removeAll(markup, /<!--[\s\S]*?--!?>/g);
+    markup = removeAll(markup, /\{[^{}]*\}/g);
+  } while (markup !== before);
   const hasWords = (text: string) => /\p{L}{2}/u.test(text);
   const between = Array.from(markup.matchAll(/>([^<>]+)</g), (m) => m[1].trim()).filter(hasWords);
   const attributes = Array.from(
@@ -63,6 +79,16 @@ describe('literalText', () => {
 <input placeholder="Search projects" aria-label={t('search')} />
 <span>✓</span>`;
     expect(literalText(source)).toEqual(['Plain words', 'Hello !', 'Search projects']);
+  });
+
+  it('removes script, style and comment blocks however they are closed or nested', () => {
+    const source = `<SCRIPT lang="ts">const a = '<p>Upper case</p>';</SCRIPT >
+<scr<script>const b = 1;</script>ipt>const c = '<p>Rejoined tag</p>';</script foo="bar">
+<style>p::before { content: '<p>Style text</p>'; }</style
+>
+<!-<!-- inner -->- <p>Rejoined comment</p> -->
+<p>Kept words</p>`;
+    expect(literalText(source)).toEqual(['Kept words']);
   });
 });
 

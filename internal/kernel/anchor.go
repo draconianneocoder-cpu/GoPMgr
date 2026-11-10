@@ -39,8 +39,22 @@ const maxNonWorkdayRun = 366
 // isWorkday may be nil, in which case every day counts as working.
 // AnchorSchedule must be called after CalculateCPM; it reads ES/EF
 // and never mutates them.
+//
+// The date table it builds has one entry per working day of the schedule.
+// If any task's ES or EF is not a finite offset within maxAllocationDays
+// (which CalculateCPM never produces), no table is built and every task's
+// dates are cleared instead.
 func AnchorSchedule(tasks map[string]*Task, projectStart time.Time, isWorkday WorkdayFunc) {
 	if len(tasks) == 0 {
+		return
+	}
+	for _, t := range tasks {
+		if withinAllocationLimit(t.ES) && withinAllocationLimit(t.EF) {
+			continue
+		}
+		for _, clear := range tasks {
+			clear.StartDate, clear.FinishDate = "", ""
+		}
 		return
 	}
 	if isWorkday == nil {

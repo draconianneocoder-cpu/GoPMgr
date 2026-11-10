@@ -81,7 +81,7 @@ below passes against it unmodified.
 | F-11 | A split day past the span horizon is dropped, so a possible conflict on that day is never reported | Known defect candidate; a fix needs its own change request |
 | F-15, F-19 | Two entries with one printed ID, or two keys aliasing one task, both appear in `TaskIDs` | Identity validation pending |
 | F-16 | A zero-duration task with `WorkDays` adds demand inside other tasks' horizon but cannot extend it | Malformed input; policy pending |
-| F-17 | A far task with no assignments makes every profile 1,000,000 days long | Dense-horizon cost; sparse design (RES-B) scope |
+| F-17 | A far task with no assignments makes every profile as long as the schedule (73,000 days in the test, the most the kernel allocates for since the 50-year schedule limit of 2026-11-10; 1,000,000 before it) | Dense-horizon cost; sparse design (RES-B) scope |
 | F-18 | `Units = NaN` produces a record that `encoding/json` cannot marshal | Non-finite input; validation pending |
 | F-21 | A negative split day adds no demand but still creates the resource's profile | Malformed input; policy pending |
 

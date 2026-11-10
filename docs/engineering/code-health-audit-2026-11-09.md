@@ -169,6 +169,62 @@ scanners the first two passes had not.
 | `npm audit` (development tools) | 10 low or moderate advisories, all in ESLint's `minimatch` and the build-time `deepmerge` (**P3**). npm's suggested fix downgrades `@typescript-eslint`; do not run `npm audit fix --force`. Dependabot updates will clear them. |
 | `gosec -tags production ./...`, excluding the gitignored `.tmp/` scratch tree, spikes and tests | No actionable finding. Decompression (G110) in backup restore is bounded: each entry's declared size and the archive total are capped first, and Go's zip reader fails with `ErrFormat` once an entry decodes past its declared size, which `TestRestoreArchivalBundleRejectsUnderstatedDecodedSize` proves. The SQL concatenations (G202) insert fixed column lists with bound values. The integer conversions (G115) in `money` and `analytics` follow explicit overflow checks. The printer subprocess (G204) uses a fixed path and a validated printer name. The rest are in build tools or vendored SQLCipher. |
 
+## Fourth pass: performance (2026-11-10)
+
+Existing benchmarks show overallocation detection is already linear and
+fast (100,000 tasks in about 107 ms). The Monte Carlo schedule-risk
+simulation was not.
+
+### Fixed
+
+| Priority | Finding | Fix |
+|---|---|---|
+| P2 | Every Monte Carlo iteration cloned every task, re-sorted the unchanged network, re-derived each task's links four times (each a fresh slice and map), and returned its results in two new maps; the percentiles then copied and sorted each task's samples three times, and the finish CDF sorted the finishes 21 times. 500 tasks at 10,000 iterations (the interface's maximum) took 1.5 s and allocated 7.2 GB. | `CalculateCPM` is split into a plan (topological order and resolved links, built once) and a run (the passes, unchanged in substance). Each worker clones the network and builds the plan once, and iterations write into preallocated slices; each sample list is sorted once. Medians of five runs: 42.9 ms to 5.7 ms (100 tasks × 1,000), 165 ms to 25.9 ms (500 × 1,000), and 1.50 s to 0.29 s with 7.2 GB to 49 MB allocated (500 × 10,000). One schedule pass at 5,000 tasks: 3.25 ms to 2.87 ms. Results are bit-identical to verbatim copies of the old code on 300 seeded random networks and with any worker count. |
+
+### Recorded, not changed
+
+| Priority | Finding | Why not now |
+|---|---|---|
+| P3 | Resource leveling (`kernel/resources.go`) calls `effectiveLinks` inside its loops and re-runs `CalculateCPM`. | Not measured as a hot path; the plan type now gives it a way to reuse sorted links if a benchmark shows the need. |
+| P3 | A simulation keeps every task's samples for every iteration (tasks × iterations × 8 bytes): 40 MB at the interface's 10,000-iteration cap for 500 tasks, but 400 MB at the backend's 100,000-iteration limit. | Unchanged by this work; percentiles need the samples. A streaming quantile estimate would change results, so it needs a decision. |
+| P3 | The frontend was not profiled in this pass. | Out of scope; candidates need measurements in the packaged app. |
+
+## Fifth pass: multi-agent security scan (2026-11-10)
+
+The code-modernization harden scan ran 34 agents: one finder per
+vulnerability class (injection, authentication, secrets, dependencies,
+input handling), a refuter per finding, and a second judge for High
+findings. 28 findings became 22 after refutation (1 High, 5 Medium,
+16 Low); no credentials were found. The full report stays out of the
+repository.
+
+| Priority | Finding | Status |
+|---|---|---|
+| High | The vendored SQLCipher 4.4.2 used SQLite 3.33.0 (2020), with memory-corruption CVEs reachable from a crafted database file (for example CVE-2021-20227 and CVE-2025-6965). `govulncheck` cannot see C code built through cgo. | **Fixed** 2026-11-10 at the owner's request: upgraded to SQLCipher 4.20.0 (SQLite 3.54.1), the newest stable release; see [the upgrade evidence](../testing/sqlcipher-4.20-upgrade.md). Old files need no migration. The Windows build is unverified. Still open as hardening: `PRAGMA trusted_schema=OFF` and `SQLITE_DBCONFIG_DEFENSIVE` on every connection, and a check that flags the vendored SQLite version against new advisories. |
+| Medium | A restored `.pmba` backup's own SQLite schema (planted triggers or views) is trusted: the archive's SHA-256 digests come from its own manifest, so they authenticate nothing. | **Fixed** 2026-11-10: restore opens the file read-only first and refuses any trigger, view or virtual table (GoPMgr has never created one in a project file); with the check removed, a planted trigger deleted the restored project row. Restore is the only path that opens a project file from outside the account for writing (`OpenProject` takes only encrypted files in the user's own folder; the CLI `--project` mode opens a file the user names). Limits: SQLite still parses the file's schema, so the engine's parser vulnerabilities (the High row) stay reachable; and tables the archive defines itself are still trusted, so a crafted table with cascading foreign keys or CHECK constraints passes `CREATE TABLE IF NOT EXISTS` (closing that needs a full schema comparison across versions). |
+| Medium | Nothing capped a schedule's length: an imported or typed duration of about 10^9 days made `AnchorSchedule` and resource profiles allocate memory in proportion to it. | **Fixed** 2026-11-10 by the owner's decision of a 50-year maximum (`kernel.MaxScheduleDays`, 18,250 working days), enforced in the scheduler. `ScheduleCPM` refuses any duration, lag or estimate beyond it, any value that is not a finite number, and any schedule that adds up past it; saving a chart and importing a file fail with a message naming the task. The functions that size memory from dates (`AnchorSchedule`, resource profiles, leveling) also refuse out-of-range dates themselves, because baselines hand them tasks that never went through CPM. A chart stored before the limit still opens for editing; earned value, baselines, comparisons, the resource histogram and schedule exports now return the scheduler's refusal (too long, or a dependency cycle) rather than figures computed from a schedule with no dates. Not covered: the import's assignment units and percent-complete are still unbounded (neither sizes memory). |
+| Medium | The project's stored certificate path is read into backups with no regular-file or size checks. | Open. |
+| Medium | Schedule CSV export wrote the task ID without formula neutralization; an MSPDI import keeps each task's UID as its ID. | **Fixed** 2026-11-10, with a test that fails on the old code. |
+| Low | 16 findings: recovery codes left on the clipboard, a plaintext `.pre-encryption.bak` kept after encryption, no sign-in attempt limiting, sign-in timing that reveals whether a username exists, the SQLCipher key kept in the connection's DSN, development-only npm advisories, and others. | Recorded for prioritisation. |
+
+## GitHub code scanning, 2026-11-10
+
+CodeQL was enabled on the repository on 2026-11-10 and opened seven alerts
+on `main`, all rated High by rule. None was exploitable; each was closed by
+a code change rather than dismissed.
+
+| Alert | Finding | Assessment and change |
+| --- | --- | --- |
+| 7 | `internal/crypto/encrypt.go`: the output size `salt + nonce + len(data) + tag` could overflow. | Not reachable on a 64-bit build, where no slice is that long. `EncryptBuffer` now refuses an input beyond the AES-GCM single-message limit (2^36-32 bytes) with `ErrBufferTooLarge`; before, `Seal` would have panicked there. |
+| 5, 6 | `internal/desktop/app.go`: "sensitive data" from `PasswordEnv` reaches a log call. | The value is the *name* of an environment variable, not the password. The two messages no longer include the name, so nothing read through that field reaches a log. |
+| 1 to 4 | `frontend/src/lib/i18n/hardcoded-text.test.ts`: incomplete tag stripping. | The function counts interface text in the project's own Svelte files for a test; its output is never rendered. The stripping now repeats until nothing changes and accepts upper-case and spaced closing tags, with a test of nested and oddly closed blocks. The recorded baseline is unchanged. |
+
+The two open Dependabot alerts (minimatch, deepmerge) are unchanged from
+the [advisory review](../DEPENDENCIES.md#advisory-review-2026-11-09):
+development-only, and neither has a fix that the packages using them
+accept. Checked again on 2026-11-10: ESLint 10.14.0 still requires
+minimatch `^10`, and deepmerge has no patched release.
+
 ## Re-running the audit
 
 ```sh

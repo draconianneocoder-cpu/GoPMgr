@@ -57,6 +57,12 @@ import (
 // valid candidates; page 119 reproduced the same reachable-but-unhealable
 // outcome across 3 repeated runs. Page 3 was unaffected and confirmed still
 // passing, unchanged.
+//
+// A fourth time on 2026-11-10: the SQLCipher 4.20.0 upgrade. Page 3 still
+// heals; the unhealable offset moved from page 119 to page 120. That sweep
+// also found that SQLCipher now puts a connection into a permanent error
+// state once a page fails to decrypt, so the repair makes its copy on a
+// fresh connection (db.InformativeSelfHeal).
 func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []byte) {
 	t.Helper()
 	app = newEncryptionProjectTestApp(t)
@@ -138,7 +144,10 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // TestRepairAndSwapCanFailToHealEvenWhenReached pins current, real
 // behavior discovered by the same sweep: RepairAndSwap being reachable
 // does not guarantee it can heal what it finds. This corruption pattern
-// (page 119 — re-derived 2026-08-23 after the project-cost-ledger-scope.md
+// (page 120 — re-derived 2026-11-10 after the SQLCipher 4.20.0 upgrade, whose
+// SQLite 3.54.1 core lays this fixture out one page longer; a full sweep
+// found pages 78, 120 and 121 with this outcome and the same 62 healable
+// pages as the old engine. Before that, page 119, re-derived 2026-08-23 after the project-cost-ledger-scope.md
 // item 3 migration (cost_entries procurement columns + the new
 // cost_entry_attachments table) again shifted this fixture's page layout;
 // the prior sweep had found page 113, which after this migration lands on
@@ -158,8 +167,8 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // is a deliberate, reviewed change rather than an unnoticed regression.
 func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	app, path, pristine := seedRepairFixtureProject(t)
-	const page119Offset = 119*4096 + 1
-	corruptByteAt(t, path, pristine, page119Offset)
+	const page120Offset = 120*4096 + 1
+	corruptByteAt(t, path, pristine, page120Offset)
 
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: want success on this corruption pattern, got %v", err)

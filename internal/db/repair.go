@@ -70,6 +70,11 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 			return result, rmErr
 		}
 	}
+	// The integrity check has just read the damaged pages. On an encrypted
+	// project, SQLCipher puts a connection that fails to decrypt a page
+	// into a permanent error state, so the copy must be made on a
+	// connection that has not read them.
+	db.dropIdleConnections()
 	if err := db.CreateSnapshot(snapshotPath); err != nil {
 		result.Report = debug.Wrap(err, "SNAPSHOT_CREATION_FAILED")
 		return result, err
@@ -83,6 +88,17 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 	result.Log = append(result.Log, fmt.Sprintf("Wrote the rebuilt copy to %s.", snapshotPath))
 	return result, nil
 }
+
+// dropIdleConnections closes the pool's idle connections, so the next
+// statement runs on a newly opened one. database/sql keeps two idle
+// connections by default; that default is restored afterwards.
+func (db *Database) dropIdleConnections() {
+	db.Conn.SetMaxIdleConns(0)
+	db.Conn.SetMaxIdleConns(defaultMaxIdleConnections)
+}
+
+// defaultMaxIdleConnections is database/sql's own default.
+const defaultMaxIdleConnections = 2
 
 // SwapInSnapshot atomically replaces the live database file with the
 // .bak snapshot produced by InformativeSelfHeal. Steps:
