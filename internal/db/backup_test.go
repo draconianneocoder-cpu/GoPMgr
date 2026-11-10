@@ -338,7 +338,7 @@ func TestCreateArchivalBundleDoesNotPublishPartialArchiveOnBundleFailure(t *test
 	d := newBackupTestDB(t)
 	dir := t.TempDir()
 	destPath := filepath.Join(dir, "partial.pmba")
-	unreadableCert := filepath.Join(dir, "certdir.pem")
+	unreadableCert := filepath.Join(dir, "certdir.p12")
 	if err := os.Mkdir(unreadableCert, 0o700); err != nil {
 		t.Fatalf("mkdir cert path: %v", err)
 	}
