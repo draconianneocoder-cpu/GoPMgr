@@ -112,6 +112,47 @@ the extraction of the work-item editors. Until then the module stays unused,
 and the Help screen, user guide and coverage ledger no longer claim
 otherwise.
 
+## Second pass: flaky tests, inefficiency and data integrity
+
+A second pass the same day looked for flaky tests and the gaps the first
+pass left open. Priorities: **P1** fix now (correctness or data integrity),
+**P2** fix soon or needs an owner decision, **P3** record only.
+
+### Flaky tests: none found
+
+| Check | Result |
+|---|---|
+| CI history, 200 runs (2026-10-11 to 2026-11-09) | 149 passed, 36 cancelled, 15 failed. No commit both passed and failed. Every failure has a deterministic cause: generated notices left stale by a dependency bump, coverage-ledger drift, DataFusion spike files that config-check did not classify (since fixed), a Dependabot Wails bump that did not match the documented pins, a Go standard-library advisory (fixed by a toolchain update), or a real test failure on a feature branch. The two re-runs followed a cancelled job and a repeated real failure. |
+| Go: every package three times with `-race -shuffle=on` | 51 packages pass; no data race. This run used `main` at `ae76111`: the checkout was switched to `main` outside this work while it ran. The packages this branch changes were then rerun on the branch, twice with `-race -shuffle=on` and once at UTC+14, and passed. |
+| Frontend: five shuffled runs with different seeds, under load (on `main`), then three more on this branch | 742 of 742 pass each time |
+| Time zones UTC+14 and UTC−10 (both suites); German locale (frontend) | all pass |
+| Static patterns | No fixed network ports; no frontend test that waits on real timers or reads the clock without fake timers; no test that swaps a process-wide value while running in parallel; no date-relative assertion on a hard-coded date |
+| Time bombs | The committed test certificates expire in August 2036 (**P3**: renew before then) |
+
+The only sleep-based timing assertions are in the ADR-010 transport spike
+(`spikes/adr010-g0-transport`), which CI runs only for pull requests that
+touch it (**P3**).
+
+### Fixed
+
+| Priority | Finding | Fix |
+|---|---|---|
+| P1 | The agile store saved any string as a work-item type or priority, or as a sprint status; the columns are plain TEXT and nothing else checked. A misbehaving caller could store values the board, filters and metrics do not recognize. | `SaveWorkItem` and `SaveSprint` refuse unsupported values with `ErrWorkItemType`, `ErrWorkItemPriority` and `ErrSprintStatus`. State stays free-form because it names a board column. A test covers every supported value and each refusal; removing any check fails it. Existing records stay saveable: these value sets have not changed since they were added (frontend option lists, backend constants and seeds), and only the store writes these columns. |
+
+### Recorded, not changed
+
+| Priority | Finding | Why not now |
+|---|---|---|
+| P2 | Password hashing makes the account tests slow: `internal/users` takes about 56 s (287 tests, about 0.2 s each) and roughly ten times that under the race detector; `internal/desktop` is similar. Each test hashes with the production Argon2id cost (64 MiB, three passes). | Two options for the owner. Safer: create fixture accounts once per package (from `TestMain` or a shared helper) and reuse them where a test does not need a fresh account, leaving production settings alone. Faster but riskier: a test-only cost override in security-critical code, which would store weak hashes if a release were ever built with it. |
+| P3 | Activating a sprint is two saves from the GUI (complete the active sprint, then activate the new one). If the second fails, no sprint is active. | Recoverable by retrying; an atomic "activate" store method would remove it. |
+| P3 | Seven exported enum members are never referenced (for example `PrioUrgent`, `AssignInformed`). | They complete value sets that the frontend sends as strings, and the store now validates against them. |
+
+Also checked: no `Database` query method runs once per item inside a loop
+over one database. The project list and portfolio loops open each project
+file once and run one to three queries on it, which is inherent to listing
+projects. All 107 interface catalog messages are used. svelte-check, which
+reports unused CSS, passes with no warnings.
+
 ## Re-running the audit
 
 ```sh
@@ -119,6 +160,15 @@ GOBIN="$PWD/.tmp/deadcode" go install golang.org/x/tools/cmd/deadcode@v0.45.0
 .tmp/deadcode/deadcode -tags production . ./tools/...
 GOOS=windows .tmp/deadcode/deadcode -tags production . ./tools/...
 .tmp/deadcode/deadcode -test -tags production . ./internal/... ./tools/...
+```
+
+Flake checks from the second pass:
+
+```sh
+python3 scripts/native-go-env.py go -- go test -race -shuffle=on -count=3 . ./internal/... ./tools/...
+TZ=Pacific/Kiritimati python3 scripts/native-go-env.py go -- go test -count=1 . ./internal/... ./tools/...
+(cd frontend && npx vitest run --sequence.shuffle --sequence.seed=1001)
+gh run list --workflow ci.yml --limit 200   # look for one commit that both passed and failed
 ```
 
 Run the linux pass on a Linux host; the cgo GTK and WebKit packages do not
