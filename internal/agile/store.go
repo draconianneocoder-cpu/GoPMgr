@@ -250,6 +250,15 @@ func (s *Store) DeleteColumn(id string) error {
 // ErrNoWorkItem indicates a missing work item.
 var ErrNoWorkItem = errors.New("agile: work item not found")
 
+// The store accepts only the values the GUI offers. The columns are plain
+// TEXT, so without these checks a caller could store a type, priority or
+// sprint status that the board, filters and metrics do not recognize.
+var (
+	ErrWorkItemType     = errors.New("agile: unsupported work item type")
+	ErrWorkItemPriority = errors.New("agile: unsupported work item priority")
+	ErrSprintStatus     = errors.New("agile: unsupported sprint status")
+)
+
 const workItemByIDQuery = `
 	SELECT id, project_id, type, title, description, state, points,
 	       assignee, sprint_id, priority, order_idx,
@@ -279,6 +288,13 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	}
 	if wi.State == "" {
 		wi.State = "backlog"
+	}
+	// State is not checked: it names a board column, and columns can be added.
+	if !wi.Type.Valid() {
+		return WorkItem{}, fmt.Errorf("%w: %q", ErrWorkItemType, wi.Type)
+	}
+	if !wi.Priority.Valid() {
+		return WorkItem{}, fmt.Errorf("%w: %q", ErrWorkItemPriority, wi.Priority)
 	}
 
 	closedAt := ""
@@ -484,6 +500,9 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 	sp.ProjectID = s.ProjectID // a caller cannot write another project's sprint
 	if sp.Status == "" {
 		sp.Status = SprintPlanning
+	}
+	if !sp.Status.Valid() {
+		return Sprint{}, fmt.Errorf("%w: %q", ErrSprintStatus, sp.Status)
 	}
 	tx, err := s.Conn.Begin()
 	if err != nil {
