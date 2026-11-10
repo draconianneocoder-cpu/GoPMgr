@@ -47,6 +47,7 @@ func assertNoAccountFolder(t *testing.T, store *Store, username string) {
 // check, without depending on how long other callers take to hash passwords.
 func assertAccountRuleWriteLock(t *testing.T, store *Store) *atomic.Int64 {
 	t.Helper()
+	requireSerial(t)
 	probe, err := sql.Open(sqlitedriver.Name, filepath.Join(store.RootDir(), "system.db")+"?_busy_timeout=0&_txlock=immediate")
 	if err != nil {
 		t.Fatalf("open lock probe: %v", err)
@@ -124,6 +125,7 @@ func TestCreateAccountAsHoldsWriteLockAcrossRuleCheck(t *testing.T) {
 }
 
 func TestHasAnyAccount(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if got, err := store.HasAnyAccount(); err != nil || got {
 		t.Fatalf("HasAnyAccount on empty store = %v, %v; want false, nil", got, err)
@@ -137,6 +139,7 @@ func TestHasAnyAccount(t *testing.T) {
 }
 
 func TestCreateAccountAsMakesFirstAccountAdmin(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	acc, err := store.CreateAccountAs("", "alice", "Alice", rulePassword, false)
 	if err != nil {
@@ -151,6 +154,7 @@ func TestCreateAccountAsMakesFirstAccountAdmin(t *testing.T) {
 }
 
 func TestCreateAccountAsRefusesNonAdminCallers(t *testing.T) {
+	t.Parallel()
 	for _, state := range []struct {
 		name      string
 		seedAdmin bool
@@ -183,6 +187,7 @@ func TestCreateAccountAsRefusesNonAdminCallers(t *testing.T) {
 }
 
 func TestCreateAccountAsHonorsRoleForAdminCaller(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccountAs("", "alice", "Alice", rulePassword, false); err != nil {
 		t.Fatalf("first account: %v", err)
@@ -202,6 +207,7 @@ func TestCreateAccountAsHonorsRoleForAdminCaller(t *testing.T) {
 // TestCreateAccountAsReadsCallerRoleFromStore proves the caller's role is
 // read when the account is created, not trusted from an earlier moment.
 func TestCreateAccountAsReadsCallerRoleFromStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccountAs("", "alice", "Alice", rulePassword, false); err != nil {
 		t.Fatalf("first account: %v", err)
@@ -335,6 +341,7 @@ func isCaseInsensitiveDir(t *testing.T, dir string) bool {
 // deleted account: a new account must never inherit it, and the refusal
 // must leave it exactly as it was.
 func TestCreateAccountRefusesAnythingAtTheFolderPath(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		existing string // entry created in the data root before the attempt
@@ -433,6 +440,7 @@ func snapshotTree(t *testing.T, path string) string {
 }
 
 func TestCreateAccountRefusesReservedFolderNames(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"logs", "LOGS", "Logs"} {
 		t.Run(name, func(t *testing.T) {
 			store := openTestStore(t)
@@ -451,6 +459,7 @@ func TestCreateAccountRefusesReservedFolderNames(t *testing.T) {
 // there; new accounts are refused on every platform, in any letter case.
 // All 24 are spelled out here, independently of the production list.
 func TestCreateAccountRefusesWindowsDeviceNames(t *testing.T) {
+	t.Parallel()
 	names := []string{
 		"con", "prn", "aux", "nul",
 		"com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
@@ -473,6 +482,7 @@ func TestCreateAccountRefusesWindowsDeviceNames(t *testing.T) {
 
 // Names that only start like a device name are ordinary usernames.
 func TestCreateAccountAllowsNamesThatOnlyResembleDevices(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"com10", "console", "auxiliary", "lpt", "nul_1", "con-2"} {
 		t.Run(name, func(t *testing.T) {
 			store := openTestStore(t)
@@ -486,6 +496,7 @@ func TestCreateAccountAllowsNamesThatOnlyResembleDevices(t *testing.T) {
 // TestCreateAccountRemovesFoldersWhenInsertFails proves a failed insert
 // does not leave a folder behind that would block the username forever.
 func TestCreateAccountRemovesFoldersWhenInsertFails(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.conn.Exec(`CREATE TRIGGER block_insert BEFORE INSERT ON users BEGIN SELECT RAISE(ABORT, 'insert blocked for cleanup test'); END`); err != nil {
 		t.Fatalf("create trigger: %v", err)
@@ -506,6 +517,7 @@ func TestCreateAccountRemovesFoldersWhenInsertFails(t *testing.T) {
 // TestCreateAccountAsRemovesFoldersWhenCommitFails makes COMMIT itself fail
 // with a deferred foreign-key violation raised by the insert.
 func TestCreateAccountAsRemovesFoldersWhenCommitFails(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.conn.Exec(`
 		CREATE TABLE commit_guard_parent (id TEXT PRIMARY KEY);

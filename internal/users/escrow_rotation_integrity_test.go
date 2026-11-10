@@ -11,6 +11,7 @@ import (
 )
 
 func TestReplacementRequiresAnOpenableActorGrant(t *testing.T) {
+	t.Parallel()
 	for _, damage := range []string{"public key", "sealed DEK", "unopenable DEK"} {
 		t.Run(damage, func(t *testing.T) {
 			store, dek := escrowStore(t)
@@ -56,6 +57,7 @@ func TestReplacementRequiresAnOpenableActorGrant(t *testing.T) {
 }
 
 func TestHandOverDoesNotScheduleWithoutAnActiveKeyOrOnRejection(t *testing.T) {
+	t.Parallel()
 	t.Run("no active key", func(t *testing.T) {
 		store, aliceDEK, _ := superStore(t)
 		mustExec(t, store, `UPDATE escrow_keys SET retired_at = ?`, nowStamp())
@@ -80,6 +82,7 @@ func TestHandOverDoesNotScheduleWithoutAnActiveKeyOrOnRejection(t *testing.T) {
 }
 
 func TestHandOverSchedulesReplacementWithoutADepartingGrant(t *testing.T) {
+	t.Parallel()
 	for _, damage := range []string{"unopenable grant", "absent grant", "already pending"} {
 		t.Run(damage, func(t *testing.T) {
 			store, aliceDEK, bobDEK := superStore(t)

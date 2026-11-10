@@ -18,6 +18,7 @@ import (
 )
 
 func TestOpenCreatesPrivateRootDirectory(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -39,6 +40,7 @@ func TestOpenCreatesPrivateRootDirectory(t *testing.T) {
 }
 
 func TestOpenTightensExistingRootDirectory(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatalf("mkdir root: %v", err)
@@ -64,6 +66,7 @@ func TestOpenTightensExistingRootDirectory(t *testing.T) {
 }
 
 func TestOpenCreatesPrivateSystemDatabaseFile(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -85,6 +88,7 @@ func TestOpenCreatesPrivateSystemDatabaseFile(t *testing.T) {
 }
 
 func TestOpenTightensExistingSystemDatabaseFile(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatalf("mkdir root: %v", err)
@@ -118,6 +122,7 @@ func TestOpenTightensExistingSystemDatabaseFile(t *testing.T) {
 // refused rather than tightened and adopted; see
 // TestCreateAccountRefusesAnythingAtTheFolderPath.
 func TestCreateAccountCreatesPrivateUserFolders(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -134,6 +139,7 @@ func TestCreateAccountCreatesPrivateUserFolders(t *testing.T) {
 }
 
 func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
+	t.Parallel()
 	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -163,6 +169,7 @@ func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
 }
 
 func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
+	t.Parallel()
 	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -203,6 +210,7 @@ func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
 // the same directory on macOS, leaking project names across accounts.
 // The fix uses lower(username) = lower(?) in the duplicate check.
 func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
+	t.Parallel()
 	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -235,6 +243,7 @@ func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
 // masked-mutation findings, just surfaced by probing before writing the
 // assertion instead of by a failed break-verify run.
 func TestOpen_RootDirIsFile(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.WriteFile(root, []byte("not a directory"), 0o644); err != nil {
 		t.Fatalf("write root as file: %v", err)
@@ -253,6 +262,7 @@ func TestOpen_RootDirIsFile(t *testing.T) {
 // pre-occupying <rootDir>/system.db with a directory, so sqlite's "unable to
 // open database file" surfaces through Open's migrate error wrapper.
 func TestOpen_DBPathIsDirectory(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(filepath.Join(root, "system.db"), 0o700); err != nil {
 		t.Fatalf("mkdir system.db: %v", err)
@@ -268,6 +278,7 @@ func TestOpen_DBPathIsDirectory(t *testing.T) {
 // nil guard, both ways it can be true: a nil *Store (e.g. a caller that
 // never checked Open's error) and a zero-value &Store{} (conn never set).
 func TestClose_NilStoreAndNilConnAreNoops(t *testing.T) {
+	t.Parallel()
 	var nilStore *Store
 	if err := nilStore.Close(); err != nil {
 		t.Fatalf("(*Store)(nil).Close() = %v, want nil", err)
@@ -280,6 +291,7 @@ func TestClose_NilStoreAndNilConnAreNoops(t *testing.T) {
 // TestStore_RootDirReturnsConfiguredRoot covers RootDir, a trivial getter
 // that no other test happens to call.
 func TestStore_RootDirReturnsConfiguredRoot(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
@@ -300,6 +312,7 @@ func TestStore_RootDirReturnsConfiguredRoot(t *testing.T) {
 // those functions issue — closing the store trips this first Exec instead,
 // every time. Kept as documented, uncovered lines rather than deleted.
 func TestMigrate_FailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -316,6 +329,7 @@ func TestMigrate_FailsOnClosedStore(t *testing.T) {
 // already applied to dek.go's migrateDEKColumns; kept as documented,
 // uncovered lines.
 func TestMigrateAdminColumn_QueryFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -331,6 +345,7 @@ func TestMigrateAdminColumn_QueryFailsOnClosedStore(t *testing.T) {
 // migrateAdminColumn call must take the already-present branch instead of
 // re-running the ALTER TABLE (which would error on a duplicate column).
 func TestMigrateAdminColumn_AlreadyPresentIsNoop(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	s1, err := Open(root)
 	if err != nil {
@@ -348,6 +363,7 @@ func TestMigrateAdminColumn_AlreadyPresentIsNoop(t *testing.T) {
 }
 
 func TestMigrateLastExportDirColumn_QueryFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -362,6 +378,7 @@ func TestMigrateLastExportDirColumn_QueryFailsOnClosedStore(t *testing.T) {
 // already added last_export_directory, so a second Open must take the
 // already-present branch rather than re-running the ALTER TABLE.
 func TestMigrateLastExportDirColumn_AlreadyPresentIsNoop(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "GoPMgr")
 	s1, err := Open(root)
 	if err != nil {
@@ -379,6 +396,7 @@ func TestMigrateLastExportDirColumn_AlreadyPresentIsNoop(t *testing.T) {
 }
 
 func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -417,6 +435,7 @@ func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t
 // COUNT that follows has no independent failure trigger on the same live
 // connection; kept as a documented, uncovered line.
 func TestSetAdmin_NoSuchUserReturnsError(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -431,6 +450,7 @@ func TestSetAdmin_NoSuchUserReturnsError(t *testing.T) {
 // TestPurgeAccount_NoSuchUserReturnsError is PurgeAccount's analogue of
 // TestSetAdmin_NoSuchUserReturnsError above.
 func TestPurgeAccount_NoSuchUserReturnsError(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.PurgeAccount("alice", "nobody"); err == nil {
 		t.Fatal("PurgeAccount(nonexistent user) = nil, want an error")
@@ -444,6 +464,7 @@ func TestPurgeAccount_NoSuchUserReturnsError(t *testing.T) {
 // downstream code path that could produce the same value, so a plain
 // equality check already break-verifies it — no closed-store trick needed.
 func TestCreateAccount_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("!!", "Bad Name", "passphrase-long", false); err != ErrInvalidUsername {
 		t.Fatalf("CreateAccount with invalid username error = %v, want ErrInvalidUsername", err)
@@ -452,6 +473,7 @@ func TestCreateAccount_RejectsInvalidUsername(t *testing.T) {
 
 // A closed store refuses creation before provisioning or identity allocation.
 func TestCreateAccount_DuplicateCheckFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -480,6 +502,7 @@ func TestCreateAccount_HashPasswordEntropyFailure(t *testing.T) {
 // account's folder creation to fail for a reason other than an existing
 // path, which must surface as a "provision" error.
 func TestCreateAccount_ProvisioningFailsWhenRootIsReadOnly(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("directory permission bits do not block creation on Windows")
 	}
@@ -502,6 +525,7 @@ func TestCreateAccount_ProvisioningFailsWhenRootIsReadOnly(t *testing.T) {
 // with a SQLite trigger, distinct message from every other trigger in this
 // package's test files.
 func TestCreateAccount_InsertFailsOnBlockedTrigger(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.conn.Exec(`
 		CREATE TRIGGER block_account_insert
@@ -531,6 +555,7 @@ func TestCreateAccount_InsertFailsOnBlockedTrigger(t *testing.T) {
 // a deleted guard would reach the closed connection and surface
 // "database is closed" instead — a value ErrNoSuchUser can never equal.
 func TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -544,6 +569,7 @@ func TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess(t *testing.T) 
 // well-formed username that simply has no matching row, as opposed to the
 // ValidateUsername short-circuit above.
 func TestAuthenticate_NoSuchUser(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := authenticate(store, "nosuchuser", "whatever"); err != ErrNoSuchUser {
 		t.Fatalf("Authenticate(unknown username) = %v, want ErrNoSuchUser", err)
@@ -555,6 +581,7 @@ func TestAuthenticate_NoSuchUser(t *testing.T) {
 // SQLite's type affinity stores it as TEXT rather than rejecting the
 // UPDATE, and Scan into *int then fails to convert it.
 func TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -571,6 +598,7 @@ func TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
 // TestAuthenticate_WrongPasswordReturnsMismatch covers the
 // auth.VerifyPassword failure branch.
 func TestAuthenticate_WrongPasswordReturnsMismatch(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -585,6 +613,7 @@ func TestAuthenticate_WrongPasswordReturnsMismatch(t *testing.T) {
 // finds last_login empty (fresh account), so a second call is needed to
 // exercise the non-empty, successfully-parsed path.
 func TestAuthenticate_ParsesExistingLastLogin(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -630,6 +659,7 @@ func TestAuthenticate_RehashEntropyFailure(t *testing.T) {
 
 // TestList_QueryFailsOnClosedStore forces List's top-level Query to fail.
 func TestList_QueryFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -642,6 +672,7 @@ func TestList_QueryFailsOnClosedStore(t *testing.T) {
 // TestList_ScanFailsOnCorruptedIsAdminColumn is List's analogue of
 // TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn above.
 func TestList_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -658,6 +689,7 @@ func TestList_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
 // TestList_ParsesExistingLastLogin is List's analogue of
 // TestAuthenticate_ParsesExistingLastLogin above.
 func TestList_ParsesExistingLastLogin(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -690,6 +722,7 @@ func TestList_ParsesExistingLastLogin(t *testing.T) {
 // ensurePrivateSQLiteFiles call): by the time Open reaches that call,
 // s.migrate() has already written to dbPath, so it necessarily exists.
 func TestEnsurePrivateSQLiteFiles_MainPathMissing(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "does-not-exist.db")
 	if err := ensurePrivateSQLiteFiles(path); err == nil {
 		t.Fatal("ensurePrivateSQLiteFiles on a missing path = nil, want an error")
@@ -718,6 +751,7 @@ func TestEnsurePrivateSQLiteFiles_MainPathMissing(t *testing.T) {
 // assumed. If a Windows test/vet job is ever added, this test will need a
 // `//go:build !windows` guard.
 func TestCopyTree_SkipsSymlinksAndIrregularFiles(t *testing.T) {
+	t.Parallel()
 	src := t.TempDir()
 	dst := filepath.Join(t.TempDir(), "dst")
 
@@ -750,6 +784,7 @@ func TestCopyTree_SkipsSymlinksAndIrregularFiles(t *testing.T) {
 // argument to be non-nil (src doesn't exist) and confirms copyTree
 // propagates it rather than swallowing it.
 func TestCopyTree_PropagatesWalkError(t *testing.T) {
+	t.Parallel()
 	src := filepath.Join(t.TempDir(), "does-not-exist")
 	if err := copyTree(src, filepath.Join(t.TempDir(), "dst")); err == nil {
 		t.Fatal("copyTree with a nonexistent src = nil, want an error")
@@ -765,6 +800,7 @@ func TestCopyTree_PropagatesWalkError(t *testing.T) {
 // error (both real and cascaded errors happen to contain "not a
 // directory," which "mkdir" alone discriminates).
 func TestCopyFile_MkdirAllFails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	collide := filepath.Join(dir, "collide")
 	if err := os.WriteFile(collide, []byte("x"), 0o644); err != nil {
@@ -789,6 +825,7 @@ func TestCopyFile_MkdirAllFails(t *testing.T) {
 // unrelated "invalid argument" (os.ErrInvalid) instead — a value this
 // text can never match, discriminating the guard from its own deletion.
 func TestCopyFile_SourceOpenFails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	src := filepath.Join(dir, "does-not-exist.txt")
 	dst := filepath.Join(dir, "dst.txt")
@@ -805,6 +842,7 @@ func TestCopyFile_SourceOpenFails(t *testing.T) {
 // nil-*os.File-Read cascade as TestCopyFile_SourceOpenFails above produces
 // "invalid argument" instead — this text discriminates the two.
 func TestCopyFile_DestOpenFails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	src := filepath.Join(dir, "src.txt")
 	if err := os.WriteFile(src, []byte("hi"), 0o644); err != nil {
@@ -830,6 +868,7 @@ func TestCopyFile_DestOpenFails(t *testing.T) {
 // Linux io.Copy may route a directory read through copy_file_range rather
 // than the "read ...: is a directory" text this produces on macOS.
 func TestCopyFile_IoCopyFails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	src := filepath.Join(dir, "srcdir")
 	if err := os.MkdirAll(src, 0o700); err != nil {
@@ -877,6 +916,7 @@ func openTestStore(t *testing.T) *Store {
 }
 
 func TestHasAnyAdmin_FalseOnFreshStore(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	got, err := store.HasAnyAdmin()
 	if err != nil {
@@ -888,6 +928,7 @@ func TestHasAnyAdmin_FalseOnFreshStore(t *testing.T) {
 }
 
 func TestHasAnyAdmin_TrueAfterAdminCreated(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -902,6 +943,7 @@ func TestHasAnyAdmin_TrueAfterAdminCreated(t *testing.T) {
 }
 
 func TestSetAdmin_DemoteSoleAdminReturnsErrLastAdmin(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -913,6 +955,7 @@ func TestSetAdmin_DemoteSoleAdminReturnsErrLastAdmin(t *testing.T) {
 }
 
 func TestSetAdmin_DemoteNonAdminSucceeds(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)
@@ -927,6 +970,7 @@ func TestSetAdmin_DemoteNonAdminSucceeds(t *testing.T) {
 }
 
 func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount alice: %v", err)
@@ -957,6 +1001,7 @@ func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
 }
 
 func TestPurgeAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -967,6 +1012,7 @@ func TestPurgeAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
 }
 
 func TestPurgeAccount_StandardUserSucceeds(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)
@@ -989,6 +1035,7 @@ func TestPurgeAccount_StandardUserSucceeds(t *testing.T) {
 }
 
 func TestPurgeAccount_CascadesRecoveryCodes(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)

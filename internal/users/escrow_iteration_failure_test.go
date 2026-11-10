@@ -160,6 +160,7 @@ func escrowIterationState(t *testing.T, store *Store) map[string][][]driver.Valu
 }
 
 func TestEscrowEnumerationFailureRollsBack(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		query string
@@ -239,6 +240,7 @@ func TestEscrowEnumerationFailureRollsBack(t *testing.T) {
 }
 
 func TestEscrowEnumerationFailureInSavepointKeepsTrigger(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		query string

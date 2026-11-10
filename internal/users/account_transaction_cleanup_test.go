@@ -14,6 +14,7 @@ import (
 )
 
 func TestAccountTransactionCleanup(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"audit_denied", "commit_denied", "commit_rollback_ok", "callback_error", "panic", "panic_rollback_ok", "rollback_ok", "automatic_rollback"} {
 		t.Run(mode, func(t *testing.T) {
 			store := newStatusStore(t)

@@ -15,12 +15,9 @@ import (
 // set of recovery codes.
 func newRotationStore(t *testing.T) (*Store, []byte, []string) {
 	t.Helper()
-	store, dek := newPasswordStore(t)
-	codes, err := store.IssueRecoveryCodes("alice", dek)
-	if err != nil {
-		t.Fatalf("IssueRecoveryCodes: %v", err)
-	}
-	return store, dek, codes
+	// A copy of the rotation template: the password template plus alice's
+	// recovery codes (built by buildRotationTemplate).
+	return storeFromTemplate(t, templates.rotation)
 }
 
 // resetRecoversKey resets alice's password with code and reports whether
@@ -41,6 +38,7 @@ func resetRecoversKey(t *testing.T, store *Store, code string, want []byte) bool
 }
 
 func TestPreparedRecoveryCodesLeaveTheOldCodesWorking(t *testing.T) {
+	t.Parallel()
 	store, dek, oldCodes := newRotationStore(t)
 	pending, err := store.PrepareRecoveryCodes("alice", oldPassword)
 	if err != nil {
@@ -58,6 +56,7 @@ func TestPreparedRecoveryCodesLeaveTheOldCodesWorking(t *testing.T) {
 }
 
 func TestConfirmedRecoveryCodesReplaceTheOldOnes(t *testing.T) {
+	t.Parallel()
 	store, dek, oldCodes := newRotationStore(t)
 	pending, err := store.PrepareRecoveryCodes("alice", oldPassword)
 	if err != nil {
@@ -78,6 +77,7 @@ func TestConfirmedRecoveryCodesReplaceTheOldOnes(t *testing.T) {
 }
 
 func TestPrepareRecoveryCodesNeedsTheCurrentPassword(t *testing.T) {
+	t.Parallel()
 	store, dek, oldCodes := newRotationStore(t)
 	if _, err := store.PrepareRecoveryCodes("alice", "not-the-password"); !errors.Is(err, auth.ErrMismatch) {
 		t.Fatalf("PrepareRecoveryCodes with a wrong password: err = %v, want auth.ErrMismatch", err)
@@ -93,6 +93,7 @@ func TestPrepareRecoveryCodesNeedsTheCurrentPassword(t *testing.T) {
 // TestConfirmRecoveryCodesRefusesAfterTheCodesChanged covers a code being
 // used, or new codes issued, between prepare and confirm.
 func TestConfirmRecoveryCodesRefusesAfterTheCodesChanged(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(t *testing.T, store *Store, dek []byte, oldCodes []string){
 		"a code was used": func(t *testing.T, store *Store, dek []byte, oldCodes []string) {
 			if err := store.ResetWithRecoveryCode("alice", oldCodes[0], "elsewhere-password"); err != nil {
@@ -124,6 +125,7 @@ func TestConfirmRecoveryCodesRefusesAfterTheCodesChanged(t *testing.T) {
 }
 
 func TestRecoveryCodeStatusFlagsLegacyCodes(t *testing.T) {
+	t.Parallel()
 	store, _ := newPasswordStore(t)
 	if _, err := store.IssueRecoveryCodes("alice", nil); err != nil {
 		t.Fatalf("IssueRecoveryCodes without a key: %v", err)
@@ -135,6 +137,7 @@ func TestRecoveryCodeStatusFlagsLegacyCodes(t *testing.T) {
 }
 
 func TestPrepareRecoveryCodesRefusesACorruptWrap(t *testing.T) {
+	t.Parallel()
 	store, dek, oldCodes := newRotationStore(t)
 	for _, wrap := range []string{"", "bm90IGEgd3JhcA=="} {
 		if _, err := store.conn.Exec(`UPDATE users SET wrapped_dek_pw = ? WHERE username = 'alice'`, wrap); err != nil {
@@ -150,6 +153,7 @@ func TestPrepareRecoveryCodesRefusesACorruptWrap(t *testing.T) {
 }
 
 func TestConfirmRecoveryCodesNeedsAPreparedSet(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if err := store.ConfirmRecoveryCodes(nil); err == nil {
 		t.Fatal("ConfirmRecoveryCodes(nil): got nil, want error")

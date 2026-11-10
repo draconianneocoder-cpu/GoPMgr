@@ -265,6 +265,9 @@ Scrumban) get four extra views:
   changes tone when the limit is exceeded.
 - **Backlog:** drag items to reorder priority, assign items to a sprint,
   and start work to move an item onto the board.
+- **Work items:** each has a title, type, priority, estimate, assignee,
+  column and sprint. The estimate field is called **Story points** in Scrum
+  and Scrumban projects and **Points** in Kanban projects.
 - **Sprints:** each sprint has a name, goal, start/end dates, and a
   story-point capacity. Sprints move planning -> active -> complete, and
   only one sprint is active at a time — starting a new one completes the

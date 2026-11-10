@@ -104,13 +104,17 @@ file; seeding the old exits back in, or dropping the close, fails it.
 ## Terminology decision
 
 The owner chose to wire `terminology.ts` into the interface rather than
-delete it. [ADR-008](../design/ADR-008-localization.md) already decides how:
-its methodology words become catalog entries, and translations use full
-sentences rather than joined fragments. Calling `term()` from components
-would conflict with that, so the wiring is the next ADR-008 Phase 1 slice,
-the extraction of the work-item editors. Until then the module stays unused,
-and the Help screen, user guide and coverage ledger no longer claim
-otherwise.
+delete it, through ADR-008's catalog. Before building it, the owner asked how
+other tools handle methodology wording. Azure DevOps, Jira, Microsoft
+Project, Primavera P6, monday.com and ClickUp never rename schedule rows by
+methodology; only Azure DevOps varies wording per process, and only in the
+work-item layer, from a fixed, translated set (Story Points, Effort, Size).
+Applied as written, the table would have labelled Six Sigma schedule rows
+"measurement" and the Scrum milestone checkbox "sprint goal". The owner chose
+that model, and ADR-008 slice 3 (the same day) implements it: the work-item
+editor's estimate field reads "Story points" for Scrum and Scrumban, schedule
+editors keep "task", and `terminology.ts` was replaced by
+`i18n/methodology.ts`.
 
 ## Second pass: flaky tests, inefficiency and data integrity
 
@@ -138,12 +142,12 @@ touch it (**P3**).
 | Priority | Finding | Fix |
 |---|---|---|
 | P1 | The agile store saved any string as a work-item type or priority, or as a sprint status; the columns are plain TEXT and nothing else checked. A misbehaving caller could store values the board, filters and metrics do not recognize. | `SaveWorkItem` and `SaveSprint` refuse unsupported values with `ErrWorkItemType`, `ErrWorkItemPriority` and `ErrSprintStatus`. State stays free-form because it names a board column. A test covers every supported value and each refusal; removing any check fails it. Existing records stay saveable: these value sets have not changed since they were added (frontend option lists, backend constants and seeds), and only the store writes these columns. |
+| P2 | Password hashing made the account tests slow: `internal/users` took about 63 s (287 tests, about 0.2 s each, run one at a time) and about 400 s under the race detector. Each account hashes its password with the production Argon2id cost (64 MiB, three passes), and each key wrap and recovery code adds a one-pass 64 MiB derivation. Measured: creating an account costs 44 ms, the shared escrow setup 54 ms, and issuing recovery codes 300 ms. `internal/desktop` has the same problem and is not yet addressed. | No production change, and the test-only cost override was not adopted. First, 254 of the 287 tests run in parallel; the 33 that replace a package hook, `crypto/rand.Reader` or the environment stay serial, enforced by `requireSerial`. Then, the owner's choice: `TestMain` builds five shared setups once and the helpers hand each test a copy (`fixture_test.go`). Totals: 63 s to 33 s, 50 s to 40 s run one at a time, and 397 s to 231 s under the race detector. Argon2 is limited by memory bandwidth, and the remaining time is recovery-code tests, where hashing each code is what they verify. Peak memory: 1.7 GB for a normal run (what CI's `make verify` runs) and 5.4 GB under the race detector, which only `make race` uses, one package at a time. |
 
 ### Recorded, not changed
 
 | Priority | Finding | Why not now |
 |---|---|---|
-| P2 | Password hashing makes the account tests slow: `internal/users` takes about 56 s (287 tests, about 0.2 s each) and roughly ten times that under the race detector; `internal/desktop` is similar. Each test hashes with the production Argon2id cost (64 MiB, three passes). | Two options for the owner. Safer: create fixture accounts once per package (from `TestMain` or a shared helper) and reuse them where a test does not need a fresh account, leaving production settings alone. Faster but riskier: a test-only cost override in security-critical code, which would store weak hashes if a release were ever built with it. |
 | P3 | Activating a sprint is two saves from the GUI (complete the active sprint, then activate the new one). If the second fails, no sprint is active. | Recoverable by retrying; an atomic "activate" store method would remove it. |
 | P3 | Seven exported enum members are never referenced (for example `PrioUrgent`, `AssignInformed`). | They complete value sets that the frontend sends as strings, and the store now validates against them. |
 
@@ -152,6 +156,18 @@ over one database. The project list and portfolio loops open each project
 file once and run one to three queries on it, which is inherent to listing
 projects. All 107 interface catalog messages are used. svelte-check, which
 reports unused CSS, passes with no warnings.
+
+## Third pass: security scans
+
+A third pass the same day, on `main` after PR #194, ran the security
+scanners the first two passes had not.
+
+| Check | Result |
+|---|---|
+| `govulncheck -tags production . ./internal/... ./tools/...` | No known vulnerabilities |
+| `npm audit --omit=dev` | No advisories in production packages |
+| `npm audit` (development tools) | 10 low or moderate advisories, all in ESLint's `minimatch` and the build-time `deepmerge` (**P3**). npm's suggested fix downgrades `@typescript-eslint`; do not run `npm audit fix --force`. Dependabot updates will clear them. |
+| `gosec -tags production ./...`, excluding the gitignored `.tmp/` scratch tree, spikes and tests | No actionable finding. Decompression (G110) in backup restore is bounded: each entry's declared size and the archive total are capped first, and Go's zip reader fails with `ErrFormat` once an entry decodes past its declared size, which `TestRestoreArchivalBundleRejectsUnderstatedDecodedSize` proves. The SQL concatenations (G202) insert fixed column lists with bound values. The integer conversions (G115) in `money` and `analytics` follow explicit overflow checks. The printer subprocess (G204) uses a fixed path and a validated printer name. The rest are in build tools or vendored SQLCipher. |
 
 ## Re-running the audit
 

@@ -72,3 +72,9 @@ export function formatDateTime(value: Date | number | string, options?: Intl.Dat
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(i18n.formatLocale, options).format(value);
 }
+
+// formatList joins short items, such as the parts of a tooltip, the way the
+// interface language lists them ("a, b, c" in English).
+export function formatList(items: readonly string[]): string {
+  return new Intl.ListFormat(i18n.locale, { type: 'unit', style: 'short' }).format(items);
+}

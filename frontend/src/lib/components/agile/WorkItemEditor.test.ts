@@ -888,3 +888,23 @@ describe('WorkItemEditor delete', () => {
     expect(document.querySelector('input')).not.toBeNull();
   });
 });
+
+describe('WorkItemEditor methodology wording', () => {
+  afterEach(() => {
+    session.project = null;
+  });
+
+  it('labels the estimate "Story points" in a Scrum project and keeps the value bound', async () => {
+    session.project = { methodology: 'scrum' } as ProjectMeta;
+    const utils = render(WorkItemEditor, { item: makeItem({ points: 3 }), onSaved: vi.fn(), onClose: vi.fn(), onDeleted: vi.fn() });
+    expect(utils.getByLabelText('Story points')).toHaveValue(3);
+    expect(utils.queryByLabelText('Points')).toBeNull();
+  });
+
+  it('labels the estimate "Points" in a Kanban project', () => {
+    session.project = { methodology: 'kanban' } as ProjectMeta;
+    const utils = render(WorkItemEditor, { item: makeItem({ points: 3 }), onSaved: vi.fn(), onClose: vi.fn(), onDeleted: vi.fn() });
+    expect(utils.getByLabelText('Points')).toHaveValue(3);
+    expect(utils.queryByLabelText('Story points')).toBeNull();
+  });
+});

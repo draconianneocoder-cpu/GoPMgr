@@ -198,6 +198,7 @@ func corruptAccountIdentity(t *testing.T, s *Store, guard, query string, args ..
 }
 
 func TestAccountIdentityMigrationPreservesLegacyRows(t *testing.T) {
+	t.Parallel()
 	s := legacyAccountIdentityStore(t, "Alice", "alice", "disabled_user")
 	before := identitySnapshot(t, s)
 	if err := s.migrateAccountIdentity(); err != nil {
@@ -252,6 +253,7 @@ func TestAccountIdentityMigrationPreservesLegacyRows(t *testing.T) {
 }
 
 func TestAccountIdentityConcurrentInitialization(t *testing.T) {
+	t.Parallel()
 	s := legacyAccountIdentityStore(t, "Alice", "alice", "carol")
 	other := accountIdentityHandle(t, s.RootDir(), true)
 	start := make(chan struct{})
@@ -326,6 +328,7 @@ func TestAccountIdentityBackfillFailureRollsBackEntirePhase(t *testing.T) {
 }
 
 func TestAccountIdentityPartialOrUnknownSchemaFailsClosed(t *testing.T) {
+	t.Parallel()
 	for _, ddl := range []string{
 		`CREATE TABLE account_identity_meta(singleton INTEGER,version INTEGER)`,
 		`CREATE TABLE account_identity_registry(id TEXT)`,
@@ -355,6 +358,7 @@ func TestAccountIdentityPartialOrUnknownSchemaFailsClosed(t *testing.T) {
 }
 
 func TestAccountIdentityDamagedStateIsNotHealed(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		corrupt func(*testing.T, *Store)
@@ -426,6 +430,7 @@ func TestAccountIdentityDamagedStateIsNotHealed(t *testing.T) {
 }
 
 func TestAccountIdentityBothCreatorsPreserveTheirContracts(t *testing.T) {
+	t.Parallel()
 	for _, creator := range []string{"helper", "production"} {
 		t.Run(creator, func(t *testing.T) {
 			s := openTestStore(t)
@@ -490,6 +495,7 @@ func TestAccountIdentityBothCreatorsPreserveTheirContracts(t *testing.T) {
 }
 
 func TestAccountIdentityPurgeAndRecreateRetainsTombstone(t *testing.T) {
+	t.Parallel()
 	s := newStatusStore(t)
 	oldID, _ := readAccountIdentity(t, s, "bob")
 	if err := s.PurgeAccount("alice", "bob"); err != nil {
@@ -510,6 +516,7 @@ func TestAccountIdentityPurgeAndRecreateRetainsTombstone(t *testing.T) {
 }
 
 func TestAccountIdentityRawDeleteRetiresWithForeignKeysOnOrOff(t *testing.T) {
+	t.Parallel()
 	for _, fk := range []bool{true, false} {
 		t.Run(fmt.Sprintf("foreign_keys_%t", fk), func(t *testing.T) {
 			s := legacyAccountIdentityStore(t, "alice", "bob")
@@ -525,6 +532,7 @@ func TestAccountIdentityRawDeleteRetiresWithForeignKeysOnOrOff(t *testing.T) {
 }
 
 func TestAccountIdentityOldWritersAndReplacementAreRefused(t *testing.T) {
+	t.Parallel()
 	s := legacyAccountIdentityStore(t, "alice", "bob")
 	if err := s.migrateAccountIdentity(); err != nil {
 		t.Fatal(err)
@@ -560,6 +568,7 @@ func TestAccountIdentityOldWritersAndReplacementAreRefused(t *testing.T) {
 }
 
 func TestAccountIdentityLiveCreatorsRequireReadiness(t *testing.T) {
+	t.Parallel()
 	for _, creator := range []string{"helper", "production"} {
 		t.Run(creator, func(t *testing.T) {
 			s := openTestStore(t)
@@ -584,6 +593,7 @@ func TestAccountIdentityLiveCreatorsRequireReadiness(t *testing.T) {
 }
 
 func TestAccountIdentityConcurrentFullOpenMigratesLegacyStore(t *testing.T) {
+	t.Parallel()
 	s := newStatusStore(t)
 	// Keep the complete preceding schema and real credentials. Populated child
 	// row preservation is covered separately by the identity-phase fixture.
@@ -637,6 +647,7 @@ func TestAccountIdentityConcurrentFullOpenMigratesLegacyStore(t *testing.T) {
 }
 
 func TestAccountIdentityAllocationRequiresAtomicUserInsert(t *testing.T) {
+	t.Parallel()
 	s := openTestStore(t)
 	before := identitySnapshot(t, s)
 	err := s.inWriteTx("abandoned identity allocation", func(ctx context.Context, q accountWriter) error {
@@ -660,6 +671,7 @@ func TestAccountIdentityAllocationRequiresAtomicUserInsert(t *testing.T) {
 }
 
 func TestAccountIdentityMalformedTokenIsRefused(t *testing.T) {
+	t.Parallel()
 	s := openTestStore(t)
 	before := identitySnapshot(t, s)
 	canonical := "ac1:" + strings.Repeat("a", 64)
@@ -722,6 +734,7 @@ func TestAccountIdentityCreationEntropyAndCollisionLeaveNoEffects(t *testing.T) 
 				reader = fixed
 			}
 			before := identitySnapshot(t, s)
+			requireSerial(t)
 			previous := afterAccountRuleCheck
 			var restore func()
 			calls := 0
@@ -760,6 +773,7 @@ func TestAccountIdentityCreationEntropyAndCollisionLeaveNoEffects(t *testing.T) 
 }
 
 func TestAccountIdentityCreatorLaterFailureRollsBackAllocation(t *testing.T) {
+	t.Parallel()
 	for _, creator := range []string{"helper", "production"} {
 		t.Run(creator, func(t *testing.T) {
 			s := openTestStore(t)
@@ -783,6 +797,7 @@ func TestAccountIdentityCreatorLaterFailureRollsBackAllocation(t *testing.T) {
 }
 
 func TestAccountIdentityGenerationTracksOnlyChangedProtectedFields(t *testing.T) {
+	t.Parallel()
 	s := legacyAccountIdentityStore(t, "alice")
 	if err := s.migrateAccountIdentity(); err != nil {
 		t.Fatal(err)
@@ -815,6 +830,7 @@ func TestAccountIdentityGenerationTracksOnlyChangedProtectedFields(t *testing.T)
 }
 
 func TestAccountIdentityGenerationExhaustionAbortsWholeStatement(t *testing.T) {
+	t.Parallel()
 	for _, conflict := range []string{"", "OR IGNORE", "OR FAIL", "OR REPLACE"} {
 		for _, target := range []string{"single_user", "all_users", "all_registry"} {
 			t.Run(conflict+"/"+target, func(t *testing.T) {
@@ -853,6 +869,7 @@ func TestAccountIdentityGenerationExhaustionAbortsWholeStatement(t *testing.T) {
 }
 
 func TestAccountIdentityExhaustedStatusChangePreservesAudit(t *testing.T) {
+	t.Parallel()
 	s := newStatusStore(t)
 	corruptAccountIdentity(t, s, "account_identity_registry_update", `UPDATE account_identity_registry SET generation=? WHERE username='bob'`, int64(math.MaxInt64))
 	before := identitySnapshot(t, s)
@@ -863,6 +880,7 @@ func TestAccountIdentityExhaustedStatusChangePreservesAudit(t *testing.T) {
 }
 
 func TestAccountIdentityCreationRollbackCoversAuditAndCommit(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"helper_commit", "production_commit", "production_audit"} {
 		t.Run(mode, func(t *testing.T) {
 			s := openTestStore(t)

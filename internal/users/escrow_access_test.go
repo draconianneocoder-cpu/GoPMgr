@@ -26,6 +26,7 @@ func accessEvents(t *testing.T, store *Store) []AccountEvent {
 }
 
 func TestAdministratorAccessIsRecordedAndReleasesTheDEK(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 
@@ -53,6 +54,7 @@ func TestAdministratorAccessIsRecordedAndReleasesTheDEK(t *testing.T) {
 
 // A refused request records nothing and releases no key.
 func TestAdministratorAccessRefusalsRecordNothing(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	bobDEK := addUser(t, store, "bob", nil)
 	addUser(t, store, "dave", nil)
@@ -105,6 +107,7 @@ func TestAdministratorAccessRefusalsRecordNothing(t *testing.T) {
 
 // If the access record cannot be written, no key is released.
 func TestFailedAccessRecordReleasesNoKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	mustExec(t, store, `CREATE TRIGGER refuse_access BEFORE INSERT ON account_events
@@ -123,6 +126,7 @@ func TestFailedAccessRecordReleasesNoKey(t *testing.T) {
 // released. A deferred foreign key, added for the test, fails the COMMIT
 // after the record and the key are in hand.
 func TestAccessReleasesNoKeyWhenTheCommitFails(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	mustExec(t, store, `CREATE TABLE fail_commit (ref INTEGER REFERENCES missing_parent(id) DEFERRABLE INITIALLY DEFERRED)`)
@@ -143,6 +147,7 @@ func TestAccessReleasesNoKeyWhenTheCommitFails(t *testing.T) {
 }
 
 func TestAccessWithAnUnusableGrantRecordsOnlyTheMismatch(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
@@ -161,6 +166,7 @@ func TestAccessWithAnUnusableGrantRecordsOnlyTheMismatch(t *testing.T) {
 }
 
 func TestAccessToASealedDEKThatDoesNotOpenRecordsOnlyTheMismatch(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	// alice's sealed DEK copied onto bob's row.

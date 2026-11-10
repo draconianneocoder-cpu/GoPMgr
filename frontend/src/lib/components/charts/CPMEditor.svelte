@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import Button from '../Button.svelte';
   import BaselineList from './BaselineList.svelte';
   import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
+  import { formatNumber, t } from '../../i18n/i18n.svelte';
 
   function fmt(n: unknown, digits = 1): string {
     return typeof n === 'number' ? n.toFixed(digits) : '—';
@@ -55,7 +56,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       await desktopApi.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
-      baselineMsg = 'Baseline set';
+      baselineMsg = t('chart.baselineSet');
       if (baselineMsgTimer) clearTimeout(baselineMsgTimer);
       baselineMsgTimer = setTimeout(() => (baselineMsg = ''), 2500);
     } catch (err: any) {
@@ -66,8 +67,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function varFmt(days: number): string {
-    if (Math.abs(days) < 1e-9) return 'on plan';
-    return days > 0 ? `+${days.toFixed(1)}d late` : `${days.toFixed(1)}d early`;
+    if (Math.abs(days) < 1e-9) return t('cpm.variance.onPlan');
+    return days > 0 ? t('cpm.variance.late', { days: oneDecimal(days) }) : t('cpm.variance.early', { days: oneDecimal(days) });
   }
 
   // ----- Earned Value (roadmap item 18) -----
@@ -108,12 +109,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let monteCarloReportStatus = $state('');
   let monteCarloReportError = $state('');
 
+  // oneDecimal formats a day count with one decimal place in the format locale.
+  function oneDecimal(n: number): string {
+    return formatNumber(n, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
   function days(n: number): string {
-    return `${n.toFixed(1)}d`;
+    return t('cpm.days', { days: oneDecimal(n) });
   }
 
   function pct(n: number): string {
-    return `${Math.round(n * 100)}%`;
+    return formatNumber(n, { style: 'percent', maximumFractionDigits: 0 });
   }
 
   function cdfDomain(result: SimResult): [number, number] {
@@ -152,9 +158,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function confidenceMarkers(result: SimResult) {
     return [
-      { label: 'P50', day: result.p50, probability: 0.5, color: '#67e8f9' },
-      { label: 'P80', day: result.p80, probability: 0.8, color: '#fbbf24' },
-      { label: 'P90', day: result.p90, probability: 0.9, color: '#fca5a5' },
+      { label: 'cpm.risk.p50' as const, day: result.p50, probability: 0.5, color: '#67e8f9' },
+      { label: 'cpm.risk.p80' as const, day: result.p80, probability: 0.8, color: '#fbbf24' },
+      { label: 'cpm.risk.p90' as const, day: result.p90, probability: 0.9, color: '#fca5a5' },
     ];
   }
 
@@ -201,9 +207,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const iterations = Math.max(100, Math.min(10000, Math.floor(Number(monteCarloIterations) || 1000)));
       monteCarloIterations = iterations;
       const path = await desktopApi.ExportChartMonteCarloRiskReport(session.editingId, iterations, 0);
-      monteCarloReportStatus = `Exported to: ${path}`;
+      monteCarloReportStatus = t('cpm.exportedTo', { path });
     } catch (err: any) {
-      if (!String(err?.message ?? err).includes('export cancelled')) monteCarloReportError = `Export failed: ${String(err?.message ?? err)}`;
+      if (!String(err?.message ?? err).includes('export cancelled')) monteCarloReportError = t('cpm.exportFailed', { error: String(err?.message ?? err) });
     } finally {
       monteCarloReportBusy = false;
     }
@@ -334,7 +340,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     resourceBusy = true;
     try {
       const chart = await desktopApi.GenerateResourceHistogram(session.editingId);
-      flashResourceMsg(`Histogram saved: ${chart.title}`);
+      flashResourceMsg(t('cpm.histogramSaved', { title: chart.title }));
     } catch (err: any) {
       flashResourceMsg(String(err?.message ?? err));
     } finally {
@@ -360,7 +366,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 </script>
 
-<LayeredEditorShell bind:this={shellRef} chartKind="cpm" headingLabel="CPM Chart">
+<LayeredEditorShell bind:this={shellRef} chartKind="cpm" headingLabel={t('cpm.title')}>
   {#snippet toolbarExtra()}
     {#if baselineMsg}
       <span class="text-[10px] text-cyan-300">{baselineMsg}</span>
@@ -377,41 +383,41 @@ SPDX-License-Identifier: GPL-3.0-or-later
           resourceWarn = '';
           resourceWarnTitle = '';
         }}
-      >⚠ {resourceWarn} (dismiss)</button>
+      >{t('cpm.resourceWarn.dismiss', { warning: resourceWarn })}</button>
     {/if}
     <select
       bind:value={levelStrategy}
       disabled={resourceBusy}
-      title="Leveling heuristic: least total float protects the project finish; earliest deadline favours per-task due dates."
+      title={t('cpm.level.strategy.hint')}
       class="text-[10px] bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-200"
     >
-      <option value="ltf">Least float</option>
-      <option value="edf">Earliest deadline</option>
+      <option value="ltf">{t('cpm.level.leastFloat')}</option>
+      <option value="edf">{t('cpm.level.earliestDeadline')}</option>
     </select>
     <label
       class="text-[10px] text-slate-300 flex items-center gap-1"
-      title="Protect the critical path: critical tasks win resource contention ahead of floating tasks."
+      title={t('cpm.level.protectCritical.hint')}
     >
       <input type="checkbox" bind:checked={priorityCritical} disabled={resourceBusy} />
-      Protect critical
+      {t('cpm.level.protectCritical')}
     </label>
     <Button
       variant="secondary"
       size="sm"
       onclick={levelResources}
       disabled={resourceBusy}
-      title="Delay contended tasks until resources fit capacity; delays persist as SNET constraints"
+      title={t('cpm.level.hint')}
     >
-      Level
+      {t('cpm.level')}
     </Button>
     <Button
       variant="secondary"
       size="sm"
       onclick={previewSplitting}
       disabled={resourceBusy}
-      title="Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved."
+      title={t('cpm.previewSplitting.hint')}
     >
-      Preview splitting
+      {t('chart.previewSplitting')}
     </Button>
     {#if splitPreviewMsg}
       <span class="text-[10px] text-sky-300" title={splitPreviewTitle}>{splitPreviewMsg}</span>
@@ -421,18 +427,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
       size="sm"
       onclick={generateHistogram}
       disabled={resourceBusy}
-      title="Save a bar chart of per-day resource demand (snapshot; regenerate after edits)"
+      title={t('cpm.histogram.hint')}
     >
-      Histogram
+      {t('cpm.histogram')}
     </Button>
     <Button
       variant="secondary"
       size="sm"
       onclick={setBaseline}
       disabled={baselineBusy}
-      title="Snapshot the current schedule for planned-vs-actual comparison"
+      title={t('cpm.baseline.hint')}
     >
-      {baselineCount > 0 ? `Re-baseline (${baselineCount})` : 'Set baseline'}
+      {baselineCount > 0 ? t('cpm.rebaseline', { count: baselineCount }) : t('chart.setBaseline')}
     </Button>
     {#if session.editingId}
       <BaselineList chartId={session.editingId} onchange={refreshBaseline} />
@@ -497,23 +503,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
         : data.label as string}
     </text>
     <text x="8" y="34" font-size="9" fill="#94a3b8">
-      Dur: {fmt(data.duration)} · Float: {fmt(data.float, 2)}
+      {t('cpm.node.durationFloat', { duration: fmt(data.duration), float: fmt(data.float, 2) })}
     </text>
     <text x="8" y="48" font-size="9" fill="#67e8f9">
       {#if data.start_date}
         {data.start_date} → {data.finish_date}
       {:else}
-        ES {fmt(data.es)} · EF {fmt(data.ef)}
+        {t('cpm.node.early', { es: fmt(data.es), ef: fmt(data.ef) })}
       {/if}
     </text>
     <text x="8" y="62" font-size="9" fill="#fbbf24">
-      LS {fmt(data.ls)} · LF {fmt(data.lf)}
+      {t('cpm.node.late', { ls: fmt(data.ls), lf: fmt(data.lf) })}
     </text>
   {/snippet}
 
   {#snippet nodeDetailPanel(node)}
     <label class="block">
-      <span class="text-xs text-slate-500 uppercase">Duration (days)</span>
+      <span class="text-xs text-slate-500 uppercase">{t('cpm.duration')}</span>
       <input
         type="number"
         bind:value={node.duration}
@@ -522,27 +528,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </label>
     <div class="mt-3 rounded border border-slate-800 bg-slate-950/40 p-2">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-xs text-slate-500 uppercase">Monte Carlo estimate</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.estimate')}</span>
         {#if node.duration_estimate}
           <button
             onclick={() => clearDurationEstimate(node)}
             class="text-[10px] text-slate-500 hover:text-red-300"
           >
-            Clear
+            {t('cpm.estimate.clear')}
           </button>
         {:else}
           <button
             onclick={() => seedDurationEstimate(node)}
             class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded"
           >
-            Use estimate
+            {t('cpm.estimate.use')}
           </button>
         {/if}
       </div>
       {#if node.duration_estimate}
         <div class="mt-2 grid grid-cols-3 gap-2">
           <label class="block">
-            <span class="text-[10px] text-slate-500 uppercase">Optimistic</span>
+            <span class="text-[10px] text-slate-500 uppercase">{t('cpm.estimate.optimistic')}</span>
             <input
               type="number"
               min="0"
@@ -552,7 +558,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             />
           </label>
           <label class="block">
-            <span class="text-[10px] text-slate-500 uppercase">Likely</span>
+            <span class="text-[10px] text-slate-500 uppercase">{t('cpm.estimate.likely')}</span>
             <input
               type="number"
               min="0"
@@ -562,7 +568,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             />
           </label>
           <label class="block">
-            <span class="text-[10px] text-slate-500 uppercase">Pessimistic</span>
+            <span class="text-[10px] text-slate-500 uppercase">{t('cpm.estimate.pessimistic')}</span>
             <input
               type="number"
               min="0"
@@ -573,25 +579,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </label>
         </div>
         <label class="block mt-2">
-          <span class="text-[10px] text-slate-500 uppercase">Distribution</span>
+          <span class="text-[10px] text-slate-500 uppercase">{t('cpm.estimate.distribution')}</span>
           <select
             bind:value={node.duration_estimate.distribution}
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
           >
-            <option value="triangular">Triangular</option>
-            <option value="beta-pert">Beta-PERT</option>
-            <option value="normal">Normal</option>
+            <option value="triangular">{t('cpm.estimate.triangular')}</option>
+            <option value="beta-pert">{t('cpm.estimate.betaPert')}</option>
+            <option value="normal">{t('cpm.estimate.normal')}</option>
           </select>
         </label>
       {:else}
         <p class="mt-2 text-[10px] text-slate-500">
-          Leave blank for deterministic duration. Add a three-point estimate for schedule-risk simulation.
+          {t('cpm.estimate.hint')}
         </p>
       {/if}
     </div>
     <div class="flex gap-2 mt-2">
       <label class="block flex-1">
-        <span class="text-xs text-slate-500 uppercase">% Complete</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.percentComplete')}</span>
         <input
           type="number"
           min="0"
@@ -602,12 +608,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </label>
       <label class="flex items-end gap-2 pb-2">
         <input type="checkbox" bind:checked={node.milestone} class="accent-cyan-500" />
-        <span class="text-xs text-slate-500 uppercase">Milestone</span>
+        <span class="text-xs text-slate-500 uppercase">{t('chart.milestone')}</span>
       </label>
     </div>
     <div class="flex gap-2 mt-2">
       <label class="block flex-1">
-        <span class="text-xs text-slate-500 uppercase">Budgeted cost</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.budgetedCost')}</span>
         <input
           type="number"
           min="0"
@@ -617,7 +623,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         />
       </label>
       <label class="block flex-1">
-        <span class="text-xs text-slate-500 uppercase">Actual cost</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.actualCost')}</span>
         <input
           type="number"
           min="0"
@@ -629,7 +635,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
     <div class="flex gap-2 mt-2">
       <label class="block flex-1">
-        <span class="text-xs text-slate-500 uppercase">Actual start</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.actualStart')}</span>
         <input
           type="date"
           bind:value={node.actual_start}
@@ -637,7 +643,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         />
       </label>
       <label class="block flex-1">
-        <span class="text-xs text-slate-500 uppercase">Actual finish</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.actualFinish')}</span>
         <input
           type="date"
           bind:value={node.actual_finish}
@@ -646,14 +652,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </label>
     </div>
     <div class="mt-3">
-      <span class="text-xs text-slate-500 uppercase">Assignments</span>
+      <span class="text-xs text-slate-500 uppercase">{t('cpm.assignments')}</span>
       {#each node.assignments ?? [] as assignment, i (i)}
         <div class="mt-1 rounded border border-slate-800 bg-slate-950/40 p-2">
           <div class="flex items-center gap-2">
             <input
               bind:value={assignment.resource}
               list="cpm-stakeholders"
-              placeholder="Resource"
+              placeholder={t('cpm.assignment.resource')}
               class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
             <input
@@ -661,7 +667,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               min="0.1"
               step="0.1"
               bind:value={assignment.units}
-              title="Units (1 = full-time)"
+              title={t('cpm.assignment.units')}
               class="w-16 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
             />
             <Button
@@ -670,14 +676,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               onclick={() => {
                 node.assignments = (node.assignments ?? []).filter((_, j) => j !== i);
               }}
-              aria-label="Remove assignment" title="Remove assignment"
+              aria-label={t('cpm.assignment.remove')} title={t('cpm.assignment.remove')}
             >✕</Button>
           </div>
           <div class="mt-2 grid grid-cols-3 gap-2">
             <input
               bind:value={assignment.calendar_id}
-              placeholder="Calendar"
-              title="Optional named resource calendar"
+              placeholder={t('cpm.assignment.calendar')}
+              title={t('cpm.assignment.calendar.hint')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
             <input
@@ -685,15 +691,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
               min="0"
               step="0.1"
               bind:value={assignment.max_units}
-              placeholder="Max"
-              title="Optional max units for this assignment"
+              placeholder={t('cpm.assignment.max')}
+              title={t('cpm.assignment.max.hint')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
             />
             <input
               value={skillTagsText(assignment)}
               oninput={(e) => setSkillTags(assignment, (e.target as HTMLInputElement).value)}
-              placeholder="Skills"
-              title="Comma-separated skill tags"
+              placeholder={t('cpm.assignment.skills')}
+              title={t('cpm.assignment.skills.hint')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
           </div>
@@ -705,7 +711,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         }}
         class="mt-1 text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded"
       >
-        + Assign resource
+        {t('cpm.assignment.add')}
       </button>
       <datalist id="cpm-stakeholders">
         {#each stakeholders as s (s.id)}
@@ -715,27 +721,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
     {#if node.overallocated}
       <p class="mt-2 p-2 bg-orange-950 border border-orange-600 rounded text-xs text-orange-300">
-        Overallocated: a resource on this task exceeds its capacity on
-        at least one scheduled day, including Resource Capacity calendar
-        overrides. Reduce units, move the task, or add capacity.
+        {t('cpm.overallocated')}
       </p>
     {/if}
     <label class="block mt-3">
-      <span class="text-xs text-slate-500 uppercase">Constraint</span>
+      <span class="text-xs text-slate-500 uppercase">{t('cpm.constraint')}</span>
       <select
         bind:value={node.constraint}
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       >
-        <option value={undefined}>ASAP (default)</option>
-        <option value="ALAP">As late as possible</option>
-        <option value="SNET">Start no earlier than</option>
-        <option value="FNLT">Finish no later than</option>
-        <option value="MFO">Must finish on</option>
+        <option value={undefined}>{t('cpm.constraint.asap')}</option>
+        <option value="ALAP">{t('cpm.constraint.alap')}</option>
+        <option value="SNET">{t('cpm.constraint.snet')}</option>
+        <option value="FNLT">{t('cpm.constraint.fnlt')}</option>
+        <option value="MFO">{t('cpm.constraint.mfo')}</option>
       </select>
     </label>
     {#if node.constraint === 'SNET' || node.constraint === 'FNLT' || node.constraint === 'MFO'}
       <label class="block mt-2">
-        <span class="text-xs text-slate-500 uppercase">Constraint date</span>
+        <span class="text-xs text-slate-500 uppercase">{t('cpm.constraint.date')}</span>
         <input
           type="date"
           bind:value={node.constraint_date}
@@ -745,42 +749,40 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
     {#if node.constraint_violated}
       <p class="mt-2 p-2 bg-amber-950 border border-amber-600 rounded text-xs text-amber-300">
-        Constraint violated: precedence links make this constraint
-        unsatisfiable. Links win; adjust the constraint date, the
-        durations, or the links.
+        {t('cpm.constraint.violated')}
       </p>
     {/if}
     <div class="mt-3 p-2 bg-slate-950 rounded text-xs space-y-1">
       {#if node.start_date}
         <div class="flex justify-between">
-          <span class="text-slate-500">Start date</span>
+          <span class="text-slate-500">{t('cpm.startDate')}</span>
           <span class="text-cyan-300 font-mono">{node.start_date}</span>
         </div>
         <div class="flex justify-between border-b border-slate-800 pb-1 mb-1">
-          <span class="text-slate-500">Finish date</span>
+          <span class="text-slate-500">{t('cpm.finishDate')}</span>
           <span class="text-cyan-300 font-mono">{node.finish_date}</span>
         </div>
       {/if}
       <div class="flex justify-between">
-        <span class="text-slate-500">Earliest start (ES)</span>
+        <span class="text-slate-500">{t('cpm.es')}</span>
         <span class="text-cyan-300 font-mono">{fmt(node.es)}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-slate-500">Earliest finish (EF)</span>
+        <span class="text-slate-500">{t('cpm.ef')}</span>
         <span class="text-cyan-300 font-mono">{fmt(node.ef)}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-slate-500">Latest start (LS)</span>
+        <span class="text-slate-500">{t('cpm.ls')}</span>
         <span class="text-amber-300 font-mono">{fmt(node.ls)}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-slate-500">Latest finish (LF)</span>
+        <span class="text-slate-500">{t('cpm.lf')}</span>
         <span class="text-amber-300 font-mono">{fmt(node.lf)}</span>
       </div>
       <div class="flex justify-between border-t border-slate-800 pt-1 mt-1">
-        <span class="text-slate-500">Float</span>
+        <span class="text-slate-500">{t('cpm.float')}</span>
         <span class="font-mono" class:text-red-400={node.is_critical} class:text-cyan-300={!node.is_critical}>
-          {fmt(node.float, 2)}{node.is_critical ? ' (critical)' : ''}
+          {node.is_critical ? t('cpm.float.critical', { float: fmt(node.float, 2) }) : fmt(node.float, 2)}
         </span>
       </div>
       {#if variances[node.id]}
@@ -788,12 +790,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="border-t border-slate-800 pt-1 mt-1 space-y-1">
           {#if v.baseline_start}
             <div class="flex justify-between">
-              <span class="text-slate-500">Baseline</span>
+              <span class="text-slate-500">{t('cpm.baseline')}</span>
               <span class="text-slate-400 font-mono">{v.baseline_start} → {v.baseline_finish}</span>
             </div>
           {/if}
           <div class="flex justify-between">
-            <span class="text-slate-500">Start vs baseline</span>
+            <span class="text-slate-500">{t('cpm.startVsBaseline')}</span>
             <span
               class="font-mono"
               class:text-red-400={v.start_var_days > 1e-9}
@@ -802,7 +804,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             >{varFmt(v.start_var_days)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">Finish vs baseline</span>
+            <span class="text-slate-500">{t('cpm.finishVsBaseline')}</span>
             <span
               class="font-mono"
               class:text-red-400={v.finish_var_days > 1e-9}
@@ -814,33 +816,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
     </div>
     <p class="text-[10px] text-slate-500 mt-2">
-      ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node
-      with Float = 0 lies on the critical path and is highlighted red.
-      Real start/finish dates appear once the project has a start date
-      (Project Settings); non-working days are skipped using the
-      project country's calendar. Incoming-link labels set the
-      dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS.
-      Date constraints (SNET/FNLT/MFO) also need the project start
-      date; ALAP works without one. Links always win over constraints;
-      impossible constraints flag the node amber instead. Resource
-      assignments default to capacity 1.0 per resource; tasks whose
-      resources are over capacity get an orange edge strip.
+      {t('cpm.help')}
     </p>
   {/snippet}
 
   {#snippet asideExtra()}
     <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-2">
-      Earned value
+      {t('cpm.evm.title')}
     </h2>
     <div class="flex items-center gap-2">
       <input
         type="date"
         bind:value={evmAsOf}
-        title="Status date (blank = today)"
+        title={t('cpm.evm.statusDate')}
         class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
       />
       <Button variant="secondary" size="compact" onclick={computeEVM} disabled={evmBusy}>
-        {evmBusy ? 'Computing…' : 'Compute'}
+        {evmBusy ? t('cpm.evm.computing') : t('cpm.evm.compute')}
       </Button>
     </div>
     {#if evmError}
@@ -850,69 +842,67 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="mt-2 p-2 bg-slate-950 rounded text-xs space-y-1">
         <div class="grid grid-cols-2 gap-x-4 gap-y-1">
           <div class="flex justify-between">
-            <span class="text-slate-500">BAC</span>
+            <span class="text-slate-500">{t('cpm.evm.bac')}</span>
             <span class="font-mono text-slate-300">{money(evm.bac)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">PV</span>
+            <span class="text-slate-500">{t('cpm.evm.pv')}</span>
             <span class="font-mono text-slate-300">{money(evm.pv)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">EV</span>
+            <span class="text-slate-500">{t('cpm.evm.ev')}</span>
             <span class="font-mono text-slate-300">{money(evm.ev)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">AC</span>
+            <span class="text-slate-500">{t('cpm.evm.ac')}</span>
             <span class="font-mono text-slate-300">{money(evm.ac)}</span>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-slate-800 pt-1 mt-1">
           <div class="flex justify-between">
-            <span class="text-slate-500">SV</span>
+            <span class="text-slate-500">{t('cpm.evm.sv')}</span>
             <span class="font-mono" class:text-red-400={evm.sv < 0} class:text-emerald-400={evm.sv > 0} class:text-slate-300={evm.sv === 0}>{money(evm.sv)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">CV</span>
+            <span class="text-slate-500">{t('cpm.evm.cv')}</span>
             <span class="font-mono" class:text-red-400={evm.cv < 0} class:text-emerald-400={evm.cv > 0} class:text-slate-300={evm.cv === 0}>{money(evm.cv)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">SPI</span>
+            <span class="text-slate-500">{t('cpm.evm.spi')}</span>
             <span class="font-mono" class:text-red-400={evm.spi > 0 && evm.spi < 1} class:text-emerald-400={evm.spi >= 1} class:text-slate-300={evm.spi === 0}>{idx(evm.spi)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">CPI</span>
+            <span class="text-slate-500">{t('cpm.evm.cpi')}</span>
             <span class="font-mono" class:text-red-400={evm.cpi > 0 && evm.cpi < 1} class:text-emerald-400={evm.cpi >= 1} class:text-slate-300={evm.cpi === 0}>{idx(evm.cpi)}</span>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-slate-800 pt-1 mt-1">
           <div class="flex justify-between">
-            <span class="text-slate-500">EAC</span>
+            <span class="text-slate-500">{t('cpm.evm.eac')}</span>
             <span class="font-mono text-slate-300">{money(evm.eac)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">ETC</span>
+            <span class="text-slate-500">{t('cpm.evm.etc')}</span>
             <span class="font-mono text-slate-300">{money(evm.etc)}</span>
           </div>
           <div class="flex justify-between col-span-2">
-            <span class="text-slate-500">VAC</span>
+            <span class="text-slate-500">{t('cpm.evm.vac')}</span>
             <span class="font-mono" class:text-red-400={evm.vac < 0} class:text-emerald-400={evm.vac > 0} class:text-slate-300={evm.vac === 0}>{money(evm.vac)}</span>
           </div>
         </div>
       </div>
       <p class="text-[10px] text-slate-500 mt-1">
-        PV from the schedule, EV from % complete × budgeted cost, AC
-        from actual cost. SPI/CPI below 1 means behind schedule / over
-        cost; n/a until work is planned or cost incurred.
+        {t('cpm.evm.help')}
       </p>
     {/if}
 
     <div class="border-t border-slate-800 mt-4 pt-4">
       <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-2">
-        Monte Carlo risk
+        {t('cpm.risk.title')}
       </h2>
       <div class="flex items-center gap-2">
         <label class="flex-1">
-          <span class="sr-only">Iterations</span>
+          <span class="sr-only">{t('cpm.risk.iterations')}</span>
           <input
             type="number"
             min="100"
@@ -920,11 +910,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
             step="100"
             bind:value={monteCarloIterations}
             class="w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
-            title="Simulation iterations"
+            title={t('cpm.risk.iterations.hint')}
           />
         </label>
         <Button variant="secondary" size="compact" onclick={runMonteCarlo} disabled={monteCarloBusy}>
-          {monteCarloBusy ? 'Running…' : 'Run'}
+          {monteCarloBusy ? t('cpm.risk.running') : t('cpm.risk.run')}
         </Button>
       </div>
       <div class="mt-2 h-1.5 overflow-hidden rounded bg-slate-950">
@@ -941,29 +931,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="mt-2 p-2 bg-slate-950 rounded text-xs space-y-2">
           <div class="grid grid-cols-3 gap-2">
             <div>
-              <div class="text-[10px] uppercase text-slate-500">P50</div>
+              <div class="text-[10px] uppercase text-slate-500">{t('cpm.risk.p50')}</div>
               <div class="font-mono text-cyan-300">{days(monteCarlo.p50)}</div>
             </div>
             <div>
-              <div class="text-[10px] uppercase text-slate-500">P80</div>
+              <div class="text-[10px] uppercase text-slate-500">{t('cpm.risk.p80')}</div>
               <div class="font-mono text-amber-300">{days(monteCarlo.p80)}</div>
             </div>
             <div>
-              <div class="text-[10px] uppercase text-slate-500">P90</div>
+              <div class="text-[10px] uppercase text-slate-500">{t('cpm.risk.p90')}</div>
               <div class="font-mono text-red-300">{days(monteCarlo.p90)}</div>
             </div>
           </div>
           {#if monteCarlo.finish_cdf?.length}
             <div class="rounded border border-slate-800 bg-slate-900/50 p-2">
               <div class="flex justify-between text-[10px] uppercase text-slate-500">
-                <span>Finish probability</span>
-                <span>S-curve</span>
+                <span>{t('cpm.risk.finishProbability')}</span>
+                <span>{t('cpm.risk.sCurve')}</span>
               </div>
               <svg
                 class="mt-1 h-28 w-full"
                 viewBox="0 0 242 100"
                 role="img"
-                aria-label={`Monte Carlo finish probability S-curve from ${days(cdfDomain(monteCarlo)[0])} to ${days(cdfDomain(monteCarlo)[1])}`}
+                aria-label={t('cpm.risk.sCurve.label', { from: days(cdfDomain(monteCarlo)[0]), to: days(cdfDomain(monteCarlo)[1]) })}
               >
                 <line x1="14" y1="82" x2="228" y2="82" stroke="#334155" stroke-width="1" />
                 <line x1="14" y1="18" x2="14" y2="82" stroke="#334155" stroke-width="1" />
@@ -1002,15 +992,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     font-size="8"
                     text-anchor="middle"
                     fill={marker.color}
-                  >{marker.label}</text>
+                  >{t(marker.label)}</text>
                 {/each}
               </svg>
             </div>
           {/if}
           <div class="border-t border-slate-800 pt-2">
             <div class="flex justify-between text-[10px] uppercase text-slate-500">
-              <span>Tornado drivers</span>
-              <span>{monteCarlo.iterations.toLocaleString()} runs</span>
+              <span>{t('cpm.risk.tornado')}</span>
+              <span>{t('cpm.risk.runs', { count: monteCarlo.iterations })}</span>
             </div>
             <div class="mt-1 space-y-1">
               {#if tornadoRows().length}
@@ -1036,7 +1026,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {/each}
               {:else}
                 <div class="min-w-0">
-                  <p class="text-[10px] text-slate-500">No variable risk drivers detected.</p>
+                  <p class="text-[10px] text-slate-500">{t('cpm.risk.noDrivers')}</p>
                 </div>
               {/if}
             </div>
@@ -1044,9 +1034,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </div>
         <div class="mt-2 flex items-center justify-between gap-2">
           <Button variant="secondary" size="compact" onclick={exportMonteCarloReport} disabled={monteCarloReportBusy}>
-            {monteCarloReportBusy ? 'Exporting…' : 'Export PDF/A'}
+            {monteCarloReportBusy ? t('cpm.risk.exporting') : t('cpm.risk.export')}
           </Button>
-          <span class="text-[10px] text-slate-500">Risk report</span>
+          <span class="text-[10px] text-slate-500">{t('cpm.risk.report')}</span>
         </div>
         {#if monteCarloReportStatus}
           <p class="mt-1 break-words text-[10px] text-cyan-300">{monteCarloReportStatus}</p>
@@ -1055,12 +1045,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="mt-1 break-words text-[10px] text-amber-300" role="alert">{monteCarloReportError}</p>
         {/if}
         <p class="text-[10px] text-slate-500 mt-1">
-          P50/P80/P90 are finish-day confidence points. Tornado drivers rank
-          critical-path frequency multiplied by P90-P50 duration spread.
+          {t('cpm.risk.help')}
         </p>
       {:else if !monteCarloError}
         <p class="mt-2 text-[10px] text-slate-500">
-          Add optional task estimates, then run a simulation. Tasks without estimates use their fixed duration.
+          {t('cpm.risk.empty')}
         </p>
       {/if}
     </div>

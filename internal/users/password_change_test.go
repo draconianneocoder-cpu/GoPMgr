@@ -20,14 +20,9 @@ const (
 // oldPassword.
 func newPasswordStore(t *testing.T) (*Store, []byte) {
 	t.Helper()
-	store := openTestStore(t)
-	if _, err := store.CreateAccount("alice", "Alice", oldPassword, true); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
-	}
-	dek, err := unlockDEK(store, "alice", oldPassword)
-	if err != nil {
-		t.Fatalf("UnlockDEK: %v", err)
-	}
+	// A copy of the password template: administrator alice with oldPassword,
+	// and her unlocked key (built by buildPasswordTemplate).
+	store, dek, _ := storeFromTemplate(t, templates.password)
 	return store, dek
 }
 
@@ -43,6 +38,7 @@ func passwordRow(t *testing.T, store *Store) (hash, wrapped string) {
 }
 
 func TestChangePasswordKeepsTheSameKey(t *testing.T) {
+	t.Parallel()
 	store, dek := newPasswordStore(t)
 	codes, err := store.IssueRecoveryCodes("alice", dek)
 	if err != nil {
@@ -78,6 +74,7 @@ func TestChangePasswordKeepsTheSameKey(t *testing.T) {
 }
 
 func TestChangePasswordRefusalsChangeNothing(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		current  string
@@ -113,6 +110,7 @@ func TestChangePasswordRefusalsChangeNothing(t *testing.T) {
 // account whose hash uses weaker Argon2id parameters: going through
 // Authenticate would re-hash it and break the compare-and-swap.
 func TestChangePasswordWorksWithAnOlderHashAndLeavesLastLogin(t *testing.T) {
+	t.Parallel()
 	store, dek := newPasswordStore(t)
 	if _, err := store.conn.Exec(
 		`UPDATE users SET password_hash = ?, last_login = '2026-01-01T00:00:00Z' WHERE username = 'alice'`,
@@ -137,6 +135,7 @@ func TestChangePasswordWorksWithAnOlderHashAndLeavesLastLogin(t *testing.T) {
 // between ChangePassword's read and its write.
 func TestChangePasswordDoesNotOverwriteAConcurrentChange(t *testing.T) {
 	store, dek := newPasswordStore(t)
+	requireSerial(t)
 	previous := beforePasswordSwap
 	t.Cleanup(func() { beforePasswordSwap = previous })
 	beforePasswordSwap = func() {
@@ -162,6 +161,7 @@ func TestChangePasswordDoesNotOverwriteAConcurrentChange(t *testing.T) {
 }
 
 func TestChangePasswordReportsACorruptWrap(t *testing.T) {
+	t.Parallel()
 	store, _ := newPasswordStore(t)
 	if _, err := store.conn.Exec(`UPDATE users SET wrapped_dek_pw = 'bm90IGEgd3JhcA==' WHERE username = 'alice'`); err != nil {
 		t.Fatalf("corrupt wrap: %v", err)
@@ -176,6 +176,7 @@ func TestChangePasswordReportsACorruptWrap(t *testing.T) {
 }
 
 func TestCreateAccountAsRefusesAShortPassword(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	if _, err := store.CreateAccountAs("", "alice", "Alice", "short", false); !errors.Is(err, ErrPasswordTooShort) {
 		t.Fatalf("CreateAccountAs with a short password: err = %v, want ErrPasswordTooShort", err)

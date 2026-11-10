@@ -13,6 +13,7 @@ import (
 // connection, which requires the DSN-parameter form rather than a one-off
 // Exec at Open.
 func TestSystemDBForeignKeysOnEveryPooledConnection(t *testing.T) {
+	t.Parallel()
 	s, err := Open(t.TempDir())
 	if err != nil {
 		t.Fatalf("Open: %v", err)

@@ -44,6 +44,7 @@ func (f *failingReaderAtCall) Read(p []byte) (int, error) {
 
 func withRecoveryRandReaderFailingAtCall(t *testing.T, failAtCall int) {
 	t.Helper()
+	requireSerial(t)
 	orig := rand.Reader
 	rand.Reader = &failingReaderAtCall{orig: orig, failAtCall: failAtCall}
 	t.Cleanup(func() { rand.Reader = orig })
@@ -64,6 +65,7 @@ func newRecoveryTestStore(t *testing.T) *Store {
 }
 
 func TestResetWithRecoveryCodeCanonicalisesPastedWhitespace(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "old password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -95,6 +97,7 @@ func TestGenerateCodeReturnsEntropyFailure(t *testing.T) {
 
 func replaceRecoveryRandReader(t *testing.T, r io.Reader) func() {
 	t.Helper()
+	requireSerial(t)
 	original := rand.Reader
 	rand.Reader = r
 	return func() {
@@ -109,6 +112,7 @@ func replaceRecoveryRandReader(t *testing.T, r io.Reader) func() {
 // t.Cleanup(store.Close)). This is the migrateRecoveryTable
 // equivalent of dek_test.go's TestMigrateDEKColumns_QueryFailsOnClosedStore.
 func TestMigrateRecoveryTable_FailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("close store: %v", err)
@@ -120,6 +124,7 @@ func TestMigrateRecoveryTable_FailsOnClosedStore(t *testing.T) {
 }
 
 func TestRemainingRecoveryCodes_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.RemainingRecoveryCodes("a"); err != ErrInvalidUsername {
 		t.Fatalf("RemainingRecoveryCodes(invalid username) error = %v, want ErrInvalidUsername", err)
@@ -127,6 +132,7 @@ func TestRemainingRecoveryCodes_RejectsInvalidUsername(t *testing.T) {
 }
 
 func TestRemainingRecoveryCodes_CountsOnlyUnused(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -167,6 +173,7 @@ func TestRemainingRecoveryCodes_CountsOnlyUnused(t *testing.T) {
 }
 
 func TestIssueRecoveryCodes_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.IssueRecoveryCodes("a", nil); err != ErrInvalidUsername {
 		t.Fatalf("IssueRecoveryCodes(invalid username) error = %v, want ErrInvalidUsername", err)
@@ -179,6 +186,7 @@ func TestIssueRecoveryCodes_RejectsInvalidUsername(t *testing.T) {
 // makes (ValidateUsername touches no DB), so closed-DB isolates it
 // cleanly from the function's later DB calls.
 func TestIssueRecoveryCodes_UserExistenceCheckFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if err := store.Close(); err != nil {
 		t.Fatalf("close store: %v", err)
@@ -199,6 +207,7 @@ func TestIssueRecoveryCodes_UserExistenceCheckFailsOnClosedStore(t *testing.T) {
 // own typed ErrNoSuchUser. The FK constraint is a real backstop, not
 // this check's replacement.
 func TestIssueRecoveryCodes_RejectsNonexistentUser(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	// "nobody" passes ValidateUsername's format check but was never created.
 	if _, err := store.IssueRecoveryCodes("nobody", nil); err != ErrNoSuchUser {
@@ -256,6 +265,7 @@ func TestIssueRecoveryCodes_HashPasswordEntropyFailure(t *testing.T) {
 // rand.Reader, so a wrong-length dek fails on the very first loop
 // iteration with no entropy tricks needed.
 func TestIssueRecoveryCodes_WrapKeyRejectsWrongLengthDEK(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -276,6 +286,7 @@ func TestIssueRecoveryCodes_WrapKeyRejectsWrongLengthDEK(t *testing.T) {
 // by the DELETE, and a fresh account has none, so a delete against an
 // empty table is a silent no-op that would never reach this trigger.
 func TestIssueRecoveryCodes_DeleteFailsOnBlockedTrigger(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -306,6 +317,7 @@ func TestIssueRecoveryCodes_DeleteFailsOnBlockedTrigger(t *testing.T) {
 // blocked -- otherwise this test could pass for the same reason as
 // the DELETE test above rather than proving the INSERT branch.
 func TestIssueRecoveryCodes_InsertFailsOnBlockedTrigger(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -345,6 +357,7 @@ func TestIssueRecoveryCodes_InsertFailsOnBlockedTrigger(t *testing.T) {
 // log-only-guard test, for a different underlying reason (deliberate
 // error unification, not a swallowed error).
 func TestResetWithRecoveryCode_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if err := store.ResetWithRecoveryCode("a", "whatever", "new-password-123"); err != ErrInvalidRecoveryCode {
 		t.Fatalf("ResetWithRecoveryCode(invalid username) error = %v, want ErrInvalidRecoveryCode", err)
@@ -352,6 +365,7 @@ func TestResetWithRecoveryCode_RejectsInvalidUsername(t *testing.T) {
 }
 
 func TestResetWithRecoveryCode_RejectsShortNewPassword(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -371,6 +385,7 @@ func TestResetWithRecoveryCode_RejectsShortNewPassword(t *testing.T) {
 // tx.Begin() IS this function's first DB call (ValidateUsername and
 // the length check touch no DB), so closed-DB isolates it cleanly.
 func TestResetWithRecoveryCode_BeginFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -393,6 +408,7 @@ func TestResetWithRecoveryCode_BeginFailsOnClosedStore(t *testing.T) {
 // tx.Begin() would succeed (BEGIN references no table) but before the
 // SELECT runs.
 func TestResetWithRecoveryCode_QueryFailsWhenTableMissing(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -413,6 +429,7 @@ func TestResetWithRecoveryCode_QueryFailsWhenTableMissing(t *testing.T) {
 // different, trivial path than "scanned every code and found no
 // match."
 func TestResetWithRecoveryCode_RejectsNonMatchingCode(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -441,6 +458,7 @@ func TestResetWithRecoveryCode_RejectsNonMatchingCode(t *testing.T) {
 // ErrBadDEK) -- see the exact same shape break-verified below in
 // TestResetWithRecoveryCode_WrapKeyEntropyFailure.
 func TestResetWithRecoveryCode_RejectsCorruptedWrap(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -535,6 +553,7 @@ func TestResetWithRecoveryCode_WrapKeyEntropyFailure(t *testing.T) {
 // trigger below (different table, but distinct messages avoid any
 // ambiguity when grepping trigger output).
 func TestResetWithRecoveryCode_UsedFlagUpdateFailsOnBlockedTrigger(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -568,6 +587,7 @@ func TestResetWithRecoveryCode_UsedFlagUpdateFailsOnBlockedTrigger(t *testing.T)
 // password_hash-related triggers can't conflate the two tests'
 // purposes.
 func TestResetWithRecoveryCode_PasswordUpdateFailsOnBlockedTrigger(t *testing.T) {
+	t.Parallel()
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)

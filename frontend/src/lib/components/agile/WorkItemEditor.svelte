@@ -19,6 +19,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, requestNavigation } from '../../session.svelte';
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import { t, tParts } from '../../i18n/i18n.svelte';
+  import { estimateLabelKey } from '../../i18n/methodology';
 
   type Status = 'idle' | 'saving' | 'deleting';
 
@@ -106,7 +108,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function save(): Promise<boolean> {
     if (!draft || status !== 'idle') return false;
     if (!draft.title.trim()) {
-      error = 'Title is required.';
+      error = t('workItem.error.titleRequired');
       return false;
     }
     // Persist a stable copy. The editable controls are disabled while this is
@@ -232,8 +234,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onDestroy(() => stopDirtyGuard?.());
 
-  const TYPES: AgileWorkItemType[] = ['story', 'bug', 'task', 'epic'];
-  const PRIOS: AgilePriority[] = ['low', 'medium', 'high', 'urgent'];
+  // Fixed tuples, not the generated enum types: those also allow '', which
+  // has no catalog label.
+  const TYPES = ['story', 'bug', 'task', 'epic'] as const satisfies readonly AgileWorkItemType[];
+  const PRIOS = ['low', 'medium', 'high', 'urgent'] as const satisfies readonly AgilePriority[];
+  const estimateLabel = $derived(t(estimateLabelKey(session.project?.methodology)));
 </script>
 
 {#if draft}
@@ -244,19 +249,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
     onkeydown={onKey}
     role="dialog"
     aria-modal="true"
-    aria-label="Edit work item"
+    aria-label={t('workItem.title.edit')}
     tabindex="-1"
   >
     <div class="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
       <header class="px-6 py-3 border-b border-slate-800 flex items-center justify-between">
         <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
-          {draft.id ? 'Edit work item' : 'New work item'}
+          {draft.id ? t('workItem.title.edit') : t('workItem.title.new')}
         </h2>
         <button
           onclick={requestClose}
           disabled={status !== 'idle'}
           class="text-slate-500 hover:text-slate-200"
-          aria-label="Close"
+          aria-label={t('common.close')}
         >
           ×
         </button>
@@ -268,7 +273,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
 
         <label class="block">
-          <span class="text-xs text-slate-500 uppercase">Title</span>
+          <span class="text-xs text-slate-500 uppercase">{t('workItem.field.title')}</span>
           <input
             bind:value={draft.title}
             disabled={status !== 'idle'}
@@ -278,26 +283,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Type</span>
+            <span class="text-xs text-slate-500 uppercase">{t('workItem.field.type')}</span>
             <select
               bind:value={draft.type}
               disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
-              {#each TYPES as t (t)}
-                <option value={t}>{t}</option>
+              {#each TYPES as type (type)}
+                <option value={type}>{t(`workItem.type.${type}`)}</option>
               {/each}
             </select>
           </label>
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Priority</span>
+            <span class="text-xs text-slate-500 uppercase">{t('workItem.field.priority')}</span>
             <select
               bind:value={draft.priority}
               disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               {#each PRIOS as p (p)}
-                <option value={p}>{p}</option>
+                <option value={p}>{t(`workItem.priority.${p}`)}</option>
               {/each}
             </select>
           </label>
@@ -305,7 +310,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Points</span>
+            <span class="text-xs text-slate-500 uppercase">{estimateLabel}</span>
             <input
               type="number"
               step="0.5"
@@ -315,10 +320,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
             />
           </label>
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Assignee</span>
+            <span class="text-xs text-slate-500 uppercase">{t('workItem.field.assignee')}</span>
             <input
               bind:value={draft.assignee}
-              placeholder="(unassigned)"
+              placeholder={t('workItem.unassigned')}
               disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
@@ -327,26 +332,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">State / Column</span>
+            <span class="text-xs text-slate-500 uppercase">{t('workItem.field.state')}</span>
             <select
               bind:value={draft.state}
               disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
-              <option value="backlog">backlog</option>
+              <option value="backlog">{t('workItem.state.backlog')}</option>
               {#each columns as c (c.id)}
                 <option value={c.id}>{c.name}</option>
               {/each}
             </select>
           </label>
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Sprint</span>
+            <span class="text-xs text-slate-500 uppercase">{t('workItem.field.sprint')}</span>
             <select
               bind:value={draft.sprint_id}
               disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
-              <option value="">(none)</option>
+              <option value="">{t('workItem.noSprint')}</option>
               {#each sprints as s (s.id)}
                 <option value={s.id}>{s.name}</option>
               {/each}
@@ -355,7 +360,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </div>
 
         <label class="block">
-          <span class="text-xs text-slate-500 uppercase">Description</span>
+          <span class="text-xs text-slate-500 uppercase">{t('workItem.field.description')}</span>
           <textarea
             bind:value={draft.description}
             rows="5"
@@ -366,8 +371,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         {#if draft.id}
           <p class="text-[10px] text-slate-500">
-            ID: <span class="font-mono">{draft.id}</span>
-            {#if draft.closed_at}· closed at {draft.closed_at.slice(0, 10)}{/if}
+            {#each tParts('workItem.id', { id: draft.id }) as part, i (i)}{#if part.param}<span class="font-mono">{part.text}</span>{:else}{part.text}{/if}{/each}
+            {#if draft.closed_at}{t('workItem.closedAt', { date: draft.closed_at.slice(0, 10) })}{/if}
           </p>
         {/if}
       </main>
@@ -378,7 +383,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           disabled={status !== 'idle' || !draft.id}
           class="text-xs text-red-400 hover:text-red-300 disabled:opacity-30"
         >
-          Delete
+          {t('common.delete')}
         </button>
         <div class="flex gap-2">
           <button
@@ -386,14 +391,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
             disabled={status !== 'idle'}
             class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onclick={save}
             disabled={status !== 'idle' || !draft.title.trim()}
             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
           >
-            {status === 'saving' ? 'Saving...' : 'Save'}
+            {status === 'saving' ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </footer>
@@ -403,8 +408,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 <ConfirmDialog
   open={confirmingDelete}
-  title="Delete work item"
-  message={`Delete "${draft?.title ?? ''}"? This cannot be undone.`}
+  title={t('workItem.delete.title')}
+  message={t('workItem.delete.message', { title: draft?.title ?? '' })}
   busy={status === 'deleting'}
   onConfirm={destroy}
   onCancel={cancelDelete}

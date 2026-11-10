@@ -252,10 +252,10 @@ Recorded proposal:
 - Accessible, keyboard-complete workflows.
 - Large-project Gantt performance and rendering improvements.
 - Localization ([ADR-008](design/ADR-008-localization.md), accepted). Phase 1
-  is in progress: the catalog, its checks and the account screens are done.
-  The next slice extracts the work-item editors and turns the methodology
-  words in `terminology.ts` (for example "user story" for Scrum) into
-  catalog messages; until then no screen uses them.
+  is in progress: the catalog, its checks, the account screens and the
+  work-item editors (Gantt, CPM, RACI and agile work items) are done. The
+  work-item editor names its estimate field "Story points" in Scrum and
+  Scrumban projects; schedule editors say "task" for every methodology.
 
 ### Interoperability
 

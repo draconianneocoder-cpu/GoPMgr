@@ -25,7 +25,7 @@ describe('summarizeLabels', () => {
 describe('levelResourcesMessages', () => {
   it('reports pins with no warning when everything fit', () => {
     const m = levelResourcesMessages({ pinned: 2 });
-    expect(m.flash).toBe('Levelled: 2 task(s) pinned (SNET)');
+    expect(m.flash).toBe('Levelled: 2 tasks pinned (SNET)');
     expect(m.warn).toBe('');
     expect(m.warnTitle).toBe('');
   });
@@ -35,13 +35,13 @@ describe('levelResourcesMessages', () => {
   it('does not claim "already level" when tasks stay overallocated', () => {
     const m = levelResourcesMessages({ pinned: 0, unplaced_labels: ['A', 'B'] });
     expect(m.flash).toBe('No tasks could be shifted into free capacity');
-    expect(m.warn).toBe('2 task(s) still overallocated: A, B');
+    expect(m.warn).toBe('2 tasks still overallocated: A, B');
     expect(m.warnTitle).toContain('Demand exceeds available capacity for: A, B');
   });
   it('pins can coexist with a residual overallocation warning', () => {
     const m = levelResourcesMessages({ pinned: 1, unplaced_labels: ['X'] });
-    expect(m.flash).toBe('Levelled: 1 task(s) pinned (SNET)');
-    expect(m.warn).toBe('1 task(s) still overallocated: X');
+    expect(m.flash).toBe('Levelled: 1 task pinned (SNET)');
+    expect(m.warn).toBe('1 task still overallocated: X');
   });
 });
 
@@ -56,7 +56,7 @@ describe('splitPreviewMessage', () => {
       split_task_labels: ['A', 'B', 'C', 'D'],
       resolves_overallocation: true,
     });
-    expect(m.msg).toBe('Splitting 4 task(s) would clear overallocation: A, B, C +1 more');
+    expect(m.msg).toBe('Splitting 4 tasks would clear overallocation: A, B, C +1 more');
     expect(m.title).toContain('analysis-only and is not saved');
   });
   it('reports resources still over capacity when splitting is insufficient', () => {
@@ -65,7 +65,13 @@ describe('splitPreviewMessage', () => {
       resolves_overallocation: false,
       remaining_overallocated_resources: ['alice', 'bob'],
     });
-    expect(m.msg).toBe('Even with splitting, 2 resource(s) stay over capacity');
+    expect(m.msg).toBe('Even with splitting, 2 resources stay over capacity');
+    const one = splitPreviewMessage({
+      split_task_labels: ['A'],
+      resolves_overallocation: false,
+      remaining_overallocated_resources: ['alice'],
+    });
+    expect(one.msg).toBe('Even with splitting, 1 resource stays over capacity');
     expect(m.title).toContain('single-day demand above supply');
   });
 });
@@ -73,8 +79,9 @@ describe('splitPreviewMessage', () => {
 describe('splitLevelStatus', () => {
   it('reports how many tasks were split', () => {
     expect(splitLevelStatus({ pinned: 0, split_labels: ['A', 'B'] })).toBe(
-      'Levelled; split 2 task(s): A, B',
+      'Levelled; split 2 tasks: A, B',
     );
+    expect(splitLevelStatus({ pinned: 0, split_labels: ['A'] })).toBe('Levelled; split 1 task: A');
   });
   it('reports no splitting was needed', () => {
     expect(splitLevelStatus({ pinned: 0 })).toBe('Levelled; no tasks needed splitting');

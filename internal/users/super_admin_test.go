@@ -40,6 +40,7 @@ func superStore(t *testing.T) (*Store, []byte, []byte) {
 }
 
 func TestFirstAccountIsTheSuperAdministrator(t *testing.T) {
+	t.Parallel()
 	store, _ := escrowStore(t)
 	if super := mustSuper(t, store); super != "alice" {
 		t.Fatalf("super administrator = %q, want alice", super)
@@ -51,6 +52,7 @@ func TestFirstAccountIsTheSuperAdministrator(t *testing.T) {
 // earliest-created enabled administrator becomes the super administrator
 // (owner decision, 2026-10-05), compared as times, not as text.
 func TestExistingInstallMakesTheEarliestAdministratorSuper(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	for _, name := range []string{"bob", "carol", "dave"} {
 		if _, err := store.CreateAccount(name, name, statusPassword, true); err != nil {
@@ -70,6 +72,7 @@ func TestExistingInstallMakesTheEarliestAdministratorSuper(t *testing.T) {
 }
 
 func TestSuperIsReassignedOnlyWhenItNamesNoEnabledAdministrator(t *testing.T) {
+	t.Parallel()
 	store, _, _ := superStore(t)
 	mustExec(t, store, `UPDATE super_admin SET username = 'bob'`)
 	before := len(eventActions(t, store))
@@ -92,6 +95,7 @@ func TestSuperIsReassignedOnlyWhenItNamesNoEnabledAdministrator(t *testing.T) {
 
 // Every administrator-affecting store action refuses a subordinate.
 func TestOnlyTheSuperChangesAdministrators(t *testing.T) {
+	t.Parallel()
 	store, _, bobDEK := superStore(t)
 	daveDEK := addUser(t, store, "dave", nil)
 	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username = 'dave'`)
@@ -138,6 +142,7 @@ func TestOnlyTheSuperChangesAdministrators(t *testing.T) {
 }
 
 func TestNobodyCanRemoveTheSuperAdministrator(t *testing.T) {
+	t.Parallel()
 	store, _, _ := superStore(t)
 	for name, action := range map[string]func() error{
 		"demote":  func() error { return store.SetAdmin("alice", "alice", false) },
@@ -154,6 +159,7 @@ func TestNobodyCanRemoveTheSuperAdministrator(t *testing.T) {
 }
 
 func TestHandOverMovesTheRoleAndTheKey(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, bobDEK := superStore(t)
 	aliceSession := openEscrow(t, store, "alice", aliceDEK)
 	aliceKey := append([]byte(nil), aliceSession.public...)
@@ -190,6 +196,7 @@ func TestHandOverMovesTheRoleAndTheKey(t *testing.T) {
 }
 
 func TestHandOverRefusals(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _ := superStore(t)
 	session := openEscrow(t, store, "alice", aliceDEK)
 	_, attackerPub := attackerKeyPair(t)
@@ -228,6 +235,7 @@ func TestHandOverRefusals(t *testing.T) {
 // With a key that won't open, the role still moves and the history says the
 // key could not be passed.
 func TestHandOverWithoutAUsableKeyMovesTheRoleOnly(t *testing.T) {
+	t.Parallel()
 	store, aliceDEK, _ := superStore(t)
 	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
 
@@ -251,6 +259,7 @@ func TestHandOverWithoutAUsableKeyMovesTheRoleOnly(t *testing.T) {
 // way to the key. (ADR-005: every key operation needs the caller's own
 // usable grant.)
 func TestForgedSuperRowGivesNoKey(t *testing.T) {
+	t.Parallel()
 	store, _, bobDEK := superStore(t)
 	mustExec(t, store, `UPDATE super_admin SET username = 'bob'`)
 
@@ -271,6 +280,7 @@ func TestForgedSuperRowGivesNoKey(t *testing.T) {
 }
 
 func TestClaimingTheAdministratorRoleMakesTheClaimantSuper(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	for _, name := range []string{"bob", "carol"} {
 		if _, err := store.CreateAccount(name, name, statusPassword, false); err != nil {
@@ -290,6 +300,7 @@ func TestClaimingTheAdministratorRoleMakesTheClaimantSuper(t *testing.T) {
 // administrator who signs in first must not create the key and so become
 // its holder. The super administrator's own first session creates it.
 func TestSubordinateSignInDoesNotCreateTheKey(t *testing.T) {
+	t.Parallel()
 	store := openTestStore(t)
 	for _, name := range []string{"carol", "bob"} {
 		if _, err := store.CreateAccount(name, name, statusPassword, true); err != nil {

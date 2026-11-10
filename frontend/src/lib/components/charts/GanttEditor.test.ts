@@ -74,7 +74,7 @@ describe('GanttEditor split actions (handler glue)', () => {
 
     await fireEvent.click(getByText('Preview splitting'));
 
-    expect(await findByText(/Splitting 1 task\(s\) would clear overallocation: A/)).toBeInTheDocument();
+    expect(await findByText(/Splitting 1 task would clear overallocation: A/)).toBeInTheDocument();
     expect(app.PreviewSplitLeveling).toHaveBeenCalledWith('chart-1');
   });
 
@@ -84,7 +84,7 @@ describe('GanttEditor split actions (handler glue)', () => {
 
     await fireEvent.click(getByText('Level (split)'));
 
-    expect(await findByText(/Levelled; split 1 task\(s\): A/)).toBeInTheDocument();
+    expect(await findByText(/Levelled; split 1 task: A/)).toBeInTheDocument();
     // The 4th argument (allowSplitting) must be true for the Gantt action.
     expect(app.LevelChartResources).toHaveBeenCalledWith('chart-1', 'ltf', false, true);
   });

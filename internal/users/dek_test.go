@@ -6,7 +6,6 @@ package users
 import (
 	"bytes"
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,18 +14,14 @@ import (
 
 func newDEKTestStore(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(filepath.Join(t.TempDir(), "root"))
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = s.Close() })
-	if _, err := s.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
-	}
-	return s
+	// A copy of the DEK template: standard account alice under a root named
+	// "root" (built by buildDEKTemplate).
+	store, _, _ := storeFromTemplate(t, templates.dek)
+	return store
 }
 
 func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 
 	// First unlock generates and persists the DEK.
@@ -49,6 +44,7 @@ func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {
 }
 
 func TestUnlockDEKWrongPasswordFails(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	if _, err := unlockDEK(s, "alice", "p4ssw0rd-original"); err != nil {
 		t.Fatalf("priming unlock: %v", err)
@@ -64,6 +60,7 @@ func TestUnlockDEKWrongPasswordFails(t *testing.T) {
 // THE ADR-001 invariant: a password reset via recovery code must
 // preserve the DEK, or every encrypted project would be orphaned.
 func TestRecoveryResetPreservesDEK(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 
 	dek, err := unlockDEK(s, "alice", "p4ssw0rd-original")
@@ -127,6 +124,7 @@ func readAccountKeyState(t *testing.T, s *Store, username string) accountKeyStat
 // changes: the old password still unlocks the same DEK, and the code is
 // not used up.
 func TestRecoveryResetRefusesLegacyCodeWhenAccountHasDEK(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 
 	dek, err := unlockDEK(s, "alice", "p4ssw0rd-original")
@@ -164,6 +162,7 @@ func TestRecoveryResetRefusesLegacyCodeWhenAccountHasDEK(t *testing.T) {
 // yet, so a legacy code resets the password without creating one; the
 // next sign-in creates the DEK, wrapped by the new password.
 func TestRecoveryResetLegacyCodeWithoutDEKResetsPasswordOnly(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	codes, err := s.IssueRecoveryCodes("alice", nil) // legacy: no wraps
 	if err != nil {
@@ -187,6 +186,7 @@ func TestRecoveryResetLegacyCodeWithoutDEKResetsPasswordOnly(t *testing.T) {
 // recovery code without a wrapped DEK cannot reset the password once the
 // account has a DEK, so encryption waits until such codes are replaced.
 func TestHasLegacyRecoveryCodeWraps(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 
 	// No codes yet: must not block encryption enablement.
@@ -228,6 +228,7 @@ func TestHasLegacyRecoveryCodeWraps(t *testing.T) {
 }
 
 func TestDEKMigrationIdempotent(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	// Re-running the migration on an already-migrated store must not
 	// error (probe-before-ALTER).
@@ -246,6 +247,7 @@ func TestDEKMigrationIdempotent(t *testing.T) {
 // assertion -- the test still fails as intended (a panic fails the
 // test), just not via the strings.Contains check below.
 func TestMigrateDEKColumns_QueryFailsOnClosedStore(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	if err := s.Close(); err != nil {
 		t.Fatalf("close store: %v", err)
@@ -265,6 +267,7 @@ func TestMigrateDEKColumns_QueryFailsOnClosedStore(t *testing.T) {
 // disables foreign keys on its only connection to bypass the identity registry;
 // normal store connections retain their foreign-key enforcement.
 func TestMigrateDEKColumns_AlterFailsWhenTableMissing(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	s.conn.SetMaxOpenConns(1)
 	if _, err := s.conn.Exec(`PRAGMA foreign_keys=OFF`); err != nil {
@@ -282,6 +285,7 @@ func TestMigrateDEKColumns_AlterFailsWhenTableMissing(t *testing.T) {
 // An invalid username is refused like an unknown one, so the reply tells
 // nothing about which names exist.
 func TestSignIn_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	if _, err := unlockDEK(s, "a", "whatever"); err != ErrNoSuchUser {
 		t.Fatalf("sign-in with an invalid username: error = %v, want ErrNoSuchUser", err)
@@ -312,6 +316,7 @@ func TestUnlockDEK_GenerateDEKEntropyFailure(t *testing.T) {
 // An empty password is checked against the stored hash before any key is
 // made, so it is a plain mismatch and nothing is stored.
 func TestSignIn_EmptyPasswordIsAMismatch(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	before := readAccountKeyState(t, s, "alice")
 	if _, err := unlockDEK(s, "alice", ""); !errors.Is(err, auth.ErrMismatch) {
@@ -360,6 +365,7 @@ func TestSignIn_WrapKeyFailureStoresNothing(t *testing.T) {
 // a deleted-guard mutation, since both currently just propagate
 // "some error".
 func TestUnlockDEK_PersistFailsOnBlockedUpdate(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	if _, err := s.conn.Exec(`
 		CREATE TRIGGER block_wrapped_dek_pw
@@ -378,6 +384,7 @@ func TestUnlockDEK_PersistFailsOnBlockedUpdate(t *testing.T) {
 }
 
 func TestHasLegacyRecoveryCodeWraps_RejectsInvalidUsername(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	if _, err := s.HasLegacyRecoveryCodeWraps("a"); err != ErrInvalidUsername {
 		t.Fatalf("HasLegacyRecoveryCodeWraps(invalid username) error = %v, want ErrInvalidUsername", err)
@@ -389,6 +396,7 @@ func TestHasLegacyRecoveryCodeWraps_RejectsInvalidUsername(t *testing.T) {
 // check and the write (as a sign-in on another connection could); the
 // reset must be refused and roll back, never erase that wrap.
 func TestRecoveryResetLegacyCodeNeverErasesAKeyThatAppears(t *testing.T) {
+	t.Parallel()
 	s := newDEKTestStore(t)
 	codes, err := s.IssueRecoveryCodes("alice", nil) // legacy: no wraps
 	if err != nil {
