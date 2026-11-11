@@ -23,7 +23,7 @@ const (
 	sqlCipherHeaderSHA256       = "e36eb6ed4de77e56a633866a8f84ed339785662d0cf79cf099f420b638bf28ec"
 	sqlCipherNoticesSHA256      = "02a4080bdb58c9e23bf40af02619b6e374779cb921b68ca1559e63b2ee52b9ac"
 	// Every runtime file as vendored.
-	sqlCipherRuntimeTreeSHA256 = "72c4ea6774d9760e2dd65c704217967749294ae54660f4ede10d55829b2d1ba4"
+	sqlCipherRuntimeTreeSHA256 = "98ae34da5fb5b0c6f73dc9cba7ccf55d1c1560e4e45ce87240650960971ebb04"
 	// The files still taken from go-sqlcipher v4.4.2: everything except the
 	// engine source, its build flags and GoPMgr's random-source file, with
 	// GoPMgr's transaction-cleanup changes to sqlite3.go reversed.
