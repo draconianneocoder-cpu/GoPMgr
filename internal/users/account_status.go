@@ -245,6 +245,9 @@ func (s *Store) inWriteTx(op string, fn func(ctx context.Context, q accountWrite
 			}
 		}
 	}()
+	if err := checkSystemSchema(ctx, conn); err != nil {
+		return err
+	}
 	if err := fn(ctx, conn); err != nil {
 		return err
 	}

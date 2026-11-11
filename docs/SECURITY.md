@@ -26,6 +26,18 @@ for a legitimate local user.
   The registry and protected-state generation do not yet authenticate WBS
   callers or revoke existing App sessions. Older-binary read-only support,
   system-database restore/replacement and WBS activation remain unverified gates.
+- `system.db` carries a reader level in `PRAGMA user_version`. A build refuses
+  to open, and stops writing to, a file marked for a newer level; it checks at
+  the start of every account write and raises the mark before any change an
+  older build would misread. Additive changes do not raise it. This guards
+  against accidents only: the file is plaintext, so anyone who can edit it can
+  edit the mark. `v1.1.0-alpha.2` and earlier have no such check, so moving
+  back to them after a later build has opened the data is not supported and
+  has not been tested; those builds do not know about disabled accounts,
+  administrator access or the super administrator. A second, older copy of
+  GoPMgr that is already running keeps reading. Its account, password,
+  recovery-code and preference writes stop; a start-up that is part-way through
+  its own schema steps when the mark arrives does not.
 - Desktop sign-in, headless maintenance sign-in, and administrator-issued
   recovery codes check the password and unlock the key from one snapshot, then
   require the same account identity, hash, and key wrap in the transaction
