@@ -43,7 +43,7 @@ update channel off. It is not ready to tag.
 | Package versions come from version tags only, not `archive/…` tags | Fixed on branch `fix/release-version-tag-match`; not merged |
 | `system.db` reader-level gate, so a build refuses data marked by a newer one | Done on branch `feat/system-db-schema-gate`; not merged |
 | Release notes: going back to `v1.1.0-alpha.2` is unsupported and untested | Not started |
-| Confirm the candidate ships with the update channel unconfigured | Not started |
+| Confirm the candidate ships with the update channel unconfigured | Partial: on 2026-11-11 the repository had no `GOPMGR_UPDATE_PUBLIC_KEY` variable, which the release workflow needs to turn the channel on; the built candidate is not yet checked |
 | Review of the changes since `v1.1.0-alpha.2` (over 550 commits) | Not started |
 | macOS `.dmg`/`.pkg` and Linux `.deb`/`.rpm` install, upgrade and removal on the candidate | Not started; the macOS 26 host is unavailable |
 | Windows installer: `makensis` exits 134 on the build host and the template is unverified | Blocked |
