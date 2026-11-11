@@ -11,9 +11,12 @@ application is intentionally offline-capable: project data, generated
 documents, certificates, exports, and user account metadata live on the
 local machine.
 
+For what is implemented, open or unverified today, see
+[STATUS.md](STATUS.md).
+
 ## Runtime Shape
 
-- Backend: Go, exposed to the desktop UI through Wails v2.
+- Backend: Go, exposed to the desktop UI through Wails v3 (3.1.0).
 - Frontend: Svelte 5 and TypeScript, bundled by Vite.
 - Persistence: SQLite-compatible databases, with SQLCipher support for
   encrypted per-project `.gopmgr` files.
@@ -21,10 +24,10 @@ local machine.
   through `internal/pdfdoc`; PDF/A-2u and PAdES support are implemented in
   Go (`internal/pdfmeta`, `internal/signing`; see
   [ADR-006](design/ADR-006-pdfa-2u-archival-format.md)).
-- Build: `make build` runs `wails build`, which builds the frontend into
-  `frontend/dist`, embeds it via the root `main.go` `go:embed`, injects the
-  `desktop,production` tags, links the platform frameworks, and compiles the
-  Wails backend with CGO.
+- Build: `make build` runs `scripts/wails-build.sh`, which drives the
+  reviewed Wails v3 Taskfiles with the task-local `wails3` CLI pinned to
+  3.1.0. The frontend is built into `frontend/dist` and embedded by the root
+  `main.go` through `go:embed`; the backend is compiled with CGO.
 
 ## Data Layout
 
@@ -72,7 +75,7 @@ returned only after commit. This save operation is not a calendar-transfer API.
 ## Important Packages
 
 - `main.go` (repo root): embeds `frontend/dist` and calls `desktop.Main`.
-  It stays at the root because `wails build` requires the main package
+  It stays at the root because the Wails build expects the main package
   there and `go:embed` cannot reach a parent directory; it holds nothing
   else.
 - `internal/desktop`: the Wails-bound `App` (window, menu, lifecycle) and
@@ -158,10 +161,12 @@ database only after integrity checks pass.
 
 The frontend is a desktop application UI, not a marketing site. It
 should remain dense, utilitarian, and optimized for repeated project
-management work. Wails injects `window.go.desktop.App` (the package name of the bound
-`App`); keep
-`frontend/src/wails-window.d.ts` aligned whenever backend methods are
-added or changed.
+management work. The frontend calls the backend through generated Wails v3
+bindings (`frontend/bindings/gopmgr/internal/desktop`), re-exported by
+`frontend/src/lib/desktop-api.ts`. Regenerate the bindings whenever a bound
+`App` method is added or changed; there is no hand-written declaration file
+to keep aligned. `desktop-dtos.ts` normalizes nullable collections for the
+editor views, and `desktop-runtime.ts` adapts runtime events.
 
 Svelte runes belong in `.svelte`, `.svelte.ts`, or `.svelte.js` files.
 The runtime smoke gate exists because some Svelte load-time failures are
@@ -179,7 +184,7 @@ the Linux CI/packaging runtime-target split, release-claim scope, strict
 PDF/A-2u validation, and local PAdES validation.
 
 Generated embed output under `frontend/dist` (repo root) is build output
-embedded by the root `main.go`. `wails build` regenerates it as needed.
+embedded by the root `main.go`. `make build` regenerates it as needed.
 
 ## Proposed directions
 

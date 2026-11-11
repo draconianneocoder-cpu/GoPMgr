@@ -950,7 +950,7 @@ type scheduleTooLongError struct{ cause error }
 
 func (e *scheduleTooLongError) Error() string {
 	msg := fmt.Sprintf(
-		"the schedule is longer than GoPMgr's limit of 50 years (%d working days); "+
+		"the schedule is longer than GoPMgr's limit of %d working days (at least 50 years); "+
 			"shorten the task durations or lags", kernel.MaxScheduleDays)
 	if detail := strings.TrimPrefix(e.cause.Error(), kernel.ErrScheduleTooLong.Error()+": "); detail != e.cause.Error() {
 		msg += " (" + detail + ")"

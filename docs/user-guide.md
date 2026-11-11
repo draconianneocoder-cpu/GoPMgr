@@ -391,7 +391,8 @@ documents. Each file embeds its fonts and color profile, and its text copies,
 searches, and reads aloud correctly. A PAdES signature keeps the file
 PDF/A-2u.
 
-A schedule can be at most 50 years long (18,250 working days). GoPMgr
+A schedule can be at most 18,250 working days long. That is at least 50
+years on any work calendar, and about 70 on a Monday-to-Friday one. GoPMgr
 refuses to save a CPM or Gantt chart, or to import a file, whose task
 duration, lag or overall length is beyond that, and names the task
 responsible.

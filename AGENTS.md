@@ -15,8 +15,11 @@ automated engineering work.
 1. Confirm the active checkout with `pwd` and `git status --short`.
    Older handoffs may mention stale clone paths; verify before running
    release or build commands.
-2. When present, read local `session-notes.md` and the relevant files in
-   `.agent_memory/` before choosing backlog work or changing behavior.
+2. Read `docs/STATUS.md` for what is implemented, open, blocked or
+   unverified today. Where an older document disagrees with it about
+   status, it wins; update it in the same change that alters a status.
+   When present, also read local `session-notes.md` and the relevant files
+   in `.agent_memory/` before choosing backlog work or changing behavior.
 3. Inspect existing source before editing. Do not read `DEVELOPER_HANDBOOK.md` in
    full unless required; it is a large developer handbook. Prefer targeted
    `rg` searches and small snippets.

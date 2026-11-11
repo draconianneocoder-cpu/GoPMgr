@@ -9,8 +9,12 @@ import (
 	"sort"
 )
 
-// MaxScheduleDays is the longest schedule the kernel will compute: 50
-// years of working days. Date anchoring, resource profiles and leveling
+// MaxScheduleDays is the longest schedule the kernel will compute, in
+// working days: the offsets CPM computes, which a work calendar later maps
+// onto dates. It is not a span of calendar time. 18,250 working days is 50
+// years only if every day is worked; on a Monday-to-Friday calendar it is
+// about 70. So the limit allows at least 50 calendar years on any calendar
+// (owner decision 2026-11-11). Date anchoring, resource profiles and leveling
 // allocate memory in proportion to a schedule's length, so a single typed
 // or imported duration of a billion days would otherwise exhaust memory.
 // No task duration, lag, estimate or computed date may lie beyond it.

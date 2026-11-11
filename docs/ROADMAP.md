@@ -9,7 +9,8 @@ This roadmap describes intended product direction, not a release promise.
 Current release-readiness work is tracked in
 [beta-release-backlog.md](beta-release-backlog.md). The next limited alpha is
 planned in [next-alpha-release-plan.md](next-alpha-release-plan.md). Decisions
-that change architecture belong in [design/](design/).
+that change architecture belong in [design/](design/). What is implemented,
+open or unverified today is in [STATUS.md](STATUS.md).
 
 ## Current focus
 
@@ -179,7 +180,7 @@ Approved priority order, with today's status from the
 | --- | --- | --- |
 | PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
-| PS-02 Schedule-quality audit | High, early parallel | Proposed: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11, not yet implemented: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
 | PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
@@ -192,8 +193,10 @@ Approved priority order, with today's status from the
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
-stream, the proposed next implementation slice is
-PS-02 slice 1, a read-only audit, which also awaits authorization.
+stream, the next implementation slice is PS-02 slice 1, a read-only audit,
+authorized on 2026-11-11. The order of that and the security work ahead of it
+is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
+the 2026-11-10 independent evaluation.
 
 ## Planned product work
 
