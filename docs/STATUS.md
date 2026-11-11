@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-11, against `main` plus pull request 199.
+**Last reviewed:** 2026-11-11, against `main` at `d07bc32` (pull request 201).
 
 This file says what is true now. Where it disagrees with an older document,
 this file wins for *status*; the older document still stands as the record of
@@ -40,6 +40,8 @@ record or an evidence file. Adopted on 2026-11-11
 | Engine distrusts file schemas (`trusted_schema` off, defensive mode) | Implemented (PR 199) | `internal/sqlitedriver/hardening_test.go` |
 | Analytics: Go-native, Arrow-Go for Parquet | Implemented. DuckDB retired 2026-11-02; DataFusion not adopted 2026-11-09 | [DF0-G report](testing/adr-012-df0-g-report.md) |
 | Launchpad rules evaluated in Go; `zen-go` removed | Implemented (PR 199) | `internal/templates` |
+| Account data (`system.db`) marked with a reader level; a build refuses data marked by a newer one | Implemented (PR 201). Unverified on Windows; v1.1.0-alpha.2 and earlier ignore the mark | `internal/users/schema_gate.go` |
+| Package versions come from version tags only (`v[0-9]*`) | Implemented (PR 200) | `scripts/package-version-lib.sh` |
 | Signing, notarization, live update channel | Open: mechanism built, no keys provisioned | [ROADMAP.md](ROADMAP.md) current focus 4 |
 
 ## Limits that are easy to confuse
@@ -64,7 +66,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Planted triggers, views, virtual tables in a restored backup | Fixed, PR 196 |
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
-| SEC-02 | Tables a restored backup defines are trusted | Fixed 2026-11-11: restore compares the file's tables, columns, constraints and indexes with the schema this build creates, read-only, before opening it for writing. Not covered: fuzzed malformed files (NEW-01), and real backups from old releases, of which the repository holds none; old shapes are tested from the migration fixtures |
+| SEC-02 | Tables a restored backup defines are trusted | Fixed 2026-11-11: restore compares the file's tables, columns, column types, constraints, conflict and collation clauses and indexes with the schema this build creates, read-only, before opening it for writing. Empty project files made by v0.9.0-alpha, v0.9.1-alpha, v1.1.0-alpha.1 and v1.1.0-alpha.2 pass, before and after migration (run once on 2026-11-11; not kept as fixtures). Not covered: fuzzed malformed files (NEW-01), backups of projects with data from old releases, and a constraint the backup has removed, which passes by design ([note](../internal/db/schema_allowlist.go)) |
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Open: not yet triaged one by one. Planned: step A5 |
 | SEC-05 | Windows build of the engine and its random source | Unverified |

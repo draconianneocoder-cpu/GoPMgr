@@ -368,7 +368,7 @@
     {
       "method": "CloneProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 682,
+      "line": 683,
       "params": "path string",
       "returns": "ProjectFile, error",
       "uses_internal_packages": []
@@ -376,7 +376,7 @@
     {
       "method": "CloseProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 1339,
+      "line": 1340,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -553,7 +553,7 @@
     {
       "method": "DeleteProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 490,
+      "line": 491,
       "params": "path string",
       "returns": "error",
       "uses_internal_packages": []
@@ -651,7 +651,7 @@
     {
       "method": "EncryptProjectAtRest",
       "file": "internal/desktop/app_projects.go",
-      "line": 1306,
+      "line": 1307,
       "params": "path string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -880,7 +880,7 @@
     {
       "method": "GenerateBugReport",
       "file": "internal/desktop/app_projects.go",
-      "line": 1122,
+      "line": 1123,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -905,7 +905,7 @@
     {
       "method": "GetAppInfo",
       "file": "internal/desktop/app_projects.go",
-      "line": 1065,
+      "line": 1066,
       "params": "",
       "returns": "AppInfo, error",
       "uses_internal_packages": [
@@ -945,7 +945,7 @@
     {
       "method": "GetProjectMeta",
       "file": "internal/desktop/app_projects.go",
-      "line": 1376,
+      "line": 1377,
       "params": "",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": []
@@ -1031,7 +1031,7 @@
     {
       "method": "IsProjectEncrypted",
       "file": "internal/desktop/app_projects.go",
-      "line": 1294,
+      "line": 1295,
       "params": "path string",
       "returns": "bool, error",
       "uses_internal_packages": [
@@ -1210,7 +1210,7 @@
     {
       "method": "ListProjectDeletions",
       "file": "internal/desktop/app_projects.go",
-      "line": 656,
+      "line": 657,
       "params": "",
       "returns": "[]ProjectDeletionWire, error",
       "uses_internal_packages": []
@@ -1363,7 +1363,7 @@
     {
       "method": "OpenLogsFolder",
       "file": "internal/desktop/app_projects.go",
-      "line": 1108,
+      "line": 1109,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -1373,7 +1373,7 @@
     {
       "method": "OpenProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 1215,
+      "line": 1216,
       "params": "path string",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": [
@@ -1418,7 +1418,7 @@
     {
       "method": "ProjectsOverview",
       "file": "internal/desktop/app_projects.go",
-      "line": 952,
+      "line": 953,
       "params": "",
       "returns": "[]ProjectSummary, error",
       "uses_internal_packages": [
@@ -1469,7 +1469,7 @@
     {
       "method": "ResetAppSettings",
       "file": "internal/desktop/app_projects.go",
-      "line": 1095,
+      "line": 1096,
       "params": "",
       "returns": "AppSettings, error",
       "uses_internal_packages": []
@@ -1528,7 +1528,7 @@
     {
       "method": "SaveAppSettings",
       "file": "internal/desktop/app_projects.go",
-      "line": 1081,
+      "line": 1082,
       "params": "s AppSettings",
       "returns": "error",
       "uses_internal_packages": []
@@ -1970,7 +1970,7 @@
     {
       "method": "UpdateProjectMeta",
       "file": "internal/desktop/app_projects.go",
-      "line": 1389,
+      "line": 1390,
       "params": "wire ProjectMetaWire",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": [
