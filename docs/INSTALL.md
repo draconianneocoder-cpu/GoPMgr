@@ -70,6 +70,12 @@ in the application data directory. To uninstall both the application and its
 data, back up any project files you need before separately removing that
 directory.
 
+Going back to an older version is not supported. Before you upgrade, quit
+GoPMgr and copy the whole application data directory somewhere safe; that copy
+is the only way back. A version that finds data marked by a newer one says so
+and stops without changing your accounts or projects. `v1.1.0-alpha.2` and
+earlier do not make that check.
+
 ### Debian / Ubuntu (`.deb`)
 
 ```sh

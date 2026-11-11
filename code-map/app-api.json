@@ -408,7 +408,7 @@
     {
       "method": "CompleteNativeClose",
       "file": "internal/desktop/app.go",
-      "line": 160,
+      "line": 172,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -643,7 +643,7 @@
     {
       "method": "EnableNativeCloseGuard",
       "file": "internal/desktop/app.go",
-      "line": 151,
+      "line": 163,
       "params": "",
       "returns": "",
       "uses_internal_packages": []

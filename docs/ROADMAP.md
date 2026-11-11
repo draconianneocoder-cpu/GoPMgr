@@ -34,6 +34,24 @@ near-term priority is making those workflows dependable for wider testing.
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
 
+### Next prerelease: `v1.1.0-alpha.3` (owner decisions, 2026-11-11)
+
+The next prerelease is `v1.1.0-alpha.3`, explicitly unsigned, with the in-app
+update channel off. It is not ready to tag.
+
+| Item | Status |
+| --- | --- |
+| Package versions come from version tags only, not `archive/…` tags | Done (merged 2026-11-11) |
+| `system.db` reader-level gate, so a build refuses data marked by a newer one | Done (2026-11-11) |
+| Release notes: going back to `v1.1.0-alpha.2` is unsupported and untested | Not started |
+| Confirm the candidate ships with the update channel unconfigured | Partial: on 2026-11-11 the repository had no `GOPMGR_UPDATE_PUBLIC_KEY` variable, which the release workflow needs to turn the channel on; the built candidate is not yet checked |
+| Review of the changes since `v1.1.0-alpha.2` (over 550 commits) | Not started |
+| macOS `.dmg`/`.pkg` and Linux `.deb`/`.rpm` install, upgrade and removal on the candidate | Not started; the macOS 26 host is unavailable |
+| Windows installer: `makensis` exits 134 on the build host and the template is unverified | Blocked |
+| Target matrix, residual-risk acceptance, release operator | Owner decisions open |
+
+See the [release plan](next-alpha-release-plan.md) for the gates.
+
 ## Wails v3 and GTK 4 migration (2026-11-03)
 
 The maintainer approved [Wails v3.1.0 and GTK 4 migration](design/wails-v3-migration-design.md)

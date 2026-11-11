@@ -131,6 +131,18 @@ func NewApp() (*App, error) {
 	return &App{store: store, templates: tmpl}, nil
 }
 
+// startupFailureMessage is the dialog text for a data store that would not
+// open. A refused newer file is opened and locked but not written, which is
+// why the message speaks of accounts and projects, not of the file.
+func startupFailureMessage(err error) string {
+	if errors.Is(err, users.ErrSystemSchemaNewer) {
+		return "This GoPMgr data was last opened by a newer version of GoPMgr. " +
+			"Install that version or a later one to continue. " +
+			"Your accounts and projects were not changed."
+	}
+	return "GoPMgr failed to initialise its local data store."
+}
+
 func (a *App) shutdown(_ context.Context) {
 	a.shutdownOnce.Do(func() {
 		a.mu.Lock()
@@ -349,8 +361,7 @@ func Main(assets fs.FS) {
 
 	app, err := NewApp()
 	if err != nil {
-		applog.Fatal("GoPMgr could not start",
-			"GoPMgr failed to initialise its local data store.", logPath, err)
+		applog.Fatal("GoPMgr could not start", startupFailureMessage(err), logPath, err)
 	}
 	app.logPath = logPath
 	app.logDir = applog.LogDir(root)
