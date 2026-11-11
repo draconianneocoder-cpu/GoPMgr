@@ -418,6 +418,8 @@ export const en = {
     'P50/P80/P90 are finish-day confidence points. Tornado drivers rank critical-path frequency multiplied by P90-P50 duration spread.',
   'cpm.risk.empty':
     'Add optional task estimates, then run a simulation. Tasks without estimates use their fixed duration.',
+  'projectPicker.restore.done':
+    'Backup restored. Signing is switched off in a restored project. Set it up again in Project Settings if you need it.',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

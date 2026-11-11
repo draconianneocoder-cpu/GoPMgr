@@ -701,6 +701,21 @@ overwriting existing data. Bundled certificates are checked but are not
 automatically imported. An encrypted archive can be restored only by an
 account that can unlock its project database.
 
+A restored project starts with signing and timestamping switched off, and
+without the backup's certificate paths, GnuPG key or timestamp server: those
+name files, keys and a server chosen on the machine that made the backup. Set
+signing up again in Project Settings. The project's audit log records that
+the settings were cleared.
+
+If the project has a signing certificate, the backup also contains a copy of
+that `.p12` or `.pfx` file, which holds your private signing key. Keep such a
+backup as private as the certificate itself. The backup is refused, with a
+message naming the file, when the project's certificate setting points at
+anything else: a file with another extension, something that is not an
+ordinary file, or a file larger than 16 MiB. Choose the certificate again in
+Project Settings and retry. A certificate that has been moved or deleted is
+left out without an error.
+
 The digests catch a damaged backup, not a deliberately altered one: whoever
 alters a backup can rewrite its digests too. Restore only backups you made or
 trust. As a safeguard, GoPMgr refuses a backup whose project file contains

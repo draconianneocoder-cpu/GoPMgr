@@ -40,7 +40,8 @@ type BackupManifest struct {
 //     "project.pmforge" and schema_version 1 in archives written before
 //     the 2026-08-04 PMForge -> GoPMgr rename — see RestoreArchivalBundle,
 //     which still reads both)
-//   - certs/*          (every certificate file in certPaths that exists)
+//   - certs/*          (every .p12/.pfx certificate file in certPaths that
+//     exists; see readBackupCert for what is refused)
 //   - manifest.json    (BackupManifest with nanosecond-precision UTC ts)
 //
 // It refuses to back up a corrupt database — there is no point in
@@ -108,20 +109,32 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 		return debug.Wrap(err, "BACKUP_SNAPSHOT_BUNDLE_FAILED").ToError()
 	}
 
-	// 4. Bundle certificates that actually exist on disk.
+	// 4. Bundle certificates that actually exist on disk. Each is read once,
+	// and the same bytes are stored and hashed.
 	var backedUpCerts []string
+	entryHashes := map[string]string{}
 	for _, certPath := range certPaths {
 		if certPath == "" {
 			continue
 		}
-		if _, err := os.Stat(certPath); err != nil {
+		data, found, err := readBackupCert(certPath)
+		if err != nil {
+			return debug.Wrap(err, "CERT_BUNDLING_FAILED").ToError()
+		}
+		if !found {
 			// Silently skip missing certs — they may have been moved.
 			continue
 		}
 		fileName := filepath.Base(certPath)
-		if err := addFileToZip(zipWriter, certPath, "certs/"+fileName); err != nil {
+		entry, err := zipWriter.Create("certs/" + fileName)
+		if err == nil {
+			_, err = entry.Write(data)
+		}
+		if err != nil {
 			return debug.Wrap(err, "CERT_BUNDLING_FAILED").ToError()
 		}
+		sum := sha256.Sum256(data)
+		entryHashes["certs/"+fileName] = hex.EncodeToString(sum[:])
 		backedUpCerts = append(backedUpCerts, fileName)
 	}
 
@@ -136,15 +149,7 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 	if err != nil {
 		return debug.Wrap(err, "BACKUP_PROJECT_HASH_FAILED").ToError()
 	}
-	entryHashes := map[string]string{"project.gopmgr": projectHash}
-	for _, certPath := range certPaths {
-		if certPath == "" {
-			continue
-		}
-		if hash, hashErr := fileSHA256(certPath); hashErr == nil {
-			entryHashes["certs/"+filepath.Base(certPath)] = hash
-		}
-	}
+	entryHashes["project.gopmgr"] = projectHash
 	manifest := BackupManifest{
 		SchemaVersion: 2,
 		CreatedAt:     time.Now().UTC(),

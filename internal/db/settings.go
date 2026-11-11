@@ -47,6 +47,31 @@ type UserSettings struct {
 	ComplianceMode bool `json:"compliance_mode"`
 }
 
+// ClearSigningSetup switches signing and timestamping off and forgets the
+// certificate paths, GnuPG key and timestamp authority a project names. It
+// reports whether anything was set. Restore calls it: those settings point
+// at files, keys and a server on the machine that made the backup, and the
+// backup's author chose them.
+func (db *Database) ClearSigningSetup() (cleared bool, err error) {
+	before, err := db.GetSettings()
+	if err != nil {
+		return false, err
+	}
+	after := before
+	after.CertPath = ""
+	after.SignatureEnabled = false
+	after.SignatureMethod = SignatureMethodNone
+	after.GPGKeyID = ""
+	after.TimestampEnabled = false
+	after.TSAEndpoint = ""
+	after.TSAPolicyOID = ""
+	after.TSARootCertPath = ""
+	if after == before {
+		return false, nil
+	}
+	return true, db.SaveSettings(after)
+}
+
 // DefaultUserSettings is the canonical project-settings reset target.
 func DefaultUserSettings() UserSettings {
 	return UserSettings{ExportTheme: "modern", AutoRepair: true, SignatureMethod: SignatureMethodNone}

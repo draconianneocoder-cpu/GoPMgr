@@ -250,3 +250,42 @@ func TestGetSettingsBackfillsLegacySignatureEnabledToPAdES(t *testing.T) {
 		t.Fatalf("SignatureMethod = %q, want %q", out.SignatureMethod, SignatureMethodPAdES)
 	}
 }
+
+func TestClearSigningSetup(t *testing.T) {
+	d := newBackupTestDB(t)
+
+	// Nothing is set up on a new project, so nothing is cleared or written.
+	if cleared, err := d.ClearSigningSetup(); err != nil || cleared {
+		t.Fatalf("ClearSigningSetup on a new project = %v, %v; want false, nil", cleared, err)
+	}
+
+	stored := DefaultUserSettings()
+	stored.ExportTheme = "classic"
+	stored.DefaultFont = "Noto Sans"
+	stored.ComplianceMode = true
+	kept := stored
+	stored.CertPath = "/home/other/signer.p12"
+	stored.SignatureMethod = SignatureMethodPAdES
+	stored.GPGKeyID = "0xDEADBEEF"
+	stored.TimestampEnabled = true
+	stored.TSAEndpoint = "https://tsa.example.test/"
+	stored.TSAPolicyOID = "1.2.3.4"
+	stored.TSARootCertPath = "/home/other/root.pem"
+	if err := d.SaveSettings(stored); err != nil {
+		t.Fatal(err)
+	}
+
+	if cleared, err := d.ClearSigningSetup(); err != nil || !cleared {
+		t.Fatalf("ClearSigningSetup = %v, %v; want true, nil", cleared, err)
+	}
+	got, err := d.GetSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != kept {
+		t.Fatalf("settings after the clear = %+v, want %+v", got, kept)
+	}
+	if cleared, err := d.ClearSigningSetup(); err != nil || cleared {
+		t.Fatalf("second ClearSigningSetup = %v, %v; want false, nil", cleared, err)
+	}
+}

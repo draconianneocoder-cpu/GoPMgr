@@ -121,3 +121,34 @@ describe('ProjectPicker deleted-projects history', () => {
     expect(app.DeleteProject).toHaveBeenCalledWith('/p/a.gopmgr');
   });
 });
+
+describe('ProjectPicker restore', () => {
+  it('says that signing is switched off once a backup is restored', async () => {
+    const app = installApp({});
+    Object.assign(app, { RestoreProjectArchive: vi.fn(async () => ({ path: '/p', name: 'Plan (restored)', modified: '' })) });
+    const { getByRole, findByRole, queryByRole } = render(ProjectPicker);
+
+    expect(queryByRole('status')).toBeNull();
+    await fireEvent.click(getByRole('button', { name: 'Restore backup' }));
+
+    const notice = await findByRole('status');
+    expect(notice.textContent).toContain('Signing is switched off in a restored project');
+    expect(queryByRole('alert')).toBeNull();
+  });
+
+  it('shows no notice when the restore fails or is cancelled', async () => {
+    const app = installApp({});
+    const restore = vi.fn(async () => { throw new Error('backup is damaged'); });
+    Object.assign(app, { RestoreProjectArchive: restore });
+    const { getByRole, findByRole, queryByRole } = render(ProjectPicker);
+
+    await fireEvent.click(getByRole('button', { name: 'Restore backup' }));
+    expect((await findByRole('alert')).textContent).toContain('backup is damaged');
+    expect(queryByRole('status')).toBeNull();
+
+    restore.mockImplementationOnce(async () => { throw new Error('restore cancelled'); });
+    await fireEvent.click(getByRole('button', { name: 'Restore backup' }));
+    await vi.waitFor(() => expect(queryByRole('alert')).toBeNull());
+    expect(queryByRole('status')).toBeNull();
+  });
+});
