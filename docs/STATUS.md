@@ -64,7 +64,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Planted triggers, views, virtual tables in a restored backup | Fixed, PR 196 |
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
-| SEC-02 | Tables a restored backup defines are trusted | Open. Planned: response plan step A3 |
+| SEC-02 | Tables a restored backup defines are trusted | Fixed 2026-11-11: restore compares the file's tables, columns, constraints and indexes with the schema this build creates, read-only, before opening it for writing. Not covered: fuzzed malformed files (NEW-01), and real backups from old releases, of which the repository holds none; old shapes are tested from the migration fixtures |
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Open: not yet triaged one by one. Planned: step A5 |
 | SEC-05 | Windows build of the engine and its random source | Unverified |

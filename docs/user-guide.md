@@ -725,8 +725,10 @@ left out without an error.
 The digests catch a damaged backup, not a deliberately altered one: whoever
 alters a backup can rewrite its digests too. Restore only backups you made or
 trust. As a safeguard, GoPMgr refuses a backup whose project file contains
-database triggers, views or virtual tables, which GoPMgr never creates, and
-tells you it may have been altered.
+anything GoPMgr never creates, and tells you it may have been altered: a
+database trigger, view or virtual table, an extra table or column, or one of
+GoPMgr's own tables redefined with a different constraint, default or index.
+Backups made by older versions of GoPMgr are still accepted.
 
 Deleting a project from the project picker removes it permanently. The
 picker's **Deleted projects** list records each deletion: when and by whom,
