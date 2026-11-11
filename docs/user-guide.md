@@ -701,6 +701,12 @@ overwriting existing data. Bundled certificates are checked but are not
 automatically imported. An encrypted archive can be restored only by an
 account that can unlock its project database.
 
+A restored project starts with signing and timestamping switched off, and
+without the backup's certificate paths, GnuPG key or timestamp server: those
+name files, keys and a server chosen on the machine that made the backup. Set
+signing up again in Project Settings. The project's audit log records that
+the settings were cleared.
+
 If the project has a signing certificate, the backup also contains a copy of
 that `.p12` or `.pfx` file, which holds your private signing key. Keep such a
 backup as private as the certificate itself. The backup is refused, with a

@@ -7,9 +7,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import AppHeader from '../AppHeader.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let projects = $state<ProjectFile[]>([]);
   let error = $state('');
+  let notice = $state('');
   let query = $state('');
   let restoring = $state(false);
   let filteredProjects = $derived(
@@ -92,10 +94,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function restoreBackup() {
     error = '';
+    notice = '';
     restoring = true;
     try {
       await desktopApi.RestoreProjectArchive();
       await refresh();
+      notice = t('projectPicker.restore.done');
     } catch (err: any) {
       const message = String(err?.message ?? err);
       if (!message.toLowerCase().includes('cancelled')) error = `Restore failed: ${message}`;
@@ -126,6 +130,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     {#if error}
       <p class="text-sm text-red-400 mb-4" role="alert">{error}</p>
+    {/if}
+    {#if notice}
+      <p class="text-sm text-slate-300 mb-4" role="status">{notice}</p>
     {/if}
 
     {#if projects.length > 0}

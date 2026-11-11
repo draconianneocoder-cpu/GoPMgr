@@ -269,6 +269,17 @@ func (a *App) restoreProjectArchiveFrom(archivePath string, s sessionRef) (resul
 	if manifest.DatabaseID != "" && manifest.DatabaseID != project.ID {
 		return result, errors.New("backup manifest database ID does not match the restored project")
 	}
+	// The backup's signing settings name files, keys and a server chosen by
+	// whoever made it. Signing is set up again on this machine.
+	cleared, err := restored.ClearSigningSetup()
+	if err != nil {
+		return result, fmt.Errorf("clear restored signing settings: %w", err)
+	}
+	if cleared {
+		if err := restored.LogAction("System", "RESTORE_SIGNING_CLEARED", project.ID, "signing and timestamp settings from the backup were cleared"); err != nil {
+			return result, fmt.Errorf("record cleared signing settings: %w", err)
+		}
+	}
 	project.Name = strings.TrimSpace(project.Name) + " (restored)"
 	project, err = restored.UpsertProject(project)
 	if err != nil {
