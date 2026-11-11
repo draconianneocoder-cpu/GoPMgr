@@ -185,6 +185,11 @@ func (s *Store) RootDir() string { return s.rootDir }
 // deletes its rows first, which cascades to every account's escrow rows
 // (escrow.go) and recovery codes.
 func (s *Store) migrate() error {
+	// First: refuse a file a newer build has marked, before any statement
+	// below can change it (schema_gate.go).
+	if err := s.gateSystemSchema(); err != nil {
+		return err
+	}
 	if err := s.checkExistingAccountIdentity(); err != nil {
 		return err
 	}
