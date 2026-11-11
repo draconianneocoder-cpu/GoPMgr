@@ -10,14 +10,18 @@
 #   1. An explicit VERSION env var. The release workflow always sets this
 #      from the tag (VERSION="${GITHUB_REF_NAME#v}"), so a real release
 #      build never reaches the fallback below.
-#   2. `git describe --tags` against the nearest reachable tag, WITHOUT
-#      --abbrev=0. Dropping --abbrev=0 matters: with it, a checkout that is
+#   2. `git describe --tags --match 'v[0-9]*'` against the nearest reachable
+#      version tag, WITHOUT --abbrev=0. The --match matters: the repository
+#      also carries non-version tags such as archive/<name>, and a nearer
+#      one would otherwise become the version and put a slash in every
+#      artifact filename. Dropping --abbrev=0 matters: with it, a checkout that is
 #      several commits past its nearest tag silently reuses that tag's bare
 #      name, so two different trees can produce identically-named artifacts.
 #      Without it, git appends "-<N>-g<sha>" whenever HEAD isn't exactly on
 #      the tag, making an untagged local build's filename honestly
 #      distinguishable from the tagged release it's built near.
-#   3. "0.0.0" if the checkout has no tags at all (e.g. a shallow clone).
+#   3. "0.0.0" if the checkout has no version tags at all (e.g. a shallow
+#      clone).
 #      Deliberately not build/config.yml's info.version here: that value is a
 #      clean major.minor.patch with no build/commit information, and using
 #      it as a silent fallback would produce a plausible-looking release
@@ -32,7 +36,7 @@ release_version() {
 	fi
 
 	local described
-	described="$(git describe --tags 2>/dev/null | sed 's/^v//')"
+	described="$(git describe --tags --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')"
 	if [ -n "$described" ]; then
 		printf '%s\n' "$described"
 		return 0
