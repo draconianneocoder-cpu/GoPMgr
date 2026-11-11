@@ -1044,7 +1044,7 @@ export function IssueRecoveryCodes(): $CancellablePromise<string[] | null> {
  * LaunchpadEvaluate returns the list of seed actions (chart kinds +
  * document kinds + agile flags) for a given (industry, methodology)
  * pair. The actual decision lives in internal/templates'
- * launchpad_seeds.json and is evaluated by zen-go.
+ * launchpad_seeds.json and is evaluated by that package.
  */
 export function LaunchpadEvaluate(industry: string, methodology: string): $CancellablePromise<string[] | null> {
     return $Call.ByName("gopmgr/internal/desktop.App.LaunchpadEvaluate", industry, methodology);
@@ -1612,8 +1612,14 @@ export function SearchCostEntries(query: string): $CancellablePromise<$models.Co
     return $Call.ByName("gopmgr/internal/desktop.App.SearchCostEntries", query);
 }
 
-export function SecureArchive(projectPath: string): $CancellablePromise<string> {
-    return $Call.ByName("gopmgr/internal/desktop.App.SecureArchive", projectPath);
+/**
+ * SecureArchive writes a backup of the open project next to it and returns
+ * the backup's path. includeSigningCert adds the project's signing
+ * certificate file, which holds the private signing key; the frontend
+ * passes true only when the user ticked that option for this backup.
+ */
+export function SecureArchive(projectPath: string, includeSigningCert: boolean): $CancellablePromise<string> {
+    return $Call.ByName("gopmgr/internal/desktop.App.SecureArchive", projectPath, includeSigningCert);
 }
 
 /**

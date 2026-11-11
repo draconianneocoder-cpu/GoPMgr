@@ -65,7 +65,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
 | SEC-02 | Tables a restored backup defines are trusted | Open. Planned: response plan step A3 |
-| SEC-03 | Backups contain the private signing key | Open. Decided 2026-11-11: excluded by default, opt-in. Planned: step A2 |
+| SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Open: not yet triaged one by one. Planned: step A5 |
 | SEC-05 | Windows build of the engine and its random source | Unverified |
 | SEC-06 | No advisory check for the vendored C engine | Open. Planned: step A4 |

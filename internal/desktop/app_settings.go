@@ -225,7 +225,11 @@ func (a *App) ExportAuditRepairEvidence() (string, error) {
 	return path, nil
 }
 
-func (a *App) SecureArchive(projectPath string) (string, error) {
+// SecureArchive writes a backup of the open project next to it and returns
+// the backup's path. includeSigningCert adds the project's signing
+// certificate file, which holds the private signing key; the frontend
+// passes true only when the user ticked that option for this backup.
+func (a *App) SecureArchive(projectPath string, includeSigningCert bool) (string, error) {
 	// Confine to the user's own projects folder before archiving, so the
 	// backup is always written next to a project the caller actually owns.
 	clean, s, err := a.projectPathFor(projectPath)
@@ -245,7 +249,7 @@ func (a *App) SecureArchive(projectPath string) (string, error) {
 	if svc == nil {
 		return "", errors.New("no project open")
 	}
-	path, err := svc.SecureArchive(clean)
+	path, err := svc.SecureArchive(clean, includeSigningCert)
 	// Capture the structured report (if any) for GenerateBugReport before
 	// it collapses to a plain string on the way to the frontend.
 	return path, debug.Capture(err)

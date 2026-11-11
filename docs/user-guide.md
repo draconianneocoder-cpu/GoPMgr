@@ -708,9 +708,14 @@ name files, keys and a server chosen on the machine that made the backup. Set
 signing up again in Project Settings. The project's audit log records that
 the settings were cleared.
 
-If the project has a signing certificate, the backup also contains a copy of
-that `.p12` or `.pfx` file, which holds your private signing key. Keep such a
-backup as private as the certificate itself. The backup is refused, with a
+A backup does not contain your signing certificate unless you ask. The
+certificate is a `.p12` or `.pfx` file that holds your private signing key.
+When the project has one, Project Settings shows "Include my signing
+certificate file in this backup" beside the Create backup button. It is off
+each time, restoring never needs it, and the project's audit log records when
+a backup was made with it. Keep a backup made with it as private as the
+certificate itself. Backups made before 2026-11-11 always included the file.
+A backup that includes the certificate is refused, with a
 message naming the file, when the project's certificate setting points at
 anything else: a file with another extension, something that is not an
 ordinary file, or a file larger than 16 MiB. Choose the certificate again in

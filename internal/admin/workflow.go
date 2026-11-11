@@ -25,10 +25,16 @@ type Service struct {
 // NewService binds an admin service to a database handle.
 func NewService(d *db.Database) *Service { return &Service{DB: d} }
 
-// SecureArchive creates a .pmba bundle next to the project file. The
-// active signing certificate (if any) is included. Returns the path of
-// the archive written.
-func (s *Service) SecureArchive(projectPath string) (string, error) {
+// SecureArchive creates a .pmba bundle next to the project file and
+// returns its path.
+//
+// The project's signing certificate file is a PKCS#12 bundle holding the
+// private signing key. It goes into the archive only when
+// includeSigningCert is true, which the caller sets only on the user's
+// explicit request (owner decision 2026-11-11); a restore never needs it,
+// because restore clears the signing settings. When it is included, the
+// audit record says so.
+func (s *Service) SecureArchive(projectPath string, includeSigningCert bool) (string, error) {
 	settings, err := s.DB.GetSettings()
 	if err != nil {
 		return "", debug.Wrap(err, "ARCHIVE_SETTINGS_LOAD_FAILED").ToError()
@@ -47,7 +53,7 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	backupName := filepath.Join(filepath.Dir(projectPath), fmt.Sprintf("GoPMgr_Archive_%s.pmba", timestamp))
 
 	certs := []string{}
-	if settings.CertPath != "" {
+	if includeSigningCert && settings.CertPath != "" {
 		certs = append(certs, settings.CertPath)
 	}
 
@@ -61,7 +67,11 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 		return "", fmt.Errorf("security backup failed: %w", report.ToError())
 	}
 
-	if err := s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName); err != nil {
+	detail := backupName
+	if len(certs) > 0 {
+		detail += " (signing certificate included)"
+	}
+	if err := s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, detail); err != nil {
 		// removeErr's branch is accepted as untested, not merely
 		// uncovered: unlink permission is governed by the parent
 		// directory, and making that directory non-writable would also

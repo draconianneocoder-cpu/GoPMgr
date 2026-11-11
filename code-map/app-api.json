@@ -1713,8 +1713,8 @@
     {
       "method": "SecureArchive",
       "file": "internal/desktop/app_settings.go",
-      "line": 228,
-      "params": "projectPath string",
+      "line": 232,
+      "params": "projectPath string, includeSigningCert bool",
       "returns": "string, error",
       "uses_internal_packages": [
         "gopmgr/internal/debug"
