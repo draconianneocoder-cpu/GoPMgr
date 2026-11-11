@@ -35,8 +35,9 @@ for a legitimate local user.
   back to them after a later build has opened the data is not supported and
   has not been tested; those builds do not know about disabled accounts,
   administrator access or the super administrator. A second, older copy of
-  GoPMgr that is already running keeps reading and can still write through
-  paths that do not open an account write transaction.
+  GoPMgr that is already running keeps reading. Its account, password,
+  recovery-code and preference writes stop; a start-up that is part-way through
+  its own schema steps when the mark arrives does not.
 - Desktop sign-in, headless maintenance sign-in, and administrator-issued
   recovery codes check the password and unlock the key from one snapshot, then
   require the same account identity, hash, and key wrap in the transaction

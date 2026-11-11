@@ -425,8 +425,10 @@ func (s *Store) ClaimAdmin(username string) error {
 // chose in an export save dialog. Called after every successful dialog
 // confirmation so the next export defaults there.
 func (s *Store) SetLastExportDirectory(username, dir string) error {
-	_, err := s.conn.Exec(`UPDATE users SET last_export_directory = ? WHERE username = ?`, dir, username)
-	return err
+	return s.inWriteTx("last export directory", func(ctx context.Context, q accountWriter) error {
+		_, err := q.ExecContext(ctx, `UPDATE users SET last_export_directory = ? WHERE username = ?`, dir, username)
+		return err
+	})
 }
 
 func boolToInt(b bool) int {

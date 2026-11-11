@@ -369,3 +369,78 @@ func TestConcurrentOpensStampAnOlderSystemDatabase(t *testing.T) {
 		t.Fatalf("stamp = %d, want %d", got, systemSchemaReader)
 	}
 }
+
+// accountRows is every stored credential and preference the gated writers
+// could change.
+func accountRows(t *testing.T, store *Store) []string {
+	t.Helper()
+	var out []string
+	for _, query := range []string{
+		`SELECT username || '|' || password_hash || '|' || coalesce(wrapped_dek_pw,'') || '|' || coalesce(last_export_directory,'') FROM users ORDER BY username`,
+		`SELECT id || '|' || username || '|' || code_hash || '|' || coalesce(wrapped_dek,'') || '|' || used FROM recovery_codes ORDER BY id`,
+	} {
+		rows, err := store.conn.Query(query)
+		if err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+		for rows.Next() {
+			var row string
+			if err := rows.Scan(&row); err != nil {
+				_ = rows.Close()
+				t.Fatalf("scan: %v", err)
+			}
+			out = append(out, row)
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			t.Fatalf("iterate: %v", err)
+		}
+	}
+	return out
+}
+
+// Password, recovery-code and preference writes do not all share one
+// transaction helper. Each must still refuse a file a newer build has
+// marked, and leave the stored rows as they were.
+func TestCredentialWritesStopOnceANewerBuildMarksTheFile(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		write func(store *Store, dek []byte, codes []string) error
+	}{
+		{"change password", func(store *Store, _ []byte, _ []string) error {
+			return store.ChangePassword("alice", oldPassword, "a-different-password")
+		}},
+		{"issue recovery codes", func(store *Store, dek []byte, _ []string) error {
+			_, err := store.IssueRecoveryCodes("alice", dek)
+			return err
+		}},
+		{"reset with a recovery code", func(store *Store, _ []byte, codes []string) error {
+			return store.ResetWithRecoveryCode("alice", codes[0], "a-different-password")
+		}},
+		{"remember the export folder", func(store *Store, _ []byte, _ []string) error {
+			return store.SetLastExportDirectory("alice", "/somewhere/else")
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			store, dek, codes := storeFromTemplate(t, templates.rotation)
+			if err := store.inWriteTx("mark as newer", func(ctx context.Context, q accountWriter) error {
+				return raiseSystemSchemaStamp(ctx, q, systemSchemaReader+1)
+			}); err != nil {
+				t.Fatalf("raise stamp: %v", err)
+			}
+			before := accountRows(t, store)
+			if len(before) < 2 {
+				t.Fatalf("fixture rows = %d, want an account and its recovery codes", len(before))
+			}
+
+			if err := tc.write(store, dek, codes); !errors.Is(err, ErrSystemSchemaNewer) {
+				t.Fatalf("write = %v, want ErrSystemSchemaNewer", err)
+			}
+			if after := accountRows(t, store); !slices.Equal(before, after) {
+				t.Fatal("a refused write changed the stored rows")
+			}
+		})
+	}
+}

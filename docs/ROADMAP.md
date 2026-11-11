@@ -40,8 +40,8 @@ update channel off. It is not ready to tag.
 
 | Item | Status |
 | --- | --- |
-| Package versions come from version tags only, not `archive/…` tags | Done locally; not merged |
-| `system.db` reader-level gate, so a build refuses data marked by a newer one | Done locally; not merged |
+| Package versions come from version tags only, not `archive/…` tags | Fixed on branch `fix/release-version-tag-match`; not merged |
+| `system.db` reader-level gate, so a build refuses data marked by a newer one | Done on branch `feat/system-db-schema-gate`; not merged |
 | Release notes: going back to `v1.1.0-alpha.2` is unsupported and untested | Not started |
 | Confirm the candidate ships with the update channel unconfigured | Not started |
 | Review of the changes since `v1.1.0-alpha.2` (over 550 commits) | Not started |
