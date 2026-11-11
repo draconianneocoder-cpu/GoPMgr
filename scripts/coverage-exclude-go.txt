@@ -33,8 +33,3 @@ internal/applog/opendir_other\.go
 internal/applog/dialog_darwin\.go
 internal/applog/dialog_windows\.go
 internal/applog/dialog_other\.go
-# internal/templates/jdm.go ("!windows") is NOT excluded: it compiles on
-# both this macOS dev machine and Linux CI (ubuntu-26.04), so it's covered
-# normally like any other cross-platform file. Only its windows-only sibling
-# is platform-narrow.
-internal/templates/jdm_windows\.go

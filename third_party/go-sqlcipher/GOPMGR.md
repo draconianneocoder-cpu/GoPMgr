@@ -13,7 +13,7 @@ GoPMgr builds this local module instead of the published
   GoPMgr's transaction-cleanup changes to `sqlite3.go`;
 - the **SQLCipher 4.20.0 engine** (SQLite 3.54.1): `sqlite3.c` and
   `sqlite3.h`, built unmodified from the upstream tag;
-- `flags.go` with two added build flags, and `gopmgr_rng.c`.
+- `flags.go` with four added build flags, and `gopmgr_rng.c`.
 
 The encrypted file format (SQLCipher 4), raw-key handling, LibTomCrypt
 provider and public driver API are unchanged. Existing database files need
@@ -51,6 +51,14 @@ scenario against it, with a control that removes SQLite's check.
 - `flags.go` adds `-DSQLITE_EXTRA_INIT=sqlcipher_extra_init` and
   `-DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown`, which SQLCipher has
   required since 4.7, and links `bcrypt` on Windows for `gopmgr_rng.c`.
+- `flags.go` also adds `-DSQLITE_TRUSTED_SCHEMA=0` and
+  `-DSQLITE_DEFAULT_DEFENSIVE` (2026-11-11). Every connection then starts
+  with `trusted_schema` off and defensive mode on, however it is opened:
+  a view, trigger, CHECK, DEFAULT, index or generated column stored in a
+  file may call only functions and virtual tables SQLite marks safe for
+  that, and `writable_schema`, shadow-table writes and `sqlite_dbpage` are
+  refused. Neither flag changes `sqlite3.c`; they are passed to the
+  compiler. GoPMgr's own schema uses none of the affected features.
 - `gopmgr_rng.c` provides `rng_get_bytes`, from which the LibTomCrypt
   provider seeds its Fortuna generator (SQLCipher 4.5 and later). It reads
   only the operating system's generator (`getentropy`, or `BCryptGenRandom`
@@ -79,7 +87,7 @@ Wrapper provenance:
   restored to the original):
   `86c8178235210c18cb451ae981443bae4a7cb611166229eac873d574ed707088`
 - Vendored 93-file runtime-tree SHA-256:
-  `72c4ea6774d9760e2dd65c704217967749294ae54660f4ede10d55829b2d1ba4`
+  `98ae34da5fb5b0c6f73dc9cba7ccf55d1c1560e4e45ce87240650960971ebb04`
 
 `MAINTENANCE` and `README.md` are go-sqlcipher's own files, kept unchanged;
 their version statements describe v4.4.2, not this copy.

@@ -30,13 +30,13 @@ import (
 
 // =========================================================
 // V2.x Foundation Slice — Launchpad / Stakeholders /
-// Timeline / Budget / iCal (rickar+zen-go integrations)
+// Timeline / Budget / iCal (rickar integration)
 // =========================================================
 
 // LaunchpadEvaluate returns the list of seed actions (chart kinds +
 // document kinds + agile flags) for a given (industry, methodology)
 // pair. The actual decision lives in internal/templates'
-// launchpad_seeds.json and is evaluated by zen-go.
+// launchpad_seeds.json and is evaluated by that package.
 func (a *App) LaunchpadEvaluate(industry, methodology string) ([]string, error) {
 	if a.templates == nil {
 		return []string{"charter"}, nil

@@ -117,7 +117,7 @@ returned only after commit. This save operation is not a calendar-transfer API.
   assembly, and provenance-manifest output over an already-open project DB.
 - `internal/exportsafe`: neutralizes user-controlled values written to
   CSV/TSV exports against spreadsheet formula injection.
-- `internal/templates`: Launchpad seeding rules embedded from JDM data.
+- `internal/templates`: Launchpad seeding rules, an embedded table in JDM layout evaluated in Go.
 - `internal/agile` and `internal/sigma`: Agile/software development and
   process excellence feature packs.
 - `frontend/src`: Svelte application shell, global CSS, session store,

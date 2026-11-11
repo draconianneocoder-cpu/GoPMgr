@@ -120,8 +120,7 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	// templates.Engine wraps the zen-go decision engine driving the
-	// Launchpad's seeding rules. Failing to initialise it is not
+	// templates.Engine evaluates the Launchpad's seeding rule table. Failing to initialise it is not
 	// fatal — the GUI will fall back to "no auto-seed" — but we log
 	// the error so misconfigured JDM doesn't pass silently.
 	tmpl, err := templates.NewEngine()

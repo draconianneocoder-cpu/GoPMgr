@@ -23,7 +23,7 @@ so nothing had flagged it.
 | Area | Change |
 |---|---|
 | Engine | `sqlite3.c` and `sqlite3.h` are the unmodified amalgamation built from the SQLCipher `v4.20.0` tag. The build is reproducible: macOS and Ubuntu 26.04 produced byte-identical files. |
-| Build flags | `SQLITE_EXTRA_INIT` and `SQLITE_EXTRA_SHUTDOWN`, required since SQLCipher 4.7. |
+| Build flags | `SQLITE_EXTRA_INIT` and `SQLITE_EXTRA_SHUTDOWN`, required since SQLCipher 4.7. Added 2026-11-11: `SQLITE_TRUSTED_SCHEMA=0` and `SQLITE_DEFAULT_DEFENSIVE`, so every connection distrusts a file's schema and refuses schema-corrupting statements (`internal/sqlitedriver/hardening_test.go`). |
 | Random source | New `gopmgr_rng.c`: the LibTomCrypt provider now seeds itself through `rng_get_bytes`. GoPMgr's version uses only the operating system's generator and fails closed. |
 | WAL-reset backport | Removed: SQLite has contained the correction since 3.52.0. The fault-injection test still runs, with a control that removes SQLite's own check. |
 | Repair | `db.InformativeSelfHeal` makes its rebuilt copy on a fresh connection (see below). |

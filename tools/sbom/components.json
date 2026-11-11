@@ -65,10 +65,6 @@
       "license": "BSD-3-Clause",
       "producer": "Google Inc."
     },
-    "github.com/gorules/zen-go": {
-      "license": "MIT",
-      "producer": "GoRules.io"
-    },
     "github.com/klauspost/compress": {
       "license": "BSD-3-Clause AND Apache-2.0 AND MIT",
       "producer": "Klaus Post"
@@ -97,18 +93,6 @@
     "github.com/rickar/cal/v2": {
       "license": "BSD-3-Clause",
       "producer": "Rick Arnold"
-    },
-    "github.com/tidwall/gjson": {
-      "license": "MIT",
-      "producer": "Josh Baker"
-    },
-    "github.com/tidwall/match": {
-      "license": "MIT",
-      "producer": "Josh Baker"
-    },
-    "github.com/tidwall/pretty": {
-      "license": "MIT",
-      "producer": "Josh Baker"
     },
     "github.com/tiendc/go-deepcopy": {
       "license": "MIT",
