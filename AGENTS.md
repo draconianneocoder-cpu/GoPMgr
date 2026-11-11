@@ -116,7 +116,7 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
 
 ## Project Invariants
 
-- `go.mod` requires Go 1.27.3 or later and pins Wails v3.1.0. CGO is required.
+- `go.mod` requires Go 1.27.4 or later and pins Wails v3.1.0. CGO is required.
 - The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
   calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
   its 208 exported methods are frontend API, listed in `code-map/app-api.json`.

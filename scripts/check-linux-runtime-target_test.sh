@@ -23,7 +23,7 @@ python3 - <<'PY'
 from pathlib import Path
 for p in ['Makefile','debian/rules','debian/control','build/linux/nfpm.yaml']:
  s=Path(p).read_text().replace('webkit2_41','').replace('libgtk-3-dev','libgtk-4-dev').replace('libwebkit2gtk-4.1-dev','libwebkitgtk-6.0-dev').replace('libgtk-3-0','libgtk-4-1').replace('libwebkit2gtk-4.1-0','libwebkitgtk-6.0-4').replace('- gtk3','- gtk4').replace('- webkit2gtk4.1','- webkitgtk6.0')
- s=s.replace('golang-1.26-go (>= 1.26.6)','golang-1.27-go (>= 1.27.3)')
+ s=s.replace('golang-1.26-go (>= 1.26.6)','golang-1.27-go (>= 1.27.4)')
  Path(p).write_text(s)
 PY
 bash scripts/check-linux-runtime-target.sh >output 2>&1 || {

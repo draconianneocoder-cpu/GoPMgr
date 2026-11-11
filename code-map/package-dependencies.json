@@ -555,9 +555,7 @@
         "gopmgr/internal/db",
         "gopmgr/internal/documents"
       ],
-      "notable_external_deps": [
-        "github.com/gorules/zen-go"
-      ]
+      "notable_external_deps": []
     },
     "gopmgr/internal/timeline": {
       "dir": "internal/timeline",

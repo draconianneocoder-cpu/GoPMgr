@@ -124,7 +124,7 @@ live on the user's machine rather than requiring a hosted service.
 
 The current repository uses:
 
-- Go 1.27.3 or later;
+- Go 1.27.4 or later;
 - Wails v3.1.0;
 - Svelte 5;
 - TypeScript 6;
@@ -172,7 +172,7 @@ leaves ownership clearer.
 
 A normal development checkout requires:
 
-- Go 1.27.3 or later;
+- Go 1.27.4 or later;
 - **Wails v3.1.0** (the exact CLI version, not "latest");
 - Node.js and npm;
 - Python 3 for the build wrapper and metadata query helper;
@@ -364,7 +364,7 @@ The table groups them by concern; regenerate this list from `ls internal/` and
 
 | Package | Responsibility |
 | — | — |
-| `internal/templates` | Project Launchpad seeding of starter artifacts via JDM (JSON Decision Model) rules |
+| `internal/templates` | Project Launchpad seeding of starter artifacts from a rule table in JDM (JSON Decision Model) layout, evaluated in Go |
 | `internal/agile` | Software-Dev Pack: Kanban boards, sprints, work items, DORA metrics |
 | `internal/sigma` | Namespace directory (not itself a package) for the Six Sigma/DMAIC feature pack — see `sigma/domain`, `sigma/service`, `sigma/stats`, `sigma/tollgate`, `sigma/charts` |
 | `internal/applog` | Process-level diagnostic logging and fatal-startup handling for the Wails GUI |
@@ -1686,7 +1686,6 @@ Current important dependencies include:
 - `godocx` for DOCX;
 - `excelize` for XLSX;
 - `rickar/cal` for holiday calendars;
-- `zen-go` for JDM rules;
 - Gonum for numerical/statistical work;
 - Apache Arrow for Go, for Parquet import.
 

@@ -3,7 +3,7 @@
 
 module gopmgr
 
-go 1.27.3
+go 1.27.4
 
 // go-sqlcipher v4.4.2 bindings with the SQLCipher 4.20.0 engine (SQLite 3.54.1)
 // and GoPMgr's transaction-cleanup corrections.
@@ -17,12 +17,6 @@ require (
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/gomutex/godocx v0.1.5
-	// V2.x — Foundation Slice additions:
-	// github.com/gorules/zen (via its Go binding zen-go) drives the
-	// Launchpad's template-seeding rules as JDM (JSON Decision Model)
-	// data rather than a Go switch. New industry/methodology combos
-	// are one row in launchpad_seeds.json. Used in internal/templates.
-	github.com/gorules/zen-go v0.20.0
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
 	github.com/pelletier/go-toml/v2 v2.4.3
 
@@ -59,9 +53,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.29 // indirect
 	github.com/richardlehane/mscfb v1.0.9 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
-	github.com/tidwall/gjson v1.17.1 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect

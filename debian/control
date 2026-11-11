@@ -5,7 +5,7 @@ Source: gopmgr
 Section: utils
 Priority: optional
 Maintainer: James Burns <draconian.neocoder@gmail.com>
-Build-Depends: debhelper-compat (= 13), golang-1.27-go (>= 1.27.3), pkgconf, libgtk-4-dev, libwebkitgtk-6.0-dev
+Build-Depends: debhelper-compat (= 13), golang-1.27-go (>= 1.27.4), pkgconf, libgtk-4-dev, libwebkitgtk-6.0-dev
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://github.com/draconianneocoder-cpu/GoPMgr
