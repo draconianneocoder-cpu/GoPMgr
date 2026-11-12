@@ -391,7 +391,8 @@ documents. Each file embeds its fonts and color profile, and its text copies,
 searches, and reads aloud correctly. A PAdES signature keeps the file
 PDF/A-2u.
 
-A schedule can be at most 50 years long (18,250 working days). GoPMgr
+A schedule can be at most 18,250 working days long. That is at least 50
+years on any work calendar, and about 70 on a Monday-to-Friday one. GoPMgr
 refuses to save a CPM or Gantt chart, or to import a file, whose task
 duration, lag or overall length is beyond that, and names the task
 responsible.
@@ -707,9 +708,14 @@ name files, keys and a server chosen on the machine that made the backup. Set
 signing up again in Project Settings. The project's audit log records that
 the settings were cleared.
 
-If the project has a signing certificate, the backup also contains a copy of
-that `.p12` or `.pfx` file, which holds your private signing key. Keep such a
-backup as private as the certificate itself. The backup is refused, with a
+A backup does not contain your signing certificate unless you ask. The
+certificate is a `.p12` or `.pfx` file that holds your private signing key.
+When the project has one, Project Settings shows "Include my signing
+certificate file in this backup" beside the Create backup button. It is off
+each time, restoring never needs it, and the project's audit log records when
+a backup was made with it. Keep a backup made with it as private as the
+certificate itself. Backups made before 2026-11-11 always included the file.
+A backup that includes the certificate is refused, with a
 message naming the file, when the project's certificate setting points at
 anything else: a file with another extension, something that is not an
 ordinary file, or a file larger than 16 MiB. Choose the certificate again in
@@ -719,8 +725,10 @@ left out without an error.
 The digests catch a damaged backup, not a deliberately altered one: whoever
 alters a backup can rewrite its digests too. Restore only backups you made or
 trust. As a safeguard, GoPMgr refuses a backup whose project file contains
-database triggers, views or virtual tables, which GoPMgr never creates, and
-tells you it may have been altered.
+anything GoPMgr never creates, and tells you it may have been altered: a
+database trigger, view or virtual table, an extra table or column, or one of
+GoPMgr's own tables redefined with a different constraint, default or index.
+Backups made by older versions of GoPMgr are still accepted.
 
 Deleting a project from the project picker removes it permanently. The
 picker's **Deleted projects** list records each deletion: when and by whom,

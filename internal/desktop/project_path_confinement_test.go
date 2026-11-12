@@ -54,7 +54,7 @@ func TestPathTakingIPCMethodsConfineToOwnProjectsDir(t *testing.T) {
 		}
 	})
 	t.Run("SecureArchive", func(t *testing.T) {
-		if _, err := app.SecureArchive(outside); err == nil {
+		if _, err := app.SecureArchive(outside, false); err == nil {
 			t.Fatal("SecureArchive accepted a path outside the user's projects dir")
 		}
 	})

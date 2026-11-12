@@ -378,7 +378,7 @@ func TestASecurityBackupAcrossASessionSwitchWritesNothing(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if _, err := app.SecureArchive(alices.Path); !errors.Is(err, errSessionChanged) {
+	if _, err := app.SecureArchive(alices.Path, false); !errors.Is(err, errSessionChanged) {
 		t.Fatalf("SecureArchive across a switch = %v, want errSessionChanged", err)
 	}
 	if found, _ := filepath.Glob(filepath.Join(filepath.Dir(alices.Path), "GoPMgr_Archive_*")); len(found) != 0 {

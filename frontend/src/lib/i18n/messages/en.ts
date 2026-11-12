@@ -420,6 +420,9 @@ export const en = {
     'Add optional task estimates, then run a simulation. Tasks without estimates use their fixed duration.',
   'projectPicker.restore.done':
     'Backup restored. Signing is switched off in a restored project. Set it up again in Project Settings if you need it.',
+  'projectSettings.backup.includeCert': 'Include my signing certificate file in this backup',
+  'projectSettings.backup.includeCertHelp':
+    'The file holds your private signing key, so anyone who gets the backup gets the key. Restoring a backup never needs it. Leave this off unless you want this backup to carry a spare copy.',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

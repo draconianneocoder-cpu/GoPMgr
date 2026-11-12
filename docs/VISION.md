@@ -76,6 +76,11 @@ The following will never be required features of GoPMgr:
 administrative roles managing projects of 20–500 tasks with budgets,
 resources, and milestone accountability.
 
+The professional-scheduling direction approved on 2026-10-26 adds a
+capacity objective of 50,000 editable activities. That is an engineering
+target to be qualified, not a description of today's product and not a
+change of primary audience; its status is in [STATUS.md](STATUS.md).
+
 **Secondary:** Technical leads and architects who need baseline-vs-actual
 tracking, EVM reporting, and exportable project artefacts for client
 delivery.

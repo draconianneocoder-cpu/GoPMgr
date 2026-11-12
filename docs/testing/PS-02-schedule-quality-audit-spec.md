@@ -5,8 +5,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # PS-02 schedule-quality audit: specification and slice plan
 
-**Status:** PROPOSED. Slice 1 needs your separate implementation
-authorization (decision §8). Nothing here is implemented.
+**Status:** Slice 1 was AUTHORIZED for implementation on 2026-11-11
+([decision](../review/evaluation-2026-11-10-response-plan.md)). Later slices
+remain proposed. Nothing here is implemented yet.
 **Plan:** [modernization plan](../design/professional-scheduling-modernization-plan.md) §3, §6.
 
 ## 1. Scope of slice 1

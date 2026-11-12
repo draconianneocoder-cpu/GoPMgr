@@ -98,3 +98,32 @@ func TestRestoreRefusesAnArchiveWithAPlantedTrigger(t *testing.T) {
 		}
 	}
 }
+
+// A backup can also change what later writes do without any trigger: by
+// redefining one of GoPMgr's own tables. Here deleting a document would
+// silently delete every stakeholder. The backup must be refused before the
+// project is opened for writing.
+func TestRestoreRefusesAnArchiveWithARedefinedTable(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("ada", "Ada", "ada-strong-password", false); err != nil {
+		t.Fatal(err)
+	}
+	acceptNoRecoveryCodes(t, app)
+	before := projectsFolderEntries(t, app)
+
+	archive := archiveOfPlaintextProject(t,
+		`PRAGMA foreign_keys = OFF`,
+		`DROP TABLE stakeholders`,
+		`CREATE TABLE stakeholders (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, name TEXT NOT NULL,
+			planted_ref TEXT REFERENCES documents(id) ON DELETE CASCADE)`)
+	_, err := app.restoreProjectArchiveFrom(archive, app.currentSession())
+	if !errors.Is(err, db.ErrForeignSchemaObject) {
+		t.Fatalf("restore = %v, want ErrForeignSchemaObject", err)
+	}
+	if strings.Contains(err.Error(), "planted") || strings.Contains(err.Error(), "stakeholders") {
+		t.Fatalf("the message shows a name from the backup: %q", err)
+	}
+	if after := projectsFolderEntries(t, app); len(after) != len(before) {
+		t.Fatalf("a refused restore left files behind: before %v, after %v", before, after)
+	}
+}

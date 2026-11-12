@@ -245,7 +245,7 @@ func TestSecureArchive_CapturesReportForBugReport(t *testing.T) {
 		t.Fatalf("close db: %v", err)
 	}
 
-	if _, err := app.SecureArchive(file.Path); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
+	if _, err := app.SecureArchive(file.Path, false); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
 		t.Fatalf("SecureArchive() error = %v, want ARCHIVE_SETTINGS_LOAD_FAILED", err)
 	}
 

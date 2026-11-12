@@ -15,6 +15,16 @@ decisions or ADR-012, an Architecture Change Request (ACR) decides.
 - [domain model and open ADR-011 decisions](professional-scheduling-domain-model.md);
 - [PS-02 schedule-quality audit specification](../testing/PS-02-schedule-quality-audit-spec.md).
 
+
+> **Status amendment, 2026-11-11.** This plan is unchanged as the record of
+> the 2026-10-26 direction. Two things in it are no longer current: DuckDB
+> was retired on 2026-11-02 and the DataFusion spike closed without adoption
+> on 2026-11-09, so the PS-09 row's "ADR-012 (DF0 → cutover)" and the
+> Analytics branch of the delivery diagram (DF0 → approved implementation →
+> cutover) describe a path that will not be taken; PS-09 continues on the
+> Go-native analytics already on `main`. PS-02 slice 1 was authorized on
+> 2026-11-11. Current status is in [STATUS.md](../STATUS.md).
+
 ## 1. Goal
 
 GoPMgr is to become a professional, local-first project-management

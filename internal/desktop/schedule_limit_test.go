@@ -37,7 +37,7 @@ func assertScheduleTooLong(t *testing.T, what string, err error) {
 		t.Fatalf("%s = %v, want kernel.ErrScheduleTooLong", what, err)
 	}
 	msg := err.Error()
-	for _, want := range []string{"50 years (18250 working days)", "shorten the task durations or lags", `task "Pour slab" has a duration of 1e+09 days`} {
+	for _, want := range []string{"limit of 18250 working days (at least 50 years)", "shorten the task durations or lags", `task "Pour slab" has a duration of 1e+09 days`} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("%s message %q does not say %q", what, msg, want)
 		}

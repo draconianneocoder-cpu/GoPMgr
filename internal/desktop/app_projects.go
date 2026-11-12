@@ -226,8 +226,9 @@ func (a *App) restoreProjectArchiveFrom(archivePath string, s sessionRef) (resul
 		return result, err
 	}
 	// An archive's digests come from its own manifest, so they cannot show
-	// the file is GoPMgr's. Refuse triggers, views and virtual tables before
-	// any write: GoPMgr never creates them, and migration would run them.
+	// the file is GoPMgr's. Before any write, refuse triggers, views and
+	// virtual tables, which GoPMgr never creates and migration would run,
+	// and any table or index that goes beyond the ones GoPMgr creates.
 	var checkKey []byte
 	if encrypted {
 		checkKey = dek
