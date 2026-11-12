@@ -5,7 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-12, against `main` at `ea740a1` (pull request 204).
+**Last reviewed:** 2026-11-12, against `main` at `e93e808` (PR 206), with
+PR 207 hosted results checked at `709a31d`. Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
 this file wins for *status*; the older document still stands as the record of
@@ -53,8 +54,8 @@ record or an evidence file. Adopted on 2026-11-11
 | Website pages pin the repository files they cite by commit and hash | Implemented (PR 203). A change to a cited file fails the site build until the page is reviewed and re-pinned | `website/quality/source-dependencies.json` |
 | Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame | `website/tools/site.py` |
 | Website accessibility | Recorded evidence 2026-11-12: axe 4.14.0 reports no violation on 11 pages, light and dark, at four widths; keyboard use of the skip link, search and menus checked. Unverified: a screen reader, browser zoom at 200% and 400% | PR 204 |
-| Website tests in hosted CI | Checker CI implemented (PR 206). Production build extension prepared locally: the same job runs tests and `make website-ci` with full history and verified Linux Hugo. Hosted execution of this extension is not yet verified; not a required check for merging | `.github/workflows/ci.yml` |
-| Website build on Linux | Locally verified on Ubuntu 26.04.1 with Go 1.27.4 and pinned Hugo 0.169.0. Archive and executable provenance recorded; hosted execution unverified | `website/quality/dependencies.json` |
+| Website tests in hosted CI | Checker CI implemented (PR 206). PR 207 production build passed on GitHub at `709a31d`, as did all 14 hosted checks; awaiting merge. A local configuration guard preserves its reviewed execution contract. Website check is not required for merging | `.github/workflows/ci.yml` |
+| Website build on Linux | Verified locally on Ubuntu 26.04.1 and in PR 207 hosted CI at `709a31d`, with Go 1.27.4 and pinned Hugo 0.169.0. Archive and executable provenance recorded | `website/quality/dependencies.json` |
 | `main` protected on GitHub: pull requests only, merge commits only, no force-push or deletion, four required checks | Implemented 2026-11-12 as repository ruleset "Protect main", with no bypass list. A setting, not a file in this repository | GitHub repository settings |
 | GitHub Actions limited to pinned or allow-listed actions | Open: the repository allows any action | GitHub repository settings |
 | Vulnerability reports go to GitHub's private form | Implemented (PR 203) | [SECURITY.md](SECURITY.md), Reporting |

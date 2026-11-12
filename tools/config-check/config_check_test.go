@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -353,6 +354,8 @@ updates:
 name: CI
 on:
   push:
+  pull_request:
+    branches: [main, master]
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -380,6 +383,20 @@ jobs:
         run: make license-check
       - name: Coverage ledger drift
         run: make coverage-ledger-drift
+  website:
+    name: Website checks (source pins + output rules)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: make website-tests
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make website-ci
 `),
 		".github/workflows/release.yml": []byte(`
 name: Release
@@ -520,6 +537,120 @@ func TestWebsiteConsumerContracts(t *testing.T) {
 			errs := validateRepositoryConfigs(files, tracked)
 			if len(errs) != 1 || !strings.Contains(errs[0].Error(), tc.want) {
 				t.Fatalf("got %v, want one error containing %q", errs, tc.want)
+			}
+		})
+	}
+}
+
+// Mutate parsed workflow fields so comments or lookalike command text cannot
+// satisfy the execution contract. Fixtures never execute hosted workflows.
+func TestCIWebsiteExecutionContract(t *testing.T) {
+	type workflowCase struct {
+		name   string
+		mutate func(map[string]any, map[string]any, []any)
+		want   string
+	}
+	tests := []workflowCase{
+		{"valid", nil, ""},
+		{"workflow root directory", func(c, j map[string]any, s []any) {
+			c["defaults"] = map[string]any{"run": map[string]any{"working-directory": "."}}
+		}, ""},
+		{"job root directory", func(c, j map[string]any, s []any) {
+			j["defaults"] = map[string]any{"run": map[string]any{"working-directory": "."}}
+		}, ""},
+		{"job inherited shell", func(c, j map[string]any, s []any) {
+			j["defaults"] = map[string]any{"run": map[string]any{"shell": "echo {0}"}}
+		}, "defaults.run.shell"},
+		{"missing job", func(c, j map[string]any, s []any) { delete(c["jobs"].(map[string]any), "website") }, "jobs.website"},
+		{"missing PR trigger", func(c, j map[string]any, s []any) { delete(c["on"].(map[string]any), "pull_request") }, "pull_request"},
+		{"PR path filter", func(c, j map[string]any, s []any) {
+			c["on"].(map[string]any)["pull_request"].(map[string]any)["paths"] = []any{"website/**"}
+		}, "pull_request"},
+		{"PR type filter", func(c, j map[string]any, s []any) {
+			c["on"].(map[string]any)["pull_request"].(map[string]any)["types"] = []any{"opened"}
+		}, "pull_request"},
+		{"PR branch filter", func(c, j map[string]any, s []any) {
+			c["on"].(map[string]any)["pull_request"].(map[string]any)["branches"] = []any{"main"}
+		}, "pull_request"},
+		{"renamed check", func(c, j map[string]any, s []any) { j["name"] = "Different" }, "name"},
+		{"wrong runner", func(c, j map[string]any, s []any) { j["runs-on"] = "ubuntu-latest" }, "runs-on"},
+		{"job condition", func(c, j map[string]any, s []any) { j["if"] = "${{ false }}" }, "must not define if"},
+		{"skip dependency", func(c, j map[string]any, s []any) { j["needs"] = "verify" }, "must not define needs"},
+		{"tolerated job failure", func(c, j map[string]any, s []any) { j["continue-on-error"] = true }, "continue-on-error"},
+		{"extra step", func(c, j map[string]any, s []any) { j["steps"] = append(s, map[string]any{"run": "echo extra"}) }, "four ordered steps"},
+		{"reordered steps", func(c, j map[string]any, s []any) { s[1], s[3] = s[3], s[1] }, "make website-tests"},
+		{"comment-only build", func(c, j map[string]any, s []any) { s[3].(map[string]any)["run"] = "echo skipped # make website-ci" }, "make website-ci"},
+		{"masked build failure", func(c, j map[string]any, s []any) { s[3].(map[string]any)["run"] = "make website-ci || true" }, "make website-ci"},
+		{"shallow checkout", func(c, j map[string]any, s []any) { s[0].(map[string]any)["with"].(map[string]any)["fetch-depth"] = 1 }, "checkout inputs"},
+		{"another source", func(c, j map[string]any, s []any) { s[0].(map[string]any)["with"].(map[string]any)["REF"] = "main" }, "checkout inputs"},
+		{"conflicting depth", func(c, j map[string]any, s []any) { s[0].(map[string]any)["with"].(map[string]any)["FETCH-DEPTH"] = 1 }, "checkout inputs"},
+		{"setup version override", func(c, j map[string]any, s []any) {
+			s[2].(map[string]any)["with"].(map[string]any)["GO-VERSION"] = "1.0"
+		}, "setup-go inputs"},
+		{"setup cache override", func(c, j map[string]any, s []any) { s[2].(map[string]any)["with"].(map[string]any)["CACHE"] = true }, "setup-go inputs"},
+		{"unpinned action", func(c, j map[string]any, s []any) { s[0].(map[string]any)["uses"] = "actions/checkout@v7" }, "pinned actions/checkout"},
+	}
+	for _, key := range []string{"repository", "ref", "path", "sparse-checkout"} {
+		tests = append(tests, workflowCase{
+			"checkout override " + key, func(c, j map[string]any, s []any) { s[0].(map[string]any)["with"].(map[string]any)[key] = "override" }, "checkout inputs"})
+	}
+	for _, scope := range []string{"workflow", "job", "step"} {
+		for _, key := range []string{"MAKEFLAGS", "GNUMAKEFLAGS", "MAKEFILES"} {
+			tests = append(tests, workflowCase{
+				scope + " " + key, func(c, j map[string]any, s []any) {
+					target := c
+					if scope == "job" {
+						target = j
+					}
+					if scope == "step" {
+						target = s[3].(map[string]any)
+					}
+					target["env"] = map[string]any{key: "-n"}
+				}, "Make execution override"})
+		}
+		if scope != "step" {
+			tests = append(tests, workflowCase{
+				scope + " working directory", func(c, j map[string]any, s []any) {
+					target := c
+					if scope == "job" {
+						target = j
+					}
+					target["defaults"] = map[string]any{"run": map[string]any{"working-directory": "website"}}
+				}, "working-directory"})
+		}
+	}
+	for i := range 4 {
+		for _, key := range []string{"if", "continue-on-error", "shell", "working-directory"} {
+			tests = append(tests, workflowCase{
+				fmt.Sprintf("step %d %s", i, key), func(c, j map[string]any, s []any) {
+					value := any("override")
+					if key == "continue-on-error" {
+						value = true
+					}
+					s[i].(map[string]any)[key] = value
+				}, "jobs.website.steps"})
+		}
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, _ := validConfigFixture()
+			config, err := parseConfig(configSpec{path: ".github/workflows/ci.yml", format: formatYAML}, files[".github/workflows/ci.yml"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := config["jobs"].(map[string]any)["website"].(map[string]any)
+			if tt.mutate != nil {
+				tt.mutate(config, job, job["steps"].([]any))
+			}
+			err = validateCIAssuranceWorkflow(config)
+			if tt.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v, want %q", err, tt.want)
 			}
 		})
 	}

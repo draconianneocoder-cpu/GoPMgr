@@ -55,9 +55,37 @@ repository's pinned `workflow-lint` and `workflow-security` checks passed
 (three workflows, no findings), as did ShellCheck on the new wrapper.
 Independent source review approved this bounded slice.
 
-Hosted execution remains unverified until the reviewed change is pushed under
-separate authority. The website check is not made required by this source change.
+After owner-authorized push, PR 207 at `709a31d9fcdf1a7e53443409650fac068e7dfc04`
+passed all 14 hosted checks on 2026-11-12. The website job passed in 22 seconds
+in [run 43309793356](https://github.com/draconianneocoder-cpu/GoPMgr/actions/runs/43309793356).
+This establishes the production build on that reviewed PR revision, not on a
+later local revision or on main. PR 207 is not merged. The website check is
+not made required by this source change.
 No acceptance record is issued; generated reports still say Stage P BLOCKED.
+
+## Execution regression guard
+
+The local configuration checker now requires the existing four ordered website
+steps: event-source checkout, checker tests, root-pinned Go setup and production
+checks. It rejects missing or conditional jobs, dependencies that can propagate
+skips, tolerated failures, altered commands, custom shells and redirected working
+directories. An inherited `.` directory remains valid. The PR trigger retains
+both main and master with no path or event-type filters.
+
+Checkout must retain full history and disabled credentials, with no source or
+path overrides. Go setup must use root `go.mod` with caching disabled. Action
+references must be full commit hashes; exact input-key sets reject conflicting
+case variants. Workflow, job and step environments cannot set `MAKEFLAGS`,
+`GNUMAKEFLAGS` or `MAKEFILES`, which could turn checks into dry runs or load
+another Makefile. Adding a pipeline step requires reviewing this contract.
+
+Regression fixtures demonstrated that the old validator accepted 52 mutations
+that bypassed this contract; the corrected validator rejects each for its named
+cause. A separate controlled fault removing only the inherited-shell guard was
+detected by its specific regression. Positive cases preserve inherited root
+directories. Existing assurance-job tests remain intact. This is a source regression
+guard, not protection against arbitrary malicious workflow or checker edits,
+and it does not configure required checks or authorize deployment.
 
 ## Next publication slice
 
