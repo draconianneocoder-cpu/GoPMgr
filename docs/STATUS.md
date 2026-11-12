@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-11, against `main` at `d07bc32` (pull request 201).
+**Last reviewed:** 2026-11-12, against `main` at `ea740a1` (pull request 204).
 
 This file says what is true now. Where it disagrees with an older document,
 this file wins for *status*; the older document still stands as the record of
@@ -43,6 +43,21 @@ record or an evidence file. Adopted on 2026-11-11
 | Account data (`system.db`) marked with a reader level; a build refuses data marked by a newer one | Implemented (PR 201). Unverified on Windows; v1.1.0-alpha.2 and earlier ignore the mark | `internal/users/schema_gate.go` |
 | Package versions come from version tags only (`v[0-9]*`) | Implemented (PR 200) | `scripts/package-version-lib.sh` |
 | Signing, notarization, live update channel | Open: mechanism built, no keys provisioned | [ROADMAP.md](ROADMAP.md) current focus 4 |
+
+## Companion website and repository controls
+
+| Item | Status | Pointer |
+| --- | --- | --- |
+| Companion website source (`website/`, Hugo Extended 0.169.0, Hextra v0.13.0) | Implemented (PR 203, PR 204). Opt-in `website-*` Make targets only; no application or release target depends on it | [website/README.md](../website/README.md) |
+| Website publication on GitHub Pages | Blocked: nothing is published and Pages is off. Needs the acceptance record and separate owner authorization | [website/README.md](../website/README.md), acceptance stages |
+| Website pages pin the repository files they cite by commit and hash | Implemented (PR 203). A change to a cited file fails the site build until the page is reviewed and re-pinned | `website/quality/source-dependencies.json` |
+| Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame | `website/tools/site.py` |
+| Website accessibility | Recorded evidence 2026-11-12: axe 4.14.0 reports no violation on 11 pages, light and dark, at four widths; keyboard use of the skip link, search and menus checked. Unverified: a screen reader, browser zoom at 200% and 400% | PR 204 |
+| Website tests in hosted CI | Open: the 25 website tests run only through `make website-check`; hosted CI runs config-check's website rules, not these | [Makefile](../Makefile) |
+| Website build on Linux | Unverified: the Hugo executable is recorded for macOS ARM64 only | `website/quality/dependencies.json` |
+| `main` protected on GitHub: pull requests only, merge commits only, no force-push or deletion, four required checks | Implemented 2026-11-12 as repository ruleset "Protect main", with no bypass list. A setting, not a file in this repository | GitHub repository settings |
+| GitHub Actions limited to pinned or allow-listed actions | Open: the repository allows any action | GitHub repository settings |
+| Vulnerability reports go to GitHub's private form | Implemented (PR 203) | [SECURITY.md](SECURITY.md), Reporting |
 
 ## Limits that are easy to confuse
 

@@ -93,8 +93,8 @@
       "mode": "100644"
     },
     "hugo.yaml": {
-      "sha256": "c86dcdfb3adade408f8e0358ba77969c7cd05f55dd1fabba6b2f9f17447a4b22",
-      "size": 2158,
+      "sha256": "0fc63e5a6a9257ea9beb57b507b963c3d52e1e918635cadc8704bec3aa348446",
+      "size": 2279,
       "mode": "100644"
     },
     "layouts/404.html": {
@@ -213,8 +213,8 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "61e14fd813b19891c843b893be8e4b0c461f757c65df1b295a5b3238acff8dc0",
-      "size": 18441,
+      "sha256": "44c11ba3851a9c75763d70ca0cbb435d58c2b33fe928d548b4269ec58c049a3f",
+      "size": 18436,
       "mode": "100644"
     },
     "tools/test_publication.py": {

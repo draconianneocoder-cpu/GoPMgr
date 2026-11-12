@@ -38,7 +38,9 @@ markup:
 security:
   enableInlineShortcodes: false
   exec:
-    allow: ['^go$', '^git$']
+    # Hugo itself runs only `go`, to fetch the pinned theme module. Git
+    # information is off, so Hugo never needs to run git.
+    allow: ['^go$']
   funcs:
     getenv: []
   http:

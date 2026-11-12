@@ -246,7 +246,7 @@ def snapshot():
         records['website/' + name] = record
     reviewed = SITE / 'quality/reviewed-inputs.json'
     records['website/quality/reviewed-inputs.json'] = file_record(reviewed)
-    # This necessary distribution license is a new allowed root file, not yet tracked.
+    # Named here so the snapshot fails if this distribution license goes missing.
     records['LICENSES/Apache-2.0.txt'] = file_record(ROOT / 'LICENSES/Apache-2.0.txt')
     return {'head': run(['git', 'rev-parse', 'HEAD']),
             'status': run(['git', 'status', '--porcelain=v1', '--untracked-files=all']),

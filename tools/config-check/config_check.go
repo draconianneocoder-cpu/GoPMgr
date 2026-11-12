@@ -638,6 +638,12 @@ func validateWebsiteHugo(config map[string]any) error {
 	if security["enableInlineShortcodes"] != false || !ok || len(urls) != 0 {
 		return fmt.Errorf("website inline shortcodes and template HTTP must remain disabled")
 	}
+	// The build may start one program: go, to fetch the pinned theme module.
+	exec, _ := stringMap(security["exec"])
+	allow, ok := exec["allow"].([]any)
+	if !ok || len(allow) != 1 || allow[0] != "^go$" {
+		return fmt.Errorf("website build may run only go")
+	}
 	return nil
 }
 

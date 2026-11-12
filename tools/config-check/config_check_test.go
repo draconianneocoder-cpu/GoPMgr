@@ -504,6 +504,8 @@ func TestWebsiteConsumerContracts(t *testing.T) {
 		{"standard edition", "website/hugo.yaml", "extended: true", "extended: false", "requires Hugo Extended 0.169.0"},
 		{"template network", "website/hugo.yaml", "urls: []", "urls: ['.*']", "inline shortcodes and template HTTP must remain disabled"},
 		{"inline shortcodes", "website/hugo.yaml", "enableInlineShortcodes: false", "enableInlineShortcodes: true", "inline shortcodes and template HTTP must remain disabled"},
+		{"build runs git", "website/hugo.yaml", "allow: ['^go$']", "allow: ['^go$', '^git$']", "build may run only go"},
+		{"build runs anything", "website/hugo.yaml", "allow: ['^go$']", "allow: ['.*']", "build may run only go"},
 		{"release status", "website/data/release-records.yaml", "prerelease: true", "prerelease: false", "release record differs from the reviewed historical release"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
