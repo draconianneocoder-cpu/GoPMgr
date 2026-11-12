@@ -150,6 +150,8 @@ class Page(HTMLParser):
         self.status += 'data-status' in a
         if tag == 'img' and 'alt' not in a:
             self.errors.append('image missing alt')
+        if tag == 'img' and (a.get('alt') or '').strip().lower() in ('logo', 'dark logo'):
+            self.errors.append('placeholder image alt')
         if tag in ('iframe', 'object', 'embed') or tag == 'form':
             self.errors.append('unexpected embedded content or form')
         if tag == 'link' and a.get('rel') == 'canonical':

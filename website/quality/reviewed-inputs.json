@@ -8,8 +8,8 @@
       "mode": "100644"
     },
     "assets/css/custom.css": {
-      "sha256": "5659c294eeb6cbb3f7fdf9dd26fc1256a9552b0f3485bb5b0138e72e03a55d64",
-      "size": 3299,
+      "sha256": "8c349467d5888576f7bd3a0b06856259b2d77d06cc35b9e9ca9aba4695b4dfb2",
+      "size": 3476,
       "mode": "100644"
     },
     "assets/js/core/menu.js": {
@@ -127,6 +127,11 @@
       "size": 208,
       "mode": "100644"
     },
+    "layouts/_partials/navbar-title.html": {
+      "sha256": "8109687811ce42746e871d100a86cd6782fe7eace8be1496a5ea59388a31e5c0",
+      "size": 918,
+      "mode": "100644"
+    },
     "layouts/home.html": {
       "sha256": "8befe56abc71f3a021ee67bc3df78f63a1df0f22eb515336b6ab21c7ffa8a534",
       "size": 1303,
@@ -208,8 +213,8 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "03626241a8a9aa15442c024e8b83447f0190fe33885493a1e7c351dd837c7247",
-      "size": 18294,
+      "sha256": "61e14fd813b19891c843b893be8e4b0c461f757c65df1b295a5b3238acff8dc0",
+      "size": 18441,
       "mode": "100644"
     },
     "tools/test_publication.py": {
@@ -218,10 +223,10 @@
       "mode": "100644"
     },
     "tools/test_site.py": {
-      "sha256": "4a85178a14821ae2c4ff9d123a822e41d00e806ca0f45efa085e9647d1a001a4",
-      "size": 21604,
+      "sha256": "f457fdd56a3ec7c1232f2d0e3da83744a799317744a81903539c27da8c6cc051",
+      "size": 21692,
       "mode": "100644"
     }
   },
-  "reviewed_at": "2026-11-11"
+  "reviewed_at": "2026-11-12"
 }

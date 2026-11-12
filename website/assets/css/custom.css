@@ -26,3 +26,5 @@ body{color:var(--site-ink);background:var(--site-surface)}
 .hextra-sidebar-collapsible-button{min-width:44px;min-height:44px;inset-inline-end:0}
 .dark .hextra-sidebar-active-item{color:var(--site-accent)}
 nav button,.hextra-footer button{min-height:44px;min-width:44px}
+/* The theme's grey search label is 4.3:1 in light mode and its key hint 3.3:1 in dark mode. */
+.hextra-search-trigger-label,.hextra-search-trigger-kbd{color:var(--site-muted)}

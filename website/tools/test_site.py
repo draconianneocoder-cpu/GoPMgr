@@ -86,6 +86,7 @@ class OutputTests(unittest.TestCase):
             'inline script': '<script>evil()</script>',
             'base element': '<base href="https://example.org/">',
             'generator version disclosed': '<meta name="generator" content="Hugo 0.169.0">',
+            'placeholder image alt': '<img src="/GoPMgr/search.json" alt="Dark Logo">',
             'content security policy': self.policy("default-src *"),
         }
         for message, fragment in added.items():
