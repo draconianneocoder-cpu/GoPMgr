@@ -3,13 +3,13 @@
   "reviewer": "GoPMgr website implementation author",
   "files": {
     "README.md": {
-      "sha256": "86505cd6408da0894413e9f005a42a01a4503d259f4d4e4b25696e2373f29a81",
-      "size": 4901,
+      "sha256": "1ebd84b89393bb1c0727322b7a84897dcc30cdfa3c4778144960ce40017df93b",
+      "size": 5694,
       "mode": "100644"
     },
     "assets/css/custom.css": {
-      "sha256": "a0321a1159611cf46d21e37a569d9446deb87f55d39bf07eca59702bd2696761",
-      "size": 3274,
+      "sha256": "5659c294eeb6cbb3f7fdf9dd26fc1256a9552b0f3485bb5b0138e72e03a55d64",
+      "size": 3299,
       "mode": "100644"
     },
     "assets/js/core/menu.js": {
@@ -28,52 +28,52 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "bff074cccaa6492d144beaf06731350e8ee6bda560cc9b9d263714ff3d007538",
-      "size": 2119,
+      "sha256": "20f23192cafeaa3f09f8928f6aad5d3c4336fc7e30516fb8aee2b086cdb4265d",
+      "size": 2132,
       "mode": "100644"
     },
     "content/community/_index.md": {
-      "sha256": "43d8996d8b468175723175caee2116c8634089f7f8a80c77322bf8fc3a00b4b4",
+      "sha256": "11ff823e1dca4d35936e4b169fa920348932b40ae48b6146a3bcce9b642bdb57",
       "size": 1414,
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "96b96214b59a3c2e5d6d4ff3fae144dc8431a96415c65645928c08850c377d73",
-      "size": 1695,
+      "sha256": "cbd97acda4a027ee648d8e13f3f4dc8b941a16f0b3bee0360baef404622b0f13",
+      "size": 1703,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "cadee2f29e66471d17c145706b69e22c62b34962794181729f1d06a4f32acedb",
-      "size": 1981,
+      "sha256": "1a461a60756de73c5d6d5c922e90f6a01657dbedce31808fccb03746da8ffd5e",
+      "size": 1979,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "24ca30fb50a961ed9e3c6ec45e20354b75ab0d2a4d74fa5a2b9fb5265cd6b43f",
+      "sha256": "305d7908d5eb514eb9a2886c43ef573f03ebec53ce4dafa69b25add6b9d9a7b9",
       "size": 2811,
       "mode": "100644"
     },
     "content/downloads/_index.md": {
-      "sha256": "8aa57b49aa207630fa10c0c00d1fd4ae70bda611c87bcc4e30248a929c8d4162",
-      "size": 2098,
+      "sha256": "60889af1cddd92c9a60106ff6e9ca171be087bb99463cbe5362ff24f35a81b01",
+      "size": 2015,
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "ae5902187a332c99be1f354c74e3abca15ea4bfb04afd4d91653972f4f60f403",
-      "size": 2299,
+      "sha256": "886c454975b64f1a22af33a0a88c27dbe14c95fd3e11184aef65787350813f56",
+      "size": 2315,
       "mode": "100644"
     },
     "content/legal/_index.md": {
-      "sha256": "fb187ea9c9d502042a86d0f61a3263fc21fd49675817aa266fd6ddc2b860036e",
+      "sha256": "6ad43fe25b6ff6157a481a1a7af65935c4a7d5094238852eee0a5aae6dff6b23",
       "size": 1915,
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "218af55b774d2dd06efc9c15278fc5440a021e0fd9d4674c1a4c27e34476f108",
-      "size": 1740,
+      "sha256": "6a4c83d07e10740649102d63c39cc08c762a7377116872236efd981767a24034",
+      "size": 1718,
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "8d7198610768a9fae3b7b1bbf0196f048ddfed14b634279dce13bfb29a1c9569",
+      "sha256": "5cbf00a582e9881880858f2a2420f81b2e4711ee9d37f3820e5d4c51d1bc7576",
       "size": 2114,
       "mode": "100644"
     },
@@ -93,8 +93,8 @@
       "mode": "100644"
     },
     "hugo.yaml": {
-      "sha256": "c62704e57efacb80b64e4fb2af98715bd5d217554ae3a8fddfa0692a29ca4d67",
-      "size": 2125,
+      "sha256": "c86dcdfb3adade408f8e0358ba77969c7cd05f55dd1fabba6b2f9f17447a4b22",
+      "size": 2158,
       "mode": "100644"
     },
     "layouts/404.html": {
@@ -117,14 +117,19 @@
       "size": 602,
       "mode": "100644"
     },
+    "layouts/_partials/custom/head-end.html": {
+      "sha256": "244a05995345ea22042fd91a3555ce22568d500f763397916e3e821c439929e0",
+      "size": 632,
+      "mode": "100644"
+    },
     "layouts/_partials/favicons.html": {
       "sha256": "d169a072c40ecc8f5288233d75a1129157627934521850c275c42aa51a332426",
       "size": 208,
       "mode": "100644"
     },
     "layouts/home.html": {
-      "sha256": "ee8f9fc6858ee48d03fbc114e8f7d136d2a13dd13650fe33a07f44db0349c858",
-      "size": 1314,
+      "sha256": "8befe56abc71f3a021ee67bc3df78f63a1df0f22eb515336b6ab21c7ffa8a534",
+      "size": 1303,
       "mode": "100644"
     },
     "quality/dependencies.json": {
@@ -143,7 +148,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "dbcb77d2999a58239f7b9d779a263dd9c9b9721459d517f4d72367887cbb63a0",
+      "sha256": "a3bea8cab6f7a3618bb69f9bde89c91b89c141e97f69c66f4884c390161522be",
       "size": 8462,
       "mode": "100644"
     },
@@ -203,8 +208,8 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "c18ae832e32d070b0ce31ebcc6c98b56547f8061368e35f13c22087673fde467",
-      "size": 17416,
+      "sha256": "03626241a8a9aa15442c024e8b83447f0190fe33885493a1e7c351dd837c7247",
+      "size": 18294,
       "mode": "100644"
     },
     "tools/test_publication.py": {
@@ -213,10 +218,10 @@
       "mode": "100644"
     },
     "tools/test_site.py": {
-      "sha256": "4c935d5d813805979f49d7f0b3ec8b020b99fca08f9fb6cb302d64757fbb7903",
-      "size": 19566,
+      "sha256": "4a85178a14821ae2c4ff9d123a822e41d00e806ca0f45efa085e9647d1a001a4",
+      "size": 21604,
       "mode": "100644"
     }
   },
-  "reviewed_at": "2026-11-10"
+  "reviewed_at": "2026-11-11"
 }

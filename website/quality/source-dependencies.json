@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "canonical_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55",
+  "canonical_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3",
   "pages": [
     {
       "route": "/",
@@ -9,28 +9,28 @@
         "page.home"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "README.md",
-          "sha256": "03d71bc5f5d156db7ef8bbcad6fa3db022c7eff10765e4f5548dc3912c98cf51",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "1b001f86d665e53e79076f55bf8e6d8728e7acd14c08f1e9a678bb2f60a97b3a",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/INSTALL.md",
-          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "80315349c31caead4db9857a495ce4d0f23cb552adeedc3882e01845c6b68cd1",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/branding.md",
           "sha256": "ae49771aca611b92f0b750fa53cf5c7bffc01573e370e93920da362da4a6d1ca",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -41,18 +41,18 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "90047d2c9c21646a86a3a78f8c6875e0b99326b569a29c013ed48589bef8f027",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "43cca3fb1d07ac9e5e2fbaac0148627baa14bc93f2db8472eb64b01d5337602e",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -63,18 +63,18 @@
         "page.docs"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/INSTALL.md",
-          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "80315349c31caead4db9857a495ce4d0f23cb552adeedc3882e01845c6b68cd1",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -85,18 +85,18 @@
         "page.docs.getting-started"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/INSTALL.md",
-          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "80315349c31caead4db9857a495ce4d0f23cb552adeedc3882e01845c6b68cd1",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -107,18 +107,18 @@
         "page.docs.getting-started.first-project"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/INSTALL.md",
-          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "80315349c31caead4db9857a495ce4d0f23cb552adeedc3882e01845c6b68cd1",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -129,23 +129,23 @@
         "page.downloads"
       ],
       "status": "historical",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/INSTALL.md",
-          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "80315349c31caead4db9857a495ce4d0f23cb552adeedc3882e01845c6b68cd1",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/published-release-tags.txt",
           "sha256": "936ee6dc277748fe57ee8c830ecfbf91f1dbfcb0b8df9fb9b5969b67a1b67076",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/releases/v1.1.0-alpha.2.md",
           "sha256": "2e99127dd991481cffa6182bf42ad3e54256d33e0e097bdb71882249a04041b9",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -156,18 +156,18 @@
         "page.roadmap"
       ],
       "status": "planned",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "90047d2c9c21646a86a3a78f8c6875e0b99326b569a29c013ed48589bef8f027",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "43cca3fb1d07ac9e5e2fbaac0148627baa14bc93f2db8472eb64b01d5337602e",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
           "sha256": "93375cc369c03aa9d1ee09496db86eeeaf268c77379dc9ca99b276655f821fc8",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -178,18 +178,18 @@
         "page.community"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "README.md",
-          "sha256": "03d71bc5f5d156db7ef8bbcad6fa3db022c7eff10765e4f5548dc3912c98cf51",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "1b001f86d665e53e79076f55bf8e6d8728e7acd14c08f1e9a678bb2f60a97b3a",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/SECURITY.md",
-          "sha256": "937348bc13edf900f7aa71628cfc310e173ae09c715bc7273c84dd8889093d7e",
-          "reviewed_commit": "fa29242a598f5c7893607c1a8130f83535e694c5"
+          "sha256": "9438fcfd623429db45e4e08708af785f3c8c99e4f7cbc0db4b0e1ebed16f81cd",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -205,13 +205,13 @@
       "dependencies": [
         {
           "path": "docs/SECURITY.md",
-          "sha256": "937348bc13edf900f7aa71628cfc310e173ae09c715bc7273c84dd8889093d7e",
-          "reviewed_commit": "fa29242a598f5c7893607c1a8130f83535e694c5"
+          "sha256": "9438fcfd623429db45e4e08708af785f3c8c99e4f7cbc0db4b0e1ebed16f81cd",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "sha256": "ebcfea495662469d9f7cf1b24737a469da587b550f75a37d3fee3da60ad054d5",
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     },
@@ -222,18 +222,18 @@
         "page.legal"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-10",
+      "last_reviewed": "2026-11-11",
       "reviewer": "GoPMgr website implementation source review",
       "dependencies": [
         {
           "path": "LICENSE.md",
           "sha256": "45ad449ea221e1ab6b1334c80606c82fb23f3a0313f3261ad1c48d0cab4e99f2",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         },
         {
           "path": "docs/branding.md",
           "sha256": "ae49771aca611b92f0b750fa53cf5c7bffc01573e370e93920da362da4a6d1ca",
-          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+          "reviewed_commit": "fc70b50d41e5e842b541e88686604ce26221d4c3"
         }
       ]
     }

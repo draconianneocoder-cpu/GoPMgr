@@ -5,15 +5,15 @@ weight = 60
 layout = "wide"
 [params]
 status = "planned"
-applies_to = "Development snapshot 1ca5ffaed634"
-last_reviewed = "2026-11-10"
+applies_to = "Development snapshot fc70b50d41e5"
+last_reviewed = "2026-11-11"
 claim_ids = ["page.roadmap"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/ROADMAP.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md"
 +++
 
 <!--
@@ -23,7 +23,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Development source
 
-Local project storage, scheduling, earned-value analysis, reports and exports exist in the reviewed source. See [capabilities](../features/) for applicability, not native-support guarantees.
+Local project storage, scheduling, earned-value analysis, reports and exports exist in the reviewed source. See [capabilities](../features/) for what each one covers. None is a guarantee of support on your platform.
 
 ## Current priorities
 
@@ -35,6 +35,6 @@ High-scale scheduling is a direction, not an achieved performance benchmark. No 
 
 ## Historical decisions
 
-DuckDB was retired in favor of Go-native analytics. The DataFusion spike concluded without adoption. This website does not advertise either as an integrated analytics engine.
+DuckDB was retired in favor of Go-native analytics. The DataFusion spike concluded without adoption. Neither is part of GoPMgr.
 
-[Read the complete canonical roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/ROADMAP.md).
+[Read the complete canonical roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/ROADMAP.md).

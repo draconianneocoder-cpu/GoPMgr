@@ -4,15 +4,15 @@ description = "Create a small fictional workspace through the Launchpad."
 weight = 40
 [params]
 status = "development"
-applies_to = "Development snapshot 1ca5ffaed634"
-last_reviewed = "2026-11-10"
+applies_to = "Development snapshot fc70b50d41e5"
+last_reviewed = "2026-11-11"
 claim_ids = ["page.docs.getting-started.first-project"]
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/user-guide.md"
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/INSTALL.md"
 +++
 
 <!--

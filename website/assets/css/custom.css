@@ -5,7 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later */
 body{color:var(--site-ink);background:var(--site-surface)}
 .content{font-size:1.05rem;line-height:1.7}.content a{color:var(--site-accent);text-underline-offset:.2em}
 .site-home{max-width:76rem;margin:auto;padding:0 2rem 3rem}.site-hero{display:grid;grid-template-columns:1.5fr 1fr;align-items:center;gap:3rem;padding:4.5rem 0 3rem}
-.site-kicker{font-size:.78rem;letter-spacing:.17em;font-weight:700;color:var(--site-accent);margin-bottom:1.25rem}
+.site-kicker{font-size:.78rem;letter-spacing:.17em;text-transform:uppercase;font-weight:700;color:var(--site-accent);margin-bottom:1.25rem}
 .site-hero h1{font-size:clamp(2.4rem,5vw,4.4rem);font-weight:750;line-height:1.07;letter-spacing:-.045em;margin-bottom:1.5rem}
 .site-lede{max-width:34rem;font-size:1.25rem;line-height:1.6;color:var(--site-muted)}
 .site-hero figure{text-align:center}.site-hero img{width:100%;max-width:22rem;height:auto;margin:auto;border-radius:1rem}

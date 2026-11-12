@@ -5,6 +5,7 @@ title: GoPMgr
 locale: en-US
 enableGitInfo: false
 enableRobotsTXT: true
+disableHugoGeneratorInject: true
 buildDrafts: false
 buildFuture: false
 buildExpired: false

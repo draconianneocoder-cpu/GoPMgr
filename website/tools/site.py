@@ -26,6 +26,10 @@ ROUTES = ('/', '/features/', '/docs/', '/docs/getting-started/',
           '/community/', '/security/', '/legal/')
 PREFIX = '/GoPMgr/'
 BASE = 'https://draconianneocoder-cpu.github.io' + PREFIX
+# Must match layouts/_partials/custom/head-end.html. A page that loads script,
+# styles or data from another origin, or runs inline script, breaks under it.
+CSP = ("default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'")
 
 
 def require(condition, message):
@@ -130,7 +134,7 @@ def canonical_check():
 class Page(HTMLParser):
     def __init__(self, text):
         super().__init__(convert_charrefs=True)
-        self.ids, self.refs, self.resources, self.canonical = set(), [], [], []
+        self.ids, self.refs, self.resources, self.canonical, self.csp = set(), [], [], [], []
         self.h1 = self.main = self.status = 0
         self.errors = []
         self.feed(text)
@@ -154,6 +158,14 @@ class Page(HTMLParser):
             self.refs.append(a['href'])
         if tag == 'script' and a.get('src'):
             self.resources.append(a['src'])
+        elif tag == 'script':
+            self.errors.append('inline script')
+        if tag == 'base':
+            self.errors.append('base element')
+        if tag == 'meta' and (a.get('http-equiv') or '').lower() == 'content-security-policy':
+            self.csp.append(a.get('content'))
+        if tag == 'meta' and (a.get('name') or '').lower() == 'generator':
+            self.errors.append('generator version disclosed')
         if tag in ('img', 'source', 'audio', 'video') and a.get('src'):
             self.resources.append(a['src'])
         if a.get('srcset'):
@@ -176,6 +188,7 @@ def output_check(public):
         canonical = BASE + (name[:-10] if name.endswith('index.html') else name)
         require(page.canonical == [canonical], f'{name}: incorrect canonical URL')
         require(page.h1 == 1 and page.main == 1, f'{name}: expected one h1 and main')
+        require(page.csp == [CSP], f'{name}: missing or altered content security policy')
         require(name == '404.html' or page.status == 1, f'{name}: missing rendered status')
         for ref in page.resources:
             require(not urlsplit(ref).scheme and not ref.startswith('//'), f'external page-load resource: {ref}')

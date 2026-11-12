@@ -34,13 +34,17 @@ class InventoryTests(unittest.TestCase):
 
 
 class OutputTests(unittest.TestCase):
+    @staticmethod
+    def policy(content=None):
+        return f'<meta http-equiv="Content-Security-Policy" content="{content or site.CSP}">'
+
     def fixture(self, root):
         for route in site.ROUTES:
             page = root / (route.lstrip('/') + 'index.html')
             page.parent.mkdir(parents=True, exist_ok=True)
             canonical = site.BASE + route.lstrip('/')
-            page.write_text(f'<link rel="canonical" href="{canonical}"><main><h1>Fixture</h1><aside data-status="development"></aside><a href="/GoPMgr/docs/">Docs</a></main>')
-        (root / '404.html').write_text(f'<link rel="canonical" href="{site.BASE}404.html"><main><h1>Missing</h1></main>')
+            page.write_text(f'{self.policy()}<link rel="canonical" href="{canonical}"><main><h1>Fixture</h1><aside data-status="development"></aside><a href="/GoPMgr/docs/">Docs</a></main>')
+        (root / '404.html').write_text(f'{self.policy()}<link rel="canonical" href="{site.BASE}404.html"><main><h1>Missing</h1></main>')
         (root / '.nojekyll').touch()
         (root / 'flexsearch.js').write_text('// fixture')
         (root / 'search.json').write_text('{}')
@@ -75,6 +79,37 @@ class OutputTests(unittest.TestCase):
                 page.write_text(page.read_text() + fragment)
                 with self.assertRaises(ValueError):
                     site.output_check(root)
+
+    def test_page_policy_faults_name_their_cause(self):
+        """Each page carries exactly the reviewed policy and nothing that defeats it."""
+        added = {
+            'inline script': '<script>evil()</script>',
+            'base element': '<base href="https://example.org/">',
+            'generator version disclosed': '<meta name="generator" content="Hugo 0.169.0">',
+            'content security policy': self.policy("default-src *"),
+        }
+        for message, fragment in added.items():
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.fixture(root)
+                page = root / 'docs/index.html'
+                page.write_text(page.read_text() + fragment)
+                with self.assertRaisesRegex(ValueError, message):
+                    site.output_check(root)
+        replaced = {
+            'absent': '',
+            'script from any origin': self.policy(site.CSP.replace("script-src 'self'", 'script-src *')),
+            'inline script allowed': self.policy(site.CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")),
+        }
+        for label, policy in replaced.items():
+            for name in ('index.html', '404.html'):
+                with self.subTest(label=label, name=name), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    self.fixture(root)
+                    page = root / name
+                    page.write_text(page.read_text().replace(self.policy(), policy))
+                    with self.assertRaisesRegex(ValueError, name + ': missing or altered content security policy'):
+                        site.output_check(root)
 
     def test_stale_output_and_css_network(self):
         for name, value in [('stale.html', '<h1>Stale</h1>'), ('x.css', 'a{background:url(https://example.org/a)}')]:
@@ -310,8 +345,10 @@ class PublicClaimTests(unittest.TestCase):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(original_root / dep, dest)
             page = copied / 'content/_index.md'
-            page.write_text(page.read_text().replace(
-                '1ca5ffaed63446b35b197a6083d03899c0143f55', '0' * 40, 1))
+            text = page.read_text()
+            # Read the pin from the ledger so a re-pin cannot turn this into a no-op.
+            self.assertIn(ledger['canonical_commit'], text)
+            page.write_text(text.replace(ledger['canonical_commit'], '0' * 40, 1))
             with patch.object(site, 'SITE', copied), patch.object(site, 'ROOT', root):
                 (copied / 'quality/reviewed-inputs.json').write_text(
                     json.dumps({'files': site.input_inventory()}))

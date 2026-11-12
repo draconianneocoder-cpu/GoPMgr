@@ -6,20 +6,20 @@ layout = "wide"
 [params]
 status = "historical"
 applies_to = "Historical v1.1.0-alpha.2"
-last_reviewed = "2026-11-10"
+last_reviewed = "2026-11-11"
 claim_ids = ["page.downloads"]
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/published-release-tags.txt"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/published-release-tags.txt"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/published-release-tags.txt"
 [[params.sources]]
 label = "Published alpha.2 notes"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.2"
 [[params.sources]]
 label = "v1.1.0-alpha.2 release record"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1ca5ffaed63446b35b197a6083d03899c0143f55/docs/releases/v1.1.0-alpha.2.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/releases/v1.1.0-alpha.2.md"
 +++
 
 <!--
@@ -36,11 +36,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 ## Before downloading
 
 - Back up existing GoPMgr data and use fictional test projects.
-- Select an asset only after reading its release-specific operating-system requirements and evidence gaps.
+- Read the release notes for your operating system's requirements and known gaps before choosing a file.
 - The published packages are unsigned.
 - The macOS DMG is not notarized.
 - Windows has no Authenticode signature.
-- A matching SHA-256 digest detects a transfer mismatch. It does not establish publisher identity or replace platform trust checks.
-- The current Wails v3 development source is newer than these Wails v2 artifacts. Its native qualification remains separate.
+- A matching SHA-256 digest shows the file arrived intact. It does not prove who published it.
+- These packages were built with Wails v2. The current source uses Wails v3 and has not yet been qualified as a release.
 
-This site deliberately links the complete published release rather than guessing asset names or presenting an automatic “latest” installer.
+This page links the whole release, not individual files, so you always see the notes that go with them.

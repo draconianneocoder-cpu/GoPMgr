@@ -81,6 +81,20 @@ The shell helper also accepts `--parent-repository /absolute/local/mirror`
 and `--expected-tip <observed SHA>`; the candidate is an isolated local Git tree.
 No production network transport is implemented or activated.
 
+## What a visitor's browser may load
+
+Every page carries a content security policy in a `<meta>` tag, set in
+`layouts/_partials/custom/head-end.html`. It allows scripts, styles, images,
+fonts and data from this site only, and no inline script. The same text is the
+`CSP` constant in `tools/site.py`; the build fails if any page lacks it, has a
+second policy, runs inline script, sets `<base>` or names the Hugo version.
+Change both places together and check search and the theme switch in a browser.
+
+GitHub Pages cannot send response headers, so two protections are missing: the
+site can be shown inside a frame on another site, and there is no HSTS header
+of its own (GitHub serves `github.io` over HTTPS only). The site has no forms,
+accounts or actions, so framing has nothing to hijack.
+
 The theme import explicitly mounts assets, layouts, translations and icon data.
 Its unused stock static branding and web manifest are excluded; the public
 site uses the repository's Bobby assets and a local PNG favicon.
