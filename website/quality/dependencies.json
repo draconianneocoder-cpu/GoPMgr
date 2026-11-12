@@ -9,6 +9,13 @@
         "archive_url": "https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_extended_0.169.0_darwin-universal.pkg",
         "archive_sha256": "d48dfd5adab308f941e83e48c5ba925747cf383395972278942cf526ad27cf38",
         "executable_sha256": "e2130d2c921ded8068348673de56886512385c33e535983113828f3a64f0ebc9"
+      },
+      "linux/amd64": {
+        "archive_url": "https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_extended_0.169.0_linux-amd64.tar.gz",
+        "archive_sha256": "c41672a0725d307758a132bc94a962e59760eb33f9ba08c991b81f9881d6fa7d",
+        "executable_sha256": "55dd6aceb72b5fafaa260a22fbb99a8954f7f85f09068571b45422d1d2375d63",
+        "checksums_url": "https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_0.169.0_checksums.txt",
+        "checksums_sha256": "afb63c866f9f8db1ee6a955e1b0adfa2e59507d2d8b0d10508cbe8844148a468"
       }
     }
   },

@@ -1,0 +1,72 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+# Website production verification in CI
+
+The owner authorized this next slice on 2026-11-12 after PR 206: extend the
+existing website check to build and check the site on every pull request and
+main push, keeping all existing checks. This supersedes the checker-only
+restriction for that job. It authorizes no publication or repository settings.
+
+## Contract
+
+The existing `Website checks (source pins + output rules)` job retains its name,
+runner and full-history checkout with credentials disabled. It runs checker
+tests, sets up the root-pinned Go without a shared cache, then runs
+`make website-ci`. No application job, required check, workflow trigger or
+application build prerequisite changes. There is no deployment job or upload.
+
+The Make target calls `website/tools/ci.sh`. It provisions Hugo Extended
+0.169.0 for Linux AMD64, runs the existing production builder, parses its JSON
+result, and checks the exact returned report. Errors propagate; it never finds
+an artifact by directory age. The module remains isolated with `GOWORK=off`.
+
+`website/quality/dependencies.json` records both archive and extracted executable
+SHA-256 values. Provisioning checks the archive before parsing, permits only the
+expected regular archive members, bounds download and expansion, and verifies
+the executable before an atomic task-local installation. It never uses
+`extractall` or installs a system tool. Every cached executable is rechecked;
+a symlink, checksum mismatch or non-executable file fails closed.
+
+Linux release identity was checked against the official release API digest and
+`hugo_0.169.0_checksums.txt` before adding the pin. Download redirects are limited
+to HTTPS GitHub release hosts. The existing macOS pin is unchanged.
+
+## Local evidence and limits
+
+On 2026-11-12 a disposable full-history checkout on upstairsserver, native
+Ubuntu 26.04.1 x86_64, passed `make website-tests website-ci` with Python 3.14.4,
+task-local Go 1.27.4 and the approved Linux Hugo. All 33 checker/provisioning tests
+passed, then the actual production artifact passed its output checks. This is
+local Ubuntu evidence, not a hosted Actions run or native application release.
+
+The provisioning/orchestration tests cover verified installation, corrupted
+archive and binary bytes, poisoned cache, symlinks/hardlinks, ambiguous archive
+paths, expansion limits, URL and redirect policy, download bounds, exact report forwarding and failed build,
+JSON or check propagation. Three disposable faults disabling archive, binary
+and cache checksum guards were each detected by their intended assertion.
+All non-website workflow jobs were compared byte-for-byte to the base revision.
+The macOS build produced the same output digest as Ubuntu:
+`8f069cca1d5f8baf8662929498a81af0b493555d9432120a3ccd1a4b8931a170`.
+Local `make verify` passed without skip flags after actual Wails binding
+regeneration and frontend setup. Root config tests and REUSE passed. The
+repository's pinned `workflow-lint` and `workflow-security` checks passed
+(three workflows, no findings), as did ShellCheck on the new wrapper.
+Independent source review approved this bounded slice.
+
+Hosted execution remains unverified until the reviewed change is pushed under
+separate authority. The website check is not made required by this source change.
+No acceptance record is issued; generated reports still say Stage P BLOCKED.
+
+## Next publication slice
+
+GitHub Pages remains off. Before activating artifact deployment, resolve the
+manual accessibility checks, create artifact-bound acceptance evidence, and
+verify the protected environment exists with main-only deployment and an
+explicit reviewer/self-review policy. The future privileged deployment job
+must not check out source or rebuild. Pin the artifact to its main SHA/run,
+fail closed on missing or unsuccessful required checks (including any separate
+CodeQL gate), reject stale candidates, and retain accepted rollback artifacts.
+Update the existing `gh-pages` architecture before adopting the artifact route.
+Environment approval is not a substitute for those checks.

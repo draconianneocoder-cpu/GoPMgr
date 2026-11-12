@@ -352,7 +352,7 @@ clean: ## Remove build artifacts while preserving source-owned platform assets.
 	rm -rf build/bin/ build/packages/ build/macos/ bin/ frontend/dist/ frontend/wailsjs/
 
 # Companion website. Opt-in only; never prerequisites of application/release targets.
-.PHONY: website-build website-tests website-check website-prepare-publication
+.PHONY: website-build website-tests website-check website-prepare-publication website-ci
 website-build: ## Build the companion site into an ignored temporary directory.
 	bash website/tools/build.sh
 
@@ -364,3 +364,6 @@ website-check: website-tests ## Check a build. Set WEBSITE_REPORT to the report 
 
 website-prepare-publication: ## Prepare a local commit. Set WEBSITE_REPORT. Fails closed without acceptance.
 	bash website/tools/prepare-publication.sh --report "$(WEBSITE_REPORT)"
+
+website-ci: ## Provision pinned Linux Hugo, build production output and check that exact artifact.
+	bash website/tools/ci.sh
