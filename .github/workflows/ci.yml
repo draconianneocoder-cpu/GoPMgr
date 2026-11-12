@@ -50,6 +50,21 @@ env:
   WAILS3: .tmp/wails-v3/bin/wails3
 
 jobs:
+  website:
+    name: Website checks (source pins + output rules)
+    runs-on: ubuntu-26.04
+    # Tests the companion site's checkers only. It does not run Hugo, build
+    # the site or publish anything. The source-pin tests read each cited file
+    # at the commit it was reviewed at, so this job needs the full history.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Website checker tests
+        run: make website-tests
+
   verify:
     name: Verify (config + Wails pin + code-map + Go tests + frontend checks)
     runs-on: ubuntu-26.04

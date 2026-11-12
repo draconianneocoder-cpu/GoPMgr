@@ -53,7 +53,7 @@ record or an evidence file. Adopted on 2026-11-11
 | Website pages pin the repository files they cite by commit and hash | Implemented (PR 203). A change to a cited file fails the site build until the page is reviewed and re-pinned | `website/quality/source-dependencies.json` |
 | Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame | `website/tools/site.py` |
 | Website accessibility | Recorded evidence 2026-11-12: axe 4.14.0 reports no violation on 11 pages, light and dark, at four widths; keyboard use of the skip link, search and menus checked. Unverified: a screen reader, browser zoom at 200% and 400% | PR 204 |
-| Website tests in hosted CI | Open: the 25 website tests run only through `make website-check`; hosted CI runs config-check's website rules, not these | [Makefile](../Makefile) |
+| Website tests in hosted CI | Implemented: the CI job "Website checks" runs `make website-tests` on Ubuntu 26.04 with full history. It tests the checkers; no hosted job runs Hugo or builds the site. Not a required check for merging | `.github/workflows/ci.yml` |
 | Website build on Linux | Unverified: the Hugo executable is recorded for macOS ARM64 only | `website/quality/dependencies.json` |
 | `main` protected on GitHub: pull requests only, merge commits only, no force-push or deletion, four required checks | Implemented 2026-11-12 as repository ruleset "Protect main", with no bypass list. A setting, not a file in this repository | GitHub repository settings |
 | GitHub Actions limited to pinned or allow-listed actions | Open: the repository allows any action | GitHub repository settings |

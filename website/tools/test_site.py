@@ -362,6 +362,15 @@ class PublicClaimTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, 'source link is not a reviewed dependency'):
                         site.canonical_check()
 
+    def test_clone_without_the_reviewed_commit_says_so(self):
+        """A shallow clone fails with the cause, not a bare git exit status."""
+        def missing(args, **kwargs):
+            raise site.subprocess.CalledProcessError(128, args)
+
+        with patch.object(site.subprocess, 'check_output', side_effect=missing):
+            with self.assertRaisesRegex(ValueError, 'is not in this clone; fetch the full history'):
+                site.canonical_check()
+
     def test_getting_started_keeps_old_recovery_codes_until_confirmation(self):
         page = (site.SITE / 'content/docs/getting-started/_index.md').read_text()
         body = page.split('+++', 2)[-1]

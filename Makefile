@@ -352,12 +352,14 @@ clean: ## Remove build artifacts while preserving source-owned platform assets.
 	rm -rf build/bin/ build/packages/ build/macos/ bin/ frontend/dist/ frontend/wailsjs/
 
 # Companion website. Opt-in only; never prerequisites of application/release targets.
-.PHONY: website-build website-check website-prepare-publication
+.PHONY: website-build website-tests website-check website-prepare-publication
 website-build: ## Build the companion site into an ignored temporary directory.
 	bash website/tools/build.sh
 
-website-check: ## Check a build. Set WEBSITE_REPORT to the report path.
+website-tests: ## Test the site's checkers. Needs Python 3.11 and full Git history, not Hugo.
 	python3 -B -m unittest discover -s website/tools -p 'test_*.py'
+
+website-check: website-tests ## Check a build. Set WEBSITE_REPORT to the report path.
 	bash website/tools/check.sh --report "$(WEBSITE_REPORT)"
 
 website-prepare-publication: ## Prepare a local commit. Set WEBSITE_REPORT. Fails closed without acceptance.

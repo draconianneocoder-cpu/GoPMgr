@@ -114,7 +114,13 @@ def canonical_check():
             source = ROOT / dep['path']
             require('..' not in Path(dep['path']).parts and not source.is_symlink(), 'unsafe dependency')
             require(source.is_file() and digest(source) == dep['sha256'], f'canonical source drift: {dep["path"]}')
-            historical = subprocess.check_output(['git', 'show', f'{dep["reviewed_commit"]}:{dep["path"]}'], cwd=ROOT)
+            try:
+                historical = subprocess.check_output(
+                    ['git', 'show', f'{dep["reviewed_commit"]}:{dep["path"]}'], cwd=ROOT, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                # A shallow clone has the file but not the commit it was reviewed at.
+                raise ValueError(f'reviewed commit {dep["reviewed_commit"][:12]} of {dep["path"]} is not in this clone; '
+                                 'fetch the full history') from None
             require(hashlib.sha256(historical).hexdigest() == dep['sha256'], 'reviewed commit does not match source')
         for sha, raw in re.findall(
                 r'https://github.com/draconianneocoder-cpu/GoPMgr/blob/([0-9a-f]{40})/([^)\s\"\']+)', text):

@@ -24,8 +24,12 @@ make website-prepare-publication WEBSITE_REPORT=/absolute/path/to/build-report.j
 
 The final command is local only and fails closed while publication acceptance is
 blocked. No website command activates Actions, pushes, changes Pages settings or
-modifies the source checkout's Git index or refs. There is no active website
-workflow. Existing application assurance jobs remain unconditional.
+modifies the source checkout's Git index or refs. No workflow builds or
+publishes the site. One CI job runs `make website-tests`, which tests the
+checkers without Hugo. Existing application assurance jobs remain unconditional.
+
+These commands need the full Git history: each page is checked against the
+commit its sources were reviewed at, which a shallow clone does not have.
 
 Each build verifies canonical-source hashes, complete reviewed website inputs,
 the exact Hugo executable, isolated module graph and module integrity. It records
