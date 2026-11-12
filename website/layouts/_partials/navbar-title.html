@@ -1,0 +1,12 @@
+{{/* SPDX-FileCopyrightText: 2023 Xin
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: MIT */}}
+{{/* Adapted from Hextra v0.13.0 layouts/_partials/navbar-title.html. The site
+     title is always shown beside the logo, so the logo is decorative: an empty
+     alt keeps the link's name "GoPMgr", not "Logo GoPMgr". */}}
+{{- $logo := .Site.Params.navbar.logo -}}
+<a class="hx:flex hx:items-center hx:hover:opacity-75 hx:ltr:mr-auto hx:rtl:ml-auto" href="{{ .Site.Home.RelPermalink }}">
+  <img class="hx:mr-2 hx:block hx:dark:hidden" src="{{ $logo.path | relURL }}" alt="" height="{{ $logo.height }}" width="{{ $logo.width }}" />
+  <img class="hx:mr-2 hx:hidden hx:dark:block" src="{{ $logo.dark | relURL }}" alt="" height="{{ $logo.height }}" width="{{ $logo.width }}" />
+  <span class="hx:mr-2 hx:font-extrabold hx:inline hx:select-none">{{- .Site.Title -}}</span>
+</a>
