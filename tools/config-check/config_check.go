@@ -37,6 +37,8 @@ type configSpec struct {
 }
 
 var supportedConfigs = []configSpec{
+	{path: "website/hugo.yaml", format: formatYAML, validate: validateWebsiteHugo},
+	{path: "website/data/release-records.yaml", format: formatYAML, validate: validateWebsiteRelease},
 	// Python provisioning checks acquisition policy; this registry owns format inventory.
 	{path: "mise.toml", format: formatTOML},
 	{path: "mise.lock", format: formatTOML},
@@ -598,4 +600,55 @@ func integerValue(value any) (int64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// Website settings remain opt-in and cannot relax the application workflow checks.
+func validateWebsiteHugo(config map[string]any) error {
+	if config["baseURL"] != "https://draconianneocoder-cpu.github.io/GoPMgr/" {
+		return fmt.Errorf("website baseURL must retain the GitHub Pages project prefix")
+	}
+	module, _ := stringMap(config["module"])
+	imports, ok := module["imports"].([]any)
+	if !ok || len(imports) != 1 {
+		return fmt.Errorf("website must import exactly the pinned Hextra module")
+	}
+	item, _ := stringMap(imports[0])
+	if item["path"] != "github.com/imfing/hextra" {
+		return fmt.Errorf("unexpected website module")
+	}
+	version, _ := stringMap(module["hugoVersion"])
+	if version["min"] != "0.169.0" || version["extended"] != true {
+		return fmt.Errorf("website requires Hugo Extended 0.169.0")
+	}
+	markup, _ := stringMap(config["markup"])
+	goldmark, _ := stringMap(markup["goldmark"])
+	renderer, _ := stringMap(goldmark["renderer"])
+	if renderer["unsafe"] != false {
+		return fmt.Errorf("website unsafe Markdown must remain disabled")
+	}
+	params, _ := stringMap(config["params"])
+	search, _ := stringMap(params["search"])
+	flex, _ := stringMap(search["flexsearch"])
+	if search["enable"] != true || search["type"] != "flexsearch" || flex["js"] != "js/vendor/flexsearch.bundle.min.js" {
+		return fmt.Errorf("website search must use vendored local FlexSearch")
+	}
+	security, _ := stringMap(config["security"])
+	http, _ := stringMap(security["http"])
+	urls, ok := http["urls"].([]any)
+	if security["enableInlineShortcodes"] != false || !ok || len(urls) != 0 {
+		return fmt.Errorf("website inline shortcodes and template HTTP must remain disabled")
+	}
+	return nil
+}
+
+func validateWebsiteRelease(config map[string]any) error {
+	// The initial site describes one historical release. Updating this record
+	// requires reviewing the matching evidence and public downloads page together.
+	if config["tag"] != "v1.1.0-alpha.2" || config["prerelease"] != true ||
+		config["published_at"] != "2026-09-08T22:00:32Z" ||
+		config["source_commit"] != "ad5c134a13335f5bfa69e147d7bc7390f5d0a76b" ||
+		config["release_url"] != "https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.2" {
+		return fmt.Errorf("website release record differs from the reviewed historical release")
+	}
+	return nil
 }

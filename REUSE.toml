@@ -411,3 +411,34 @@ path = "frontend/bindings/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Companion website metadata and copied distribution materials.
+[[annotations]]
+path = ["website/quality/*.json", "website/go.sum"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["website/static/branding/*.png", "website/static/licenses/Application-and-artwork.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "website/static/licenses/Documentation.txt"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GFDL-1.3-or-later"
+
+[[annotations]]
+path = "website/static/licenses/Hextra.txt"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2023 Xin"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["website/assets/js/vendor/flexsearch.bundle.min.js", "website/static/licenses/FlexSearch.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Thomas Wilkerling"
+SPDX-License-Identifier = "Apache-2.0"

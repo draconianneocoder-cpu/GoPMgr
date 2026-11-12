@@ -1,0 +1,14 @@
+{{/* Adapted from Hextra v0.13.0; add visible applicability to search titles.
+SPDX-FileCopyrightText: 2026 imfing
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: MIT */}}
+{{- $output := dict -}}
+{{- range where .Site.Pages "Kind" "in" (slice "page" "section") -}}
+  {{- if and (ne .Params.excludeSearch true) (ne .Content "") -}}
+    {{- $status := .Params.status | default "development" -}}
+    {{- $title := printf "%s · %s" .LinkTitle ($status | title) -}}
+    {{- $data := partial "utils/fragments" (dict "context" . "type" "content") -}}
+    {{- $output = $output | merge (dict .RelPermalink (dict "title" $title "data" $data)) -}}
+  {{- end -}}
+{{- end -}}
+{{- $output | jsonify -}}

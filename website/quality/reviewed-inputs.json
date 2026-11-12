@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "reviewer": "GoPMgr website implementation author",
+  "files": {
+    "README.md": {
+      "sha256": "86505cd6408da0894413e9f005a42a01a4503d259f4d4e4b25696e2373f29a81",
+      "size": 4901,
+      "mode": "100644"
+    },
+    "assets/css/custom.css": {
+      "sha256": "a0321a1159611cf46d21e37a569d9446deb87f55d39bf07eca59702bd2696761",
+      "size": 3274,
+      "mode": "100644"
+    },
+    "assets/js/core/menu.js": {
+      "sha256": "97cf26c41b0ebdb4eeac83bf110cf9c4ebaaca511def02beecc24f2acc53e7c3",
+      "size": 3306,
+      "mode": "100644"
+    },
+    "assets/js/vendor/flexsearch.bundle.min.js": {
+      "sha256": "433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c",
+      "size": 46087,
+      "mode": "100644"
+    },
+    "assets/json/search-data.json": {
+      "sha256": "494b1b9ef5817c97b43dbfb5030f032868a2a9f213ac24361f737e2230888482",
+      "size": 739,
+      "mode": "100644"
+    },
+    "content/_index.md": {
+      "sha256": "bff074cccaa6492d144beaf06731350e8ee6bda560cc9b9d263714ff3d007538",
+      "size": 2119,
+      "mode": "100644"
+    },
+    "content/community/_index.md": {
+      "sha256": "43d8996d8b468175723175caee2116c8634089f7f8a80c77322bf8fc3a00b4b4",
+      "size": 1414,
+      "mode": "100644"
+    },
+    "content/docs/_index.md": {
+      "sha256": "96b96214b59a3c2e5d6d4ff3fae144dc8431a96415c65645928c08850c377d73",
+      "size": 1695,
+      "mode": "100644"
+    },
+    "content/docs/getting-started/_index.md": {
+      "sha256": "cadee2f29e66471d17c145706b69e22c62b34962794181729f1d06a4f32acedb",
+      "size": 1981,
+      "mode": "100644"
+    },
+    "content/docs/getting-started/first-project.md": {
+      "sha256": "24ca30fb50a961ed9e3c6ec45e20354b75ab0d2a4d74fa5a2b9fb5265cd6b43f",
+      "size": 2811,
+      "mode": "100644"
+    },
+    "content/downloads/_index.md": {
+      "sha256": "8aa57b49aa207630fa10c0c00d1fd4ae70bda611c87bcc4e30248a929c8d4162",
+      "size": 2098,
+      "mode": "100644"
+    },
+    "content/features/_index.md": {
+      "sha256": "ae5902187a332c99be1f354c74e3abca15ea4bfb04afd4d91653972f4f60f403",
+      "size": 2299,
+      "mode": "100644"
+    },
+    "content/legal/_index.md": {
+      "sha256": "fb187ea9c9d502042a86d0f61a3263fc21fd49675817aa266fd6ddc2b860036e",
+      "size": 1915,
+      "mode": "100644"
+    },
+    "content/roadmap/_index.md": {
+      "sha256": "218af55b774d2dd06efc9c15278fc5440a021e0fd9d4674c1a4c27e34476f108",
+      "size": 1740,
+      "mode": "100644"
+    },
+    "content/security/_index.md": {
+      "sha256": "8d7198610768a9fae3b7b1bbf0196f048ddfed14b634279dce13bfb29a1c9569",
+      "size": 2114,
+      "mode": "100644"
+    },
+    "data/release-records.yaml": {
+      "sha256": "d093a44dac71860d0b33def3c746b49721f65462077ce3c04f73872ffb0e1e4e",
+      "size": 337,
+      "mode": "100644"
+    },
+    "go.mod": {
+      "sha256": "19c67c04530781c72e3c136342b55febabbc66e57426cd5bac53d70e80cf1204",
+      "size": 227,
+      "mode": "100644"
+    },
+    "go.sum": {
+      "sha256": "b5a8e0d98929a4d10933ff4e673e084f67b8136abb558a35eec5a75fccdf4e7c",
+      "size": 169,
+      "mode": "100644"
+    },
+    "hugo.yaml": {
+      "sha256": "c62704e57efacb80b64e4fb2af98715bd5d217554ae3a8fddfa0692a29ca4d67",
+      "size": 2125,
+      "mode": "100644"
+    },
+    "layouts/404.html": {
+      "sha256": "a09a607bbdb7d864beeee2b006ce33412c652324186ff937b550795f8954d592",
+      "size": 468,
+      "mode": "100644"
+    },
+    "layouts/_partials/breadcrumb.html": {
+      "sha256": "13f5b590db6773dbefcfd0ef2a87ce1dfee3ed4274fd2f0ddf6200459f5b3132",
+      "size": 1281,
+      "mode": "100644"
+    },
+    "layouts/_partials/custom/content-begin.html": {
+      "sha256": "bcba4261b6f5f359f0d38efe2a4e02469d17355693922b7191033c4623c5ebea",
+      "size": 512,
+      "mode": "100644"
+    },
+    "layouts/_partials/custom/footer.html": {
+      "sha256": "f0b4a5456a072d6043291f6cfe9c36471daf3f6253e185f1208cf45f47a29e57",
+      "size": 602,
+      "mode": "100644"
+    },
+    "layouts/_partials/favicons.html": {
+      "sha256": "d169a072c40ecc8f5288233d75a1129157627934521850c275c42aa51a332426",
+      "size": 208,
+      "mode": "100644"
+    },
+    "layouts/home.html": {
+      "sha256": "ee8f9fc6858ee48d03fbc114e8f7d136d2a13dd13650fe33a07f44db0349c858",
+      "size": 1314,
+      "mode": "100644"
+    },
+    "quality/dependencies.json": {
+      "sha256": "8111883124597536d5a85465a48a65c18bb37379cde330a3fc4fba964e8c7e8d",
+      "size": 1559,
+      "mode": "100644"
+    },
+    "quality/flexsearch-package.json": {
+      "sha256": "9d7aeb8eecedf692ed599828afc0b497c82354a2e1a8fcb18b6ab26bcc1683d9",
+      "size": 354,
+      "mode": "100644"
+    },
+    "quality/release-evidence.json": {
+      "sha256": "db00de550f136916ddb035f537bc15df9cbcb6d7a5a2c795da1962bc7c514c86",
+      "size": 1727,
+      "mode": "100644"
+    },
+    "quality/source-dependencies.json": {
+      "sha256": "dbcb77d2999a58239f7b9d779a263dd9c9b9721459d517f4d72367887cbb63a0",
+      "size": 8462,
+      "mode": "100644"
+    },
+    "static/branding/bobby-dark.png": {
+      "sha256": "3906b0a76c85892b47c9df1a6ae58a8d8aafc5c832ffbfcaf7083ab0bc715ca3",
+      "size": 31063,
+      "mode": "100644"
+    },
+    "static/branding/bobby-hero.png": {
+      "sha256": "0b4c3fde87faf20053988359c0d0924ae163cc42b87e7c9d27fe3166aa1a8ec0",
+      "size": 310290,
+      "mode": "100644"
+    },
+    "static/branding/bobby-light.png": {
+      "sha256": "b3a3b18e9c845cbbc0a4a865824fd8fe457375e04e9d305173d1482654512526",
+      "size": 27058,
+      "mode": "100644"
+    },
+    "static/licenses/Application-and-artwork.txt": {
+      "sha256": "fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0",
+      "size": 34674,
+      "mode": "100644"
+    },
+    "static/licenses/Documentation.txt": {
+      "sha256": "d024962f1f4966c102b40d9fd9cc834a3f0b3c1397b41444b7cd7925640dc929",
+      "size": 22791,
+      "mode": "100644"
+    },
+    "static/licenses/FlexSearch.txt": {
+      "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "size": 11558,
+      "mode": "100644"
+    },
+    "static/licenses/Hextra.txt": {
+      "sha256": "749fbcaf565aeec8feab572b554ad7f4798397521b737a35ee1dbdbfe6b9c1db",
+      "size": 1060,
+      "mode": "100644"
+    },
+    "tools/build.sh": {
+      "sha256": "b4299bbb0f9239c57a17ac7854933ba5ed8172c3fae81ec8f304869ae623e8e9",
+      "size": 325,
+      "mode": "100755"
+    },
+    "tools/check.sh": {
+      "sha256": "7ce40ec8f70a641564eb60090a50d7757e97e60ee69d5b08bc80c2a80b2e4c86",
+      "size": 325,
+      "mode": "100755"
+    },
+    "tools/prepare-publication.sh": {
+      "sha256": "2346beb9def2964c3a77dc1231ac28a6bb71c15e58e59f39e01d17d4a82af459",
+      "size": 434,
+      "mode": "100755"
+    },
+    "tools/publication.py": {
+      "sha256": "9c2fad12bf4b1a0b92fa6c0d2206975b8b9deadb414f169423629a0973a1f9c3",
+      "size": 4902,
+      "mode": "100644"
+    },
+    "tools/site.py": {
+      "sha256": "c18ae832e32d070b0ce31ebcc6c98b56547f8061368e35f13c22087673fde467",
+      "size": 17416,
+      "mode": "100644"
+    },
+    "tools/test_publication.py": {
+      "sha256": "39200bbc0f1cd160e21591a8d3744d176cd06f4dff9f4acdcb8c3d289e25ce15",
+      "size": 4634,
+      "mode": "100644"
+    },
+    "tools/test_site.py": {
+      "sha256": "4c935d5d813805979f49d7f0b3ec8b020b99fca08f9fb6cb302d64757fbb7903",
+      "size": 19566,
+      "mode": "100644"
+    }
+  },
+  "reviewed_at": "2026-11-10"
+}

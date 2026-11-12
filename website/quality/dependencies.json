@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "hugo": {
+    "version": "0.169.0",
+    "source_commit": "1da10fc44701c566b1669cdb2d12638f155138bd",
+    "license": "Apache-2.0",
+    "platforms": {
+      "darwin/arm64": {
+        "archive_url": "https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_extended_0.169.0_darwin-universal.pkg",
+        "archive_sha256": "d48dfd5adab308f941e83e48c5ba925747cf383395972278942cf526ad27cf38",
+        "executable_sha256": "e2130d2c921ded8068348673de56886512385c33e535983113828f3a64f0ebc9"
+      }
+    }
+  },
+  "hextra": {
+    "version": "v0.13.0",
+    "source_commit": "adf732f8d97cb8e149d4aba232a449d41cd9e38c",
+    "license": "MIT"
+  },
+  "files": {
+    "static/branding/bobby-dark.png": "3906b0a76c85892b47c9df1a6ae58a8d8aafc5c832ffbfcaf7083ab0bc715ca3",
+    "static/branding/bobby-hero.png": "0b4c3fde87faf20053988359c0d0924ae163cc42b87e7c9d27fe3166aa1a8ec0",
+    "static/branding/bobby-light.png": "b3a3b18e9c845cbbc0a4a865824fd8fe457375e04e9d305173d1482654512526",
+    "static/licenses/Application-and-artwork.txt": "fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0",
+    "static/licenses/Documentation.txt": "d024962f1f4966c102b40d9fd9cc834a3f0b3c1397b41444b7cd7925640dc929",
+    "static/licenses/FlexSearch.txt": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+    "static/licenses/Hextra.txt": "749fbcaf565aeec8feab572b554ad7f4798397521b737a35ee1dbdbfe6b9c1db",
+    "assets/js/vendor/flexsearch.bundle.min.js": "433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c"
+  }
+}

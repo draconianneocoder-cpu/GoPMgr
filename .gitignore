@@ -164,3 +164,9 @@ Thumbs.db
 .vscode/
 *.swp
 *~
+
+# Isolated companion-site caches and generated output.
+/website/public/
+/website/resources/
+/website/.hugo_build.lock
+/website/tools/__pycache__/

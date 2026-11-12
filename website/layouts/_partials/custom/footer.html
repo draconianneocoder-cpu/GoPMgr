@@ -1,0 +1,6 @@
+{{/* SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later */}}
+<nav class="site-footer-links" aria-label="Project links">
+{{ range slice (dict "path" "community/" "title" "Community") (dict "path" "security/" "title" "Security") (dict "path" "legal/" "title" "Licenses & credits") }}<a href="{{ .path | relURL }}">{{ .title }}</a>{{ end }}
+<a href="https://github.com/draconianneocoder-cpu/GoPMgr">Source on GitHub</a>
+</nav><p class="site-footer-note">Local-first desktop software. Evaluation release; see release-specific limitations.</p>

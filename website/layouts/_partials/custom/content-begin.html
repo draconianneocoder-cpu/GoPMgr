@@ -1,0 +1,9 @@
+{{/* SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later */}}
+{{ with .Params.status }}
+<aside class="site-evidence" aria-label="Document applicability" data-status="{{ . }}">
+  <strong>{{ . | title }} documentation</strong>
+  <p>{{ $.Params.applies_to }} · Reviewed {{ $.Params.last_reviewed }}</p>
+  <p>Source: {{ range $i, $s := $.Params.sources }}{{ if $i }} · {{ end }}<a href="{{ $s.url }}">{{ $s.label }}</a>{{ end }}</p>
+</aside>
+{{ end }}

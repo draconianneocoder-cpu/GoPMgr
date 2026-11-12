@@ -176,3 +176,12 @@ Before ending a meaningful task:
    architecture, release gates, security posture, or future handoff steps.
 3. Leave unresolved issues explicit, especially when a command could not
    be run because of missing tools or existing unrelated failures.
+
+## Companion website
+
+`website/` is an isolated Hugo module. Use only opt-in `website-*` Make
+targets; never add it to application or release prerequisites. Set `GOWORK=off`.
+Keep generated output in ignored fresh temporary directories. Website sources
+and assets must stay outside `frontend/dist` and application packaging inputs.
+No hosted builds, pushes, Pages settings or publication are authorized by a
+local website build. Follow `website/README.md` for evidence and blockers.

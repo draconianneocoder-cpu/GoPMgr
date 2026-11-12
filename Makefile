@@ -350,3 +350,15 @@ tag-preflight: ## Validate GOPMGR_RELEASE_TAG and run the full gate before tag-t
 
 clean: ## Remove build artifacts while preserving source-owned platform assets.
 	rm -rf build/bin/ build/packages/ build/macos/ bin/ frontend/dist/ frontend/wailsjs/
+
+# Companion website. Opt-in only; never prerequisites of application/release targets.
+.PHONY: website-build website-check website-prepare-publication
+website-build: ## Build the companion site into an ignored temporary directory.
+	bash website/tools/build.sh
+
+website-check: ## Check a build. Set WEBSITE_REPORT to the report path.
+	python3 -B -m unittest discover -s website/tools -p 'test_*.py'
+	bash website/tools/check.sh --report "$(WEBSITE_REPORT)"
+
+website-prepare-publication: ## Prepare a local commit. Set WEBSITE_REPORT. Fails closed without acceptance.
+	bash website/tools/prepare-publication.sh --report "$(WEBSITE_REPORT)"

@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "canonical_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55",
+  "pages": [
+    {
+      "route": "/",
+      "content_path": "website/content/_index.md",
+      "claim_ids": [
+        "page.home"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "README.md",
+          "sha256": "03d71bc5f5d156db7ef8bbcad6fa3db022c7eff10765e4f5548dc3912c98cf51",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/branding.md",
+          "sha256": "ae49771aca611b92f0b750fa53cf5c7bffc01573e370e93920da362da4a6d1ca",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/features/",
+      "content_path": "website/content/features/_index.md",
+      "claim_ids": [
+        "page.features"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "90047d2c9c21646a86a3a78f8c6875e0b99326b569a29c013ed48589bef8f027",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/docs/",
+      "content_path": "website/content/docs/_index.md",
+      "claim_ids": [
+        "page.docs"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/docs/getting-started/",
+      "content_path": "website/content/docs/getting-started/_index.md",
+      "claim_ids": [
+        "page.docs.getting-started"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/docs/getting-started/first-project/",
+      "content_path": "website/content/docs/getting-started/first-project.md",
+      "claim_ids": [
+        "page.docs.getting-started.first-project"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/downloads/",
+      "content_path": "website/content/downloads/_index.md",
+      "claim_ids": [
+        "page.downloads"
+      ],
+      "status": "historical",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e58ae8d8884a37fa0656e33e2991a09d31fa2af6e9693496611b5eb9057aabf9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/published-release-tags.txt",
+          "sha256": "936ee6dc277748fe57ee8c830ecfbf91f1dbfcb0b8df9fb9b5969b67a1b67076",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/releases/v1.1.0-alpha.2.md",
+          "sha256": "2e99127dd991481cffa6182bf42ad3e54256d33e0e097bdb71882249a04041b9",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/roadmap/",
+      "content_path": "website/content/roadmap/_index.md",
+      "claim_ids": [
+        "page.roadmap"
+      ],
+      "status": "planned",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "90047d2c9c21646a86a3a78f8c6875e0b99326b569a29c013ed48589bef8f027",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
+          "sha256": "93375cc369c03aa9d1ee09496db86eeeaf268c77379dc9ca99b276655f821fc8",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/community/",
+      "content_path": "website/content/community/_index.md",
+      "claim_ids": [
+        "page.community"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "README.md",
+          "sha256": "03d71bc5f5d156db7ef8bbcad6fa3db022c7eff10765e4f5548dc3912c98cf51",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/SECURITY.md",
+          "sha256": "937348bc13edf900f7aa71628cfc310e173ae09c715bc7273c84dd8889093d7e",
+          "reviewed_commit": "fa29242a598f5c7893607c1a8130f83535e694c5"
+        }
+      ]
+    },
+    {
+      "route": "/security/",
+      "content_path": "website/content/security/_index.md",
+      "claim_ids": [
+        "page.security"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-11",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "docs/SECURITY.md",
+          "sha256": "937348bc13edf900f7aa71628cfc310e173ae09c715bc7273c84dd8889093d7e",
+          "reviewed_commit": "fa29242a598f5c7893607c1a8130f83535e694c5"
+        },
+        {
+          "path": "docs/user-guide.md",
+          "sha256": "ce68069e4b1d12b145270e62f42cad37418324f485ac62b1ad08dfd38cfed6d4",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    },
+    {
+      "route": "/legal/",
+      "content_path": "website/content/legal/_index.md",
+      "claim_ids": [
+        "page.legal"
+      ],
+      "status": "development",
+      "last_reviewed": "2026-11-10",
+      "reviewer": "GoPMgr website implementation source review",
+      "dependencies": [
+        {
+          "path": "LICENSE.md",
+          "sha256": "45ad449ea221e1ab6b1334c80606c82fb23f3a0313f3261ad1c48d0cab4e99f2",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        },
+        {
+          "path": "docs/branding.md",
+          "sha256": "ae49771aca611b92f0b750fa53cf5c7bffc01573e370e93920da362da4a6d1ca",
+          "reviewed_commit": "1ca5ffaed63446b35b197a6083d03899c0143f55"
+        }
+      ]
+    }
+  ]
+}

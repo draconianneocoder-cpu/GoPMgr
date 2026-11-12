@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+baseURL: "https://draconianneocoder-cpu.github.io/GoPMgr/"
+title: GoPMgr
+locale: en-US
+enableGitInfo: false
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+disableKinds: [taxonomy, term, RSS]
+outputs:
+  home: [html]
+  section: [html]
+  page: [html]
+module:
+  hugoVersion:
+    extended: true
+    min: "0.169.0"
+  imports:
+    - path: github.com/imfing/hextra
+      # Import theme components, excluding its unused stock static branding.
+      # https://gohugo.io/configuration/module/#mounts
+      mounts:
+        - source: assets
+          target: assets
+        - source: layouts
+          target: layouts
+        - source: i18n
+          target: i18n
+        - source: data
+          target: data
+markup:
+  goldmark:
+    renderer:
+      unsafe: false
+security:
+  enableInlineShortcodes: false
+  exec:
+    allow: ['^go$', '^git$']
+  funcs:
+    getenv: []
+  http:
+    urls: []
+menu:
+  main:
+    - name: Features
+      pageRef: /features/
+      weight: 10
+    - name: Documentation
+      pageRef: /docs/
+      weight: 20
+    - name: Downloads
+      pageRef: /downloads/
+      weight: 30
+    - name: Roadmap
+      pageRef: /roadmap/
+      weight: 40
+    - name: Search
+      weight: 50
+      params:
+        type: search
+    - name: Theme
+      weight: 60
+      params:
+        type: theme-toggle
+params:
+  description: "Local-first desktop project controls. Explore the source, documentation and evaluation release."
+  theme:
+    default: system
+    displayToggle: true
+  navbar:
+    width: normal
+    displayTitle: true
+    displayLogo: true
+    logo:
+      path: branding/bobby-light.png
+      dark: branding/bobby-dark.png
+      width: 36
+      height: 36
+  page:
+    width: normal
+    displayPagination: true
+    contextMenu:
+      enable: false
+  imageZoom:
+    enable: false
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+      js: js/vendor/flexsearch.bundle.min.js
+  footer:
+    displayCopyright: false
+    displayPoweredBy: false

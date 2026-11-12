@@ -1,0 +1,4 @@
+{{/* SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later */}}
+{{ define "main" }}
+{{ partial "sidebar.html" (dict "context" . "disableSidebar" true) }}<main id="content" class="site-not-found"><h1>Page not found</h1><p>This address is not part of the GoPMgr companion site.</p><p><a href="{{ "" | relURL }}">Return home</a> or <a href="{{ "docs/" | relURL }}">browse documentation</a>.</p></main>{{ end }}

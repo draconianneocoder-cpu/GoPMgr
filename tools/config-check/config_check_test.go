@@ -434,6 +434,8 @@ SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
 	}
+	files["website/hugo.yaml"], _ = os.ReadFile("../../website/hugo.yaml")
+	files["website/data/release-records.yaml"], _ = os.ReadFile("../../website/data/release-records.yaml")
 	files["mise.toml"] = []byte("[tools]\n")
 	files["mise.lock"] = []byte("lockfile_version = 3\n")
 	tracked := make([]string, 0, len(files))
@@ -488,4 +490,27 @@ func errorsContain(errs []error, text string) bool {
 		}
 	}
 	return false
+}
+
+func TestWebsiteConsumerContracts(t *testing.T) {
+	for _, tc := range []struct{ name, path, before, after string }{
+		{"prefix", "website/hugo.yaml", "/GoPMgr/", "/"},
+		{"remote search", "website/hugo.yaml", "js/vendor/flexsearch.bundle.min.js", "https://example.com/search.js"},
+		{"unsafe Markdown", "website/hugo.yaml", "unsafe: false", "unsafe: true"},
+		{"module", "website/hugo.yaml", "github.com/imfing/hextra", "example.com/other"},
+		{"template network", "website/hugo.yaml", "urls: []", "urls: ['.*']"},
+		{"release status", "website/data/release-records.yaml", "prerelease: true", "prerelease: false"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files, tracked := validConfigFixture()
+			original := string(files[tc.path])
+			if !strings.Contains(original, tc.before) {
+				t.Fatal("fixture mutation did not match")
+			}
+			files[tc.path] = []byte(strings.ReplaceAll(original, tc.before, tc.after))
+			if len(validateRepositoryConfigs(files, tracked)) == 0 {
+				t.Fatal("unsafe website configuration passed")
+			}
+		})
+	}
 }
