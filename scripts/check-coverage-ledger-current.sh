@@ -50,8 +50,10 @@ while IFS= read -r -d '' f; do
 	# files against a ledger snapshot that isn't tracking the same tree -- a
 	# false pass today (subset of current tests) and false failures the
 	# moment the two diverge, neither of which says anything about this repo.
+	# .tmp is ignored scratch space. A companion-site build leaves the theme
+	# module there, with the theme's own test files, which are not ours.
 done < <(find . \
-	\( -name node_modules -o -path ./frontend/coverage -o -name .git -o -path ./.claude/worktrees \) -prune -o \
+	\( -name node_modules -o -path ./frontend/coverage -o -name .git -o -path ./.claude/worktrees -o -path ./.tmp \) -prune -o \
 	\( -name '*_test.go' -o -name '*.test.ts' -o -name '*.spec.ts' -o -name '*.test.js' -o -name '*.spec.js' \) -type f -print0)
 
 if [ "$missing" -ne 0 ]; then

@@ -41,7 +41,7 @@ fail() {
 # baseline is a clean pass), plus files of recognized shapes sitting
 # under each pruned location -- node_modules and .git (`-name`-style
 # prune, matches at any depth) and frontend/coverage and
-# .claude/worktrees (`-path`-style prune, matches only that exact
+# .claude/worktrees and .tmp (`-path`-style prune, matches only that exact
 # relative location). None of the pruned files are mentioned in the
 # fixture ledger; if pruning is broken, they turn a clean pass into a
 # false failure.
@@ -49,7 +49,8 @@ make_fixture() {
 	local root=$1
 	mkdir -p "$root/internal/foo" "$root/frontend/src/lib" \
 		"$root/node_modules/some-dep" "$root/frontend/coverage/lcov" \
-		"$root/.claude/worktrees/branch-x" "$root/.git/hooks" "$root/docs"
+		"$root/.claude/worktrees/branch-x" "$root/.git/hooks" "$root/docs" \
+		"$root/.tmp/website-build-x/cache/theme/tests"
 
 	: >"$root/internal/foo/foo_test.go"
 	: >"$root/frontend/src/lib/session.test.ts"
@@ -64,6 +65,8 @@ make_fixture() {
 	: >"$root/frontend/coverage/lcov/generated.test.ts"
 	: >"$root/.claude/worktrees/branch-x/stale_test.go"
 	: >"$root/.git/hooks/hook.test.ts"
+	# A companion-site build caches the theme module, tests included, here.
+	: >"$root/.tmp/website-build-x/cache/theme/tests/theme.spec.ts"
 
 	cat >"$root/docs/TEST_COVERAGE_LEDGER.md" <<'EOF'
 # Fixture ledger
