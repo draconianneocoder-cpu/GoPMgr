@@ -1,0 +1,40 @@
+{
+  "id": 385085811,
+  "tag_name": "v1.1.0-alpha.2",
+  "published_at": "2026-09-08T22:00:32Z",
+  "prerelease": true,
+  "draft": false,
+  "html_url": "https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.2",
+  "verified_at": "2026-11-10",
+  "source_commit": "ad5c134a13335f5bfa69e147d7bc7390f5d0a76b",
+  "assets": [
+    {
+      "id": 551384405,
+      "name": "GoPMgr-1.1.0-alpha.2-amd64-setup.exe",
+      "size": 23736482,
+      "digest": "sha256:a4156473884af29526266b7aed98f845ef665e12b9d7418ee666a49ab439ef76",
+      "browser_download_url": "https://github.com/draconianneocoder-cpu/GoPMgr/releases/download/v1.1.0-alpha.2/GoPMgr-1.1.0-alpha.2-amd64-setup.exe"
+    },
+    {
+      "id": 551384401,
+      "name": "gopmgr-1.1.0-alpha.2-amd64.deb",
+      "size": 37518046,
+      "digest": "sha256:fa1f290c8cd6259e91dee340ca0d7a1b2b123a457065e4fe48ab0252d466f9a3",
+      "browser_download_url": "https://github.com/draconianneocoder-cpu/GoPMgr/releases/download/v1.1.0-alpha.2/gopmgr-1.1.0-alpha.2-amd64.deb"
+    },
+    {
+      "id": 551384409,
+      "name": "GoPMgr-1.1.0-alpha.2-arm64.dmg",
+      "size": 36059726,
+      "digest": "sha256:c4a843bd8e72e27ec41bc20f8aa5f9d0186e957081a570ad2bc5424251902ca8",
+      "browser_download_url": "https://github.com/draconianneocoder-cpu/GoPMgr/releases/download/v1.1.0-alpha.2/GoPMgr-1.1.0-alpha.2-arm64.dmg"
+    },
+    {
+      "id": 551384404,
+      "name": "gopmgr-1.1.0-alpha.2-x86_64.rpm",
+      "size": 37523777,
+      "digest": "sha256:9c2de38867e3edf5b37f1204520e05c42531d76c4f67b0853b9edb30e13e7881",
+      "browser_download_url": "https://github.com/draconianneocoder-cpu/GoPMgr/releases/download/v1.1.0-alpha.2/gopmgr-1.1.0-alpha.2-x86_64.rpm"
+    }
+  ]
+}

@@ -434,6 +434,8 @@ SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
 	}
+	files["website/hugo.yaml"], _ = os.ReadFile("../../website/hugo.yaml")
+	files["website/data/release-records.yaml"], _ = os.ReadFile("../../website/data/release-records.yaml")
 	files["mise.toml"] = []byte("[tools]\n")
 	files["mise.lock"] = []byte("lockfile_version = 3\n")
 	tracked := make([]string, 0, len(files))
@@ -488,4 +490,35 @@ func errorsContain(errs []error, text string) bool {
 		}
 	}
 	return false
+}
+
+func TestWebsiteConsumerContracts(t *testing.T) {
+	for _, tc := range []struct{ name, path, before, after, want string }{
+		{"prefix", "website/hugo.yaml", "/GoPMgr/", "/", "baseURL must retain the GitHub Pages project prefix"},
+		{"remote search", "website/hugo.yaml", "js/vendor/flexsearch.bundle.min.js", "https://example.com/search.js", "search must use vendored local FlexSearch"},
+		{"search off", "website/hugo.yaml", "    enable: true", "    enable: false", "search must use vendored local FlexSearch"},
+		{"unsafe Markdown", "website/hugo.yaml", "unsafe: false", "unsafe: true", "unsafe Markdown must remain disabled"},
+		{"module", "website/hugo.yaml", "github.com/imfing/hextra", "example.com/other", "unexpected website module"},
+		{"second module", "website/hugo.yaml", "    - path: github.com/imfing/hextra", "    - path: example.com/other\n    - path: github.com/imfing/hextra", "import exactly the pinned Hextra module"},
+		{"older Hugo", "website/hugo.yaml", `min: "0.169.0"`, `min: "0.100.0"`, "requires Hugo Extended 0.169.0"},
+		{"standard edition", "website/hugo.yaml", "extended: true", "extended: false", "requires Hugo Extended 0.169.0"},
+		{"template network", "website/hugo.yaml", "urls: []", "urls: ['.*']", "inline shortcodes and template HTTP must remain disabled"},
+		{"inline shortcodes", "website/hugo.yaml", "enableInlineShortcodes: false", "enableInlineShortcodes: true", "inline shortcodes and template HTTP must remain disabled"},
+		{"release status", "website/data/release-records.yaml", "prerelease: true", "prerelease: false", "release record differs from the reviewed historical release"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files, tracked := validConfigFixture()
+			original := string(files[tc.path])
+			if strings.Count(original, tc.before) != 1 {
+				t.Fatalf("fixture mutation must match once, matched %d times", strings.Count(original, tc.before))
+			}
+			files[tc.path] = []byte(strings.Replace(original, tc.before, tc.after, 1))
+			// Name the rule: a parse error or another rule failing would
+			// otherwise pass for the one under test.
+			errs := validateRepositoryConfigs(files, tracked)
+			if len(errs) != 1 || !strings.Contains(errs[0].Error(), tc.want) {
+				t.Fatalf("got %v, want one error containing %q", errs, tc.want)
+			}
+		})
+	}
 }

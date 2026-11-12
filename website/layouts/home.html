@@ -1,0 +1,17 @@
+{{/* SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later */}}
+{{ define "main" }}
+{{ partial "sidebar.html" (dict "context" . "disableSidebar" true) }}
+<main id="content" class="site-home">
+  <section class="site-hero" aria-labelledby="hero-title">
+    <div><p class="site-kicker">Local-first project controls</p>
+    <h1 id="hero-title">Your projects.<br>Your machine.</h1>
+    <p class="site-lede">Plan schedules, track costs and produce shareable reports in a desktop workspace. No cloud account needed.</p>
+    <div class="site-actions"><a class="site-primary" href="{{ "docs/getting-started/" | relURL }}">Start exploring</a><a href="{{ "downloads/" | relURL }}">View evaluation release →</a></div>
+    <p class="site-caption">The published alpha is older than the current source. Each page says which one it describes.</p></div>
+    <figure><img src="{{ "branding/bobby-hero.png" | relURL }}" alt="Bobby Beaver, the GoPMgr mascot, with project planning tools" width="512" height="512"><figcaption>Bobby Beaver · GoPMgr project artwork</figcaption></figure>
+  </section>
+  {{ partial "custom/content-begin.html" . }}
+  <section class="content site-home-content" aria-label="Explore GoPMgr">{{ .Content }}</section>
+</main>
+{{ end }}

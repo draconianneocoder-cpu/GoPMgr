@@ -354,6 +354,9 @@ They are unsigned until the SBOM signing key is published.
 
 ## Reporting
 
-This repository does not currently publish a public vulnerability intake
-address. For private or commercial deployment, add a dedicated security
-contact and a supported disclosure process before public release.
+Report a security vulnerability in private. Use GitHub's form at
+<https://github.com/draconianneocoder-cpu/GoPMgr/security/advisories/new>.
+
+Include a summary, the details, a proof of concept, and the impact. Do not
+put vulnerability details or secrets in a public issue. GitHub shows this
+policy above the form.
