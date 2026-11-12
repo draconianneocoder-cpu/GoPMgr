@@ -87,6 +87,30 @@ directories. Existing assurance-job tests remain intact. This is a source regres
 guard, not protection against arbitrary malicious workflow or checker edits,
 and it does not configure required checks or authorize deployment.
 
+## Output navigation verification
+
+A local follow-up audit reproduced two output-checker gaps: an automatic meta
+refresh passed validation, and duplicate attributes could hide it because the
+checker retained the last value while a browser retained the first. The current
+generated site contains neither fault. This was a verifier defect, not evidence
+of a published redirect.
+
+The checker now rejects duplicate attribute names before constructing its
+attribute dictionary, and rejects meta refresh regardless of delay or target.
+Tests cover external and local destinations, case and character references,
+self-closing tags, and ambiguous redirect, script and link attributes. Ordinary
+metadata, the reviewed CSP and repeated attributes on separate elements remain
+valid. The new negative tests failed against the old code for the intended
+missing-rejection reason.
+
+Chrome 157.0.8103.78, driven through Playwright on 2026-11-12, navigated both
+redirect fixtures despite `default-src 'none'`. Source and destination responses
+were intercepted fixtures, not a live external service. This corroborates the
+[HTML refresh semantics](https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh).
+Browser fixture evidence does not establish publication acceptance or complete
+HTML validation. The public site templates, content policy and appearance are
+unchanged; screen-reader and zoom acceptance remain open.
+
 ## Next publication slice
 
 GitHub Pages remains off. Before activating artifact deployment, resolve the

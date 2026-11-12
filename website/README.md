@@ -94,6 +94,10 @@ fonts and data from this site only, and no inline script. The same text is the
 second policy, runs inline script, sets `<base>` or names the Hugo version.
 Change both places together and check search and the theme switch in a browser.
 
+The output checker also rejects automatic meta refresh and duplicate attributes.
+Refresh can navigate away despite the content policy; duplicate attributes can
+make a browser and a simple attribute dictionary interpret the same tag differently.
+
 GitHub Pages cannot send response headers, so two protections are missing: the
 site can be shown inside a frame on another site, and there is no HSTS header
 of its own (GitHub serves `github.io` over HTTPS only). The site has no forms,
