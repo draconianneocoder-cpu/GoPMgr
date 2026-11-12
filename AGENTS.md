@@ -187,4 +187,6 @@ targets; never add it to application or release prerequisites. Set `GOWORK=off`.
 Keep generated output in ignored fresh temporary directories. Website sources
 and assets must stay outside `frontend/dist` and application packaging inputs.
 No hosted builds, pushes, Pages settings or publication are authorized by a
-local website build. Follow `website/README.md` for evidence and blockers.
+local website build. The one hosted website job runs `make website-tests`: it
+tests the checkers and never runs Hugo. Follow `website/README.md` for
+evidence and blockers.
