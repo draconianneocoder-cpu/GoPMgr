@@ -40,6 +40,17 @@ they must not be described as supported.
 No default owner, date, candidate tag, or platform claim is inferred by this
 document.
 
+### Owner decisions recorded on 2026-11-11
+
+| Decision | Record |
+| --- | --- |
+| Version and tag | `v1.1.0-alpha.3`. The version of record stays `1.1.0`. |
+| Trust posture | Explicitly unsigned, with the in-app update channel off. No platform signing, notarization, signed-update keypair or trusted-certificate PAdES evidence is claimed. Confirm on the candidate that the update channel is unconfigured. |
+| `system.db` downgrade | A reader-level gate is required before the tag (see [security notes](SECURITY.md)). It cannot protect `v1.1.0-alpha.2`; the release notes must say that going back is unsupported and untested. |
+
+Target matrix, residual-risk acceptance and release operator remain open. These
+records do not authorize a tag, push, hosted run or publication.
+
 ## Candidate entry gate
 
 Run from the exact clean commit proposed for the tag:

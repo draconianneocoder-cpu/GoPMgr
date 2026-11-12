@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onDestroy, onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { t } from '../../i18n/i18n.svelte';
   import { autosave } from '../../autosave.svelte';
   import { METHODOLOGIES } from '../../methodologies';
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
@@ -151,6 +152,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let encryptionError = $state('');
   let encryptionBackupPath = $state('');
   let archiveBusy = $state(false);
+  // Asked for again on every backup: the certificate file holds the private
+  // signing key, so including it is never a remembered default.
+  let archiveIncludeCert = $state(false);
   let archiveStatus = $state('');
   let archiveError = $state('');
 
@@ -525,7 +529,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     archiveStatus = '';
     archiveError = '';
     try {
-      archiveStatus = await desktopApi.SecureArchive(session.projectPath);
+      archiveStatus = await desktopApi.SecureArchive(session.projectPath, archiveIncludeCert);
+      archiveIncludeCert = false;
     } catch (err: any) {
       archiveError = `Backup failed: ${err?.message ?? err}`;
     } finally {
@@ -1737,6 +1742,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
            <p class="text-xs text-slate-400">
              Create an integrity-checked GoPMgr archive. Restore imports the database as a new project and does not automatically import certificates.
            </p>
+           {#if certPath}
+             <label class="flex items-start gap-3 cursor-pointer">
+               <input type="checkbox" bind:checked={archiveIncludeCert} disabled={archiveBusy} aria-describedby="backup-include-cert-help" class="accent-cyan-500 mt-0.5" />
+               <span>
+                 <span class="block text-sm text-slate-300">{t('projectSettings.backup.includeCert')}</span>
+                 <span id="backup-include-cert-help" class="block text-xs text-slate-400">{t('projectSettings.backup.includeCertHelp')}</span>
+               </span>
+             </label>
+           {/if}
            <button onclick={createBackup} disabled={archiveBusy} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700">
              {archiveBusy ? 'Creating…' : 'Create backup'}
            </button>

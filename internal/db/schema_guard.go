@@ -11,10 +11,12 @@ import (
 	"strings"
 )
 
-// ErrForeignSchemaObject reports a project file containing a trigger, view
-// or virtual table. GoPMgr's project schema has never created any of them,
-// so such a file was made or altered outside GoPMgr. Opening it normally
-// would let its SQL run inside migrations and every later write.
+// ErrForeignSchemaObject reports a project file whose schema GoPMgr did not
+// write: it contains a trigger, view or virtual table, none of which the
+// project schema has ever had, or a table or index that goes beyond the
+// ones GoPMgr creates (see schema_allowlist.go). Such a file was made or
+// altered outside GoPMgr. Opening it normally would let its SQL and its
+// constraints act inside migrations and every later write.
 var ErrForeignSchemaObject = errors.New("db: project file contains database objects GoPMgr does not create")
 
 // virtualTableSQL matches a CREATE VIRTUAL TABLE statement however it is
@@ -54,8 +56,9 @@ func (db *Database) ForeignSchemaObjects() ([]string, error) {
 
 // CheckForeignSchemaObjects opens the project file at path read-only,
 // without migrating it, and returns ErrForeignSchemaObject if it contains a
-// trigger, view or virtual table. dek is nil for a plaintext file. Run it
-// before opening a file from outside this account for writing.
+// trigger, view or virtual table, or a table, column, constraint or index
+// GoPMgr does not create. dek is nil for a plaintext file. Run it before
+// opening a file from outside this account for writing.
 func CheckForeignSchemaObjects(path string, dek []byte) (err error) {
 	var check *Database
 	if dek == nil {
@@ -72,6 +75,16 @@ func CheckForeignSchemaObjects(path string, dek []byte) (err error) {
 		}
 	}()
 	found, err := check.ForeignSchemaObjects()
+	if err != nil {
+		return err
+	}
+	if len(found) > 0 {
+		// Report these alone: a virtual table has no ordinary shape to
+		// compare, and a file with planted code is refused whatever its
+		// tables look like.
+		return &ForeignSchemaError{Objects: found}
+	}
+	found, err = check.UnexpectedSchema()
 	if err != nil {
 		return err
 	}

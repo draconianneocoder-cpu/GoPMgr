@@ -11,6 +11,15 @@ package sqlite3
 #cgo CFLAGS: -DSQLITE_EXTRA_INIT=sqlcipher_extra_init
 #cgo CFLAGS: -DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown
 
+// GoPMgr: distrust the schema of every file, and refuse the SQL that can
+// corrupt one. With trusted_schema off, a view, trigger, CHECK, DEFAULT,
+// index or generated column in a file may call only functions and virtual
+// tables marked safe for it. Defensive mode refuses writable_schema, writes
+// to shadow tables and sqlite_dbpage. Set at compile time so that no
+// connection, however it is opened, can miss them.
+#cgo CFLAGS: -DSQLITE_TRUSTED_SCHEMA=0
+#cgo CFLAGS: -DSQLITE_DEFAULT_DEFENSIVE
+
 // use memory for temporay storage in sqlite
 #cgo CFLAGS: -DSQLITE_TEMP_STORE=2
 

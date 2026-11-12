@@ -874,3 +874,42 @@ describe('document font picker', () => {
     expect(queryByText(/Import failed/)).toBeNull();
   });
 });
+
+describe('project backup and the signing certificate', () => {
+  async function openProtection() {
+    session.projectPath = '/projects/p/project.gopmgr';
+    app.SecureArchive = vi.fn(async () => '/projects/p/GoPMgr_Archive.pmba');
+    const utils = render(ProjectSettings);
+    await waitFor(() => expect(app.GetSettings).toHaveBeenCalled());
+    await switchTab(utils.container, /data protection/i);
+    return utils;
+  }
+
+  it('leaves the certificate out unless the box is ticked, and asks again for the next backup', async () => {
+    const { findByRole, getByRole } = await openProtection();
+    const include = (await findByRole('checkbox', { name: /include my signing certificate file/i })) as HTMLInputElement;
+    expect(include.checked).toBe(false);
+    expect(include.getAttribute('aria-describedby')).toBe('backup-include-cert-help');
+    expect(document.getElementById('backup-include-cert-help')?.textContent).toMatch(/private signing key/i);
+
+    await fireEvent.click(getByRole('button', { name: /create backup/i }));
+    await waitFor(() => expect(app.SecureArchive).toHaveBeenLastCalledWith('/projects/p/project.gopmgr', false));
+
+    await fireEvent.click(include);
+    await fireEvent.click(getByRole('button', { name: /create backup/i }));
+    await waitFor(() => expect(app.SecureArchive).toHaveBeenLastCalledWith('/projects/p/project.gopmgr', true));
+    await waitFor(() => expect(include.checked).toBe(false));
+
+    await fireEvent.click(getByRole('button', { name: /create backup/i }));
+    await waitFor(() => expect(app.SecureArchive).toHaveBeenCalledTimes(3));
+    expect(app.SecureArchive).toHaveBeenLastCalledWith('/projects/p/project.gopmgr', false);
+  });
+
+  it('offers no certificate option when the project has no signing certificate', async () => {
+    app.GetSettings = vi.fn(async () => ({ ...timestampSettings, cert_path: '' }));
+    const { queryByRole, getByRole } = await openProtection();
+    expect(queryByRole('checkbox', { name: /include my signing certificate file/i })).toBeNull();
+    await fireEvent.click(getByRole('button', { name: /create backup/i }));
+    await waitFor(() => expect(app.SecureArchive).toHaveBeenCalledWith('/projects/p/project.gopmgr', false));
+  });
+});

@@ -9,7 +9,8 @@ This roadmap describes intended product direction, not a release promise.
 Current release-readiness work is tracked in
 [beta-release-backlog.md](beta-release-backlog.md). The next limited alpha is
 planned in [next-alpha-release-plan.md](next-alpha-release-plan.md). Decisions
-that change architecture belong in [design/](design/).
+that change architecture belong in [design/](design/). What is implemented,
+open or unverified today is in [STATUS.md](STATUS.md).
 
 ## Current focus
 
@@ -32,6 +33,24 @@ near-term priority is making those workflows dependable for wider testing.
    `ManifestURL`/`UpdateChannelPublicKey` are actually populated in release
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
+
+### Next prerelease: `v1.1.0-alpha.3` (owner decisions, 2026-11-11)
+
+The next prerelease is `v1.1.0-alpha.3`, explicitly unsigned, with the in-app
+update channel off. It is not ready to tag.
+
+| Item | Status |
+| --- | --- |
+| Package versions come from version tags only, not `archive/…` tags | Done (merged 2026-11-11) |
+| `system.db` reader-level gate, so a build refuses data marked by a newer one | Done (2026-11-11) |
+| Release notes: going back to `v1.1.0-alpha.2` is unsupported and untested | Not started |
+| Confirm the candidate ships with the update channel unconfigured | Partial: on 2026-11-11 the repository had no `GOPMGR_UPDATE_PUBLIC_KEY` variable, which the release workflow needs to turn the channel on; the built candidate is not yet checked |
+| Review of the changes since `v1.1.0-alpha.2` (over 550 commits) | Not started |
+| macOS `.dmg`/`.pkg` and Linux `.deb`/`.rpm` install, upgrade and removal on the candidate | Not started; the macOS 26 host is unavailable |
+| Windows installer: `makensis` exits 134 on the build host and the template is unverified | Blocked |
+| Target matrix, residual-risk acceptance, release operator | Owner decisions open |
+
+See the [release plan](next-alpha-release-plan.md) for the gates.
 
 ## Wails v3 and GTK 4 migration (2026-11-03)
 
@@ -179,7 +198,7 @@ Approved priority order, with today's status from the
 | --- | --- | --- |
 | PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
-| PS-02 Schedule-quality audit | High, early parallel | Proposed: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11, not yet implemented: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
 | PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
@@ -192,8 +211,10 @@ Approved priority order, with today's status from the
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
-stream, the proposed next implementation slice is
-PS-02 slice 1, a read-only audit, which also awaits authorization.
+stream, the next implementation slice is PS-02 slice 1, a read-only audit,
+authorized on 2026-11-11. The order of that and the security work ahead of it
+is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
+the 2026-11-10 independent evaluation.
 
 ## Planned product work
 

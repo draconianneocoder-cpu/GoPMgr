@@ -11,7 +11,7 @@ posture, and validator coverage, so keep them intentional and verified.
 
 ## Toolchain
 
-- Go: 1.27.3 minimum from `go.mod`; CI and release workflows select that version.
+- Go: 1.27.4 minimum from `go.mod`; CI and release workflows select that version.
 - Wails: v3.1.0.
 - Node frontend: Node.js 26 in CI/release workflows, with Vite 8, Svelte 5,
   TypeScript 6, and npm scripts in `frontend/package.json`. Browser storage
@@ -54,6 +54,34 @@ historical test reports at their measured versions. Local validation and its
 platform/publication limits are recorded in
 [the upgrade evidence](testing/go-1.27.3-security.md).
 
+### Go security baseline, 2026-11-11
+
+Go 1.27.4 fixes [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859),
+published on 2026-11-11: an HTTP/1 server using `MaxBytesReader` or
+`MaxBytesHandler` can panic when its handler reads the request body while
+writing the response header. GoPMgr runs no such server, and
+`govulncheck` reports the advisory because `net/http` symbols are reachable
+through interface calls. The blocking scan fails on any standard-library
+finding, so `go.mod` now requires 1.27.4; CI and the release workflows
+read the version from it. As with 1.27.3, only rebuilt executables carry
+the fix. `debian/control` requires `golang-1.27-go (>= 1.27.4)` to match;
+a distribution that still ships 1.27.3 cannot build the package offline
+until it updates. Verified locally on macOS with the Go 1.27.4 toolchain:
+`govulncheck` v1.9.0 reports no findings, and `make verify` passes.
+
+Go 1.27.4 also fixes CVE-2026-97038 by refusing linker inputs that carry
+LTO intermediate code, with no opt-out. `github.com/gorules/zen-go`
+v0.20.0, the newest release, ships its Rust engine as prebuilt libraries
+containing LLVM bitcode on every platform, so GoPMgr could not be built
+with a fixed toolchain while it depended on it. The dependency was removed
+on 2026-11-11 by the owner's decision. `internal/templates` now evaluates
+the Launchpad rule table in Go on every platform, as Windows builds already
+did; the two evaluators agreed on all 729 inputs compared before removal,
+and those answers are replayed by the package's tests. The evaluator
+supports exact-match rows and one final blank fallback row, and refuses a
+table that uses any other JDM feature. This also removes a 21 MB prebuilt
+third-party library per platform from the build.
+
 ## Core Go Dependencies
 
 - `github.com/wailsapp/wails/v3` v3.1.0: desktop application/services runtime.
@@ -86,7 +114,6 @@ platform/publication limits are recorded in
 - `github.com/gomutex/godocx`: DOCX generation.
 - `github.com/xuri/excelize/v2`: XLSX generation (released v2.11.1).
 - `github.com/rickar/cal/v2`: Country holiday calendars.
-- `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
 - `gopkg.in/yaml.v3` and `github.com/pelletier/go-toml/v2`: build-time
   configuration parsing for `make config-check`. These parser packages are

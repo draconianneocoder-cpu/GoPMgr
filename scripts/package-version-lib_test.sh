@@ -87,4 +87,30 @@ mkdir -p "$notags"
 out="$(cd "$notags" && VERSION='' release_version)"
 [ "$out" = "0.0.0" ] || fail "no-tags case did not fall back to 0.0.0 (got '$out')"
 
+# Case 5: a non-version tag nearer than the version tag (the repository's
+# archive/<name> tags) must not become the version. Without --match the
+# result is "archive/spike-...", whose slash breaks artifact filenames.
+(
+	cd "$repo"
+	git tag archive/spike
+	echo three >file.txt
+	git add file.txt
+	git commit -q -m "third commit"
+)
+out="$(cd "$repo" && VERSION='' release_version)"
+case "$out" in
+*/*) fail "a non-version tag became the version (got '$out')" ;;
+1.2.3-2-g*) ;;
+*) fail "version did not come from the nearest version tag, two commits back (got '$out')" ;;
+esac
+
+# Case 6: only a non-version tag is reachable -> "0.0.0", the same as no
+# tags at all.
+(
+	cd "$notags"
+	git tag archive/only
+)
+out="$(cd "$notags" && VERSION='' release_version)"
+[ "$out" = "0.0.0" ] || fail "a lone non-version tag did not fall back to 0.0.0 (got '$out')"
+
 echo "package-version-lib tests passed."

@@ -135,6 +135,12 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = "internal/templates/testdata/launchpad_seeds.zen-0.20.0.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "internal/crypto/testdata/testonly-*.p12"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"

@@ -4,7 +4,11 @@
 package admin
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,7 +63,7 @@ func TestSecureArchiveUsesGoPMgrArchivePrefix(t *testing.T) {
 	t.Chdir(workDir)
 
 	s := NewService(d)
-	backupPath, err := s.SecureArchive(d.Path)
+	backupPath, err := s.SecureArchive(d.Path, false)
 	if err != nil {
 		t.Fatalf("SecureArchive: %v", err)
 	}
@@ -80,7 +84,7 @@ func TestSecureArchive_PropagatesSettingsLoadError(t *testing.T) {
 	}
 
 	s := NewService(d)
-	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
+	if _, err := s.SecureArchive(d.Path, false); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
 		t.Fatalf("SecureArchive() error = %v, want ARCHIVE_SETTINGS_LOAD_FAILED", err)
 	}
 }
@@ -106,7 +110,7 @@ func TestSecureArchive_PropagatesCertBundlingError(t *testing.T) {
 	}
 
 	s := NewService(d)
-	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "security backup failed") {
+	if _, err := s.SecureArchive(d.Path, true); err == nil || !strings.Contains(err.Error(), "security backup failed") {
 		t.Fatalf("SecureArchive() error = %v, want cert bundling failure", err)
 	}
 }
@@ -133,7 +137,7 @@ func TestSecureArchive_CertBundlingError_PreservesStructuredReport(t *testing.T)
 	}
 
 	s := NewService(d)
-	_, err := s.SecureArchive(d.Path)
+	_, err := s.SecureArchive(d.Path, true)
 	if err == nil {
 		t.Fatal("SecureArchive: want a cert bundling error, got nil")
 	}
@@ -168,7 +172,7 @@ func TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails(t *testing.T) {
 	}
 
 	s := NewService(d)
-	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "AUDIT_LOG_WRITE_FAILED") {
+	if _, err := s.SecureArchive(d.Path, false); err == nil || !strings.Contains(err.Error(), "AUDIT_LOG_WRITE_FAILED") {
 		t.Fatalf("SecureArchive error = %v, want audit write failure", err)
 	}
 
@@ -425,5 +429,87 @@ func TestLogDocumentSignatureOutcomeRecordsGnuPGStatus(t *testing.T) {
 	}
 	if signatureBlob != "signature.asc" {
 		t.Fatalf("signature_blob_optional = %q, want signature.asc", signatureBlob)
+	}
+}
+
+// A backup carries the signing certificate file, which holds the private
+// signing key, only when the caller asks for it (owner decision
+// 2026-11-11). Both directions are checked in the archive itself, in its
+// manifest and in the audit record.
+func TestSecureArchiveIncludesTheSigningCertificateOnlyOnRequest(t *testing.T) {
+	certBytes := []byte("stand-in PKCS#12 bytes; the bundler does not parse them")
+	for _, c := range []struct {
+		name    string
+		include bool
+	}{
+		{"default leaves it out", false},
+		{"opt-in adds it", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			d := newAdminTestDB(t)
+			certPath := filepath.Join(t.TempDir(), "signer.p12")
+			if err := os.WriteFile(certPath, certBytes, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := d.SaveSettings(db.UserSettings{CertPath: certPath}); err != nil {
+				t.Fatalf("SaveSettings: %v", err)
+			}
+
+			backupPath, err := NewService(d).SecureArchive(d.Path, c.include)
+			if err != nil {
+				t.Fatalf("SecureArchive: %v", err)
+			}
+
+			archive, err := zip.OpenReader(backupPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = archive.Close() }()
+			var certEntries []string
+			var manifest struct {
+				IncludedCerts []string `json:"included_certificates"`
+			}
+			for _, f := range archive.File {
+				rc, err := f.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, err := io.ReadAll(rc)
+				_ = rc.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if bytes.Contains(data, certBytes) && !strings.HasPrefix(f.Name, "certs/") {
+					t.Errorf("certificate bytes found in %s", f.Name)
+				}
+				switch {
+				case strings.HasPrefix(f.Name, "certs/"):
+					certEntries = append(certEntries, f.Name)
+					if !bytes.Equal(data, certBytes) {
+						t.Errorf("%s does not match the certificate file", f.Name)
+					}
+				case f.Name == "manifest.json":
+					if err := json.Unmarshal(data, &manifest); err != nil {
+						t.Fatalf("manifest: %v", err)
+					}
+				}
+			}
+
+			var details string
+			if err := d.Conn.QueryRow(`SELECT details FROM audit_log WHERE action = 'ARCHIVE_CREATED' ORDER BY id DESC LIMIT 1`).Scan(&details); err != nil {
+				t.Fatalf("query audit_log: %v", err)
+			}
+			noted := strings.Contains(details, "signing certificate included")
+
+			if c.include {
+				if len(certEntries) != 1 || certEntries[0] != "certs/signer.p12" || len(manifest.IncludedCerts) != 1 || !noted {
+					t.Errorf("opt-in: entries %v, manifest %v, audit %q; want the certificate in all three", certEntries, manifest.IncludedCerts, details)
+				}
+				return
+			}
+			if len(certEntries) != 0 || len(manifest.IncludedCerts) != 0 || noted {
+				t.Errorf("default: entries %v, manifest %v, audit %q; want no trace of the certificate", certEntries, manifest.IncludedCerts, details)
+			}
+		})
 	}
 }

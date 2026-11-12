@@ -4,6 +4,7 @@
 package users
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -96,22 +97,25 @@ func (s *Store) ChangePassword(username, currentPassword, newPassword string) er
 	}
 
 	beforePasswordSwap()
-	res, err := s.conn.Exec(
-		`UPDATE users SET password_hash = ?, wrapped_dek_pw = ?
-		 WHERE username = ? AND password_hash = ? AND wrapped_dek_pw = ?`,
-		newHash, newWrap, username, hash, wrapped,
-	)
-	if err != nil {
-		return err
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n != 1 {
-		return ErrPasswordChangedElsewhere
-	}
-	return nil
+	// inWriteTx refuses a file a newer build has marked (schema_gate.go).
+	return s.inWriteTx("password change", func(ctx context.Context, q accountWriter) error {
+		res, err := q.ExecContext(ctx,
+			`UPDATE users SET password_hash = ?, wrapped_dek_pw = ?
+			 WHERE username = ? AND password_hash = ? AND wrapped_dek_pw = ?`,
+			newHash, newWrap, username, hash, wrapped,
+		)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return ErrPasswordChangedElsewhere
+		}
+		return nil
+	})
 }
 
 // zero overwrites b in place, so an unwrapped key does not linger in the
