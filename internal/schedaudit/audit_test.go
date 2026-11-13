@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -220,14 +221,18 @@ func TestDanglingReferencesInBothLinkLists(t *testing.T) {
 }
 
 // SQA-004 and SQA-022: A->B->C->A is a cycle and E depends on itself. D
-// feeds the cycle but is not in it. The scheduler refuses the network, so
+// feeds the cycle and F follows it; neither is in it. P->Q->P is a second
+// cycle that also feeds A, which the search reaches only after A's cycle is
+// complete: an implementation that lowers a task's link value through a task
+// no longer on its stack loses P and Q. The scheduler refuses the network, so
 // every rule that needs its results is reported as not evaluated.
 func TestCycleMembersAndRulesNotEvaluated(t *testing.T) {
-	a := tk("A", 1, "C", "D")
+	a := tk("A", 1, "C", "D", "Q")
 	e := tk("E", 1)
 	e.Links = []kernel.Link{{Pred: "E"}}
-	r := run(t, base(a, tk("B", 1, "A"), tk("C", 1, "B"), tk("D", 1), e))
-	wantSubjects(t, r, DependencyCycle, "A", "B", "C", "E")
+	r := run(t, base(a, tk("B", 1, "A"), tk("C", 1, "B"), tk("D", 1), e,
+		tk("F", 1, "A"), tk("P", 1, "Q"), tk("Q", 1, "P")))
+	wantSubjects(t, r, DependencyCycle, "A", "B", "C", "E", "P", "Q")
 	if f := ofRule(r, DependencyCycle)[0]; f.Severity != SeverityError || !strings.Contains(f.Observed, "A, B, C") {
 		t.Fatalf("SQ-04 finding should name the cycle's members: %+v", f)
 	}
@@ -376,6 +381,21 @@ func TestArmedConstraintsAndNegativeFloat(t *testing.T) {
 	}
 }
 
+// With the schedule refused, SQ-09 is not evaluated, so SQ-08's text must
+// not send the reader there: it says itself that the date was not applied.
+func TestUnappliedHardConstraintInRefusedSchedule(t *testing.T) {
+	b := tk("B", 1, "A")
+	b.Constraint, b.ConstraintDate = kernel.MustFinishOn, "2026-02-30"
+	r := run(t, base(tk("A", 1, "B"), b))
+	if s := status(t, r, ConstraintViolated); s.Evaluated {
+		t.Fatalf("SQ-09 must not be evaluated when the scheduler refuses: %+v", s)
+	}
+	f := ofRule(r, HardConstraint)
+	if len(f) != 1 || !strings.Contains(f[0].Observed, "could not be applied") || strings.Contains(f[0].Observed, "SQ-09") {
+		t.Fatalf("SQ-08 must explain itself without pointing at SQ-09: %+v", f)
+	}
+}
+
 // A date constraint whose date cannot be applied is not in force. The
 // kernel leaves it dormant without saying so; the audit reports it.
 func TestUnappliedConstraintDateIsReported(t *testing.T) {
@@ -399,6 +419,18 @@ func TestHighFloat(t *testing.T) {
 	}
 	in.Profile.HighFloatDays = 49
 	wantSubjects(t, run(t, in), HighFloat)
+}
+
+// Values are shown rounded to two decimals; 50.3 - 0.1 is
+// 50.199999999999996 in binary floating point.
+func TestDisplayedValuesAreRounded(t *testing.T) {
+	r := run(t, base(tk("A", 50.3), tk("B", 0.1)))
+	if f := ofRule(r, HighFloat); len(f) != 1 || f[0].Observed != "float 50.2 working days" {
+		t.Fatalf("SQ-10 = %+v, want B with float 50.2 working days", f)
+	}
+	if f := ofRule(r, LongDuration); len(f) != 1 || f[0].Observed != "duration 50.3 working days" {
+		t.Fatalf("SQ-12 = %+v", f)
+	}
 }
 
 // SQA-012: A is longer than 44 days, B is exactly 44, and the milestone is
@@ -556,19 +588,64 @@ func TestReportingContext(t *testing.T) {
 }
 
 // SQA-023: each threshold moves exactly the findings it governs.
+//
+//	A 45d (index 0-44). B 1d, FS from A with lag 3: ES 48, EF 49.
+//	C 1d with no logic: LF is the project finish 49, so float 48.
 func TestProfilesMoveOnlyTheirFindings(t *testing.T) {
 	b := tk("B", 1)
 	b.Links = []kernel.Link{{Pred: "A", Lag: 3}}
 	in := base(tk("A", 45), b, tk("C", 1))
-	before := run(t, in)
-
-	in.Profile.LongLagDays = 2
-	after := run(t, in)
-	if got := subjects(ofRule(after, LongLag)); !reflect.DeepEqual(got, []string{"A->B"}) {
-		t.Fatalf("lowering the lag limit: SQ-06 = %q", got)
+	key := func(r Result) map[string]int {
+		m := map[string]int{}
+		for _, f := range r.Findings {
+			m[string(f.Rule)+" "+subjects([]Finding{f})[0]]++
+		}
+		return m
 	}
-	if len(after.Findings) != len(before.Findings)+1 {
-		t.Fatalf("lowering the lag limit changed other findings: %d -> %d", len(before.Findings), len(after.Findings))
+	before := key(run(t, in))
+	for _, rule := range []string{"SQ-10 C", "SQ-12 A"} {
+		if before[rule] != 1 {
+			t.Fatalf("fixture should report %s: %v", rule, before)
+		}
+	}
+
+	cases := []struct {
+		name        string
+		change      func(*Profile)
+		added, gone string
+	}{
+		{"lag limit 2", func(p *Profile) { p.LongLagDays = 2 }, "SQ-06 A->B", ""},
+		{"float limit 48", func(p *Profile) { p.HighFloatDays = 48 }, "", "SQ-10 C"},
+		{"duration limit 45", func(p *Profile) { p.LongDurationDays = 45 }, "", "SQ-12 A"},
+	}
+	for _, c := range cases {
+		in.Profile = DefaultProfile()
+		c.change(&in.Profile)
+		want := map[string]int{}
+		for k, v := range before {
+			want[k] = v
+		}
+		if c.added != "" {
+			want[c.added]++
+		}
+		if c.gone != "" {
+			delete(want, c.gone)
+		}
+		if got := key(run(t, in)); !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: findings = %v, want %v", c.name, got, want)
+		}
+	}
+
+	// A metric limit adds a pass or fail and changes no finding: 1 of the 3
+	// tasks is long, 33.3 %, above 5 %.
+	in.Profile = DefaultProfile()
+	in.Profile.Limits = map[string]Limit{string(LongDuration): {Percent: 5}}
+	r := run(t, in)
+	if got := key(r); !reflect.DeepEqual(got, before) {
+		t.Fatalf("a metric limit changed the findings: %v", got)
+	}
+	if m := metric(t, r, string(LongDuration)); m.Pass == nil || *m.Pass || m.Numerator != 1 || m.Denominator != 3 {
+		t.Fatalf("SQ-12 metric = %+v, want 1 of 3 and a fail", m)
 	}
 }
 
@@ -710,8 +787,19 @@ func TestCloneTaskCoversEveryReferenceField(t *testing.T) {
 // SQA-021: the same input gives byte-identical output, whatever the task
 // order, including from concurrent calls under -race.
 func TestDeterministic(t *testing.T) {
-	in := base(tk("A", 50), tk("B", 1), tk("C", 1, "Q"), tk("D", 1, "D"))
+	in := base(tk("A", 50), tk("B", 1), tk("C", 1, "Q"), tk("E", 3), tk("F", 3))
+	in.Tasks[3].Assignments = []kernel.Assignment{{Resource: "shared"}}
+	in.Tasks[4].Assignments = []kernel.Assignment{{Resource: "shared"}}
+	// One populated plan, shared by every concurrent call below.
+	in.Capacity = kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      map[string]float64{"shared": 1, "res-A": 2},
+		Calendars:       map[string]kernel.ResourceCalendar{"shared": {ID: "shared", Resource: "shared"}},
+	}
 	want, _ := json.Marshal(run(t, in))
+	if !strings.Contains(string(want), `"SQ-16"`) {
+		t.Fatal("fixture should report an overallocation, so the plan is read")
+	}
 
 	rev := base()
 	for i := len(in.Tasks) - 1; i >= 0; i-- {
@@ -740,12 +828,54 @@ func TestDeterministic(t *testing.T) {
 	}
 }
 
-// SQA-025
+// cancelAfter is a context that reports cancellation once Err has been
+// called more than n times, so a test can cancel an audit part-way.
+type cancelAfter struct {
+	context.Context
+	left atomic.Int64
+}
+
+func (c *cancelAfter) Err() error {
+	if c.left.Add(-1) < 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+// SQA-025: an audit cancelled before it starts, and one cancelled while it
+// runs, both stop with context.Canceled. The kernel's scheduler and
+// overallocation detector cannot be interrupted, so the bound on stopping
+// is theirs plus one check interval.
 func TestCancelledAuditStops(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := Audit(ctx, base(tk("A", 1))); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled audit returned %v, want context.Canceled", err)
+	}
+
+	// Count the audit's checks of its context on a run that is never
+	// cancelled, then cancel at each check in turn: every one must stop the
+	// audit. Besides the check on entry and the one after scheduling, the
+	// loops over 8,192 tasks must check too.
+	tasks := make([]kernel.Task, 2*cancellationInterval)
+	for i := range tasks {
+		tasks[i] = tk(taskID(i), 1)
+	}
+	counter := &cancelAfter{Context: context.Background()}
+	counter.left.Store(1 << 40)
+	if _, err := Audit(counter, base(tasks...)); err != nil {
+		t.Fatal(err)
+	}
+	checks := int((1 << 40) - counter.left.Load())
+	if checks < 4 {
+		t.Fatalf("the audit checked its context %d times; the loops must check it too", checks)
+	}
+	for k := 0; k < checks; k++ {
+		mid := &cancelAfter{Context: context.Background()}
+		mid.left.Store(int64(k))
+		if _, err := Audit(mid, base(tasks...)); !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled at check %d of %d, the audit returned %v", k+1, checks, err)
+		}
 	}
 }
 

@@ -25,6 +25,16 @@ func percent(v float64) string {
 	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) + "%"
 }
 
+// number shows a value for reading, rounded to two decimals, so that the
+// scheduler's floating-point noise (50.199999999999996) is not shown.
+// Comparisons use the unrounded value.
+func number(v float64) string {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	}
+	return strconv.FormatFloat(math.Round(v*100)/100, 'f', -1, 64)
+}
+
 func set(ids []string) map[string]bool {
 	m := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -187,7 +197,7 @@ func (a *auditor) checkConstraints() error {
 			case !a.startOK:
 				binding = "binding not evaluated: " + noStart
 			case unapplied:
-				binding = "not applied (see SQ-09)"
+				binding = "could not be applied, so the scheduler ignores it"
 			case a.cpmErr != nil:
 				binding = "binding not evaluated: " + a.cpmReason()
 			case c.ConstraintViolated:
@@ -329,11 +339,11 @@ func (a *auditor) actualsProblems(t *kernel.Task) []string {
 
 	switch {
 	case math.IsNaN(pct) || pct < 0 || pct > 100:
-		out = append(out, fmt.Sprintf("percent complete %g is outside 0 to 100", pct))
+		out = append(out, "percent complete "+number(pct)+" is outside 0 to 100")
 	case pct == 100 && !finishSet:
 		out = append(out, "100% complete without an actual finish")
 	case pct > 0 && !startSet:
-		out = append(out, fmt.Sprintf("%g%% complete without an actual start", pct))
+		out = append(out, number(pct)+"% complete without an actual start")
 	}
 	if startSet && !startOK {
 		out = append(out, fmt.Sprintf("actual start %q is not a date", t.ActualStart))

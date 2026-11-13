@@ -96,9 +96,12 @@ type Input struct {
 	// be non-empty and unique.
 	Tasks []kernel.Task
 
-	// ProjectStart is the project start date (kernel.DateLayout). Without a
-	// readable one, date constraints cannot be applied, so SQ-08's binding
-	// report and SQ-09 to SQ-11 and SQ-15 are not evaluated.
+	// ProjectStart is the project start date in kernel.DateLayout only.
+	// Without a readable one, date constraints cannot be applied, so SQ-08's
+	// binding report and SQ-09 to SQ-11 and SQ-15 are not evaluated. The
+	// stored project date may also be RFC3339 (see the desktop's
+	// parseProjectDate); the caller must convert it, or the audit reports a
+	// valid date as unreadable.
 	ProjectStart string
 	// IsWorkday is the project's work calendar. Nil means every day is
 	// worked, as in the kernel.

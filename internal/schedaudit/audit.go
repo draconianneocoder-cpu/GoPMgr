@@ -237,7 +237,7 @@ func (a *auditor) measure(id string, num, den int) Metric {
 	return m
 }
 
-func days(v float64) string { return fmt.Sprintf("%g working days", v) }
+func days(v float64) string { return number(v) + " working days" }
 
 func moreThan(v float64) string { return "more than " + days(v) }
 

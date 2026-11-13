@@ -142,7 +142,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 
 | ID | Defect | Status |
 | --- | --- | --- |
-| KRN-01 | `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed, and the scheduler then ignores it without telling anyone | Open. Reproduced by `TestUnappliedConstraintDateIsReported`; the PS-02 audit reports it as SQ-09. A fix changes scheduling results, which PS-02 slice 1 may not do |
+| KRN-01 | A constraint can be out of force without anyone being told. `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed. `internal/charts/dag/cpm.go` turns any other constraint type, such as an imported MSO, SNLT or FNET, into ASAP | Open. The first is reproduced by `TestUnappliedConstraintDateIsReported` and reported by the PS-02 audit as SQ-09; the second never reaches the audit. A fix changes scheduling results, which PS-02 slice 1 may not do |
 
 ## Decisions waiting for the owner
 

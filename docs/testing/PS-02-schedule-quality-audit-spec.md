@@ -211,6 +211,15 @@ what §3 left open:
   SQ-17 also count non-milestone tasks; link rules count links whose
   predecessor exists (SQ-03 counts every link); the rest count all tasks. A
   metric with a zero denominator passes.
+- **Cancellation** is checked on entry, after scheduling and every 4,096
+  tasks in each loop. The kernel's scheduler and overallocation detector
+  cannot be interrupted, so they bound how quickly a cancelled audit stops.
+- **For PS-02b.** `Input.ProjectStart` and `Input.ReportingDate` take
+  `YYYY-MM-DD` only; the stored project date may be RFC3339, so the App
+  method must convert it or the audit reports a valid date as unreadable. The
+  method must also pass the chart's own capacity plan, and should report
+  constraint types the chart mapper drops (KRN-01), which never reach the
+  audit.
 - **Not yet done:** SQA-020's stored-chart half, SQA-024 and SQA-029 belong to
   PS-02b, which reads a real project. 50,000 tasks took about 0.1 s on the
   development Mac on 2026-11-13; that is not the SQA-024 measurement, which
