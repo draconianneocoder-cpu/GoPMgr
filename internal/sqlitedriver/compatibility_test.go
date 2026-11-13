@@ -5,6 +5,7 @@ package sqlitedriver
 
 import (
 	"database/sql"
+	"errors"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -68,7 +69,9 @@ func TestFilesFromSQLCipher442OpenUnderTheCurrentEngine(t *testing.T) {
 					t.Fatal(err)
 				}
 				failed := rows.Next()
-				if err := rows.Close(); err != nil {
+				// Without Err, a check that could not run reads as one
+				// that found nothing.
+				if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 					t.Fatal(err)
 				}
 				if failed {

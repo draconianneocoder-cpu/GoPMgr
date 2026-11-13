@@ -489,7 +489,7 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 		}
 		planned.Add(money.Amount{MinorUnits: n})
 	}
-	if err = rows.Close(); err != nil {
+	if err = errors.Join(rows.Err(), rows.Close()); err != nil {
 		return CostBaselineSnapshot{}, err
 	}
 	pl, err := planned.Amount()
@@ -515,7 +515,7 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 			management = n
 		}
 	}
-	if err = rows.Close(); err != nil {
+	if err = errors.Join(rows.Err(), rows.Close()); err != nil {
 		return CostBaselineSnapshot{}, err
 	}
 	base, err := pl.Add(money.Amount{MinorUnits: contingency})

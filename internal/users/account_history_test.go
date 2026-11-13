@@ -30,6 +30,9 @@ func historyRows(t *testing.T, store *Store) []string {
 		}
 		out = append(out, fmt.Sprintf("%d|%s|%s|%s|%s|%s", id, at, actor, user, action, detail))
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read history: %v", err)
+	}
 	return out
 }
 
