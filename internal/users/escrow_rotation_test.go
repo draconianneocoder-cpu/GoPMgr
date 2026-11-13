@@ -71,7 +71,9 @@ func TestReplacingTheKeyReSealsEveryAccount(t *testing.T) {
 			t.Errorf("the old key opens %s's sealed DEK", name)
 		}
 	}
-	_ = rows.Close()
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		t.Fatalf("list sealed DEKs: %v", err)
+	}
 	// The attestations alice and bob had carry over; carol never had one.
 	if n := countRows(t, store, "personal_keys", "attested_escrow_key_id = '"+newID+"'"); n != 2 {
 		t.Fatalf("%d personal keys attested by the new key, want alice's and bob's", n)

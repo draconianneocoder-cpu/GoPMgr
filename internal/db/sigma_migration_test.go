@@ -147,6 +147,9 @@ func TestMigrateSigmaProjectsSchema_RebuildsLegacyTableAndPreservesRows(t *testi
 	if rows.Next() {
 		t.Error("foreign_key_check reported a violation after migration")
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("foreign_key_check: %v", err)
+	}
 }
 
 // TestMigrateSigmaProjectsSchema_IdempotentAcrossRepeatedOpens proves the

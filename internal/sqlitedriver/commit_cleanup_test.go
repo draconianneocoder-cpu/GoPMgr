@@ -149,8 +149,13 @@ INSERT INTO parent VALUES(1)`); err != nil {
 		if _, err := stmt.ExecContext(ctx); !errors.Is(err, driver.ErrBadConn) && !errors.Is(err, sql.ErrConnDone) {
 			t.Fatalf("poisoned statement exec: %v", err)
 		}
-		if _, err := stmt.QueryContext(ctx); !errors.Is(err, driver.ErrBadConn) && !errors.Is(err, sql.ErrConnDone) {
-			t.Fatalf("poisoned statement query: %v", err)
+		reopened, queryErr := stmt.QueryContext(ctx)
+		if queryErr == nil {
+			// Not expected. Report what reading it gives; nil still fails below.
+			queryErr = errors.Join(reopened.Err(), reopened.Close())
+		}
+		if !errors.Is(queryErr, driver.ErrBadConn) && !errors.Is(queryErr, sql.ErrConnDone) {
+			t.Fatalf("poisoned statement query: %v", queryErr)
 		}
 		if _, err := conn.ExecContext(ctx, "INSERT INTO parent VALUES(99)"); !errors.Is(err, driver.ErrBadConn) && !errors.Is(err, sql.ErrConnDone) {
 			t.Fatalf("poisoned connection exec: %v", err)

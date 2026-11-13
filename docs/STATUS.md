@@ -5,8 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-12, against `main` at `e93e808` (PR 206), with
-PR 207 hosted results checked at `709a31d`. Unmerged work is named below.
+**Last reviewed:** 2026-11-13, against `main` at `5bd3ebe` (PR 207).
+Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
 this file wins for *status*; the older document still stands as the record of
@@ -52,9 +52,9 @@ record or an evidence file. Adopted on 2026-11-11
 | Companion website source (`website/`, Hugo Extended 0.169.0, Hextra v0.13.0) | Implemented (PR 203, PR 204). Opt-in `website-*` Make targets only; no application or release target depends on it | [website/README.md](../website/README.md) |
 | Website publication on GitHub Pages | Blocked: nothing is published and Pages is off. Needs the acceptance record and separate owner authorization | [website/README.md](../website/README.md), acceptance stages |
 | Website pages pin the repository files they cite by commit and hash | Implemented (PR 203). A change to a cited file fails the site build until the page is reviewed and re-pinned | `website/quality/source-dependencies.json` |
-| Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame. Local follow-up rejects automatic meta refresh and duplicate attributes; not yet on main | `website/tools/site.py` |
+| Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame. The checker also rejects automatic meta refresh and duplicate attributes (PR 207) | `website/tools/site.py` |
 | Website accessibility | Recorded evidence 2026-11-12: axe 4.14.0 reports no violation on 11 pages, light and dark, at four widths; keyboard use of the skip link, search and menus checked. Unverified: a screen reader, browser zoom at 200% and 400% | PR 204 |
-| Website tests in hosted CI | Checker CI implemented (PR 206). PR 207 production build passed on GitHub at `709a31d`, as did all 14 hosted checks; awaiting merge. A local configuration guard preserves its reviewed execution contract. Website check is not required for merging | `.github/workflows/ci.yml` |
+| Website tests in hosted CI | Checker CI implemented (PR 206). Production build implemented (PR 207). All 14 hosted checks passed on its final revision `f27c989` on 2026-11-13 (run 43336827515). A configuration guard preserves the reviewed execution contract. Website check is not required for merging | `.github/workflows/ci.yml` |
 | Website build on Linux | Verified locally on Ubuntu 26.04.1 and in PR 207 hosted CI at `709a31d`, with Go 1.27.4 and pinned Hugo 0.169.0. Archive and executable provenance recorded | `website/quality/dependencies.json` |
 | `main` protected on GitHub: pull requests only, merge commits only, no force-push or deletion, four required checks | Implemented 2026-11-12 as repository ruleset "Protect main", with no bypass list. A setting, not a file in this repository | GitHub repository settings |
 | GitHub Actions limited to pinned or allow-listed actions | Open: the repository allows any action | GitHub repository settings |
@@ -80,6 +80,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Unbounded schedule length | Fixed, PR 196 |
 | — | CSV formula in task ID | Fixed, PR 196 |
 | — | Planted triggers, views, virtual tables in a restored backup | Fixed, PR 196 |
+| — | A database read that stops part-way was accepted as complete: the administrator session's sealed-key and attestation checks, the takeover-protection list, and cost baseline approval, which stored a partial sum | Fix on branch `claude/awesome-fermat-wh4ojv` (2026-11-13), not on `main`. Found by audit; each fix has a test that fails without it, and the lint job now rejects the pattern. Not run on macOS or Ubuntu 26.04 |
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
 | SEC-02 | Tables a restored backup defines are trusted | Fixed 2026-11-11: restore compares the file's tables, columns, column types, constraints, conflict and collation clauses and indexes with the schema this build creates, read-only, before opening it for writing. Empty project files made by v0.9.0-alpha, v0.9.1-alpha, v1.1.0-alpha.1 and v1.1.0-alpha.2 pass, before and after migration (run once on 2026-11-11; not kept as fixtures). Not covered: fuzzed malformed files (NEW-01), backups of projects with data from old releases, and a constraint the backup has removed, which passes by design ([note](../internal/db/schema_allowlist.go)) |

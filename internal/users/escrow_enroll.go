@@ -535,7 +535,7 @@ func adminDutiesTx(ctx context.Context, q accountWriter, session *EscrowSession)
 		}
 		attested = append(attested, r)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 	for _, r := range attested {
@@ -578,7 +578,7 @@ func checkSealedDEKsTx(ctx context.Context, q accountWriter, session *EscrowSess
 		}
 		clear(dek)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 	for _, username := range bad {

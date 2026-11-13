@@ -15,6 +15,14 @@ linters:
   #     capitalized / punctuated, and one is matched verbatim by the frontend
   #     (ProjectSettings.svelte), so the message text is a contract — do not
   #     lowercase it to satisfy the style check.
+  # rowserrcheck (2026-11-13): after a `for rows.Next()` loop, only
+  # rows.Err() says whether the read finished. When Next fails it closes the
+  # rows itself, so a later rows.Close() returns nil. Five loops that checked
+  # only Close accepted part of a result as all of it, in the administrator
+  # key checks and in cost baseline approval. Tests are not excluded: a
+  # truncated read there passes an assertion about rows it never saw.
+  enable:
+    - rowserrcheck
   exclusions:
     paths:
       - node_modules

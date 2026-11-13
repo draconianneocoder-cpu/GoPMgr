@@ -362,7 +362,7 @@ func activeProtectionsTx(ctx context.Context, q accountWriter, now time.Time) ([
 		}
 		names = append(names, name)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return nil, err
 	}
 	var out []Protection
