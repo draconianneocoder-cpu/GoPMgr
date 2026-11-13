@@ -10,7 +10,7 @@ import (
 
 // Friday 2026-06-05 is a holiday in this calendar.
 func weekdaysWithFridayHoliday(t time.Time) bool {
-	return weekdaysOnly(t) && !(t.Year() == 2026 && t.Month() == time.June && t.Day() == 5)
+	return weekdaysOnly(t) && t.Format(DateLayout) != "2026-06-05"
 }
 
 func day(s string) time.Time {
