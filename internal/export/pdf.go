@@ -140,7 +140,7 @@ func renderPDFWithSignerLoader(
 	if evmLines != nil {
 		pdf.Ln(6)
 		pdf.SetFont("Helvetica", "B", 12)
-		pdf.Cell(0, 8, "Earned Value (status date: today)")
+		pdf.Cell(0, 8, "Earned Value")
 		pdf.Ln(9)
 		pdf.SetFont("Helvetica", "", 9)
 		for _, line := range evmLines {

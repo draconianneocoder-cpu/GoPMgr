@@ -94,7 +94,7 @@ h2 { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 .5rem; }
 		return nil, err
 	}
 	if len(evmLines) > 0 {
-		b.WriteString(`<h2>Earned Value (status date: today)</h2>` + "\n")
+		b.WriteString(`<h2>Earned Value</h2>` + "\n")
 		b.WriteString(`<div class="evm">` + "\n")
 		for _, l := range evmLines {
 			b.WriteString(`<div>` + esc(l) + `</div>` + "\n")

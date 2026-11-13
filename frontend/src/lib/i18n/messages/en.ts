@@ -381,7 +381,8 @@ export const en = {
   'cpm.help':
     "ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node with Float = 0 lies on the critical path and is highlighted red. Real start/finish dates appear once the project has a start date (Project Settings); non-working days are skipped using the project country's calendar. Incoming-link labels set the dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS. Date constraints (SNET/FNLT/MFO) also need the project start date; ALAP works without one. Links always win over constraints; impossible constraints flag the node amber instead. Resource assignments default to capacity 1.0 per resource; tasks whose resources are over capacity get an orange edge strip.",
   'cpm.evm.title': 'Earned value',
-  'cpm.evm.statusDate': 'Status date (blank = today)',
+  'cpm.evm.statusDate': 'Status date (blank = previous working day)',
+  'cpm.evm.through': 'Through the end of {date}',
   'cpm.evm.compute': 'Compute',
   'cpm.evm.computing': 'Computing…',
   'cpm.evm.bac': 'BAC',
@@ -396,7 +397,7 @@ export const en = {
   'cpm.evm.etc': 'ETC',
   'cpm.evm.vac': 'VAC',
   'cpm.evm.help':
-    'PV from the schedule, EV from % complete × budgeted cost, AC from actual cost. SPI/CPI below 1 means behind schedule / over cost; n/a until work is planned or cost incurred.',
+    'PV from the schedule, EV from % complete × budgeted cost, AC from actual cost. SPI/CPI below 1 means behind schedule / over cost; n/a until work is planned or cost incurred. The status date counts through the end of that day.',
   'cpm.risk.title': 'Monte Carlo risk',
   'cpm.risk.iterations': 'Iterations',
   'cpm.risk.iterations.hint': 'Simulation iterations',

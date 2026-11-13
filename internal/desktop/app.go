@@ -22,11 +22,9 @@ import (
 
 	"gopmgr/internal/admin"
 	"gopmgr/internal/applog"
-	"gopmgr/internal/calendar"
 	"gopmgr/internal/cli"
 	"gopmgr/internal/db"
 	"gopmgr/internal/export"
-	"gopmgr/internal/kernel"
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/templates"
 	"gopmgr/internal/update"
@@ -603,16 +601,11 @@ func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
 		return fmt.Errorf("schedule for export: %w", err)
 	}
 	payload := export.ReportPayload{Tasks: tasks, Currency: proj.CurrencyCode}
-	if start, ok := parseProjectDate(proj.StartDate); ok && len(tasks) > 0 {
-		cal := calendar.For(proj.CountryCode)
-		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
-			m, err := kernel.ComputeEVM(tasks, day)
-			if err != nil {
-				return fmt.Errorf("compute schedule EVM: %w", err)
-			}
-			payload.EVM = &m
-		}
+	evm, err := reportEVM(proj, tasks, time.Now())
+	if err != nil {
+		return err
 	}
+	payload.EVM = evm
 	opts := export.ExportOptions{Format: format, Title: proj.Name}
 	if cfg.EncryptExport {
 		pw, err := headlessExportPassword(cfg)

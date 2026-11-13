@@ -401,7 +401,7 @@ func (a *auditor) checkProgress() error {
 		a.skipped(MissingProgress, reason)
 		return nil
 	}
-	due, ok := kernel.DayOffset(a.start, a.report, a.in.IsWorkday)
+	due, ok := kernel.StatusDay(a.start, a.report, a.in.IsWorkday)
 	if !ok {
 		a.skipped(MissingProgress, "the reporting date is too far from the project start to place on the calendar")
 		return nil
@@ -415,7 +415,7 @@ func (a *auditor) checkProgress() error {
 			continue
 		}
 		a.add(MissingProgress, SeverityWarning, id, nil,
-			"planned to start before the reporting date "+a.in.ReportingDate+", with no progress recorded", "",
+			"planned to start on or before the reporting date "+a.in.ReportingDate+", with no progress recorded", "",
 			"The plan says this work should have started, but it has no actual start or progress.",
 			"Record the actual start and progress, or reschedule the task.")
 	}

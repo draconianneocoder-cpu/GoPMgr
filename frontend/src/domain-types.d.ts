@@ -752,6 +752,8 @@ interface CostSummary {
 
   interface EVMetrics {
     as_of_day: number;
+    /** The status date the figures run through, YYYY-MM-DD. */
+    status_date?: string;
     bac: number;
     pv: number;
     ev: number;

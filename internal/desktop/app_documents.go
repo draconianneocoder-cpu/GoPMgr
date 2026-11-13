@@ -853,19 +853,11 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 
 	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode}
 
-	// Earned-value summary at today's status date — only when the
-	// project is anchored (offsets map to dates); renderers further
-	// suppress the section when there is no cost data.
-	if start, ok := parseProjectDate(proj.StartDate); ok && len(kernelTasks) > 0 {
-		cal := calendar.For(proj.CountryCode)
-		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
-			m, err := kernel.ComputeEVM(kernelTasks, day)
-			if err != nil {
-				return "", fmt.Errorf("compute schedule EVM: %w", err)
-			}
-			payload.EVM = &m
-		}
+	evm, err := reportEVM(proj, kernelTasks, time.Now())
+	if err != nil {
+		return "", err
 	}
+	payload.EVM = evm
 
 	opts := export.ExportOptions{
 		Format: format,
@@ -997,6 +989,48 @@ func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) error 
 		kernel.AnchorSchedule(tasks, start, isWorkday)
 	}
 	return nil
+}
+
+// evmStatus resolves the earned-value status date and its status day for
+// kernel.ComputeEVM. An entered date (YYYY-MM-DD) counts through the end of
+// that day; with none, the status date is the previous working day before
+// now's UTC date (docs/review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md).
+// It returns the date it used, for the output to show.
+func evmStatus(start time.Time, entered string, now time.Time, isWorkday kernel.WorkdayFunc) (float64, string, error) {
+	date := kernel.DefaultStatusDate(now.UTC(), isWorkday)
+	if entered != "" {
+		parsed, err := time.Parse(kernel.DateLayout, entered)
+		if err != nil {
+			return 0, "", fmt.Errorf("status date %q: want YYYY-MM-DD", entered)
+		}
+		date = parsed
+	}
+	day, ok := kernel.StatusDay(start, date, isWorkday)
+	if !ok {
+		return 0, "", errors.New("status date is unreachably far from the project start")
+	}
+	return day, date.Format(kernel.DateLayout), nil
+}
+
+// reportEVM is a schedule report's earned-value summary at the default
+// status date before now, or nil when the project has no start date or the
+// date cannot be placed; renderers also omit the section without cost data.
+// The tasks must already be scheduled.
+func reportEVM(proj db.Project, tasks map[string]*kernel.Task, now time.Time) (*kernel.EVMetrics, error) {
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok || len(tasks) == 0 {
+		return nil, nil
+	}
+	day, date, err := evmStatus(start, "", now, calendar.For(proj.CountryCode).IsWorkday)
+	if err != nil {
+		return nil, nil
+	}
+	m, err := kernel.ComputeEVM(tasks, day)
+	if err != nil {
+		return nil, fmt.Errorf("compute schedule EVM: %w", err)
+	}
+	m.StatusDate = date
+	return &m, nil
 }
 
 // errScheduleCycle is the scheduler's cycle refusal worded for the user.

@@ -137,6 +137,31 @@ func DayOffset(projectStart, date time.Time, isWorkday WorkdayFunc) (float64, bo
 	return 0, false
 }
 
+// StatusDay is the earned-value status day for statusDate: the number of
+// working days on or before it, counted from projectStart. A status date
+// counts through the end of that day
+// (docs/review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md), so this is the
+// day index after it, which a weekend or holiday status date does not move.
+// Pass the result to ComputeEVM.
+func StatusDay(projectStart, statusDate time.Time, isWorkday WorkdayFunc) (float64, bool) {
+	return DayOffset(projectStart, calendarDate(statusDate).AddDate(0, 0, 1), isWorkday)
+}
+
+// DefaultStatusDate is the status date to use when none is entered: the
+// last working day before now's calendar date, the last day whose progress
+// could have been recorded. StatusDay of it equals the working days before
+// today.
+func DefaultStatusDate(now time.Time, isWorkday WorkdayFunc) time.Time {
+	if isWorkday == nil {
+		isWorkday = func(time.Time) bool { return true }
+	}
+	d := calendarDate(now).AddDate(0, 0, -1)
+	for run := 0; !isWorkday(d) && run < maxNonWorkdayRun; run++ {
+		d = d.AddDate(0, 0, -1)
+	}
+	return d
+}
+
 // calendarDate is t's date in its own zone, as midnight UTC.
 func calendarDate(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)

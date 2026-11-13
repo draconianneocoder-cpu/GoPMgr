@@ -63,7 +63,7 @@ func renderDocumentDOCX(payload ReportPayload, opts ExportOptions) ([]byte, erro
 	}
 	if evmLines != nil {
 		doc.AddParagraph("")
-		if err := addHeadingDOCX(doc, "Earned Value (status date: today)", 1); err != nil {
+		if err := addHeadingDOCX(doc, "Earned Value", 1); err != nil {
 			return nil, err
 		}
 		for _, line := range evmLines {

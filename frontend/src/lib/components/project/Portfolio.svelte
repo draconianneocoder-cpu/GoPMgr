@@ -226,7 +226,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h3 class="text-xs font-semibold text-slate-300">Earned value</h3>
             <p class="text-[10px] text-slate-500">
-              As of {rollup.as_of_date} UTC · {rollup.evm_project_count}/{rollup.project_count} projects included
+              Through the end of {rollup.as_of_date} (UTC) · {rollup.evm_project_count}/{rollup.project_count} projects included
             </p>
           </div>
 

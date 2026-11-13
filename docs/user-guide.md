@@ -67,7 +67,9 @@ with status, phase, dates, and chart/document counts. Open a project card
 to enter its Dashboard.
 
 Choose **Run rollup** to calculate portfolio budget and committed-cost totals
-plus Earned Value metrics as of one displayed UTC reporting date. Every
+plus Earned Value metrics through the end of one displayed UTC status date,
+the previous day. A status date always includes that day's planned work, so
+Planned Value covers the same period as recorded progress and cost. Every
 portfolio money total, including Remaining, is calculated in the backend and
 shown as an exact decimal value; the desktop renderer does not recompute money.
 EVM includes
@@ -371,7 +373,9 @@ findings.
 
 Status Reports can link a CPM schedule chart. When that linked schedule has
 cost and progress data, combined reports include an Earned Value summary under
-the Status Report section. If resource leveling split a task into interrupted
+the Status Report section. The summary, like the schedule reports and the CPM
+editor's Earned value panel, names its status date. In the panel you can enter
+one; left blank, and in reports, it is the previous working day. If resource leveling split a task into interrupted
 work periods, its planned value remains flat during the intervening idle days
 instead of being spread across the whole bar span.
 

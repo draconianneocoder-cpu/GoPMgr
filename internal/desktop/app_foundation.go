@@ -924,7 +924,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	// one date avoids cross-region portfolios changing meaning at midnight
 	// in different project time zones; country calendars still define which
 	// dates count as working days for each schedule.
-	summary.AsOfDate = asOf.Format(kernel.DateLayout)
+	summary.AsOfDate = portfolioStatusDate(asOf).Format(kernel.DateLayout)
 	return portfolioSummaryWire(summary, portfolioCurrency)
 }
 
@@ -1009,6 +1009,17 @@ func portfolioProjectMetrics(
 	return out, nil
 }
 
+// portfolioStatusDate is the portfolio's earned-value status date when the
+// time is now: the previous calendar day (UTC), counted through its end.
+// Projects can use different country calendars, so no single previous
+// working day fits them all; for each project the figures equal those
+// through its own previous working day
+// (docs/review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md).
+func portfolioStatusDate(now time.Time) time.Time {
+	now = now.UTC()
+	return time.Date(now.Year(), now.Month(), now.Day()-1, 0, 0, 0, 0, time.UTC)
+}
+
 // portfolioScheduleEVM returns false for any prerequisite that would make the
 // figures incomparable or misleading. The caller records that as unavailable
 // coverage instead of silently substituting zero or a stale legacy schedule.
@@ -1033,9 +1044,7 @@ func portfolioScheduleEVM(
 	if err := scheduleProjectTasks(p, tasks); err != nil {
 		return kernel.EVMetrics{}, false, nil
 	}
-	// Portfolio EVM is a snapshot for asOf's UTC calendar date; DayOffset
-	// ignores the time of day.
-	day, ok := kernel.DayOffset(start, asOf.UTC(), calendar.For(p.CountryCode).IsWorkday)
+	day, ok := kernel.StatusDay(start, portfolioStatusDate(asOf), calendar.For(p.CountryCode).IsWorkday)
 	if !ok {
 		return kernel.EVMetrics{}, false, nil
 	}

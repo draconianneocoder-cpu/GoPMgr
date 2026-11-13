@@ -337,7 +337,8 @@ func (a *App) CompareScheduleBaseline(chartID, baselineID string) (map[string]ke
 }
 
 // ComputeScheduleEVM derives earned-value metrics for a CPM chart at
-// a status date ("" = today, else YYYY-MM-DD). EVM needs the project
+// a status date (YYYY-MM-DD, counted through the end of that day; "" =
+// the previous working day). The result names the status date it used. EVM needs the project
 // start date to place the status date on the schedule's working-day
 // axis, so projects without one get a clear error instead of numbers
 // that look right but mean nothing.
@@ -370,21 +371,16 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 		return kernel.EVMetrics{}, err
 	}
 
-	asOf := time.Now().UTC()
-	if asOfDate != "" {
-		parsed, perr := time.Parse(kernel.DateLayout, asOfDate)
-		if perr != nil {
-			return kernel.EVMetrics{}, fmt.Errorf("status date %q: want YYYY-MM-DD", asOfDate)
-		}
-		asOf = parsed
+	asOfDay, statusDate, err := evmStatus(start, asOfDate, time.Now(), calendar.For(proj.CountryCode).IsWorkday)
+	if err != nil {
+		return kernel.EVMetrics{}, err
 	}
-	cal := calendar.For(proj.CountryCode)
-	asOfDay, ok := kernel.DayOffset(start, asOf, cal.IsWorkday)
-	if !ok {
-		return kernel.EVMetrics{}, errors.New("status date is unreachably far from the project start")
+	m, err := kernel.ComputeEVM(tasks, asOfDay)
+	if err != nil {
+		return kernel.EVMetrics{}, err
 	}
-
-	return kernel.ComputeEVM(tasks, asOfDay)
+	m.StatusDate = statusDate
+	return m, nil
 }
 
 // RunChartMonteCarlo runs probabilistic scheduling for a CPM chart

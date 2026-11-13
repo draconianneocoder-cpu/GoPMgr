@@ -87,6 +87,8 @@ describe('Portfolio', () => {
     expect(getByText('-0.01')).toBeTruthy();
     expect(getByText('-92,233,720,368,547,758.08')).toBeTruthy();
 		expect(getByText('Reporting currency: USD')).toBeTruthy();
+    // The status date counts through the end of that day.
+    expect(getByText(/Through the end of 2026-08-21 \(UTC\)/)).toBeTruthy();
   });
 
 	it('shows a mixed-currency refusal without retaining a prior rollup', async () => {

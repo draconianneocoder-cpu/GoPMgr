@@ -28,6 +28,7 @@ func evmPayload(t *testing.T) ReportPayload {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.StatusDate = "2026-06-04"
 	return ReportPayload{Tasks: tasks, EVM: &m, Currency: "USD"}
 }
 
@@ -36,8 +37,8 @@ func TestEVMSummaryLines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(lines) != 11 {
-		t.Fatalf("lines = %d, want 11", len(lines))
+	if len(lines) != 12 || lines[0] != "Status date: through the end of 2026-06-04" {
+		t.Fatalf("lines = %q, want the status date and 11 metrics", lines)
 	}
 	joined := strings.Join(lines, "\n")
 	for _, want := range []string{
@@ -77,6 +78,16 @@ func TestScheduleReportsCarryEVMSection(t *testing.T) {
 	}
 	if !strings.Contains(body, "Earned Value") || !strings.Contains(body, "BAC): 800.00") {
 		t.Errorf("ODT body missing EVM section:\n%s", body)
+	}
+	if !strings.Contains(body, "through the end of 2026-06-04") || strings.Contains(body, "today") {
+		t.Errorf("ODT body must name the status date, not \"today\":\n%s", body)
+	}
+	html, err := renderHTML(payload, ExportOptions{Title: "Demo"})
+	if err != nil {
+		t.Fatalf("renderHTML: %v", err)
+	}
+	if !strings.Contains(string(html), "through the end of 2026-06-04") || strings.Contains(string(html), "status date: today") {
+		t.Errorf("HTML report must name the status date, not \"today\"")
 	}
 
 	// PDF and DOCX are binary; smoke-test that rendering succeeds with

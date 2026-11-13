@@ -44,6 +44,23 @@ func TestEVMSummaryLinesForDocumentReport(t *testing.T) {
 	}
 }
 
+// The summary names the status date its figures run through, as the first
+// line, and omits the line when no date is known.
+func TestEVMSummaryLinesNameTheStatusDate(t *testing.T) {
+	m := reportEVMFixture(t)
+	m.StatusDate = "2026-06-05"
+	lines := EVMSummaryLines(m, "USD")
+	if len(lines) == 0 || lines[0] != "Status date: through the end of 2026-06-05" {
+		t.Fatalf("first line = %q, want the status date", lines)
+	}
+	m.StatusDate = ""
+	for _, line := range EVMSummaryLines(m, "USD") {
+		if strings.HasPrefix(line, "Status date") {
+			t.Fatalf("line %q printed without a status date", line)
+		}
+	}
+}
+
 func TestBuildCombinedReportAcceptsResolvedEVMForChartRefs(t *testing.T) {
 	content := `{"schedule_ref":"chart-1","accomplishments":["Started design"]}`
 	_, err := BuildCombinedReport(ReportSpec{

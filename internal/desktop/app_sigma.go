@@ -421,7 +421,7 @@ func logCombinedReportSignatureEventWithStatus(d *db.Database, projectID, report
 	}
 }
 
-func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, asOf time.Time) (map[string]*kernel.EVMetrics, error) {
+func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, now time.Time) (map[string]*kernel.EVMetrics, error) {
 	if len(resolvedCharts) == 0 {
 		return nil, nil
 	}
@@ -429,9 +429,8 @@ func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.R
 	if !ok {
 		return nil, nil
 	}
-	cal := calendar.For(proj.CountryCode)
-	day, ok := kernel.DayOffset(start, asOf, cal.IsWorkday)
-	if !ok {
+	day, date, err := evmStatus(start, "", now, calendar.For(proj.CountryCode).IsWorkday)
+	if err != nil {
 		return nil, nil
 	}
 
@@ -463,6 +462,7 @@ func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.R
 			continue
 		}
 		m := metrics
+		m.StatusDate = date
 		out[id] = &m
 	}
 	if len(out) == 0 {

@@ -79,7 +79,7 @@ its values.
 | SQ-12 | Long duration | `Duration >` profile limit, milestones excluded | info | > 44 days, ≤ 5 % |
 | SQ-13 | Milestone without logic | A milestone with no incoming and no outgoing link | warning | — |
 | SQ-14 | Invalid actuals | `ActualStart` or `ActualFinish` after the reporting date; finish before start; a finish without a start; `PercentComplete` of 100 without `ActualFinish`, or above 0 without `ActualStart` | error | 0 invalid dates |
-| SQ-15 | Missing progress evidence | `ES` is before the reporting date and `PercentComplete` is 0 with no `ActualStart` | warning | — |
+| SQ-15 | Missing progress evidence | `ES` is on or before the reporting date, which counts through the end of that day (2026-11-13 [decision](../review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md)), and `PercentComplete` is 0 with no `ActualStart` | warning | — |
 | SQ-16 | Overallocation | `Overallocated` from the existing detector | warning | — |
 | SQ-17 | Unresourced task | A non-milestone task with no assignment | info | ≤ 5 % (DCMA "resources") |
 | SQ-18 | Reporting context | Missing project start date, missing reporting date, or no baseline available | info | — |

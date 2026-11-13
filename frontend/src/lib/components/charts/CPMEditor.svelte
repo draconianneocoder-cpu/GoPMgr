@@ -73,7 +73,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // ----- Earned Value (roadmap item 18) -----
   let evm = $state<EVMetrics | null>(null);
-  let evmAsOf = $state(''); // YYYY-MM-DD; '' = today
+  let evmAsOf = $state(''); // YYYY-MM-DD; '' = the previous working day
   let evmError = $state('');
   let evmBusy = $state(false);
 
@@ -840,6 +840,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
     {#if evm}
       <div class="mt-2 p-2 bg-slate-950 rounded text-xs space-y-1">
+        {#if evm.status_date}
+          <p class="text-slate-400">{t('cpm.evm.through', { date: evm.status_date })}</p>
+        {/if}
         <div class="grid grid-cols-2 gap-x-4 gap-y-1">
           <div class="flex justify-between">
             <span class="text-slate-500">{t('cpm.evm.bac')}</span>

@@ -518,8 +518,12 @@ func TestInvalidActuals(t *testing.T) {
 	}
 }
 
-// SQA-015, including a reporting date on a Saturday: the kernel maps it to
-// the next working day, Monday 12 Jan (index 5).
+// SQA-015. The reporting date counts through the end of the day
+// (docs/review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md), so C, planned
+// to start on Wednesday 14 Jan itself, is flagged with D and A. A Saturday
+// reporting date (10 Jan) covers Monday to Friday, status day 5: E (Friday,
+// index 4) is flagged and F (Monday 12 Jan, index 5) is not. Treating the
+// Saturday as the following Monday would wrongly flag F.
 func TestMissingProgressEvidence(t *testing.T) {
 	snet := func(id, date string) kernel.Task {
 		x := tk(id, 1)
@@ -531,7 +535,7 @@ func TestMissingProgressEvidence(t *testing.T) {
 	tasks := []kernel.Task{tk("A", 2), b, snet("C", "2026-01-14"), snet("D", "2026-01-13")}
 
 	r := run(t, base(tasks...))
-	wantSubjects(t, r, MissingProgress, "A", "D")
+	wantSubjects(t, r, MissingProgress, "A", "C", "D")
 	if f := ofRule(r, MissingProgress)[0]; !strings.Contains(f.Observed, "2026-01-14") {
 		t.Fatalf("SQ-15 must state the reporting date it used: %q", f.Observed)
 	}

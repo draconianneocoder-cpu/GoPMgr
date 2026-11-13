@@ -126,7 +126,7 @@ func renderODTReportBody(payload ReportPayload, title string) (string, error) {
 	}
 	if evmLines != nil {
 		writeODTPara(&buf, "Standard", "")
-		writeODTPara(&buf, "Heading_2", "Earned Value (status date: today)")
+		writeODTPara(&buf, "Heading_2", "Earned Value")
 		for _, line := range evmLines {
 			writeODTPara(&buf, "Standard", line)
 		}

@@ -347,7 +347,7 @@
     {
       "method": "CheckLatestVersion",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1090,
+      "line": 1099,
       "params": "",
       "returns": "update.Status, error",
       "uses_internal_packages": [
@@ -365,7 +365,7 @@
     {
       "method": "ChooseCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1128,
+      "line": 1137,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -373,7 +373,7 @@
     {
       "method": "ChooseTSARootCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1148,
+      "line": 1157,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -421,7 +421,7 @@
     {
       "method": "CompleteNativeClose",
       "file": "internal/desktop/app.go",
-      "line": 172,
+      "line": 170,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -470,7 +470,7 @@
     {
       "method": "ComputeScheduleEVM",
       "file": "internal/desktop/app_charts.go",
-      "line": 344,
+      "line": 345,
       "params": "chartID string, asOfDate string",
       "returns": "kernel.EVMetrics, error",
       "uses_internal_packages": [
@@ -646,7 +646,7 @@
     {
       "method": "DownloadAndInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1105,
+      "line": 1114,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -656,7 +656,7 @@
     {
       "method": "EnableNativeCloseGuard",
       "file": "internal/desktop/app.go",
-      "line": 163,
+      "line": 161,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -698,7 +698,7 @@
     {
       "method": "ExportChartMonteCarloRiskReport",
       "file": "internal/desktop/app_charts.go",
-      "line": 426,
+      "line": 422,
       "params": "chartID string, iterations int, workers int",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -780,7 +780,7 @@
     {
       "method": "ExportDocumentPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 1189,
+      "line": 1223,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -790,7 +790,7 @@
     {
       "method": "ExportDocumentPDFGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 1262,
+      "line": 1296,
       "params": "id string, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -802,7 +802,7 @@
     {
       "method": "ExportDocumentPDFSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 1305,
+      "line": 1339,
       "params": "id string, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -904,7 +904,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 772,
+      "line": 768,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1014,7 +1014,7 @@
     {
       "method": "ImportDatasetForAnalysis",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1057,
+      "line": 1066,
       "params": "",
       "returns": "analytics.Dataset, error",
       "uses_internal_packages": [
@@ -1034,7 +1034,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 903,
+      "line": 899,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1082,7 +1082,7 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 545,
+      "line": 541,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
@@ -1420,7 +1420,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 696,
+      "line": 692,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [
@@ -1451,7 +1451,7 @@
     {
       "method": "QuitToInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1121,
+      "line": 1130,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -1518,7 +1518,7 @@
     {
       "method": "RunChartMonteCarlo",
       "file": "internal/desktop/app_charts.go",
-      "line": 393,
+      "line": 389,
       "params": "chartID string, iterations int, workers int",
       "returns": "kernel.SimResult, error",
       "uses_internal_packages": [

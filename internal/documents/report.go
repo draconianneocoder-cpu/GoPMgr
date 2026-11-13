@@ -252,7 +252,8 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 
 // EVMSummaryLines renders the earned-value block of combined reports and
 // of the schedule reports in internal/export: one "label: value" line per
-// metric, amounts in currency (whole yen for JPY). It returns nil when
+// metric, amounts in currency (whole yen for JPY), after the status date
+// the figures run through when it is known. It returns nil when
 // there is no cost data, so the section is left out.
 func EVMSummaryLines(m *kernel.EVMetrics, currency string) []string {
 	if m == nil || m.BAC <= 0 {
@@ -264,19 +265,23 @@ func EVMSummaryLines(m *kernel.EVMetrics, currency string) []string {
 		}
 		return fmt.Sprintf("%.2f", v)
 	}
-	return []string{
-		"Budget at completion (BAC): " + formatMoneyIn(m.BAC, currency),
-		"Planned value (PV): " + formatMoneyIn(m.PV, currency),
-		"Earned value (EV): " + formatMoneyIn(m.EV, currency),
-		"Actual cost (AC): " + formatMoneyIn(m.AC, currency),
-		"Schedule variance (SV): " + formatMoneyIn(m.SV, currency),
-		"Cost variance (CV): " + formatMoneyIn(m.CV, currency),
-		"Schedule performance index (SPI): " + idx(m.SPI),
-		"Cost performance index (CPI): " + idx(m.CPI),
-		"Estimate at completion (EAC): " + formatMoneyIn(m.EAC, currency),
-		"Estimate to complete (ETC): " + formatMoneyIn(m.ETC, currency),
-		"Variance at completion (VAC): " + formatMoneyIn(m.VAC, currency),
+	var lines []string
+	if m.StatusDate != "" {
+		lines = append(lines, "Status date: through the end of "+m.StatusDate)
 	}
+	return append(lines,
+		"Budget at completion (BAC): "+formatMoneyIn(m.BAC, currency),
+		"Planned value (PV): "+formatMoneyIn(m.PV, currency),
+		"Earned value (EV): "+formatMoneyIn(m.EV, currency),
+		"Actual cost (AC): "+formatMoneyIn(m.AC, currency),
+		"Schedule variance (SV): "+formatMoneyIn(m.SV, currency),
+		"Cost variance (CV): "+formatMoneyIn(m.CV, currency),
+		"Schedule performance index (SPI): "+idx(m.SPI),
+		"Cost performance index (CPI): "+idx(m.CPI),
+		"Estimate at completion (EAC): "+formatMoneyIn(m.EAC, currency),
+		"Estimate to complete (ETC): "+formatMoneyIn(m.ETC, currency),
+		"Variance at completion (VAC): "+formatMoneyIn(m.VAC, currency),
+	)
 }
 
 func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics, currency string) {

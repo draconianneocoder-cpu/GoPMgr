@@ -34,7 +34,12 @@ type TaskEV struct {
 // EAC uses the classic BAC/CPI formula, falling back to BAC when CPI
 // is unavailable.
 type EVMetrics struct {
+	// AsOfDay is the status day: working days completed through the end of
+	// StatusDate.
 	AsOfDay float64 `json:"as_of_day"`
+	// StatusDate is the status date the figures run through (YYYY-MM-DD),
+	// set by the caller.
+	StatusDate string `json:"status_date,omitempty"`
 
 	BAC           float64 `json:"bac"` // budget at completion (Σ task budgets)
 	PV            float64 `json:"pv"`  // planned value (BCWS)
@@ -62,9 +67,11 @@ type EVMetrics struct {
 	Tasks []TaskEV `json:"tasks"`
 }
 
-// ComputeEVM derives earned-value metrics from a scheduled task map
-// at a status date expressed as a working-day offset (same indexing
-// as ES/EF; convert a calendar date with DayOffset).
+// ComputeEVM derives earned-value metrics from a scheduled task map at
+// status day asOfDay: the number of working days completed, in the same
+// indexing as ES/EF. Convert a status date with StatusDay, which counts it
+// through the end of the day; planned value covers the days before
+// asOfDay. The caller sets StatusDate on the result.
 //
 // Per task: PV = BudgetedCost × planned-fraction-complete at asOfDay.
 // Ordinary tasks accrue linearly across ES..EF; split tasks accrue only
