@@ -220,20 +220,21 @@ func TestAuditScheduleSelectsTheProfileByKey(t *testing.T) {
 	}
 }
 
-// The audit must judge the schedule the app reports. The project start is
-// stored as RFC3339 with an offset, which parseProjectDate accepts and the
-// audit does not, so the method converts it. The expected violations and
-// float come from scheduleProjectTasks, the pipeline reports use, not from
-// the audit's own code.
+// The audit must judge the schedule the app reports. The expected
+// violations and every task's float come from scheduleProjectTasks, the
+// pipeline reports use, not from the audit's own code. The project start is
+// stored as RFC3339, which the audit does not accept, so the method must
+// convert it. It is midnight UTC because any other time of day shifts the
+// app's constraint offsets (KRN-02); TestAuditProjectStartIsTheDisplayedDate
+// covers those values.
 //
 // Start Mon 2026-06-01, a work week of Monday to Friday: L (60 days) runs in
-// parallel with A (5) -> B (3). B must finish on Wed 2026-06-03 (day 3) but
-// cannot finish before day 8, so SQ-09 reports B. Its late finish pulls A back too, so
-// A and B both have float -5.
-// S (1 day) is free, so its float is large. M carries MSO, which the
-// scheduler does not support.
+// parallel with A (5) -> B (3). B must finish on Wed 2026-06-03 but cannot
+// finish before day 8, so SQ-09 reports B, and its finish pulls A back too:
+// both have negative float. S (1 day) is free, so its float is large. M
+// carries MSO, which the scheduler does not support.
 func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
-	app, d, p := newAuditTestApp(t, "2026-06-01T23:00:00-05:00")
+	app, d, p := newAuditTestApp(t, "2026-06-01T00:00:00Z")
 	data := `{"nodes":[
 		{"id":"A","label":"A","duration":5},
 		{"id":"B","label":"B","duration":3,"constraint":"MFO","constraint_date":"2026-06-03"},
@@ -250,20 +251,23 @@ func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
 	if err := scheduleProjectTasks(p, tasks); err != nil {
 		t.Fatalf("scheduleProjectTasks: %v", err)
 	}
-	var violated, negative []string
+	violated := []string{"M"} // the unsupported type, reported by SQ-09 too
+	wantFloat := map[schedaudit.RuleID]map[string]string{schedaudit.HighFloat: {}, schedaudit.NegativeFloat: {}}
 	for id, task := range tasks {
 		if task.ConstraintViolated {
 			violated = append(violated, id)
 		}
-		if task.Float < -1e-9 {
-			negative = append(negative, id)
+		observed := "float " + strconv.FormatFloat(task.Float, 'f', -1, 64) + " working days"
+		switch {
+		case task.Float < -1e-9:
+			wantFloat[schedaudit.NegativeFloat][id] = observed
+		case task.Float > schedaudit.DefaultProfile().HighFloatDays:
+			wantFloat[schedaudit.HighFloat][id] = observed
 		}
 	}
-	violated = append(violated, "M") // the unsupported type, reported by SQ-09 too
 	sort.Strings(violated)
-	sort.Strings(negative)
-	if !reflect.DeepEqual(negative, []string{"A", "B"}) {
-		t.Fatalf("fixture check: scheduleProjectTasks gives negative float on %v, want [A B]", negative)
+	if len(wantFloat[schedaudit.NegativeFloat]) != 2 || len(wantFloat[schedaudit.HighFloat]) == 0 {
+		t.Fatalf("fixture check: scheduleProjectTasks gives %v; the test needs two negative and some high floats", wantFloat)
 	}
 
 	r, err := app.AuditSchedule(context.Background(), c.ID, "", "")
@@ -276,18 +280,44 @@ func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
 	if got := subjects(r, schedaudit.ConstraintViolated); !reflect.DeepEqual(got, violated) {
 		t.Fatalf("SQ-09 = %v, want %v", got, violated)
 	}
-	if got := subjects(r, schedaudit.NegativeFloat); !reflect.DeepEqual(got, negative) {
-		t.Fatalf("SQ-11 = %v, want %v", got, negative)
-	}
-	wantFloat := "float " + strconv.FormatFloat(tasks["S"].Float, 'f', -1, 64) + " working days"
-	var sFloat string
-	for _, f := range r.Findings {
-		if f.Rule == schedaudit.HighFloat && f.TaskID == "S" {
-			sFloat = f.Observed
+	for rule, want := range wantFloat {
+		got := map[string]string{}
+		for _, f := range r.Findings {
+			if f.Rule == rule {
+				got[f.TaskID] = f.Observed
+			}
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s = %v, want the app's floats %v", rule, got, want)
 		}
 	}
-	if sFloat != wantFloat {
-		t.Fatalf("SQ-10 for S = %q, want %q", sFloat, wantFloat)
+}
+
+// The audit takes the project start as the calendar date the app displays.
+// The oracle is the start date scheduleProjectTasks gives an unconstrained
+// first task, so it does not reuse the conversion under test.
+func TestAuditProjectStartIsTheDisplayedDate(t *testing.T) {
+	for _, stored := range []string{
+		"2026-06-01",
+		"2026-06-01T00:00:00Z",
+		"2026-06-01T23:00:00-05:00",
+		"2026-06-01T00:30:00+02:00",
+	} {
+		tasks, err := cpmChartDataToKernelTasks(`{"nodes":[{"id":"A","label":"A","duration":1}],"edges":[]}`)
+		if err != nil {
+			t.Fatalf("cpmChartDataToKernelTasks: %v", err)
+		}
+		if err := scheduleProjectTasks(db.Project{StartDate: stored}, tasks); err != nil {
+			t.Fatalf("scheduleProjectTasks(%q): %v", stored, err)
+		}
+		if got, shown := auditProjectStart(stored), tasks["A"].StartDate; got != shown {
+			t.Fatalf("auditProjectStart(%q) = %q, but the app shows the project starting %q", stored, got, shown)
+		}
+	}
+	for _, stored := range []string{"", "June 1", "2026-06-31"} {
+		if got := auditProjectStart(stored); got != "" {
+			t.Fatalf("auditProjectStart(%q) = %q, want no date", stored, got)
+		}
 	}
 }
 

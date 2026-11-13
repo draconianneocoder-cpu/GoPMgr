@@ -241,7 +241,10 @@ what §3 left open:
   no chart save, no audit-log event.
 - **Inputs.** Tasks come from `cpmChartDataToKernelTasks`, which passes the
   stored constraint type through, sorted by ID. The project start is
-  converted with `parseProjectDate`, so an RFC3339 value works. The work
+  converted with `parseProjectDate` to the calendar date the app displays,
+  so an RFC3339 value is accepted. For one that is not midnight UTC, the
+  app's own scheduler places date constraints a day off (KRN-02 in STATUS),
+  so the audit can differ from the app by a day until KRN-02 is fixed. The work
   calendar is the project country's. SQ-16 uses `resourceCapacityPlan`, the
   plan resource levelling uses. SQ-18's baseline check reads the audited
   chart's own baselines.
@@ -253,5 +256,9 @@ what §3 left open:
 - **Known limit: anchors.** Charts have no way to designate start and finish
   tasks, so every audit runs without anchors and SQ-01 and SQ-02 report a
   schedule's open start and end. Designating them needs a chart-model change.
+- **Cancellation.** Parsing the chart and reading its baselines and capacity
+  plan happen before the audit and do not check the context; the audit
+  itself checks it as in §9. Only an already-cancelled call is tested at the
+  App level.
 - **Not done.** SQA-024, the 50,000-task measurement on the S0 hardware
   profile, needs DEC-HARDWARE. PS-02c, the findings panel, is not started.

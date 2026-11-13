@@ -81,15 +81,9 @@ func (a *App) AuditSchedule(ctx context.Context, chartID, reportingDate, profile
 	if err != nil {
 		return schedaudit.Result{}, err
 	}
-	// The stored start may be RFC3339; the audit takes the calendar date.
-	var start string
-	if day, ok := parseProjectDate(proj.StartDate); ok {
-		start = day.Format(kernel.DateLayout)
-	}
-
 	result, err := schedaudit.Audit(ctx, schedaudit.Input{
 		Tasks:             tasks,
-		ProjectStart:      start,
+		ProjectStart:      auditProjectStart(proj.StartDate),
 		IsWorkday:         calendar.For(proj.CountryCode).IsWorkday,
 		ReportingDate:     reportingDate,
 		BaselineAvailable: len(baselines) > 0,
@@ -101,4 +95,20 @@ func (a *App) AuditSchedule(ctx context.Context, chartID, reportingDate, profile
 		return schedaudit.Result{}, fmt.Errorf("audit schedule: %w", err)
 	}
 	return result, nil
+}
+
+// auditProjectStart gives the audit the project's start as the calendar
+// date the app displays (AnchorSchedule formats dates in the start's own
+// zone), or "" when the stored value is not a date. The stored value may be
+// RFC3339 with a time and offset, which the audit does not accept.
+//
+// Unless such a value is midnight UTC, the app's scheduler can place
+// constraint dates a day early or late (KRN-02, docs/STATUS.md); the audit
+// uses the displayed date instead.
+func auditProjectStart(stored string) string {
+	day, ok := parseProjectDate(stored)
+	if !ok {
+		return ""
+	}
+	return day.Format(kernel.DateLayout)
 }
