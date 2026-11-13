@@ -13,6 +13,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -57,6 +59,29 @@ func initDBWithDSN(path, dsn string) (*Database, error) {
 		return nil, fmt.Errorf("private database file: %w", err)
 	}
 	return db, nil
+}
+
+// restoreForeignKeys turns foreign keys back on for conn after a migration
+// that switched them off, and reads the setting back: SQLite ignores the
+// pragma, without an error, inside an open transaction. If they are not
+// on, conn is discarded rather than returned to the pool, where it would
+// serve later queries without enforcement (see withConnPragmas).
+func restoreForeignKeys(ctx context.Context, conn *sql.Conn) error {
+	_, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON")
+	if err == nil {
+		var on int
+		err = conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on)
+		if err == nil && on != 1 {
+			err = errors.New("they are still off")
+		}
+	}
+	if err == nil {
+		return nil
+	}
+	// Returning driver.ErrBadConn from Raw makes database/sql close the
+	// connection instead of pooling it.
+	_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+	return fmt.Errorf("restore foreign keys after migration (connection discarded): %w", err)
 }
 
 // withConnPragmas appends the per-connection pragmas as DSN options so
@@ -676,14 +701,11 @@ func (db *Database) migrateSigmaProjectsSchema() error {
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys for sigma_projects migration: %w", err)
 	}
-	restoreFK := func() {
-		_, _ = conn.ExecContext(ctx, "PRAGMA foreign_keys = ON")
-	}
+	restoreFK := func() error { return restoreForeignKeys(ctx, conn) }
 
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
-		restoreFK()
-		return fmt.Errorf("begin sigma_projects migration: %w", err)
+		return errors.Join(fmt.Errorf("begin sigma_projects migration: %w", err), restoreFK())
 	}
 
 	stmts := []string{
@@ -720,15 +742,15 @@ func (db *Database) migrateSigmaProjectsSchema() error {
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			_ = tx.Rollback()
-			restoreFK()
-			return fmt.Errorf("rebuild sigma_projects: %w", err)
+			return errors.Join(fmt.Errorf("rebuild sigma_projects: %w", err), restoreFK())
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		restoreFK()
-		return fmt.Errorf("commit sigma_projects migration: %w", err)
+		return errors.Join(fmt.Errorf("commit sigma_projects migration: %w", err), restoreFK())
 	}
-	restoreFK()
+	if err := restoreFK(); err != nil {
+		return err
+	}
 
 	rows, err := conn.QueryContext(ctx, "PRAGMA foreign_key_check")
 	if err != nil {
