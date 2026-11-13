@@ -8,8 +8,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Status:** Slice 1 was AUTHORIZED for implementation on 2026-11-11
 ([decision](../review/evaluation-2026-11-10-response-plan.md)). Later slices
 remain proposed. Part PS-02a, the rules package `internal/schedaudit`, is
-implemented (§9). PS-02b and PS-02c are not started, so the audit is not yet
-reachable from the application.
+implemented (§9), and so is PS-02b, the App method (§10). PS-02c is not
+started, so users cannot run the audit yet.
 **Plan:** [modernization plan](../design/professional-scheduling-modernization-plan.md) §3, §6.
 
 ## 1. Scope of slice 1
@@ -158,7 +158,7 @@ Percentage metrics are reported with numerator and denominator.
 1. **PS-02a:** the `internal/schedaudit` package (rules, profiles, finding
    type) with SQA-001 to 023 and 026 to 028. No App or UI change.
 2. **PS-02b:** the read-only `App.AuditSchedule(chartID, reportingDate,
-   profile)` method, with tests on a real encrypted project (SQA-020), chart
+   profile)` method (in Go it also takes the call's context first; see §10), with tests on a real encrypted project (SQA-020), chart
    selection (SQA-029) and the T2 measurement (SQA-024, 025).
 3. **PS-02c:** a read-only findings panel with keyboard navigation and screen
    reader semantics, and an export of the findings into the existing report
@@ -221,6 +221,44 @@ what §3 left open:
   constraint types the chart mapper drops (KRN-01), which never reach the
   audit.
 - **Not yet done:** SQA-020's stored-chart half, SQA-024 and SQA-029 belong to
-  PS-02b, which reads a real project. 50,000 tasks took about 0.1 s on the
+  PS-02b, which reads a real project. §10 covers SQA-020 and SQA-029; SQA-024
+  remains open. 50,000 tasks took about 0.1 s on the
   development Mac on 2026-11-13; that is not the SQA-024 measurement, which
   needs the S0 hardware profile.
+
+## 10. PS-02b as implemented (2026-11-13)
+
+`App.AuditSchedule(ctx, chartID, reportingDate, profile)` in
+`internal/desktop/app_schedule_audit.go`. It returns `schedaudit.Result`.
+
+- **Context.** In Go, the first parameter is the frontend call's own context.
+  Wails v3.1.0 omits it from the TypeScript signature and cancels it when the
+  frontend cancels the call (`messageprocessor_call.go`), so a single audit
+  can be stopped without closing the application.
+- **Chart.** Exactly the named chart, through `chartForProject`; a chart of
+  another kind or with no tasks is refused. The result and every finding
+  carry its ID and its updated-at stamp as the revision. Nothing is written:
+  no chart save, no audit-log event.
+- **Inputs.** Tasks come from `cpmChartDataToKernelTasks`, which passes the
+  stored constraint type through, sorted by ID. The project start is
+  converted with `parseProjectDate` to the calendar date the app displays,
+  so an RFC3339 value is accepted. For one that is not midnight UTC, the
+  app's own scheduler places date constraints a day off (KRN-02 in STATUS),
+  so the audit can differ from the app by a day until KRN-02 is fixed. The work
+  calendar is the project country's. SQ-16 uses `resourceCapacityPlan`, the
+  plan resource levelling uses. SQ-18's baseline check reads the audited
+  chart's own baselines.
+- **Arguments.** Profile keys are `default` (or empty) and `dcma-style`; a
+  display name is refused. The reporting date must be `YYYY-MM-DD` or empty.
+- **Unsupported constraint types (KRN-01).** The kernel arms only SNET, FNLT
+  and MFO and honours ALAP; any other stored type is scheduled as ASAP, which
+  matches the chart mapper. SQ-09 now reports such a type as an error.
+- **Known limit: anchors.** Charts have no way to designate start and finish
+  tasks, so every audit runs without anchors and SQ-01 and SQ-02 report a
+  schedule's open start and end. Designating them needs a chart-model change.
+- **Cancellation.** Parsing the chart and reading its baselines and capacity
+  plan happen before the audit and do not check the context; the audit
+  itself checks it as in §9. Only an already-cancelled call is tested at the
+  App level.
+- **Not done.** SQA-024, the 50,000-task measurement on the S0 hardware
+  profile, needs DEC-HARDWARE. PS-02c, the findings panel, is not started.

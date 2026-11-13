@@ -293,6 +293,19 @@
       "uses_internal_packages": []
     },
     {
+      "method": "AuditSchedule",
+      "file": "internal/desktop/app_schedule_audit.go",
+      "line": 42,
+      "params": "ctx context.Context, chartID string, reportingDate string, profile string",
+      "returns": "schedaudit.Result, error",
+      "uses_internal_packages": [
+        "gopmgr/internal/calendar",
+        "gopmgr/internal/charts",
+        "gopmgr/internal/kernel",
+        "gopmgr/internal/schedaudit"
+      ]
+    },
+    {
       "method": "BecomeAdmin",
       "file": "internal/desktop/app_session.go",
       "line": 121,

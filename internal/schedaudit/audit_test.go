@@ -408,6 +408,26 @@ func TestUnappliedConstraintDateIsReported(t *testing.T) {
 	}
 }
 
+// KRN-01: the kernel arms only SNET, FNLT and MFO and honours ALAP, so any
+// other stored type (MSO here, from hand-edited or restored chart data) is
+// scheduled as ASAP without notice. SQ-09 must say so. ALAP and ASAP are
+// supported and must not be reported.
+func TestUnsupportedConstraintTypeIsReported(t *testing.T) {
+	b := tk("B", 1, "A")
+	b.Constraint, b.ConstraintDate = "MSO", "2026-01-07"
+	late, soon := tk("C", 1, "A"), tk("D", 1, "A")
+	late.Constraint, soon.Constraint = kernel.AsLateAsPossible, kernel.AsSoonAsPossible
+	r := run(t, base(tk("A", 1), b, late, soon))
+	wantSubjects(t, r, ConstraintViolated, "B")
+	f := ofRule(r, ConstraintViolated)[0]
+	if !strings.Contains(f.Observed, "MSO") || !strings.Contains(f.Explanation, "as soon as possible") {
+		t.Fatalf("SQ-09 should name the unsupported type and its effect: %+v", f)
+	}
+	if f.Severity != SeverityError {
+		t.Fatalf("SQ-09 severity = %s, want error", f.Severity)
+	}
+}
+
 // SQA-010 and part of SQA-023: B has no logic, so its late finish is the
 // project finish, 50: float 50 - 1 - 0 = 49.
 func TestHighFloat(t *testing.T) {
