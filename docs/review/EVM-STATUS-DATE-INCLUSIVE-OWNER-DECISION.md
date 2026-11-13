@@ -24,7 +24,11 @@ output shows the date it used.
 
 The same rule applies to portfolio earned value, report exports, the
 combined report, the CPM editor's earned-value panel, and the PS-02 audit's
-reporting date (SQ-15).
+reporting date (SQ-15). The audit takes the inclusive reading only: it has
+no default reporting date, so without one SQ-15 is not evaluated.
+
+A milestone is planned once the day it is shown on is complete, so a status
+date on that day includes it and the day before does not.
 
 ## Why
 
@@ -43,9 +47,11 @@ reporting date (SQ-15).
 
 - Earned value for an entered status date rises by one day's planned work,
   compared with PR 213.
-- Default-dated figures are unchanged: the working days through the previous
-  working day are the working days before today. Only the shown date changes,
-  from "today" to that date.
+- Default-dated figures are unchanged, with one exception: the working days
+  through the previous working day are the working days before today, so
+  only the shown date changes, from "today" to that date. The exception is
+  a budgeted milestone shown today, which was counted a day early before and
+  is not counted until today is complete.
 - **Portfolio exception:** projects can use different country calendars, so
   no single previous working day fits them all. The portfolio shows the
   previous calendar day (UTC), "through the end of" that date. For every

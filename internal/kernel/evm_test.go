@@ -123,10 +123,14 @@ func TestComputeEVM_MilestonePV(t *testing.T) {
 	}
 	mustCPM(t, tasks)
 
-	before := mustComputeEVM(t, tasks, 1)
-	approx(t, "PV before milestone", before.PV, 0)
-	after := mustComputeEVM(t, tasks, 2)
-	approx(t, "PV at milestone", after.PV, 50)
+	// M has ES 2: it is shown on the third working day (index 2). A status
+	// day counts the days completed, so at 2 only days 0 and 1 are done and
+	// M is not yet due; at 3 its own day is complete
+	// (docs/review/EVM-STATUS-DATE-INCLUSIVE-OWNER-DECISION.md).
+	before := mustComputeEVM(t, tasks, 2)
+	approx(t, "PV before the milestone's day ends", before.PV, 0)
+	after := mustComputeEVM(t, tasks, 3)
+	approx(t, "PV once the milestone's day ends", after.PV, 50)
 }
 
 func TestComputeEVM_DeterministicTaskOrder(t *testing.T) {
@@ -216,7 +220,7 @@ func TestComputeEVMReportsOverflow(t *testing.T) {
 			},
 		},
 		{
-			// Planned value: two fully-planned (ES <= asOfDay) tasks at
+			// Planned value: two fully-planned (ES < asOfDay) milestones at
 			// BudgetedCostMinorUnits=MaxInt64 push the PV total past
 			// int64 range, while a third task's negative budget keeps
 			// the BAC total itself within range (MaxInt64-MaxInt64+
@@ -224,9 +228,9 @@ func TestComputeEVMReportsOverflow(t *testing.T) {
 			// check passes and PV's is what actually fires.
 			name: "planned value",
 			tasks: map[string]*Task{
-				"A": {ID: "A", Duration: 0, ES: -1, BudgetedCostMinorUnits: math.MaxInt64},
+				"A": {ID: "A", Duration: 0, ES: -2, BudgetedCostMinorUnits: math.MaxInt64},
 				"B": {ID: "B", Duration: 0, ES: 1000, BudgetedCostMinorUnits: -math.MaxInt64},
-				"C": {ID: "C", Duration: 0, ES: -1, BudgetedCostMinorUnits: math.MaxInt64},
+				"C": {ID: "C", Duration: 0, ES: -2, BudgetedCostMinorUnits: math.MaxInt64},
 			},
 		},
 		{
@@ -258,7 +262,7 @@ func TestComputeEVMReportsOverflow(t *testing.T) {
 			// overflows.
 			name: "schedule variance",
 			tasks: map[string]*Task{
-				"A": {ID: "A", Duration: 0, ES: -1, BudgetedCostMinorUnits: -1, PercentComplete: 0},
+				"A": {ID: "A", Duration: 0, ES: -2, BudgetedCostMinorUnits: -1, PercentComplete: 0},
 				"B": {ID: "B", Duration: 0, ES: 1000, BudgetedCostMinorUnits: math.MaxInt64, PercentComplete: 100},
 			},
 		},

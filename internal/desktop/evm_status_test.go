@@ -70,6 +70,28 @@ func TestComputeScheduleEVMCountsTheStatusDateThroughItsEnd(t *testing.T) {
 	}
 }
 
+// A milestone is planned on the day it is shown, not the day before. M
+// follows A, so it is shown on Friday 06-05.
+func TestComputeScheduleEVMPlansAMilestoneOnItsShownDay(t *testing.T) {
+	app, p, _ := newEVMStatusApp(t)
+	c, err := app.requireDB().SaveChart(db.Chart{ProjectID: p.ID, Kind: "cpm", Title: "Milestone", Data: `{"nodes":[
+		{"id":"A","label":"Design","duration":4,"budgeted_cost":400},
+		{"id":"M","label":"Signed off","duration":0,"milestone":true,"budgeted_cost":50}],
+		"edges":[{"from":"A","to":"M"}]}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	for date, wantPV := range map[string]float64{"2026-06-04": 400, "2026-06-05": 450} {
+		m, err := app.ComputeScheduleEVM(c.ID, date)
+		if err != nil {
+			t.Fatalf("ComputeScheduleEVM(%s): %v", date, err)
+		}
+		if m.PV != wantPV {
+			t.Fatalf("status %s: PV %v, want %v", date, m.PV, wantPV)
+		}
+	}
+}
+
 // With no entered date, the status date is the previous working day, and
 // the result names it. On Monday 06-08 that is Friday 06-05.
 func TestEVMStatusDefaultsToThePreviousWorkingDay(t *testing.T) {

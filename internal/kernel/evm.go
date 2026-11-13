@@ -77,7 +77,7 @@ type EVMetrics struct {
 // Ordinary tasks accrue linearly across ES..EF; split tasks accrue only
 // inside their persisted PlannedWorkSegments, so planned value pauses
 // during idle gaps. A zero-duration milestone is fully planned once
-// asOfDay reaches its ES. EV = BudgetedCost × PercentComplete/100.
+// its own day ES is complete (asOfDay > ES). EV = BudgetedCost × PercentComplete/100.
 // AC = ActualCost. CalculateCPM must have run first so ES/EF are
 // populated; PercentComplete is assumed clamped. An unrepresentable aggregate,
 // derived difference, or EAC ratio returns an error wrapping money.ErrOverflow.
@@ -222,7 +222,9 @@ func taskActualAmount(t *Task) money.Amount {
 // callers that construct kernel tasks without passing through an adapter.
 func plannedFraction(t *Task, asOfDay float64) float64 {
 	if t.Duration <= 0 {
-		if asOfDay >= t.ES {
+		// A milestone is shown on day ES; it is planned once that day is
+		// complete, as the status day counts.
+		if asOfDay > t.ES {
 			return 1
 		}
 		return 0
