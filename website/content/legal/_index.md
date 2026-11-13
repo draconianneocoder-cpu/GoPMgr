@@ -5,15 +5,15 @@ weight = 90
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Development snapshot fc70b50d41e5"
+applies_to = "Development snapshot 88b92cf935c7"
 last_reviewed = "2026-11-11"
 claim_ids = ["page.legal"]
 [[params.sources]]
 label = "LICENSE.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/LICENSE.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/LICENSE.md"
 [[params.sources]]
 label = "docs/branding.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/branding.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/branding.md"
 +++
 
 <!--

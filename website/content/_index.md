@@ -5,21 +5,21 @@ weight = 0
 layout = "home"
 [params]
 status = "development"
-applies_to = "Development snapshot fc70b50d41e5"
+applies_to = "Development snapshot 88b92cf935c7"
 last_reviewed = "2026-11-11"
 claim_ids = ["page.home"]
 [[params.sources]]
 label = "README.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/README.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/README.md"
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/branding.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/branding.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/branding.md"
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/user-guide.md"
 +++
 
 <!--
@@ -37,7 +37,7 @@ Explore critical-path scheduling, calendars and baselines. [See development capa
 
 ### Understand the cost
 
-Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/fc70b50d41e5e842b541e88686604ce26221d4c3/docs/user-guide.md#portfolio-and-dashboard).
+Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/user-guide.md#portfolio-and-dashboard).
 
 ### Start with the documentation
 

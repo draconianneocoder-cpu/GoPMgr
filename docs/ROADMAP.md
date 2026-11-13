@@ -198,7 +198,7 @@ Approved priority order, with today's status from the
 | --- | --- | --- |
 | PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
-| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11, not yet implemented: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11; its rules package implemented 2026-11-13, not yet in the app: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
 | PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
@@ -211,8 +211,9 @@ Approved priority order, with today's status from the
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
-stream, the next implementation slice is PS-02 slice 1, a read-only audit,
-authorized on 2026-11-11. The order of that and the security work ahead of it
+stream, the current slice is PS-02 slice 1, a read-only audit authorized on
+2026-11-11. Its rules package is in place; the App method and the findings
+panel come next. The order of that and the security work ahead of it
 is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
 the 2026-11-10 independent evaluation.
 
