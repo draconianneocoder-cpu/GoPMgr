@@ -208,6 +208,11 @@ func TestOpenEncryptedReadOnlyOpensMode0444AndRefusesWrites(t *testing.T) {
 	if err := ro.Close(); err != nil {
 		t.Fatal(err)
 	}
+	// Control: the mode really does stop a writer. Root ignores permission
+	// bits, so the control proves nothing there and is skipped.
+	if os.Geteuid() == 0 {
+		return
+	}
 	if _, err := InitEncryptedDB(path, dek); err == nil {
 		t.Fatal("InitEncryptedDB wrote a mode 0444 file")
 	}
