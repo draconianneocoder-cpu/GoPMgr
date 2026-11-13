@@ -119,7 +119,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | --- | --- |
 | PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE) |
 | PS-01 Normalized connected model | Proposed (ARC-01) |
-| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, implemented 2026-11-13. Parts b (App method) and c (findings panel) not started, so users cannot run it yet. Later slices proposed |
+| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, and part b, the read-only `App.AuditSchedule` method, implemented 2026-11-13. Part c (findings panel) not started, so users cannot run it yet. SQA-024 (the 50,000-task measurement on the S0 hardware profile) is not done: it needs DEC-HARDWARE. Known limit: charts have no way to designate start and finish tasks, so SQ-01 and SQ-02 report every schedule's open start and end. Later slices proposed |
 | PS-03 File inspection and interoperability | Partial: MSPDI quick import and export. Worker slices need DEC-INTEROP |
 | PS-04 Large-schedule storage, audit, Gantt | Blocked (ARC-01 to ARC-05). Overallocation rescan fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | Proposed |
@@ -143,7 +143,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 
 | ID | Defect | Status |
 | --- | --- | --- |
-| KRN-01 | A constraint can be out of force without anyone being told. `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed. `internal/charts/dag/cpm.go` turns any other constraint type, such as an imported MSO, SNLT or FNET, into ASAP | Open. The first is reproduced by `TestUnappliedConstraintDateIsReported` and reported by the PS-02 audit as SQ-09; the second never reaches the audit. A fix changes scheduling results, which PS-02 slice 1 may not do |
+| KRN-01 | A constraint can be out of force without anyone being told. `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed. Any other stored type, such as MSO, SNLT or FNET, is scheduled as ASAP: the kernel never arms it and `internal/charts/dag/cpm.go` maps it to ASAP. The chart editor offers only the five supported types and the MSPDI import drops constraints (PS-03), so such a value comes from hand-edited or restored chart data | Open. Both are reported by the PS-02 audit as SQ-09 (`TestUnappliedConstraintDateIsReported`, `TestUnsupportedConstraintTypeIsReported`). A fix changes scheduling results, which PS-02 slice 1 may not do |
 
 ## Decisions waiting for the owner
 

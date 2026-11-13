@@ -174,9 +174,16 @@ func dated(c kernel.ConstraintType) bool {
 	return c == kernel.StartNoEarlierThan || c == kernel.FinishNoLaterThan || c == kernel.MustFinishOn
 }
 
+// supported reports whether the kernel acts on a constraint type: it arms
+// the dated ones and honours ALAP. Anything else is scheduled as ASAP.
+func supported(c kernel.ConstraintType) bool {
+	return c == "" || c == kernel.AsSoonAsPossible || c == kernel.AsLateAsPossible || dated(c)
+}
+
 // SQ-08 and SQ-09. A date constraint is in force only once
 // kernel.ApplyConstraintDates has converted its date; one it could not
 // convert is ignored by the scheduler without notice, so SQ-09 reports it.
+// So is a constraint type the scheduler does not support (KRN-01).
 func (a *auditor) checkConstraints() error {
 	reason := a.datedReason()
 	hard, broken := 0, 0
@@ -185,6 +192,16 @@ func (a *auditor) checkConstraints() error {
 			return err
 		}
 		t, c := a.raw[id], a.cpm[id]
+		if !supported(t.Constraint) {
+			if reason == "" {
+				broken++
+				a.add(ConstraintViolated, SeverityError, id, nil,
+					fmt.Sprintf("constraint type %s is not supported", t.Constraint), "",
+					"The scheduler supports ASAP, ALAP, SNET, FNLT and MFO only, so it ignores this constraint and schedules the task as soon as possible.",
+					"Replace it with a supported constraint, or remove it.")
+			}
+			continue
+		}
 		if !dated(t.Constraint) {
 			continue
 		}

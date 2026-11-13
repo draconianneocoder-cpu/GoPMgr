@@ -286,6 +286,7 @@
         "gopmgr/internal/printing",
         "gopmgr/internal/reporting",
         "gopmgr/internal/rfc3161",
+        "gopmgr/internal/schedaudit",
         "gopmgr/internal/sigma/charts",
         "gopmgr/internal/sigma/domain",
         "gopmgr/internal/sigma/service",
@@ -471,7 +472,9 @@
     },
     "gopmgr/internal/schedaudit": {
       "dir": "internal/schedaudit",
-      "imported_by_internal": [],
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
       "imports_internal": [
         "gopmgr/internal/kernel"
       ],
