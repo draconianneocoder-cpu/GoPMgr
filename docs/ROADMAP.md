@@ -198,7 +198,7 @@ Approved priority order, with today's status from the
 | --- | --- | --- |
 | PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
-| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11; its rules package implemented 2026-11-13, not yet in the app: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11; rules and read-only `App.AuditSchedule` implemented, findings panel open: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
 | PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
@@ -212,10 +212,40 @@ Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
 stream, the current slice is PS-02 slice 1, a read-only audit authorized on
-2026-11-11. Its rules package is in place; the App method and the findings
-panel come next. The order of that and the security work ahead of it
+2026-11-11. Its rules package and read-only App method are in place; the findings
+panel remains open. KRN-01 and KRN-02 remedies require their own scheduling changes. The order of that and the security work ahead of it
 is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
 the 2026-11-10 independent evaluation.
+
+## Reporting integrity and secure extensions
+
+The integrated [RILD-01 design](design/ADR-014-reporting-integrity-and-lifecycle.md)
+expands PS-09 across the full reporting and controlled-document catalog. The
+[secure extension proposal](design/ADR-015-secure-extension-platform.md) supplements
+ADR-010. Both detailed ADRs remain proposed; workstream direction, implementation
+authorization and qualification are separate. The integration request authorizes
+documentation, not all future slices.
+
+Follow the [shared dependency sequence](design/reporting-extension/implementation-plan.md),
+[requirement register](design/reporting-extension/requirements.json),
+[EXT crosswalk](design/reporting-extension/extension-requirements.json) and
+[verification strategy](testing/reporting-extension-assurance.md). Retain all
+120 explicit reporting IDs, eight expanded catalog families and 31 EXT identifiers.
+
+| Path | Sequence and boundary |
+| --- | --- |
+| PS-09 / RILD-0–1 | Establish definitions, independent fixtures, source lineage and truthful findings; both KRN-01 and KRN-02 constrain affected claims. Existing PS-02 rules/App method are implemented, not its remaining UI or kernel remedies. |
+| RILD-2a / RILD-4 | Consistent read-only snapshots and typed report IR, then core reports on qualified existing domains; no Wasm or marketplace prerequisite. |
+| RILD-2b / RILD-3 / dependent RILD-5 | Immutable issue/approval/recovery and connected domain expansion require applicable format/audit/retention/financial/authority decisions and ADR-011 gates. No silent data-model or imported-fact change. |
+| RILD-6–7 | Catalog, user workflows and accessibility accompany each family; per-format/platform/workload qualification precedes corresponding release claims. |
+| EXT EX0–EX6 | Separate threat/contract design, existing ordered G1 foundation, separately authorized runtime/confinement feasibility, then mutation/package/SDK/product gates. A proposed gate grants no implementation authority. |
+
+Use the qualified name **RILD evidence E0–E4** for report evidence and **EXT profile
+E0–E3** for execution trust. Preserve one host authority, offline core operation,
+source facts, exact financial semantics and 50k editable/100k stress objectives.
+No DataFusion revival, runtime/SDK adoption, network service or support downgrade
+is approved by these plans. Current release and security priorities remain ahead
+of unapproved product implementation.
 
 ## Planned product work
 

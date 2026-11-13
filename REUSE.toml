@@ -448,3 +448,9 @@ path = ["website/assets/js/vendor/flexsearch.bundle.min.js", "website/static/lic
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Thomas Wilkerling"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["docs/design/reporting-extension/sources/*", "docs/design/reporting-extension/*.json", "docs/design/reporting-extension/*.docx"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GFDL-1.3-or-later"

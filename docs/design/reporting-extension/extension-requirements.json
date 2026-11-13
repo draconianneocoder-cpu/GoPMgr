@@ -1,0 +1,1389 @@
+{
+  "schema_version": 1,
+  "baseline": "ac20cbe711d9c03479cf937d82c5b7da991454d3",
+  "namespace": "EXT requirements and profiles, distinct from RILD evidence levels",
+  "requirements": [
+    {
+      "id": "EXT-Q01",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q01 | Host alone owns authentication, DEKs, SQLCipher, audit, scheduling, exact money, project revisions and commit authority. |",
+      "integrated_requirement": "| EXT-Q01 | Host alone owns authentication, DEKs, SQLCipher, audit, scheduling, exact money, project revisions and commit authority. |",
+      "accepted_architecture_refs": [
+        "QI-02"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q02",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q02 | A plugin receives only the minimum authorized data and executable capabilities; default deny; no implicit grant from a signature or manifest. |",
+      "integrated_requirement": "| EXT-Q02 | A plugin receives only the minimum authorized data and executable capabilities; default deny; no implicit grant from a signature or manifest. |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-11"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q03",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q03 | Untrusted executable code must be confined by both a qualified guest sandbox and an independently enforced OS process boundary. Native community code is not a v1 capability. |",
+      "integrated_requirement": "| EXT-Q03 | Untrusted executable code must be confined by both a qualified guest sandbox and an independently enforced OS process boundary. Native community code is not a v1 capability. |",
+      "accepted_architecture_refs": [
+        "QI-13",
+        "D-01"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q04",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q04 | Failure, cancellation, revocation or resource exhaustion must not corrupt projects, lose acknowledged edits, or block ordinary host operations. |",
+      "integrated_requirement": "| EXT-Q04 | Failure, cancellation, revocation or resource exhaustion must not corrupt projects, lose acknowledged edits, or block ordinary host operations. |",
+      "accepted_architecture_refs": [
+        "QI-07",
+        "QI-08"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q05",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q05 | Bound the complete pipeline, including compilation, decoding, buffers, host callbacks, process trees, persistent state and telemetry. |",
+      "integrated_requirement": "| EXT-Q05 | Bound the complete pipeline, including compilation, decoding, buffers, host callbacks, process trees, persistent state and telemetry. |",
+      "accepted_architecture_refs": [
+        "QI-09",
+        "QI-14"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q06",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q06 | All authoritative mutations require typed commands, validation, revision/epoch checks and atomic host persistence; no plugin SQL or direct database access. |",
+      "integrated_requirement": "| EXT-Q06 | All authoritative mutations require typed commands, validation, revision/epoch checks and atomic host persistence; no plugin SQL or direct database access. |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-08"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q07",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q07 | Preserve existing audit bytes, historical hashes, evidence and recovery semantics; changes append records rather than rewrite history. |",
+      "integrated_requirement": "| EXT-Q07 | Preserve existing audit bytes, historical hashes, evidence and recovery semantics; changes append records rather than rewrite history. |",
+      "accepted_architecture_refs": [
+        "QI-08"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q08",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q08 | One production Wasm engine and one supervisor; one selected native transport per platform/release; no runtime or transport fallback that silently weakens security or support. |",
+      "integrated_requirement": "| EXT-Q08 | One production Wasm engine and one supervisor; one selected native transport per platform/release; no runtime or transport fallback that silently weakens security or support. |",
+      "accepted_architecture_refs": [
+        "QI-03",
+        "QI-04",
+        "QI-12"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q09",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q09 | Core works without plugins, cloud services, a registry, external credentials or online license validation. |",
+      "integrated_requirement": "| EXT-Q09 | Core works without plugins, cloud services, an external registry, external credentials or online license validation. |",
+      "accepted_architecture_refs": [
+        "QI-01",
+        "QI-10",
+        "D-02"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "External registry independence preserves the mandatory generalized internal registry (ADR-010 D-02/QI-10).",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EXT-Q10",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EXT-Q10 | Security, performance and fidelity claims require reproducible evidence on supported installed platforms; BLOCKED and NOT RUN are not PASS. |",
+      "integrated_requirement": "| EXT-Q10 | Security, performance and fidelity claims require reproducible evidence on supported installed platforms; BLOCKED and NOT RUN are not PASS. |",
+      "accepted_architecture_refs": [
+        "QI-05",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX1": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX2": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX3": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX4": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX5": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS.",
+        "EX6": "Review this invariant at design and every applicable execution/distribution/product gate; record a reviewer-approved reason where not applicable, never infer PASS."
+      }
+    },
+    {
+      "id": "EX0",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX0 contract and threat review | Inventory existing code; map invariants to ADR-010/011; owner-approved threat model, workload budgets, platform matrix and scope | No new runtime dependency until reviewed |",
+      "integrated_requirement": "| EX0 contract and threat review | Inventory existing code; map invariants to ADR-010/011; owner-approved threat model, workload budgets, platform matrix and scope | No new runtime dependency until reviewed |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX1",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX1 native foundation | Existing G1 ordered slices, real IPC authentication/admission/cancellation and plugin-disabled regressions; MPXJ separately gated | Do not ship unqualified native worker |",
+      "integrated_requirement": "| EX1 native foundation | Existing G1 ordered slices, real IPC authentication/admission/cancellation and plugin-disabled regressions; MPXJ separately gated | Do not ship unqualified native worker |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX1",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX2",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX2 runtime feasibility | Two isolated candidates or documented evidence eliminating one; comparable guest ABI, hostile inputs, dependencies, licensing, resource and performance evidence | No candidate adoption until all hard requirements pass |",
+      "integrated_requirement": "| EX2 runtime feasibility | Two isolated candidates or documented evidence eliminating one; comparable guest ABI, hostile inputs, dependencies, licensing, resource and performance evidence | No candidate adoption until all hard requirements pass |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX2",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX3",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX3 confinement and resource tests | Installed Windows/macOS/Linux claims; guest escape, malicious callbacks, process/FS/network restrictions, aggregate limits, host crash and cleanup; offline behavior | E2 unavailable on unqualified targets; no support-policy change without ACR |",
+      "integrated_requirement": "| EX3 confinement and resource tests | Installed Windows/macOS/Linux claims; guest escape, malicious callbacks, process/FS/network restrictions, aggregate limits, host crash and cleanup; offline behavior | E2 unavailable on unqualified targets; no support-policy change without ACR |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX3",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX4",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX4 semantic and persistence tests | Cross-language vectors, stale leases/proposals, concurrency, exact money, import fidelity, atomicity, power-loss/recovery and immutable audit history | No project-write capability until applicable ADR-011/host gates pass |",
+      "integrated_requirement": "| EX4 semantic and persistence tests | Cross-language vectors, stale leases/proposals, concurrency, exact money, import fidelity, atomicity, power-loss/recovery and immutable audit history | No project-write capability until applicable ADR-011/host gates pass |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX4",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX5",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX5 package and SDK | Tamper/replay/rollback/revocation, TOCTOU, archive fuzzing, trust recovery, version compatibility, independently implemented reference plugins | No public installation/update until qualification |",
+      "integrated_requirement": "| EX5 package and SDK | Tamper/replay/rollback/revocation, TOCTOU, archive fuzzing, trust recovery, version compatibility, independently implemented reference plugins | No public installation/update until qualification |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX5",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EX6",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "| EX6 product qualification | Representative 50k/100k schedules, tail latency, soak, installed signing, accessibility, independent adversarial review and reproducible evidence | No marketplace/public executable release until explicit approval |",
+      "integrated_requirement": "| EX6 product qualification | Representative 50k/100k schedules, tail latency, soak, installed signing, accessibility, independent adversarial review and reproducible evidence | No marketplace/public executable release until explicit approval |",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX6",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false
+    },
+    {
+      "id": "EXT-D01",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D01:** Go owns registry, policy, admission, supervision and domain validation. Preserve ADR-010 native Protobuf/gRPC contracts and platform transports. Java remains the initial MPXJ implementation; Rust or Go may implement future compute workers. Do not load Go `plugin` shared objects, native dynamic libraries, JNI or arbitrary JavaScript into the privileged host.",
+      "integrated_requirement": "**EXT-D01:** Go owns registry, policy, admission, supervision and domain validation. Preserve ADR-010 native Protobuf/gRPC contracts and platform transports. Java remains the initial MPXJ implementation; Rust or Go may implement future compute workers. Do not load Go `plugin` shared objects, native dynamic libraries, JNI or arbitrary JavaScript into the privileged host.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers."
+      }
+    },
+    {
+      "id": "EXT-D02",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D02:** Compare wazero (Go, core Wasm) and Wasmtime (Rust, Component Model support) as separately executing runner candidates. Evaluate identical semantics, representative guest workloads, all supported platforms, isolation, cancellation, compilation cost, memory, dependencies, license/security maintenance, signing and packaging. A candidate that cannot satisfy mandatory controls is ineligible regardless of performance. Prefer the simpler eligible candidate when the richer runtime has no demonstrated product benefit. Select Wasmtime/WIT if required typed components and measured capabilities justify it; select wazero with a small versioned core-Wasm ABI if equivalent security, ergonomics and performance are demonstrated. Do not assume the two expose identical APIs or support the same guest binaries. Do not ship both initially.",
+      "integrated_requirement": "**EXT-D02:** Compare wazero (Go, core Wasm) and Wasmtime (Rust, Component Model support) as separately executing runner candidates. Evaluate identical semantics, representative guest workloads, all supported platforms, isolation, cancellation, compilation cost, memory, dependencies, license/security maintenance, signing and packaging. A candidate that cannot satisfy mandatory controls is ineligible regardless of performance. Prefer the simpler eligible candidate when the richer runtime has no demonstrated product benefit. Select Wasmtime/WIT if required typed components and measured capabilities justify it; select wazero with a small versioned core-Wasm ABI if equivalent security, ergonomics and performance are demonstrated. Do not assume the two expose identical APIs or support the same guest binaries. Do not ship both initially.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption."
+      }
+    },
+    {
+      "id": "EXT-D03",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D03:** Keep one reference SDK initially. Rust is a preferred candidate for numerical/complex guest code; Go for native integration and a future guest SDK when compiler/ABI compatibility is proven. Language and runtime selection are separate decisions. No promise of universal language compatibility. No dependency pin or SDK stability commitment before qualification.",
+      "integrated_requirement": "**EXT-D03:** Keep one reference SDK initially. Rust is a preferred candidate for numerical/complex guest code; Go for native integration and a future guest SDK when compiler/ABI compatibility is proven. Language and runtime selection are separate decisions. No promise of universal language compatibility. No dependency pin or SDK stability commitment before qualification.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX5": "Qualify applicable public package, ABI/SDK, trust, compatibility and upgrade/rollback contracts before public installation/update; no public adoption inferred."
+      }
+    },
+    {
+      "id": "EXT-D04",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D04:** Define canonical semantic contracts (types, units, precision, identity, presence, ordering, errors and invariants), with generated Protobuf messages as the native wire contract. If a Component Model runner is selected, expose narrow WIT worlds, with an explicitly versioned mapping and golden conformance tests. Otherwise use a minimal reviewed core-Wasm ABI with bounded typed payloads (candidate: existing Protobuf messages). Do not build a speculative schema compiler or a generic JSON/`Any` gateway. The chosen guest ABI must not expose raw host memory, pointers or privileged services. Generated bindings and compatibility checks are release artifacts.\n\nSeparate lifecycle/control messages from business data logically; use the existing authenticated gRPC connection with independently bounded streams, not a second transport. Keep control handling independent of full data queues and enforce outer supervisor cancellation even if HTTP/2 flow control stalls. Host creates endpoint; worker connects; mutual launch proof and peer identity precede work. Preserve G1 single-instance limits, restricted ACLs, remote-client rejection, one-shot bootstrap, fixed selected transport per OS and no automatic TCP/stdio business-data fallback.",
+      "integrated_requirement": "**EXT-D04:** Define canonical semantic contracts (types, units, precision, identity, presence, ordering, errors and invariants), with generated Protobuf messages as the native wire contract. If a Component Model runner is selected, expose narrow WIT worlds, with an explicitly versioned mapping and golden conformance tests. Otherwise use a minimal reviewed core-Wasm ABI with bounded typed payloads (candidate: existing Protobuf messages). Do not build a speculative schema compiler or a generic JSON/`Any` gateway. The chosen guest ABI must not expose raw host memory, pointers or privileged services. Generated bindings and compatibility checks are release artifacts.\n\nSeparate lifecycle/control messages from business data logically; use the existing authenticated gRPC connection with independently bounded streams, not a second transport. Keep control handling independent of full data queues and enforce outer supervisor cancellation even if HTTP/2 flow control stalls. Host creates endpoint; worker connects; mutual launch proof and peer identity precede work. Preserve G1 single-instance limits, restricted ACLs, remote-client rejection, one-shot bootstrap, fixed selected transport per OS and no automatic TCP/stdio business-data fallback.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers. Negotiate native contract versions before disclosure.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX5": "Qualify applicable public package, ABI/SDK, trust, compatibility and upgrade/rollback contracts before public installation/update; no public adoption inferred."
+      }
+    },
+    {
+      "id": "EXT-D05",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D05:** Issue opaque, non-delegable, job-scoped handles. Effective authority is the intersection of requested capability, signed operation policy, supported host operation, principal authorization, project/field scope, job lease, current session epoch and runtime policy (plus remote binding and OAuth scope where applicable). Bind leases to account incarnation, project copy, revision/generation, operation ID, artifact digest and expiry. Validate on every broker call and again at commit; deny unknown capability, enum, schema or handle. Revocation invalidates leases and cancels the job; it cannot erase bytes already disclosed. Cache only immutable policy evaluation within the same lease/epoch and invalidate on policy change. No transitive permissions or plugin-to-plugin calls in v1.\n\nNo guest receives database paths, DEKs, credentials, arbitrary SQL, raw sockets or raw Wails bindings. Host brokers return bounded, scoped fields and opaque cursors/handles. Plugin settings and any retained state are host-managed, encrypted if sensitive, namespaced by account/project/plugin identity, quota-limited and retention-controlled. No persistent state by default. Extensions cannot alter retention or write audit records directly. External requests, if separately approved, use fixed policy routes, typed queries, destination allowlists, redirect restrictions, TLS verification, byte/rate/time limits and explicit data-transfer consent. OAuth secrets remain host-private. Treat plugin output as untrusted; no automatic HTML, active SVG, executable report or formula injection.",
+      "integrated_requirement": "**EXT-D05:** Issue opaque, non-delegable, job-scoped handles. Effective authority is the intersection of requested capability, signed operation policy, supported host operation, principal authorization, project/field scope, job lease, current session epoch and runtime policy (plus remote binding and OAuth scope where applicable). Bind leases to account incarnation, project copy, revision/generation, operation ID, artifact digest and expiry. Validate on every broker call and again at commit; deny unknown capability, enum, schema or handle. Revocation invalidates leases and cancels the job; it cannot erase bytes already disclosed. Cache only immutable policy evaluation within the same lease/epoch and invalidate on policy change. No transitive permissions or plugin-to-plugin calls in v1.\n\nNo guest receives database paths, DEKs, credentials, arbitrary SQL, raw sockets or raw Wails bindings. Host brokers return bounded, scoped fields and opaque cursors/handles. Plugin settings and any retained state are host-managed, encrypted if sensitive, namespaced by account/project/plugin identity, quota-limited and retention-controlled. No persistent state by default. Extensions cannot alter retention or write audit records directly. External requests, if separately approved, use fixed policy routes, typed queries, destination allowlists, redirect restrictions, TLS verification, byte/rate/time limits and explicit data-transfer consent. OAuth secrets remain host-private. Treat plugin output as untrusted; no automatic HTML, active SVG, executable report or formula injection.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Enforce native admission and every read disclosure before data release; preserve current G1 authorization limits.",
+        "EX2": "Prove candidate Wasm lease/callback checks before disclosure.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment.",
+        "EX4": "Revalidate authorization and revision/epoch at host commit under approved mutation contracts."
+      }
+    },
+    {
+      "id": "EXT-D06",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D06:** For E2, require a restricted Wasm guest plus an OS-confined runner. Start containment before guest compilation, module loading or untrusted input. No inherited environment secrets, arbitrary file descriptors/handles, working directory authority, privileged tokens or general-purpose WASI imports. Allow only required read-only runtime artifacts and authenticated IPC. Disable network, process spawning, shared memory, guest threads, dynamic linking, unsafe runtime features and persistent storage unless separately justified and qualified. Guest imports, compilation inputs, stack depth, memory/table counts and size are bounded. For reproducible compute, deny ambient clock/random imports or supply explicit host-approved inputs; do not expose a general system clock, random or environment API by default. No guest-provided precompiled native code or executable cache. Any required runtime JIT or interpreter configuration must be qualified with OS policies; use a reviewed interpreter if native executable memory is unavailable only as a separately selected and tested configuration, never as an automatic fallback. No debug/core dumps containing project data in production.\n\n| Platform | Candidate controls; must prove installed behavior |\n|---|---|\n| Linux | Namespaces, no-new-privileges, seccomp, Landlock/other LSM as appropriate, cgroup v2 resource accounting; test actual kernel/ABI and delegation. Landlock alone is not a universal network or descriptor sandbox. |\n| macOS | Signed/notarized helper, reviewed App Sandbox entitlements, restricted resources and IPC, explicit testing of JIT/signing compatibility and aggregate limits; signing/hardened runtime alone is not a sandbox. |\n| Windows | AppContainer or demonstrated equivalent confinement, restrictive named-pipe ACLs, process-handle identity, Job Objects for tree/resource enforcement; a restricted token or Job Object alone is not sufficient isolation. |\n\nTest inherited handles, symlinks/reparse points, registry/keychain, network including IPv6/UDP/local IPC, process injection/signals/debugging and unauthorized child creation. Detect missing containment prerequisites and deny E2 execution before any project disclosure. Keep core and existing approved E1 functions available subject to their own qualification; no downgrade from E2 to unconfined execution. An OS administrator, compromised host/kernel or already-exfiltrated data is outside the stated plugin isolation guarantee; side channels are bounded by minimizing shared state and secrets, not claimed eliminated.",
+      "integrated_requirement": "**EXT-D06:** For E2, require a restricted Wasm guest plus an OS-confined runner. Start containment before guest compilation, module loading or untrusted input. No inherited environment secrets, arbitrary file descriptors/handles, working directory authority, privileged tokens or general-purpose WASI imports. Allow only required read-only runtime artifacts and authenticated IPC. Disable network, process spawning, shared memory, guest threads, dynamic linking, unsafe runtime features and persistent storage unless separately justified and qualified. Guest imports, compilation inputs, stack depth, memory/table counts and size are bounded. For reproducible compute, deny ambient clock/random imports or supply explicit host-approved inputs; do not expose a general system clock, random or environment API by default. No guest-provided precompiled native code or executable cache. Any required runtime JIT or interpreter configuration must be qualified with OS policies; use a reviewed interpreter if native executable memory is unavailable only as a separately selected and tested configuration, never as an automatic fallback. No debug/core dumps containing project data in production.\n\n| Platform | Candidate controls; must prove installed behavior |\n|---|---|\n| Linux | Namespaces, no-new-privileges, seccomp, Landlock/other LSM as appropriate, cgroup v2 resource accounting; test actual kernel/ABI and delegation. Landlock alone is not a universal network or descriptor sandbox. |\n| macOS | Signed/notarized helper, reviewed App Sandbox entitlements, restricted resources and IPC, explicit testing of JIT/signing compatibility and aggregate limits; signing/hardened runtime alone is not a sandbox. |\n| Windows | AppContainer or demonstrated equivalent confinement, restrictive named-pipe ACLs, process-handle identity, Job Objects for tree/resource enforcement; a restricted token or Job Object alone is not sufficient isolation. |\n\nTest inherited handles, symlinks/reparse points, registry/keychain, network including IPv6/UDP/local IPC, process injection/signals/debugging and unauthorized child creation. Detect missing containment prerequisites and deny E2 execution before any project disclosure. Keep core and existing approved E1 functions available subject to their own qualification; no downgrade from E2 to unconfined execution. An OS administrator, compromised host/kernel or already-exfiltrated data is outside the stated plugin isolation guarantee; side channels are bounded by minimizing shared state and secrets, not claimed eliminated.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment."
+      }
+    },
+    {
+      "id": "EXT-D07",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D07:** Reserve resources before accepting work. Enforce global, account, plugin and job budgets for resident memory/commit charge, CPU, wall time, process count, disk, in-flight bytes, records, open descriptors, compilation and log volume. Account for host, runtime, compiler, guest, native allocations, transport buffers and process descendants. Keep explicit capacity for interactive scheduling and persistence. Use fair bounded queues, cancellation-aware workers and typed RESOURCE_EXHAUSTED responses; no unbounded retries or queues. Hard limits require OS enforcement where available and qualified equivalent controls elsewhere; measured RSS alone is not enforcement. Runtime fuel/epoch/deadline controls do not stop blocking host callbacks; broker calls need their own deadlines and outer termination.",
+      "integrated_requirement": "**EXT-D07:** Reserve resources before accepting work. Enforce global, account, plugin and job budgets for resident memory/commit charge, CPU, wall time, process count, disk, in-flight bytes, records, open descriptors, compilation and log volume. Account for host, runtime, compiler, guest, native allocations, transport buffers and process descendants. Keep explicit capacity for interactive scheduling and persistence. Use fair bounded queues, cancellation-aware workers and typed RESOURCE_EXHAUSTED responses; no unbounded retries or queues. Hard limits require OS enforcement where available and qualified equivalent controls elsewhere; measured RSS alone is not enforcement. Runtime fuel/epoch/deadline controls do not stop blocking host callbacks; broker calls need their own deadlines and outer termination.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment."
+      }
+    },
+    {
+      "id": "EXT-D08",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D08:** Use credit-based bounded batches atop gRPC flow control. Reserve bounded decode/expansion budgets before processing; enforce limits incrementally as decompression and decoding proceed and reject before exceeding allocation limits. Cap per-record expansion, metadata, nesting and concurrent streams. Release credit only after the consumer has processed or safely staged the batch, not merely received it. Enforce maximum message sizes and compression expansion; reject oversized inputs with explicit errors, never silent truncation. Use field projection, stable keyset pagination or bounded snapshots, compact typed records and incremental aggregation. Do not hold SQLCipher write locks across IPC or long-lived read transactions across UI interactions. Revision-bound snapshots must not mix revisions; use approved host snapshot/staging mechanisms or restart on revision change. Avoid whole-project copies and redundant JSON/base64 transformations. Do not introduce shared-memory transport, Arrow IPC or a columnar runtime until profiling demonstrates need and a separate security review proves immutable ownership, bounds and cleanup.",
+      "integrated_requirement": "**EXT-D08:** Use credit-based bounded batches atop gRPC flow control. Reserve bounded decode/expansion budgets before processing; enforce limits incrementally as decompression and decoding proceed and reject before exceeding allocation limits. Cap per-record expansion, metadata, nesting and concurrent streams. Release credit only after the consumer has processed or safely staged the batch, not merely received it. Enforce maximum message sizes and compression expansion; reject oversized inputs with explicit errors, never silent truncation. Use field projection, stable keyset pagination or bounded snapshots, compact typed records and incremental aggregation. Do not hold SQLCipher write locks across IPC or long-lived read transactions across UI interactions. Revision-bound snapshots must not mix revisions; use approved host snapshot/staging mechanisms or restart on revision change. Avoid whole-project copies and redundant JSON/base64 transformations. Do not introduce shared-memory transport, Arrow IPC or a columnar runtime until profiling demonstrates need and a separate security review proves immutable ownership, bounds and cleanup.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment."
+      }
+    },
+    {
+      "id": "EXT-D09",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D09:** Retain one job per process initially, matching ADR-010. For Wasm, instantiate a fresh store/instance with fresh handles per invocation. Prefer measured optimizations in this order: reduce data volume/copies, batch host calls, reuse verified compile artifacts, then consider process pooling. Compile/validate untrusted modules in bounded confined workers; a host-generated cache may contain executable machine code and must be version-, engine-, configuration-, platform-, CPU-feature- and digest-bound, authenticated or regenerated, size-limited and atomically published. Never deserialize third-party supplied compiled code. No project payload in a shared compile cache. If a candidate needs a privileged cache or an unverified executable loader, reject it. A compiler output may be shared only when it contains no project data and its integrity is maintained against lower-trust processes. Prefer in-memory or disposable compilation when a secure persistent cache is not feasible.\n\nOptional reuse requires separate approval and evidence of safe reset, bounded lifetime, memory high-water recycling, fresh authentication, no stale handles, no pending callbacks, and no cross-account/project/permission-domain residual state. Do not reuse an untrusted runner across different principals or plugin artifacts. Pool only after showing a material p95 benefit; cold-process fallback is permitted only as the already approved isolation-preserving lifecycle, not as a transport/runtime fallback.",
+      "integrated_requirement": "**EXT-D09:** Retain one job per process initially, matching ADR-010. For Wasm, instantiate a fresh store/instance with fresh handles per invocation. Prefer measured optimizations in this order: reduce data volume/copies, batch host calls, reuse verified compile artifacts, then consider process pooling. Compile/validate untrusted modules in bounded confined workers; a host-generated cache may contain executable machine code and must be version-, engine-, configuration-, platform-, CPU-feature- and digest-bound, authenticated or regenerated, size-limited and atomically published. Never deserialize third-party supplied compiled code. No project payload in a shared compile cache. If a candidate needs a privileged cache or an unverified executable loader, reject it. A compiler output may be shared only when it contains no project data and its integrity is maintained against lower-trust processes. Prefer in-memory or disposable compilation when a secure persistent cache is not feasible.\n\nOptional reuse requires separate approval and evidence of safe reset, bounded lifetime, memory high-water recycling, fresh authentication, no stale handles, no pending callbacks, and no cross-account/project/permission-domain residual state. Do not reuse an untrusted runner across different principals or plugin artifacts. Pool only after showing a material p95 benefit; cold-process fallback is permitted only as the already approved isolation-preserving lifecycle, not as a transport/runtime fallback.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment."
+      }
+    },
+    {
+      "id": "EXT-D10",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D10:** Lifecycle: VERIFIED -> ADMITTED -> STARTING -> AUTHENTICATED -> RUNNING -> DRAINING -> REAPED, with FAILED/CANCELLED/QUARANTINED outcomes and explicit commit state. Use the existing ADR-010 lifecycle vocabulary in code; this is a semantic refinement, not a competing state machine. On cancel/revoke: close admission, invalidate lease, cancel callbacks/streams, bounded graceful shutdown, terminate process tree, reap, release resources only after verified cleanup. Never report a process reaped just because a kill signal was sent. A successful commit is not converted into a cancellation; recover the durable receipt. Repeated crashes open a per-artifact circuit breaker; no automatic restart of non-idempotent operations. Failures disable the affected extension, not the core; preserve typed diagnostics and explicit user retry. Host startup reconciles owned job journals and orphaned processes safely without deleting unrelated files or legacy projects.\n\n### 7.1 Proposed qualification budgets (not measured or approved)\n\nFinalize against DEC-HARDWARE and representative installed builds before running acceptance tests. The following are starting hypotheses, not promises; any adjustment needs recorded evidence and owner approval, not retrospective relaxation after failure.\n\n| Metric | Initial engineering target |\n|---|---|\n| Interactive core under plugin load | p95 core edit/query latency <= 1.20x matched plugin-disabled baseline AND within approved absolute UX budget; no starvation or acknowledged edit loss |\n| Plugin-disabled overhead | p95 startup/representative edit latency <= 1.05x baseline; no runner started or loaded solely by opening a project |\n| Standard-analysis job envelope | 64 MiB guest linear-memory starting cap, 256 MiB aggregate in-flight decoded data per job upper bound subject to lower host budget, 1 MiB target batch, 4 MiB maximum decoded message; tune from fixture evidence and enforce effective minimum |\n| Admission on proposed 8 GiB minimum test host | Start with one active analysis job and a 512 MiB combined incremental host+runner memory reservation; keep >= 2 GiB or 25% of physical RAM, whichever is greater, as system headroom; large jobs require separately measured profiles; do not promise these values fit MPXJ |\n| Small pure-compute Wasm invocation | p95 warm-artifact, fresh-instance launch-to-result <= 250 ms for a fixed 100-task reference check; record cold compilation separately |\n| Cancellation | p95 host acknowledgement <= 100 ms; target process termination/reap <= 2 s on qualified supported platforms, without overriding existing G1 provisional bounds; unreaped process remains unhealthy |\n| Memory and lifecycle stability | 1,000 start/cancel/fail cycles and 8-hour mixed workload; no leaked children/handles or monotonically growing retained state; compare post-cleanup memory trend to controlled baseline |\n| Large schedules | 50,000 editable tasks acceptance; 100,000+ stress and million+ timephased points; verify end-to-end correct results, bounded memory and responsive UI; no silent caps |\n\nRecord cold/warm, p50/p95/p99, peak private/aggregate memory and CPU, compile/launch, IPC bytes/copies, queue time, validation and commit separately. Use at least 30 independent runs for p95 exploratory comparisons and 100+ for tail characterization; publish sample size, distributions, hardware, OS, fixture and revision. Do not present a noisy p99 as reliable with too few samples; expand runs where needed. Compare equivalent workloads and security settings. Performance cannot override security or numerical correctness.",
+      "integrated_requirement": "**EXT-D10:** Lifecycle: VERIFIED -> ADMITTED -> STARTING -> AUTHENTICATED -> RUNNING -> DRAINING -> REAPED, with FAILED/CANCELLED/QUARANTINED outcomes and explicit commit state. Use the existing ADR-010 lifecycle vocabulary in code; this is a semantic refinement, not a competing state machine. On cancel/revoke: close admission, invalidate lease, cancel callbacks/streams, bounded graceful shutdown, terminate process tree, reap, release resources only after verified cleanup. Never report a process reaped just because a kill signal was sent. A successful commit is not converted into a cancellation; recover the durable receipt. Repeated crashes open a per-artifact circuit breaker; no automatic restart of non-idempotent operations. Failures disable the affected extension, not the core; preserve typed diagnostics and explicit user retry. Host startup reconciles owned job journals and orphaned processes safely without deleting unrelated files or legacy projects.\n\n### 7.1 Proposed qualification budgets (not measured or approved)\n\nFinalize against DEC-HARDWARE and representative installed builds before running acceptance tests. The following are starting hypotheses, not promises; any adjustment needs recorded evidence and owner approval, not retrospective relaxation after failure.\n\n| Metric | Initial engineering target |\n|---|---|\n| Interactive core under plugin load | p95 core edit/query latency <= 1.20x matched plugin-disabled baseline AND within approved absolute UX budget; no starvation or acknowledged edit loss |\n| Plugin-disabled overhead | p95 startup/representative edit latency <= 1.05x baseline; no runner started or loaded solely by opening a project |\n| Standard-analysis job envelope | 64 MiB guest linear-memory starting cap, 256 MiB aggregate in-flight decoded data per job upper bound subject to lower host budget, 1 MiB target batch, 4 MiB maximum decoded message; tune from fixture evidence and enforce effective minimum |\n| Admission on proposed 8 GiB minimum test host | Start with one active analysis job and a 512 MiB combined incremental host+runner memory reservation; keep >= 2 GiB or 25% of physical RAM, whichever is greater, as system headroom; large jobs require separately measured profiles; do not promise these values fit MPXJ |\n| Small pure-compute Wasm invocation | p95 warm-artifact, fresh-instance launch-to-result <= 250 ms for a fixed 100-task reference check; record cold compilation separately |\n| Cancellation | p95 host acknowledgement <= 100 ms; target process termination/reap <= 2 s on qualified supported platforms, without overriding existing G1 provisional bounds; unreaped process remains unhealthy |\n| Memory and lifecycle stability | 1,000 start/cancel/fail cycles and 8-hour mixed workload; no leaked children/handles or monotonically growing retained state; compare post-cleanup memory trend to controlled baseline |\n| Large schedules | 50,000 editable tasks acceptance; 100,000+ stress and million+ timephased points; verify end-to-end correct results, bounded memory and responsive UI; no silent caps |\n\nRecord cold/warm, p50/p95/p99, peak private/aggregate memory and CPU, compile/launch, IPC bytes/copies, queue time, validation and commit separately. Use at least 30 independent runs for p95 exploratory comparisons and 100+ for tail characterization; publish sample size, distributions, hardware, OS, fixture and revision. Do not present a noisy p99 as reliable with too few samples; expand runs where needed. Compare equivalent workloads and security settings. Performance cannot override security or numerical correctness.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment."
+      }
+    },
+    {
+      "id": "EXT-D11",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D11:** Plugin results are observations or proposals, never authoritative changes. Host validates type, range, completeness, provenance, IDs, relationships, calendars, exact money and domain invariants; recalculate authoritative scheduling/EVM as required. Financial values use approved exact representations and explicit rounding; large integers/decimal values crossing Wails use lossless encodings. Reject NaN/Infinity and invalid enum values. A stochastic algorithm records version, seed/PRNG, input revision/digest, parameters and applicable reproducibility tolerance; do not imply bitwise equality across CPUs unless demonstrated. Use independent numerical oracles and representative reference fixtures.\n\nApprove exact canonical proposal digest, operation, affected scope, expected revision, principal, session epoch and expiry. Host rechecks in the atomic commit boundary; stale results remain viewable only with clear stale status and require new validation/approval. Cancellation is honored before commit; after durable commit return/reconcile the committed receipt. Use idempotency keys and unique receipts; do not claim exactly-once external effects. No remote calls within project writer transactions. Import publication, retained evidence, recovery journals, shadow generations and schema migrations remain under ADR-010/011; no replacement of existing records or bypass of DEC-FORMAT/DEC-AUDIT. Audit append and authoritative local state change use the approved atomic transaction/recovery contract. If this contract cannot support the operation, block it.",
+      "integrated_requirement": "**EXT-D11:** Plugin results are observations or proposals, never authoritative changes. Host validates type, range, completeness, provenance, IDs, relationships, calendars, exact money and domain invariants; preserve imported observations and original representations; validate or calculate separately identified host-derived schedule/EVM results under the applicable domain contract. Financial values use approved exact representations and explicit rounding; large integers/decimal values crossing Wails use lossless encodings. Reject NaN/Infinity and invalid enum values. A stochastic algorithm records version, seed/PRNG, input revision/digest, parameters and applicable reproducibility tolerance; do not imply bitwise equality across CPUs unless demonstrated. Use independent numerical oracles and representative reference fixtures.\n\nApprove exact canonical proposal digest, operation, affected scope, expected revision, principal, session epoch and expiry. Host rechecks in the atomic commit boundary; stale results remain viewable only with clear stale status and require new validation/approval. Cancellation is honored before commit; after durable commit return/reconcile the committed receipt. Use idempotency keys and unique receipts; do not claim exactly-once external effects. No remote calls within project writer transactions. Import publication, retained evidence, recovery journals, shadow generations and schema migrations remain under ADR-010/011; no replacement of existing records or bypass of DEC-FORMAT/DEC-AUDIT. Audit append and authoritative local state change use the approved atomic transaction/recovery contract. If this contract cannot support the operation, block it.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Preserve imported observations and original bytes; derive and attribute host results separately. Future typed mutations require approved ARC-04/format/audit/receipt/recovery controls.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX3": "Qualify applicable resource, lifecycle, revocation and installed confinement behavior; E2 requires guest plus independent OS containment.",
+        "EX4": "Qualify read-only and mutating result semantics, exact arithmetic, provenance and snapshot/lease consistency. Mutations additionally require approved host commands, revisions, receipts, format/audit and recovery gates."
+      }
+    },
+    {
+      "id": "EXT-D12",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D12:** Start with release-bundled, digest-pinned artifacts. Public package format (provisional `.gopplugin`) requires separate approval. Use one reviewed canonical manifest encoding and established signature verification library; authenticate the complete artifact inventory, entrypoint, identity, API ranges, runtime profile, permissions, digests, dependencies and publisher key identity. Reject duplicate keys/paths, traversal, symlinks, hardlinks, case/Unicode collisions, archive bombs, undeclared files, excessive sizes and unknown critical metadata. Validate before activation; use private staging, immutable content-addressed storage and atomic activation. Verify the actual bytes opened for execution using protected handles or equivalent race-resistant mechanism; checking a pathname and reopening it is insufficient. Prevent plugin-controlled modifications of its package or trust store. A signature proves provenance under a trust policy, not benign behavior.\n\nSeparate trust roots, publisher keys and local grants. New publisher trust and permission expansion require explicit approval. Installation requires no mandatory online account. Signed offline revocation/trust metadata supports disconnected users; do not claim knowledge of revocations not received. Block new installations if freshness policy cannot be met; existing execution follows explicit owner-approved offline policy, with visible trust age and known-revoked artifacts denied. Protect monotonic metadata/version state within the stated local threat model; local administrator rollback cannot be solved by a local counter alone. If an update repository is introduced, evaluate TUF with threshold root trust, delegated roles, expiry and rollback/freeze/mix-and-match protections. TUF is not required for initial bundled packages and does not replace artifact verification or OS signing.",
+      "integrated_requirement": "**EXT-D12:** Start with release-bundled, digest-pinned artifacts. Public package format (provisional `.gopplugin`) requires separate approval. Use one reviewed canonical manifest encoding and established signature verification library; authenticate the complete artifact inventory, entrypoint, identity, API ranges, runtime profile, permissions, digests, dependencies and publisher key identity. Reject duplicate keys/paths, traversal, symlinks, hardlinks, case/Unicode collisions, archive bombs, undeclared files, excessive sizes and unknown critical metadata. Validate before activation; use private staging, immutable content-addressed storage and atomic activation. Verify the actual bytes opened for execution using protected handles or equivalent race-resistant mechanism; checking a pathname and reopening it is insufficient. Prevent plugin-controlled modifications of its package or trust store. A signature proves provenance under a trust policy, not benign behavior.\n\nSeparate trust roots, publisher keys and local grants. New publisher trust and permission expansion require explicit approval. Installation requires no mandatory online account. Signed offline revocation/trust metadata supports disconnected users; do not claim knowledge of revocations not received. Block new installations if freshness policy cannot be met; existing execution follows explicit owner-approved offline policy, with visible trust age and known-revoked artifacts denied. Protect monotonic metadata/version state within the stated local threat model; local administrator rollback cannot be solved by a local counter alone. If an update repository is introduced, evaluate TUF with threshold root trust, delegated roles, expiry and rollback/freeze/mix-and-match protections. TUF is not required for initial bundled packages and does not replace artifact verification or OS signing.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers. Verify bundled artifact bytes before execution; signature does not grant permissions.",
+        "EX5": "Qualify applicable public package, ABI/SDK, trust, compatibility and upgrade/rollback contracts before public installation/update; no public adoption inferred."
+      }
+    },
+    {
+      "id": "EXT-D13",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D13:** Version manifest, control protocol, capability families, guest ABI and plugin-state schemas independently. Negotiate before disclosure; unknown major versions/critical features fail closed, optional compatible fields must preserve semantics. Never reuse Protobuf field numbers; preserve reservations; apply compatibility checks and golden vectors. Pin active job to exact artifact and contract versions; upgrades drain or cancel running jobs before activation. Keep the previous qualified, non-revoked compatible version for explicit rollback; do not downgrade trust metadata or project writer schema. Plugin state migrations are host-approved, staged, recoverable and separate from project migrations. Removing a plugin disables future jobs but does not erase project records, audit evidence or retained results; state archival/deletion requires explicit reason, authorization and logged retention action.",
+      "integrated_requirement": "**EXT-D13:** Version manifest, control protocol, capability families, guest ABI and plugin-state schemas independently. Negotiate before disclosure; unknown major versions/critical features fail closed, optional compatible fields must preserve semantics. Never reuse Protobuf field numbers; preserve reservations; apply compatibility checks and golden vectors. Pin active job to exact artifact and contract versions; upgrades drain or cancel running jobs before activation. Keep the previous qualified, non-revoked compatible version for explicit rollback; do not downgrade trust metadata or project writer schema. Plugin state migrations are host-approved, staged, recoverable and separate from project migrations. Removing a plugin disables future jobs but does not erase project records, audit evidence or retained results; state archival/deletion requires explicit reason, authorization and logged retention action.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers. Negotiate native contract versions before disclosure.",
+        "EX2": "Demonstrate applicable contract, resource, lifecycle and semantic requirements in separately authorized Wasm candidate feasibility; no engine or SDK adoption.",
+        "EX5": "Qualify applicable public package, ABI/SDK, trust, compatibility and upgrade/rollback contracts before public installation/update; no public adoption inferred."
+      }
+    },
+    {
+      "id": "EXT-D14",
+      "source": "sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "original_requirement": "**EXT-D14:** Separate append-only forensic receipts from bounded operational metrics and opt-in diagnostic logs. Record artifact digest, runtime and policy version, principal/project reference, input/output digest, revision, operation ID, authorization and outcome; retain enough encrypted evidence for reproducibility under approved policy. Do not log payloads, tokens, keys, sensitive field values or raw stdout by default. Rate-limit and sanitize worker output; use structured reason codes and local metrics with no mandatory telemetry. Required audit failure blocks material commits; optional diagnostic failure must not disable ordinary work. Quarantine repeat failures and known-vulnerable runtime versions; maintain SBOM, provenance, pinned dependencies, vulnerability handling, reproducible package inventories, licensing review and platform signing. Do not expand the trusted code base without a demonstrated use case.",
+      "integrated_requirement": "**EXT-D14:** Separate append-only forensic receipts from bounded operational metrics and opt-in diagnostic logs. Record artifact digest, runtime and policy version, principal/project reference, input/output digest, revision, operation ID, authorization and outcome; retain enough encrypted evidence for reproducibility under approved policy. Do not log payloads, tokens, keys, sensitive field values or raw stdout by default. Rate-limit and sanitize worker output; use structured reason codes and local metrics with no mandatory telemetry. Required audit failure blocks material commits; optional diagnostic failure must not disable ordinary work. Quarantine repeat failures and known-vulnerable runtime versions; maintain SBOM, provenance, pinned dependencies, vulnerability handling, reproducible package inventories, licensing review and platform signing. Do not expand the trusted code base without a demonstrated use case.",
+      "accepted_architecture_refs": [
+        "QI-02",
+        "QI-03",
+        "QI-06",
+        "QI-08",
+        "QI-12",
+        "QI-13",
+        "QI-14",
+        "QI-15"
+      ],
+      "authority_records": [
+        "../ADR-010-plugin-architecture.md",
+        "../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+        "../../review/ADR-010-G1-authorization-clarification-2026-10-28.md"
+      ],
+      "domain_dependencies": [
+        "Applicable ADR-011/ARC-04/DEC-FORMAT/DEC-AUDIT for project writes; no write authority inferred",
+        "PS-09/RILD domain and per-format qualification for report observations"
+      ],
+      "existing_evidence": [
+        {
+          "path": "internal/interop/deps_pin.go",
+          "scope": "dependency retention only, not production worker implementation"
+        },
+        {
+          "path": "spikes/adr010-g0-transport",
+          "scope": "feasibility evidence only"
+        }
+      ],
+      "next_gate": "EX0",
+      "gate_state": "NOT RUN",
+      "owner": "GoPMgr maintainer; assign implementation and independent review per authorized slice",
+      "evidence": "Reviewed design at ac20cbe; no runtime qualification",
+      "disposition": "Retained target; status and dependencies clarified in canonical ADR-015.",
+      "new_implementation_authorized": false,
+      "phase_applicability": {
+        "EX0": "Define and review the complete requirement, threat model, applicable profiles and owner decisions before dependent implementation.",
+        "EX1": "Apply native ADR-010/G1 controls before execution or disclosure; this adds no authorization and does not impose the E2 guest sandbox on E1 native workers. Enforce disclosure-safe bounded diagnostics from first execution.",
+        "EX4": "Required audit must succeed before material commits; diagnostics and audit have distinct failure policies.",
+        "EX6": "Retain reproducible product/release evidence, SBOM, provenance, vulnerability, licensing and signing qualification."
+      }
+    }
+  ],
+  "gate_mapping": "next_gate is the next planning/qualification checkpoint, never permission to defer an applicable control. phase_applicability retains repeated obligations; apply native E1 versus community Wasm E2 conditions separately. No new authorization."
+}
