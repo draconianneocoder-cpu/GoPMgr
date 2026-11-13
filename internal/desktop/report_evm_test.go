@@ -28,6 +28,11 @@ func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
 		},
 	}
 	proj := db.Project{StartDate: "2026-06-01", CountryCode: "US"}
+	// Friday 2026-06-05 at noon is status day 4: planned value counts the
+	// working days before it, Monday to Thursday, as the portfolio does for
+	// its UTC reporting date. A (four days, 400) is fully planned and B has
+	// not started, so PV is 400. Before KRN-02 was fixed, any time after
+	// midnight counted Friday too and gave 500.
 	asOf := time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC)
 
 	resolved, err := resolvedEVMForCharts(proj, charts, asOf)
@@ -40,8 +45,8 @@ func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
 		t.Fatal("expected EVM metrics for CPM chart reference")
 		return
 	}
-	if metrics.BAC != 800 || metrics.PV != 500 || metrics.EV != 300 || metrics.AC != 500 {
-		t.Fatalf("metrics = %+v, want BAC=800 PV=500 EV=300 AC=500", metrics)
+	if metrics.BAC != 800 || metrics.PV != 400 || metrics.EV != 300 || metrics.AC != 500 {
+		t.Fatalf("metrics = %+v, want BAC=800 PV=400 EV=300 AC=500", metrics)
 	}
 }
 

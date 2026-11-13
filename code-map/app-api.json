@@ -347,7 +347,7 @@
     {
       "method": "CheckLatestVersion",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1093,
+      "line": 1090,
       "params": "",
       "returns": "update.Status, error",
       "uses_internal_packages": [
@@ -365,7 +365,7 @@
     {
       "method": "ChooseCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1131,
+      "line": 1128,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -373,7 +373,7 @@
     {
       "method": "ChooseTSARootCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1151,
+      "line": 1148,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -646,7 +646,7 @@
     {
       "method": "DownloadAndInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1108,
+      "line": 1105,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -1014,7 +1014,7 @@
     {
       "method": "ImportDatasetForAnalysis",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1060,
+      "line": 1057,
       "params": "",
       "returns": "analytics.Dataset, error",
       "uses_internal_packages": [
@@ -1451,7 +1451,7 @@
     {
       "method": "QuitToInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1124,
+      "line": 1121,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
