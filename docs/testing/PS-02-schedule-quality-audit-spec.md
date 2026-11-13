@@ -244,9 +244,8 @@ what §3 left open:
   converted with `parseProjectDate` to the calendar date the app displays,
   so an RFC3339 value is accepted. Since the KRN-02 fix (STATUS), the app's
   scheduler reads the start the same way, so the two agree for any stored
-  start. The work
-  calendar is the project country's. SQ-16 uses `resourceCapacityPlan`, the
-  plan resource levelling uses. SQ-18's baseline check reads the audited
+  start. The work calendar is the project country's. SQ-16 uses
+  `resourceCapacityPlan`, the plan resource levelling uses. SQ-18's baseline check reads the audited
   chart's own baselines.
 - **Arguments.** Profile keys are `default` (or empty) and `dcma-style`; a
   display name is refused. The reporting date must be `YYYY-MM-DD` or empty.
