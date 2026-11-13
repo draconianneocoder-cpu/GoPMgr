@@ -34,7 +34,16 @@ type Database struct {
 // GoPMgr-standard pragmas, and runs Migrate. The returned Database is
 // safe for concurrent use by multiple goroutines because *sql.DB is
 // already a connection pool.
+//
+// A path containing '?' is refused before anything is created: the driver
+// reads everything after the first '?' as connection options, so the path
+// could open a different file or weaken its settings. A '#' is ordinary
+// here, unlike in the encrypted path's URI, so existing plaintext projects
+// named with one still open.
 func InitDB(path string) (*Database, error) {
+	if strings.Contains(path, "?") {
+		return nil, fmt.Errorf("db: database path contains an illegal character: %q", path)
+	}
 	return initDBWithDSN(path, path)
 }
 
