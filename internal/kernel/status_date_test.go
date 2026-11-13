@@ -66,6 +66,8 @@ func TestDefaultStatusDateIsThePreviousWorkingDay(t *testing.T) {
 		{"Monday after a weekend", time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC), weekdaysOnly, "2026-06-05"},
 		{"Sunday", time.Date(2026, 6, 7, 23, 59, 0, 0, time.UTC), weekdaysOnly, "2026-06-05"},
 		{"Monday after a holiday Friday", time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC), weekdaysWithFridayHoliday, "2026-06-04"},
+		// No calendar means every day is worked, as in DayOffset.
+		{"no calendar", time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC), nil, "2026-06-07"},
 	}
 	for _, c := range cases {
 		if got := DefaultStatusDate(c.now, c.isWorkday).Format(DateLayout); got != c.want {
