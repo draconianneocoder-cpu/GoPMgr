@@ -1198,7 +1198,7 @@ tag precedence and recovery. It stops deliberately at the race gate after
 successful licensing, without packaging. Controlled exits test caller boundaries,
 not REUSE internals or full release success.
 
-## `tools/config-check` — 97.7%
+## `tools/config-check` — 97.8%
 
 `make config-check`: parses tracked YAML/TOML and enforces each tool's supported
 format. Moved from `scripts/` on 2026-11-03 so `scripts/` holds only shell

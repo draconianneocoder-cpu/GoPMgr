@@ -475,7 +475,8 @@ func validateCIWebsiteWorkflow(config map[string]any) error {
 	pr, ok := stringMap(on["pull_request"])
 	branches, _ := pr["branches"].([]any)
 	if !ok || len(pr) != 1 || len(branches) != 2 ||
-		!((branches[0] == "main" && branches[1] == "master") || (branches[0] == "master" && branches[1] == "main")) {
+		((branches[0] != "main" || branches[1] != "master") &&
+			(branches[0] != "master" || branches[1] != "main")) {
 		return fmt.Errorf("website pull_request trigger must cover main and master without other filters")
 	}
 	jobs, _ := stringMap(config["jobs"])
