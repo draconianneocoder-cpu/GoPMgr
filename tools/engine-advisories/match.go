@@ -71,7 +71,9 @@ type nvdNode struct {
 }
 
 type nvdCPEMatch struct {
-	Vulnerable            bool   `json:"vulnerable"`
+	// Vulnerable is a pointer so that a missing field reads as vulnerable,
+	// not as "a platform only".
+	Vulnerable            *bool  `json:"vulnerable"`
 	Criteria              string `json:"criteria"`
 	VersionStartIncluding string `json:"versionStartIncluding"`
 	VersionStartExcluding string `json:"versionStartExcluding"`
@@ -118,7 +120,7 @@ func applies(cve nvdCVE, c component) (bool, string) {
 					continue
 				}
 				named = true
-				if !m.Vulnerable {
+				if m.Vulnerable != nil && !*m.Vulnerable {
 					continue
 				}
 				covered, why := covers(ours, exact, m)

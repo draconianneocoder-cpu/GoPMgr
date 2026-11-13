@@ -25,6 +25,17 @@ const recordPath = "tools/engine-advisories/reviewed.json"
 // name the same components, versions and CPEs as the record.
 const sbomPath = "tools/sbom/components.json"
 
+// engineFiles are the vendored files that make up the compiled engine: the
+// amalgamation, its header, the build flags and GoPMgr's random source
+// (internal/sqlitedriver/provenance_test.go pins their provenance). The
+// review must cover each of them.
+var engineFiles = []string{
+	"third_party/go-sqlcipher/flags.go",
+	"third_party/go-sqlcipher/gopmgr_rng.c",
+	"third_party/go-sqlcipher/sqlite3.c",
+	"third_party/go-sqlcipher/sqlite3.h",
+}
+
 // statusNotAffected is the only disposition. An advisory that affects the
 // engine has none: it fails the scan until the engine is upgraded.
 const statusNotAffected = "not_affected"
@@ -99,8 +110,13 @@ func (r record) validate() error {
 	if _, err := r.reviewDate(); err != nil {
 		add("reviewed_on %q is not a YYYY-MM-DD date", r.ReviewedOn)
 	}
-	if len(r.EngineFiles) == 0 {
-		add("engine_files is empty")
+	for _, file := range engineFiles {
+		if _, ok := r.EngineFiles[file]; !ok {
+			add("engine_files does not pin %s", file)
+		}
+	}
+	if len(r.EngineFiles) != len(engineFiles) {
+		add("engine_files pins %d files; the engine is exactly %v", len(r.EngineFiles), engineFiles)
 	}
 	for file, sum := range r.EngineFiles {
 		if len(sum) != 64 || strings.Trim(sum, "0123456789abcdef") != "" {

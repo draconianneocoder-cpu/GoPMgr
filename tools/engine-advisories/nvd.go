@@ -68,14 +68,37 @@ func sleepContext(ctx context.Context, d time.Duration) error {
 // nothing, which is not the same as finding an advisory.
 var errNoVerdict = errors.New("no verdict: NVD did not answer")
 
+// nvdPage is one response page. The counts are pointers so that a missing
+// field is told apart from zero: a body that is not a CVE API page, such as
+// an error or maintenance reply that still parses as JSON, must give no
+// verdict, never "no CVEs".
 type nvdPage struct {
-	ResultsPerPage  int    `json:"resultsPerPage"`
-	StartIndex      int    `json:"startIndex"`
-	TotalResults    int    `json:"totalResults"`
+	Format          string `json:"format"`
+	Version         string `json:"version"`
+	ResultsPerPage  *int   `json:"resultsPerPage"`
+	StartIndex      *int   `json:"startIndex"`
+	TotalResults    *int   `json:"totalResults"`
 	Timestamp       string `json:"timestamp"`
 	Vulnerabilities []struct {
 		CVE nvdCVE `json:"cve"`
 	} `json:"vulnerabilities"`
+}
+
+// check rejects a page that is not a CVE API 2.0 page starting at start.
+func (p nvdPage) check(start int) error {
+	switch {
+	case p.Format != "NVD_CVE" || p.Version != "2.0":
+		return fmt.Errorf("response is not an NVD CVE API 2.0 page (format %q, version %q)", p.Format, p.Version)
+	case p.ResultsPerPage == nil || p.StartIndex == nil || p.TotalResults == nil || p.Timestamp == "":
+		return errors.New("response lacks resultsPerPage, startIndex, totalResults or timestamp")
+	case *p.StartIndex != start:
+		return fmt.Errorf("page starts at %d, asked for %d", *p.StartIndex, start)
+	case *p.TotalResults < 0 || *p.ResultsPerPage < 0 || len(p.Vulnerabilities) > *p.ResultsPerPage ||
+		start+len(p.Vulnerabilities) > *p.TotalResults:
+		return fmt.Errorf("page counts do not add up (start %d, %d results of %d per page, total %d)",
+			start, len(p.Vulnerabilities), *p.ResultsPerPage, *p.TotalResults)
+	}
+	return nil
 }
 
 // query is one component's result: every CVE NVD returned for the CPE, and
@@ -105,8 +128,8 @@ func (n *nvdClient) cvesFor(ctx context.Context, cpe string) (query, error) {
 		if err != nil {
 			return q, err
 		}
-		if p.StartIndex != start || p.TotalResults < 0 {
-			return q, fmt.Errorf("%w: page for %s starts at %d, asked for %d", errNoVerdict, cpe, p.StartIndex, start)
+		if err := p.check(start); err != nil {
+			return q, fmt.Errorf("%w: %s: %v", errNoVerdict, u, err)
 		}
 		if q.Timestamp == "" {
 			q.Timestamp = p.Timestamp
@@ -121,13 +144,28 @@ func (n *nvdClient) cvesFor(ctx context.Context, cpe string) (query, error) {
 			}
 		}
 		start += len(p.Vulnerabilities)
-		if start >= p.TotalResults {
+		if start >= *p.TotalResults {
 			return q, nil
 		}
 		if len(p.Vulnerabilities) == 0 {
-			return q, fmt.Errorf("%w: empty page at %d of %d for %s", errNoVerdict, start, p.TotalResults, cpe)
+			return q, fmt.Errorf("%w: empty page at %d of %d for %s", errNoVerdict, start, *p.TotalResults, cpe)
 		}
 	}
+}
+
+// known reports how many CVEs NVD lists for vendor:product at any version,
+// from the first page alone. Zero means the CPE name is probably wrong, and
+// a version query for it would pass for lack of anything to match.
+func (n *nvdClient) known(ctx context.Context, vendor, product string) (string, int, error) {
+	u := n.baseURL + "?" + url.Values{"virtualMatchString": {"cpe:2.3:a:" + vendor + ":" + product}}.Encode()
+	p, err := n.get(ctx, u)
+	if err != nil {
+		return u, 0, err
+	}
+	if err := p.check(0); err != nil {
+		return u, 0, fmt.Errorf("%w: %s: %v", errNoVerdict, u, err)
+	}
+	return u, *p.TotalResults, nil
 }
 
 // get fetches one page, waiting delay after any earlier request and
@@ -142,7 +180,7 @@ func (n *nvdClient) get(ctx context.Context, u string) (nvdPage, error) {
 		}
 		if n.sent {
 			if err := n.sleep(ctx, wait); err != nil {
-				return nvdPage{}, err
+				return nvdPage{}, fmt.Errorf("%w: %v", errNoVerdict, err)
 			}
 		}
 		n.sent = true

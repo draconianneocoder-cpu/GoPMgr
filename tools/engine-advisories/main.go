@@ -84,6 +84,17 @@ func scan(ctx context.Context, r record, nvd *nvdClient, out io.Writer, now func
 	returned := map[string]bool{}
 	var undisposed, warnings []string
 	for _, c := range r.Components {
+		// Control: NVD must know the product at all, or a wrong CPE name
+		// would pass for want of anything to match.
+		u, total, err := nvd.known(ctx, c.CPEVendor, c.CPEProduct)
+		_, _ = fmt.Fprintf(out, "GET %s\n", u)
+		if err != nil {
+			return fmt.Errorf("%s: %w", c.Name, err)
+		}
+		if total == 0 {
+			return fmt.Errorf("%s: %w: NVD lists no CVE for %s:%s at any version; check the CPE name", c.Name, errNoVerdict, c.CPEVendor, c.CPEProduct)
+		}
+		_, _ = fmt.Fprintf(out, "%s:%s: NVD lists %d CVEs at any version\n", c.CPEVendor, c.CPEProduct, total)
 		q, err := nvd.cvesFor(ctx, c.cpe())
 		for _, u := range q.URLs {
 			_, _ = fmt.Fprintf(out, "GET %s\n", u)
@@ -102,10 +113,19 @@ func scan(ctx context.Context, r record, nvd *nvdClient, out io.Writer, now func
 			switch {
 			case !applicable:
 				_, _ = fmt.Fprintf(out, "  %s (%s): does not apply: %s\n", cve.ID, cve.VulnStatus, why)
+				if disposed {
+					warnings = append(warnings, fmt.Sprintf("%s no longer applies to %s %s; remove its disposition at the next review", cve.ID, c.Name, c.Version))
+				}
 			case disposed:
 				_, _ = fmt.Fprintf(out, "  %s (%s): applies (%s); disposition %s\n", cve.ID, cve.VulnStatus, why, d.Status)
-				if modified, err := time.Parse("2006-01-02T15:04:05", trimFraction(cve.LastModified)); err == nil && modified.After(reviewed.Add(24*time.Hour)) {
-					warnings = append(warnings, fmt.Sprintf("%s changed at NVD on %s, after the review; check its disposition still holds", cve.ID, cve.LastModified))
+				// NVD's times are UTC. A change on the review day itself is
+				// reported too: the review may have read the earlier entry.
+				modified, err := time.Parse("2006-01-02T15:04:05", trimFraction(cve.LastModified))
+				switch {
+				case err != nil:
+					warnings = append(warnings, fmt.Sprintf("%s has an unreadable lastModified %q; check its disposition still holds", cve.ID, cve.LastModified))
+				case !modified.Before(reviewed):
+					warnings = append(warnings, fmt.Sprintf("%s changed at NVD on %s, on or after the review; check its disposition still holds", cve.ID, cve.LastModified))
 				}
 			default:
 				_, _ = fmt.Fprintf(out, "  %s (%s): APPLIES (%s) and has no disposition\n", cve.ID, cve.VulnStatus, why)

@@ -118,7 +118,7 @@ func TestSplitCPE(t *testing.T) {
 var sqliteComponent = component{Name: "SQLite", CPEVendor: "sqlite", CPEProduct: "sqlite", Version: "3.54.1"}
 
 func match(vulnerable bool, criteria string, bounds ...string) nvdCPEMatch {
-	m := nvdCPEMatch{Vulnerable: vulnerable, Criteria: criteria}
+	m := nvdCPEMatch{Vulnerable: &vulnerable, Criteria: criteria}
 	for i := 0; i+1 < len(bounds); i += 2 {
 		switch bounds[i] {
 		case "si":
@@ -174,6 +174,7 @@ func TestApplies(t *testing.T) {
 		{"unreadable bound", cveWith(match(true, anySQLite, "ee", "3.60-rc1")), true},
 		{"unreadable criteria version", cveWith(match(true, "cpe:2.3:a:sqlite:sqlite:3.54.x:*:*:*:*:*:*:*")), true},
 		{"unreadable criteria", cveWith(match(false, "cpe:2.3:a:sqlite")), true},
+		{"vulnerable missing from NVD's entry", cveWith(nvdCPEMatch{Criteria: anySQLite, VersionEndExcluding: "3.60"}), true},
 	} {
 		if got, why := applies(tc.cve, sqliteComponent); got != tc.want {
 			t.Errorf("%s: applies = %v (%s), want %v", tc.name, got, why, tc.want)
@@ -295,6 +296,8 @@ func TestRecordValidation(t *testing.T) {
 		{"date", func(r *record) { r.ReviewedOn = "13 Nov 2026" }, "reviewed_on"},
 		{"hash", func(r *record) { r.EngineFiles["third_party/go-sqlcipher/sqlite3.h"] = "ABC" }, "lowercase SHA-256"},
 		{"version source not pinned", func(r *record) { r.Components[1].VersionSources[0].File = "other.c" }, "does not pin"},
+		{"engine file dropped", func(r *record) { delete(r.EngineFiles, "third_party/go-sqlcipher/gopmgr_rng.c") }, "does not pin third_party/go-sqlcipher/gopmgr_rng.c"},
+		{"extra engine file", func(r *record) { r.EngineFiles["third_party/go-sqlcipher/sqlite3.go"] = strings.Repeat("a", 64) }, "pins 5 files"},
 		{"bad version", func(r *record) { r.Components[0].Version = "3.54.1-1" }, "not dotted"},
 		{"duplicate component", func(r *record) { r.Components = append(r.Components, r.Components[0]) }, "listed twice"},
 		{"status affected", func(r *record) { r.Dispositions[0].Status = "affected" }, "only disposition"},
@@ -326,14 +329,18 @@ func TestRecordRejectsUnknownFields(t *testing.T) {
 }
 
 // fakeNVD serves pages for each virtualMatchString from pages, in order of
-// startIndex, after failing the first fails requests with failStatus.
+// startIndex, after failing the first fails requests with failStatus. A
+// query without a version (the scan's control) gets a page listing known
+// CVEs, unless unknownProduct is set.
 type fakeNVD struct {
-	mu         sync.Mutex
-	pages      map[string][]nvdPage
-	failStatus int
-	fails      int
-	body       string
-	requests   []string
+	mu             sync.Mutex
+	pages          map[string][]nvdPage
+	failStatus     int
+	fails          int
+	body           string
+	versionBody    string // served to version queries only
+	unknownProduct bool
+	requests       []string
 }
 
 func (f *fakeNVD) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -350,21 +357,34 @@ func (f *fakeNVD) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cpe := r.URL.Query().Get("virtualMatchString")
+	if strings.Count(cpe, ":") == 4 {
+		total := 3
+		if f.unknownProduct {
+			total = 0
+		}
+		_ = json.NewEncoder(w).Encode(page(0, total))
+		return
+	}
+	if f.versionBody != "" {
+		_, _ = w.Write([]byte(f.versionBody))
+		return
+	}
 	start := 0
 	if s := r.URL.Query().Get("startIndex"); s != "" {
 		_, _ = fmt.Sscan(s, &start)
 	}
 	for _, p := range f.pages[cpe] {
-		if p.StartIndex == start {
+		if *p.StartIndex == start {
 			_ = json.NewEncoder(w).Encode(p)
 			return
 		}
 	}
-	_ = json.NewEncoder(w).Encode(nvdPage{StartIndex: start})
+	_ = json.NewEncoder(w).Encode(page(start, start))
 }
 
 func page(start, total int, cves ...nvdCVE) nvdPage {
-	p := nvdPage{StartIndex: start, TotalResults: total, ResultsPerPage: len(cves), Timestamp: "2026-11-13T12:00:00.000"}
+	perPage := 2000
+	p := nvdPage{Format: "NVD_CVE", Version: "2.0", StartIndex: &start, TotalResults: &total, ResultsPerPage: &perPage, Timestamp: "2026-11-13T12:00:00.000"}
 	for _, c := range cves {
 		p.Vulnerabilities = append(p.Vulnerabilities, struct {
 			CVE nvdCVE `json:"cve"`
@@ -407,8 +427,8 @@ func TestScanPassesWhenEveryApplicableAdvisoryHasADisposition(t *testing.T) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
 	}
-	if len(f.requests) != 2 || len(waits) != 1 || waits[0] != 7*time.Second {
-		t.Errorf("requests %d, waits %v; want 2 requests spaced by one 7s wait", len(f.requests), waits)
+	if len(f.requests) != 4 || fmt.Sprint(waits) != fmt.Sprint([]time.Duration{7 * time.Second, 7 * time.Second, 7 * time.Second}) {
+		t.Errorf("requests %d, waits %v; want 4 requests (a control and a version query per component) spaced by 7s", len(f.requests), waits)
 	}
 }
 
@@ -480,7 +500,7 @@ func TestScanRetriesAServerErrorThenSucceeds(t *testing.T) {
 	if out, err := scanWith(t, f, &waits); err != nil {
 		t.Fatalf("scan: %v\n%s", err, out)
 	}
-	want := []time.Duration{10 * time.Second, 20 * time.Second, 7 * time.Second}
+	want := []time.Duration{10 * time.Second, 20 * time.Second, 7 * time.Second, 7 * time.Second, 7 * time.Second}
 	if fmt.Sprint(waits) != fmt.Sprint(want) {
 		t.Fatalf("waits = %v, want %v", waits, want)
 	}
@@ -495,7 +515,19 @@ func TestScanGivesNoVerdictWhenNVDDoesNotAnswer(t *testing.T) {
 		{"server errors past every retry", &fakeNVD{failStatus: http.StatusServiceUnavailable, fails: 100}, 3},
 		{"refused (NVD's rate limit), not retried", &fakeNVD{failStatus: http.StatusForbidden, fails: 100}, 1},
 		{"not JSON", &fakeNVD{body: "<html>maintenance</html>"}, 1},
-		{"empty page short of the total", &fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 5)}}}, 1},
+		// JSON that is not a CVE API page must not read as "no CVEs".
+		{"empty object", &fakeNVD{body: "{}"}, 1},
+		{"null", &fakeNVD{body: "null"}, 1},
+		{"error message", &fakeNVD{body: `{"message":"error"}`}, 1},
+		{"page without totalResults", &fakeNVD{body: `{"format":"NVD_CVE","version":"2.0","resultsPerPage":1,"startIndex":0,"timestamp":"2026-11-13T12:00:00.000","vulnerabilities":[{"cve":{"id":"CVE-2026-0001"}}]}`}, 1},
+		{"page without timestamp", &fakeNVD{body: `{"format":"NVD_CVE","version":"2.0","resultsPerPage":0,"startIndex":0,"totalResults":0,"vulnerabilities":[]}`}, 1},
+		{"more results than the page holds", &fakeNVD{body: `{"format":"NVD_CVE","version":"2.0","resultsPerPage":0,"startIndex":0,"totalResults":5,"timestamp":"t","vulnerabilities":[{"cve":{"id":"CVE-2026-0001"}}]}`}, 1},
+		{"empty page short of the total", &fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 5)}}}, 2},
+		{"product unknown to NVD", &fakeNVD{unknownProduct: true}, 1},
+		{"version query answers in another format", &fakeNVD{versionBody: `{"format":"NVD_CPE","version":"2.0","resultsPerPage":0,"startIndex":0,"totalResults":0,"timestamp":"t","vulnerabilities":[]}`}, 2},
+		// The control query answers properly; the version query does not.
+		{"version query answers {}", &fakeNVD{versionBody: "{}"}, 2},
+		{"version query lacks totalResults", &fakeNVD{versionBody: `{"format":"NVD_CVE","version":"2.0","resultsPerPage":1,"startIndex":0,"timestamp":"t","vulnerabilities":[{"cve":{"id":"CVE-2026-0001"}}]}`}, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := scanWith(t, tc.f, nil)
@@ -509,6 +541,42 @@ func TestScanGivesNoVerdictWhenNVDDoesNotAnswer(t *testing.T) {
 				t.Fatalf("requests = %d, want %d", len(tc.f.requests), tc.requests)
 			}
 		})
+	}
+}
+
+func TestScanGivesNoVerdictWhenCancelled(t *testing.T) {
+	srv := httptest.NewServer(&fakeNVD{})
+	t.Cleanup(srv.Close)
+	c := testClient(srv, nil)
+	c.sleep = func(ctx context.Context, d time.Duration) error { return context.Canceled }
+	err := run(context.Background(), []string{"scan", "-root", repoRoot}, &bytes.Buffer{}, c, time.Now)
+	if !errors.Is(err, errNoVerdict) {
+		t.Fatalf("scan = %v, want no verdict", err)
+	}
+}
+
+func TestScanWarnsOnADispositionThatNoLongerApplies(t *testing.T) {
+	fixed := shellBug
+	fixed.Configurations = cveWith(match(true, anySQLite, "ee", "3.54.1")).Configurations
+	f := &fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 1, fixed)}, sqlcipherCPE: {page(0, 0)}}}
+	out, err := scanWith(t, f, nil)
+	if err != nil || !strings.Contains(out, "warning: CVE-2026-119586 no longer applies to SQLite 3.54.1") {
+		t.Fatalf("scan = %v\n%s", err, out)
+	}
+}
+
+func TestScanWarnsOnAChangeOnTheReviewDayOrAnUnreadableDate(t *testing.T) {
+	for _, tc := range []struct{ modified, want string }{
+		{"2026-11-13T18:00:00.000", "changed at NVD on 2026-11-13T18:00:00.000, on or after the review"},
+		{"13/11/2026", `unreadable lastModified "13/11/2026"`},
+	} {
+		c := shellBug
+		c.LastModified = tc.modified
+		f := &fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 1, c)}, sqlcipherCPE: {page(0, 0)}}}
+		out, err := scanWith(t, f, nil)
+		if err != nil || !strings.Contains(out, tc.want) {
+			t.Fatalf("%s: scan = %v\n%s", tc.modified, err, out)
+		}
 	}
 }
 

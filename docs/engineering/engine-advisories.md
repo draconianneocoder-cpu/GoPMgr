@@ -28,10 +28,15 @@ status need authorization). **Until that decision, run it:**
 
 ## What the scan decides
 
-For each component it asks NVD for CVEs matching the version's CPE
-(`virtualMatchString`), reads every page, waits 7 s between requests and
-retries a 5xx response up to three times. Any other failure, including NVD's
-403 for a rate-limited client, ends with "no verdict": nothing was decided.
+For each component it first asks NVD how many CVEs it lists for the product
+at any version; none means the CPE name is probably wrong, and the scan stops
+with "no verdict" rather than pass for want of a match. It then asks for CVEs
+matching the version's CPE (`virtualMatchString`) and reads every page. It
+waits 7 s between requests and retries a 5xx response or a failed connection
+up to three times. Any other failure ends with "no verdict": nothing was
+decided. That includes NVD's 403 for a rate-limited client, a reply that is
+not a CVE API 2.0 page (wrong `format` or `version`, missing counts or
+timestamp, counts that do not add up), and cancellation.
 
 It then re-decides each CVE from NVD's configurations, and fails closed:
 
@@ -41,10 +46,12 @@ It then re-decides each CVE from NVD's configurations, and fails closed:
 - does not apply when every match for the component is `vulnerable: false`
   (the engine as the platform of another product's bug);
 - applies when there are no configurations (NVD has not analysed it), none
-  name the component, a configuration is negated, or a value does not parse.
+  name the component, a configuration is negated, a match omits
+  `vulnerable`, or a value does not parse.
 
-Warnings, which do not fail the scan: a disposition NVD no longer returns, and
-a dispositioned CVE NVD changed after the review.
+Warnings, which do not fail the scan: a disposition NVD no longer returns or
+that no longer applies, and a dispositioned CVE NVD changed on or after the
+review day (or whose change date does not parse).
 
 ## When an advisory appears
 
@@ -69,8 +76,9 @@ Run from an Ubuntu container, Go 1.27.4, `main` at `d764e50` plus this change.
 | SQLCipher, any version (control) | CVE-2020-27207, CVE-2021-3119 | Shows the version filter narrows |
 | SQLite 3.33.0 and SQLCipher 4.4.2 (negative control: the engine shipped until 2026-11-10, in a scratch tree) | 18 and 1 | Fails: 18 advisories without a disposition, including CVE-2021-20227 and CVE-2025-6965 |
 
-`make engine-advisories` passed on the real tree. The control queries can be
-repeated to re-confirm the API behaviour after any NVD change.
+`make engine-advisories` passed on the real tree. The SQLCipher control is
+now built into the scan; the version-filter comparison above can be repeated
+by hand to re-confirm the API behaviour after any NVD change.
 
 ## Limits
 
