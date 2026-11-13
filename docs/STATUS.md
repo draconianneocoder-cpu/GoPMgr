@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `d764e50` (PR 208).
+**Last reviewed:** 2026-11-13, against `main` at `60a0a04` (PR 209).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
@@ -80,7 +80,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Unbounded schedule length | Fixed, PR 196 |
 | — | CSV formula in task ID | Fixed, PR 196 |
 | — | Planted triggers, views, virtual tables in a restored backup | Fixed, PR 196 |
-| — | The Sigma table migration turned foreign keys back on ignoring any error, so a pooled project connection could keep running without them | Fix on branch `claude/awesome-fermat-wh4ojv` (2026-11-13), not on `main`. Found by a sweep for discarded errors; the restore is read back and a connection that fails it is discarded. Test fails without the fix |
+| — | The Sigma table migration turned foreign keys back on ignoring any error, so a pooled project connection could keep running without them | Fixed, PR 209 (2026-11-13). Found by a sweep for discarded errors; the restore is read back and a connection that fails it is discarded. Test fails without the fix |
 | — | A database read that stops part-way was accepted as complete: the administrator session's sealed-key and attestation checks, the takeover-protection list, and cost baseline approval, which stored a partial sum | Fixed, PR 208 (2026-11-13). Each fix has a test that fails without it, and the lint job rejects the pattern (`rowserrcheck`). Hosted CI passed on macOS 26 and Ubuntu 26.04; not qualified on a native host |
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
@@ -88,7 +88,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Triaged 2026-11-13, all sixteen ([triage](review/sec-04-triage.md)). Four were fixed by earlier work, three small defects are fixed (a named-pipe hang in attachment import, `#` in project names, the plaintext opener's `?` guard), the plaintext-copy notice is corrected, one is refuted and one is SEC-09. Open: owner decisions on the clipboard, the plaintext copy, sign-in attempts and username timing, and two further confirmed findings held privately |
 | SEC-05 | Windows build of the engine and its random source | Unverified |
-| SEC-06 | No advisory check for the vendored C engine | Check implemented 2026-11-13 on branch `claude/awesome-fermat-wh4ojv`, not on `main` ([procedure](engineering/engine-advisories.md)). Offline: `make test` fails when the engine is not the reviewed one. Online: `make engine-advisories` fails on an NVD advisory without a disposition; passed 2026-11-13 with one `not_affected` (CVE-2026-119586, CLI shell only). Open: the online scan runs only when someone runs it; running it on a schedule or before release needs an owner decision. Not covered: CVEs NVD has not analysed |
+| SEC-06 | No advisory check for the vendored C engine | Check implemented, PR 209 (2026-11-13) ([procedure](engineering/engine-advisories.md)). Offline: `make test` fails when the engine is not the reviewed one. Online: `make engine-advisories` fails on an NVD advisory without a disposition; passed 2026-11-13 with one `not_affected` (CVE-2026-119586, CLI shell only). Open: the online scan runs only when someone runs it; running it on a schedule or before release needs an owner decision. Not covered: CVEs NVD has not analysed |
 | SEC-07 | Power-loss and hostile-input qualification of migration and restore | Open; depends on the new format |
 | SEC-08 | FIDO2 / FIPS security keys | Proposed, approved in principle 2026-10-28 |
 | SEC-09 | minimatch, deepmerge (development only) | Open by decision: no compatible fix exists |
