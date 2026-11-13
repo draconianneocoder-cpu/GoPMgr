@@ -388,7 +388,8 @@
         "gopmgr/internal/desktop",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
-        "gopmgr/internal/reporting"
+        "gopmgr/internal/reporting",
+        "gopmgr/internal/schedaudit"
       ],
       "imports_internal": [
         "gopmgr/internal/money"
@@ -467,6 +468,14 @@
         "github.com/digitorus/pkcs7",
         "github.com/digitorus/timestamp"
       ]
+    },
+    "gopmgr/internal/schedaudit": {
+      "dir": "internal/schedaudit",
+      "imported_by_internal": [],
+      "imports_internal": [
+        "gopmgr/internal/kernel"
+      ],
+      "notable_external_deps": []
     },
     "gopmgr/internal/sigma/charts": {
       "dir": "internal/sigma/charts",

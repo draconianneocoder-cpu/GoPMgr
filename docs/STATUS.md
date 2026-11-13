@@ -118,7 +118,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | --- | --- |
 | PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE) |
 | PS-01 Normalized connected model | Proposed (ARC-01) |
-| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11**, not yet implemented. Later slices proposed |
+| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, implemented 2026-11-13. Parts b (App method) and c (findings panel) not started, so users cannot run it yet. Later slices proposed |
 | PS-03 File inspection and interoperability | Partial: MSPDI quick import and export. Worker slices need DEC-INTEROP |
 | PS-04 Large-schedule storage, audit, Gantt | Blocked (ARC-01 to ARC-05). Overallocation rescan fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | Proposed |
@@ -137,6 +137,12 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | P0 to P5 | Implemented; see [ROADMAP.md](ROADMAP.md) |
 | P6 | Partly implemented: checkout guard, licensing, pinned govulncheck, native Make environments |
 | P7 to P9 | Proposed |
+
+## Known defects
+
+| ID | Defect | Status |
+| --- | --- | --- |
+| KRN-01 | `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed, and the scheduler then ignores it without telling anyone | Open. Reproduced by `TestUnappliedConstraintDateIsReported`; the PS-02 audit reports it as SQ-09. A fix changes scheduling results, which PS-02 slice 1 may not do |
 
 ## Decisions waiting for the owner
 
