@@ -102,12 +102,19 @@ func AnchorSchedule(tasks map[string]*Task, projectStart time.Time, isWorkday Wo
 // working day maps to 0; a non-working date maps to the index of the
 // next working day. The defensive maxNonWorkdayRun cap applies, and
 // the walk aborts at 100000 working days (~270 years) returning false.
+//
+// Both arguments are calendar dates: each is read as the date it shows in
+// its own zone, and its time of day is ignored, as AnchorSchedule does when
+// it formats dates. Comparing the instants instead let a start stored with
+// a time and offset move every offset by a day (KRN-02), and counted a
+// status time after midnight as one more completed day.
 func DayOffset(projectStart, date time.Time, isWorkday WorkdayFunc) (float64, bool) {
 	if isWorkday == nil {
 		isWorkday = func(time.Time) bool { return true }
 	}
+	date = calendarDate(date)
 
-	d := projectStart
+	d := calendarDate(projectStart)
 	run := 0
 	for !isWorkday(d) && run < maxNonWorkdayRun {
 		d = d.AddDate(0, 0, 1)
@@ -128,6 +135,11 @@ func DayOffset(projectStart, date time.Time, isWorkday WorkdayFunc) (float64, bo
 		offset++
 	}
 	return 0, false
+}
+
+// calendarDate is t's date in its own zone, as midnight UTC.
+func calendarDate(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // ApplyConstraintDates arms each task's date-bearing constraint

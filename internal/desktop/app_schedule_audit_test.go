@@ -222,11 +222,11 @@ func TestAuditScheduleSelectsTheProfileByKey(t *testing.T) {
 
 // The audit must judge the schedule the app reports. The expected
 // violations and every task's float come from scheduleProjectTasks, the
-// pipeline reports use, not from the audit's own code. The project start is
-// stored as RFC3339, which the audit does not accept, so the method must
-// convert it. It is midnight UTC because any other time of day shifts the
-// app's constraint offsets (KRN-02); TestAuditProjectStartIsTheDisplayedDate
-// covers those values.
+// pipeline reports use, not from the audit's own code; the negative floats
+// are also hand-computed. The project start is stored as a plain date and as
+// RFC3339 values, which the audit does not accept, so the method must
+// convert them. Before the KRN-02 fix, a start with a time of day other than
+// midnight UTC moved the app's constraint offsets by a day.
 //
 // Start Mon 2026-06-01, a work week of Monday to Friday: L (60 days) runs in
 // parallel with A (5) -> B (3). B must finish on Wed 2026-06-03 but cannot
@@ -234,7 +234,21 @@ func TestAuditScheduleSelectsTheProfileByKey(t *testing.T) {
 // both have negative float. S (1 day) is free, so its float is large. M
 // carries MSO, which the scheduler does not support.
 func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
-	app, d, p := newAuditTestApp(t, "2026-06-01T00:00:00Z")
+	for _, start := range []string{
+		"2026-06-01",
+		"2026-06-01T00:00:00Z",
+		"2026-06-01T23:00:00-05:00",
+		"2026-06-01T00:30:00+02:00",
+	} {
+		t.Run(start, func(t *testing.T) {
+			auditMatchesTheApp(t, start)
+		})
+	}
+}
+
+func auditMatchesTheApp(t *testing.T, start string) {
+	t.Helper()
+	app, d, p := newAuditTestApp(t, start)
 	data := `{"nodes":[
 		{"id":"A","label":"A","duration":5},
 		{"id":"B","label":"B","duration":3,"constraint":"MFO","constraint_date":"2026-06-03"},
@@ -266,8 +280,13 @@ func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
 		}
 	}
 	sort.Strings(violated)
-	if len(wantFloat[schedaudit.NegativeFloat]) != 2 || len(wantFloat[schedaudit.HighFloat]) == 0 {
-		t.Fatalf("fixture check: scheduleProjectTasks gives %v; the test needs two negative and some high floats", wantFloat)
+	// Hand-computed: B must finish by day 3 (exclusive end), starts no
+	// earlier than day 5 and lasts 3, so its float is 3 - 8 = -5, and A,
+	// which must end by B's late start, has the same. KRN-02 gave -6 or -4
+	// for the offset starts.
+	neg := map[string]string{"A": "float -5 working days", "B": "float -5 working days"}
+	if !reflect.DeepEqual(wantFloat[schedaudit.NegativeFloat], neg) || len(wantFloat[schedaudit.HighFloat]) == 0 {
+		t.Fatalf("scheduleProjectTasks gives %v, want negative floats %v and some high floats", wantFloat, neg)
 	}
 
 	r, err := app.AuditSchedule(context.Background(), c.ID, "", "")
