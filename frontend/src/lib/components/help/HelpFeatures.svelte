@@ -568,7 +568,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Open the project you want to encrypt. The project must be opened from the project list (not just selected).</li>
               <li>Go to Project Settings (File &rarr; Project Settings, or the gear icon).</li>
               <li>Find the "Database Encryption" section. It shows the current state: Plaintext or Encrypted.</li>
-              <li>Click "Encrypt Database." GoPMgr creates a backup of the plaintext database first and shows the backup path.</li>
+              <li>Click "Encrypt Database." GoPMgr keeps an unencrypted copy of the project beside it and shows where. Anyone who can read that copy can read the project, so delete it once the encrypted project opens correctly.</li>
               <li>After encryption completes, the state badge changes to "Encrypted."</li>
             </ol>
           </section>

@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `5bd3ebe` (PR 207).
+**Last reviewed:** 2026-11-13, against `main` at `d764e50` (PR 208).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
@@ -80,12 +80,12 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | — | Unbounded schedule length | Fixed, PR 196 |
 | — | CSV formula in task ID | Fixed, PR 196 |
 | — | Planted triggers, views, virtual tables in a restored backup | Fixed, PR 196 |
-| — | A database read that stops part-way was accepted as complete: the administrator session's sealed-key and attestation checks, the takeover-protection list, and cost baseline approval, which stored a partial sum | Fix on branch `claude/awesome-fermat-wh4ojv` (2026-11-13), not on `main`. Found by audit; each fix has a test that fails without it, and the lint job now rejects the pattern. Not run on macOS or Ubuntu 26.04 |
+| — | A database read that stops part-way was accepted as complete: the administrator session's sealed-key and attestation checks, the takeover-protection list, and cost baseline approval, which stored a partial sum | Fixed, PR 208 (2026-11-13). Each fix has a test that fails without it, and the lint job rejects the pattern (`rowserrcheck`). Hosted CI passed on macOS 26 and Ubuntu 26.04; not qualified on a native host |
 | — | Certificate path read into backups unchecked | Fixed, PR 198 |
 | SEC-01 | Engine trusts file schemas | Fixed, PR 199 |
 | SEC-02 | Tables a restored backup defines are trusted | Fixed 2026-11-11: restore compares the file's tables, columns, column types, constraints, conflict and collation clauses and indexes with the schema this build creates, read-only, before opening it for writing. Empty project files made by v0.9.0-alpha, v0.9.1-alpha, v1.1.0-alpha.1 and v1.1.0-alpha.2 pass, before and after migration (run once on 2026-11-11; not kept as fixtures). Not covered: fuzzed malformed files (NEW-01), backups of projects with data from old releases, and a constraint the backup has removed, which passes by design ([note](../internal/db/schema_allowlist.go)) |
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
-| SEC-04 | 16 low-severity scan items | Open: not yet triaged one by one. Planned: step A5 |
+| SEC-04 | 16 low-severity scan items | Partly triaged 2026-11-13 on branch `claude/awesome-fermat-wh4ojv`, not on `main`: the six items the audit names are triaged, the plaintext-copy notice and help text are corrected, and four owner decisions are listed ([triage](review/sec-04-triage.md)). Blocked for the other ten: the scan report is not in the repository |
 | SEC-05 | Windows build of the engine and its random source | Unverified |
 | SEC-06 | No advisory check for the vendored C engine | Open. Planned: step A4 |
 | SEC-07 | Power-loss and hostile-input qualification of migration and restore | Open; depends on the new format |

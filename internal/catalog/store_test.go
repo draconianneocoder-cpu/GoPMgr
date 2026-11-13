@@ -5,6 +5,7 @@ package catalog
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -94,5 +95,21 @@ func TestCatalogValidationBoundaries(t *testing.T) {
 	}
 	if _, err := store.ListItems(string(make([]byte, maxSearchLength+1)), false); err == nil {
 		t.Fatal("ListItems accepted an oversized search")
+	}
+}
+
+// The path is concatenated into the SQLCipher DSN, so "?" or "#" could
+// smuggle in connection parameters such as a different key, or cut the
+// file name short (SEC-04 triage, item 5).
+func TestCatalogRejectsDSNCharactersInPath(t *testing.T) {
+	for _, name := range []string{"catalog.gopmgr?_pragma_key=x'00'", "catalog.gopmgr#fragment"} {
+		dir := t.TempDir()
+		if s, err := Open(filepath.Join(dir, name), testDEK(0x42)); err == nil {
+			_ = s.Close()
+			t.Fatalf("Open(%q) accepted a DSN character in the path", name)
+		}
+		if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+			t.Fatalf("Open(%q) left %d entries behind (%v)", name, len(entries), err)
+		}
 	}
 }

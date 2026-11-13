@@ -711,6 +711,11 @@ describe('database encryption and recovery codes', () => {
     expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
     expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce();
     expect(utils.queryByRole('region', { name: /save a way back in/i })).not.toBeInTheDocument();
+    // The kept copy is plaintext: the notice names the file and says so.
+    const notice = utils.getByTestId('encryption-backup-notice');
+    expect(notice).toHaveTextContent('/tmp/gopmgr/plan.gopmgr.pre-encryption.bak');
+    expect(notice).toHaveTextContent(/unencrypted copy/);
+    expect(notice).toHaveTextContent(/delete the copy/);
   });
 
   it('with legacy codes, guides through new codes and then encrypts, never offering to skip', async () => {
