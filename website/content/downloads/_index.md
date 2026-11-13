@@ -10,16 +10,16 @@ last_reviewed = "2026-11-11"
 claim_ids = ["page.downloads"]
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/bebd7cf93cb383cb32f75ee35f70de6484a224a6/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/published-release-tags.txt"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/published-release-tags.txt"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/bebd7cf93cb383cb32f75ee35f70de6484a224a6/docs/published-release-tags.txt"
 [[params.sources]]
 label = "Published alpha.2 notes"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.2"
 [[params.sources]]
 label = "v1.1.0-alpha.2 release record"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/releases/v1.1.0-alpha.2.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/bebd7cf93cb383cb32f75ee35f70de6484a224a6/docs/releases/v1.1.0-alpha.2.md"
 +++
 
 <!--

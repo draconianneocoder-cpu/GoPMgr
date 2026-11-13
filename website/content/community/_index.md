@@ -5,15 +5,15 @@ weight = 70
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7"
+applies_to = "Development snapshot bebd7cf93cb3"
 last_reviewed = "2026-11-11"
 claim_ids = ["page.community"]
 [[params.sources]]
 label = "README.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/README.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/bebd7cf93cb383cb32f75ee35f70de6484a224a6/README.md"
 [[params.sources]]
 label = "docs/SECURITY.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/SECURITY.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/bebd7cf93cb383cb32f75ee35f70de6484a224a6/docs/SECURITY.md"
 +++
 
 <!--
