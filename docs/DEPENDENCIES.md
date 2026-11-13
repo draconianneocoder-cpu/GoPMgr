@@ -94,7 +94,9 @@ third-party library per platform from the build.
   LibTomCrypt provider, the SQLCipher 4.20.0 engine (SQLite 3.54.1, upgraded
   2026-11-10) and failed driver-transaction cleanup. The encrypted file format
   is unchanged; provenance, hashes, the rebuild steps and the refresh procedure
-  are recorded in `third_party/go-sqlcipher/GOPMGR.md`.
+  are recorded in `third_party/go-sqlcipher/GOPMGR.md`. govulncheck cannot
+  see this C code; its advisories are reviewed with `tools/engine-advisories`
+  ([procedure](engineering/engine-advisories.md)).
 - `golang.org/x/crypto` v0.58.1-0.20261009181718-2f1f834330b2: Argon2id and
   PKCS#12 support. The owner-approved upstream commit separates the deprecated
   OpenPGP module, resolving the selected main-module advisory without adding an

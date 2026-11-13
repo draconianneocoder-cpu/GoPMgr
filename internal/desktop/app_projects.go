@@ -146,6 +146,7 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 
 	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
+		removeUnusedProjectFolder(path)
 		return ProjectFile{}, err
 	}
 	if _, err := d.UpsertProject(db.Project{
@@ -761,7 +762,23 @@ func copyFile(src, dst string) (err error) {
 // atomically, so concurrent callers receive distinct folders. `safe` must be
 // a non-empty sanitized name (the caller validates it).
 func newProjectPath(dir, safe string) (string, error) {
-	return reserveProjectFolder(dir, time.Now().Format("20060102-150405")+"-"+safe)
+	return reserveProjectFolder(dir, time.Now().Format("20060102-150405")+"-"+projectFolderSafe(safe))
+}
+
+// projectFolderSafe replaces the characters the encrypted database refuses
+// in a project path ('?' and '#', which its connection string would read as
+// options; see db.encryptedDSN). sanitizeFilename keeps '#', which is fine
+// in the exported file names it also produces, so a project named
+// "Phase #2" would otherwise get a folder its own database cannot use.
+func projectFolderSafe(name string) string {
+	return strings.NewReplacer("?", "_", "#", "_").Replace(name)
+}
+
+// removeUnusedProjectFolder removes the folder newProjectPath reserved for
+// path when the project could not be created in it. os.Remove deletes only an
+// empty folder, so nothing the database did manage to write is lost.
+func removeUnusedProjectFolder(path string) {
+	_ = os.Remove(filepath.Dir(path))
 }
 
 // reserveProjectFolder atomically creates one project folder under dir. The

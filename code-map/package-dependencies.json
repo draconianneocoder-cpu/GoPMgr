@@ -616,6 +616,12 @@
         "gopkg.in/yaml.v3"
       ]
     },
+    "gopmgr/tools/engine-advisories": {
+      "dir": "tools/engine-advisories",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
     "gopmgr/tools/module-notices": {
       "dir": "tools/module-notices",
       "imported_by_internal": [],

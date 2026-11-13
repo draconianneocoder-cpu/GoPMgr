@@ -123,6 +123,7 @@ func (a *App) CreateProjectFromLaunchpad(
 
 	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
+		removeUnusedProjectFolder(path)
 		return LaunchpadResult{}, err
 	}
 	// We close the local handle at the end and rely on OpenProject

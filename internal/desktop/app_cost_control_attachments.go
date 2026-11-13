@@ -211,12 +211,24 @@ func uniqueAttachmentZipEntryName(seen map[string]bool, filename, attachmentID s
 // file is buffered, matching the io.LimitReader(r, limit+1) convention used
 // elsewhere in this codebase for bounding untrusted-size reads (see
 // internal/db/backup_restore.go's readZipEntry).
+//
+// The path must name a regular file. It is opened without blocking, because
+// a plain open of a named pipe waits for a writer and would hang the bound
+// call, and then checked through the open handle, so the file checked is the
+// file read.
 func readBoundedFile(path string, limit int64) ([]byte, error) {
-	f, err := os.Open(path) // #nosec G304 -- path chosen by the user via the native OS file dialog.
+	f, err := openAttachmentFile(path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("attachment %s is not a regular file", filepath.Base(path))
+	}
 	return readBoundedReader(f, limit)
 }
 

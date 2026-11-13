@@ -423,6 +423,8 @@ export const en = {
   'projectSettings.backup.includeCert': 'Include my signing certificate file in this backup',
   'projectSettings.backup.includeCertHelp':
     'The file holds your private signing key, so anyone who gets the backup gets the key. Restoring a backup never needs it. Leave this off unless you want this backup to carry a spare copy.',
+  'projectSettings.encryption.plaintextCopyKept':
+    'An unencrypted copy of this project was kept at {path}. Anyone who can read that file can read the project. Once the encrypted project opens correctly, delete the copy.',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

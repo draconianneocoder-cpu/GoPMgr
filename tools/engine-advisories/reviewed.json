@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-13",
+  "engine_files": {
+    "third_party/go-sqlcipher/flags.go": "5f69c55ff3f93f6f57cba7e4da1214da7024d616e72d15cd7280f4578c1d5250",
+    "third_party/go-sqlcipher/gopmgr_rng.c": "97b9dce16adc5e1e4f2cc45a3e2229222b71a8e7e78dba5fdbbce091df644d73",
+    "third_party/go-sqlcipher/sqlite3.c": "8cd2347d18886fee4651153fabeeeffb7cec008700987dab1c00261febc4220f",
+    "third_party/go-sqlcipher/sqlite3.h": "e36eb6ed4de77e56a633866a8f84ed339785662d0cf79cf099f420b638bf28ec"
+  },
+  "components": [
+    {
+      "name": "SQLite",
+      "cpe_vendor": "sqlite",
+      "cpe_product": "sqlite",
+      "version": "3.54.1",
+      "version_sources": [
+        {"file": "third_party/go-sqlcipher/sqlite3.h", "macro": "SQLITE_VERSION"},
+        {"file": "third_party/go-sqlcipher/sqlite3.c", "macro": "SQLITE_VERSION"}
+      ]
+    },
+    {
+      "name": "SQLCipher",
+      "cpe_vendor": "zetetic",
+      "cpe_product": "sqlcipher",
+      "version": "4.20.0",
+      "version_sources": [
+        {"file": "third_party/go-sqlcipher/sqlite3.c", "macro": "CIPHER_VERSION_NUMBER"}
+      ]
+    }
+  ],
+  "dispositions": [
+    {
+      "id": "CVE-2026-119586",
+      "component": "SQLite",
+      "status": "not_affected",
+      "reason": "Affects only the sqlite3 command-line shell's .recover dot-command, whose output can carry dot-commands such as .shell. GoPMgr links the library alone: the vendored sqlite3.c contains no shell or .recover code, and GoPMgr neither ships nor runs the shell. This holds for any SQLite version while that stays true; NVD's range for this CVE is open-ended.",
+      "evidence": [
+        "https://www.sqlite.org/cves.html: \"Not a bug in the core SQLite library\" (read 2026-11-13)",
+        "third_party/go-sqlcipher/sqlite3.c has no match for sqlite3_recover, do_meta_command or .recover (2026-11-13)"
+      ]
+    }
+  ]
+}

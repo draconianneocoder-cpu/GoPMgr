@@ -4,7 +4,7 @@
     {
       "method": "AcceptEncryptionWithoutRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 511,
+      "line": 514,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -305,7 +305,7 @@
     {
       "method": "BranchScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 414,
+      "line": 415,
       "params": "scenarioID string, chartID string, baselineID string",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -315,7 +315,7 @@
     {
       "method": "BuildTimeline",
       "file": "internal/desktop/app_foundation.go",
-      "line": 558,
+      "line": 559,
       "params": "",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": []
@@ -323,7 +323,7 @@
     {
       "method": "ChangePassword",
       "file": "internal/desktop/app_session.go",
-      "line": 428,
+      "line": 431,
       "params": "currentPassword string, newPassword string",
       "returns": "error",
       "uses_internal_packages": [
@@ -334,7 +334,7 @@
     {
       "method": "CheckLatestVersion",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1092,
+      "line": 1093,
       "params": "",
       "returns": "update.Status, error",
       "uses_internal_packages": [
@@ -352,7 +352,7 @@
     {
       "method": "ChooseCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1130,
+      "line": 1131,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -360,7 +360,7 @@
     {
       "method": "ChooseTSARootCertFile",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1150,
+      "line": 1151,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -368,7 +368,7 @@
     {
       "method": "CloneProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 683,
+      "line": 684,
       "params": "path string",
       "returns": "ProjectFile, error",
       "uses_internal_packages": []
@@ -376,7 +376,7 @@
     {
       "method": "CloseProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 1340,
+      "line": 1357,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -386,7 +386,7 @@
     {
       "method": "CompareScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 519,
+      "line": 520,
       "params": "scenarioChartID string",
       "returns": "map[string]kernel.ScheduleVariance, error",
       "uses_internal_packages": [
@@ -416,7 +416,7 @@
     {
       "method": "ComputeBudget",
       "file": "internal/desktop/app_foundation.go",
-      "line": 833,
+      "line": 834,
       "params": "",
       "returns": "BudgetSummaryWire, error",
       "uses_internal_packages": [
@@ -468,7 +468,7 @@
     {
       "method": "ConfirmRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 552,
+      "line": 555,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -509,7 +509,7 @@
     {
       "method": "CurrentUser",
       "file": "internal/desktop/app_session.go",
-      "line": 599,
+      "line": 602,
       "params": "",
       "returns": "*users.Account",
       "uses_internal_packages": []
@@ -553,7 +553,7 @@
     {
       "method": "DeleteProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 491,
+      "line": 492,
       "params": "path string",
       "returns": "error",
       "uses_internal_packages": []
@@ -561,7 +561,7 @@
     {
       "method": "DeleteResourceCalendar",
       "file": "internal/desktop/app_foundation.go",
-      "line": 323,
+      "line": 324,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -571,7 +571,7 @@
     {
       "method": "DeleteScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 393,
+      "line": 394,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -599,7 +599,7 @@
     {
       "method": "DeleteStakeholder",
       "file": "internal/desktop/app_foundation.go",
-      "line": 257,
+      "line": 258,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -617,7 +617,7 @@
     {
       "method": "DiscardRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 573,
+      "line": 576,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -633,7 +633,7 @@
     {
       "method": "DownloadAndInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1107,
+      "line": 1108,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -651,7 +651,7 @@
     {
       "method": "EncryptProjectAtRest",
       "file": "internal/desktop/app_projects.go",
-      "line": 1307,
+      "line": 1324,
       "params": "path string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -880,7 +880,7 @@
     {
       "method": "GenerateBugReport",
       "file": "internal/desktop/app_projects.go",
-      "line": 1123,
+      "line": 1140,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -905,7 +905,7 @@
     {
       "method": "GetAppInfo",
       "file": "internal/desktop/app_projects.go",
-      "line": 1066,
+      "line": 1083,
       "params": "",
       "returns": "AppInfo, error",
       "uses_internal_packages": [
@@ -945,7 +945,7 @@
     {
       "method": "GetProjectMeta",
       "file": "internal/desktop/app_projects.go",
-      "line": 1377,
+      "line": 1394,
       "params": "",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": []
@@ -953,7 +953,7 @@
     {
       "method": "GetScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 357,
+      "line": 358,
       "params": "id string",
       "returns": "db.Scenario, error",
       "uses_internal_packages": [
@@ -963,7 +963,7 @@
     {
       "method": "GetScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 456,
+      "line": 457,
       "params": "id string",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1001,7 +1001,7 @@
     {
       "method": "ImportDatasetForAnalysis",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1059,
+      "line": 1060,
       "params": "",
       "returns": "analytics.Dataset, error",
       "uses_internal_packages": [
@@ -1031,7 +1031,7 @@
     {
       "method": "IsProjectEncrypted",
       "file": "internal/desktop/app_projects.go",
-      "line": 1295,
+      "line": 1312,
       "params": "path string",
       "returns": "bool, error",
       "uses_internal_packages": [
@@ -1041,7 +1041,7 @@
     {
       "method": "IssueRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 458,
+      "line": 461,
       "params": "",
       "returns": "[]string, error",
       "uses_internal_packages": []
@@ -1200,7 +1200,7 @@
     {
       "method": "ListHolidays",
       "file": "internal/desktop/app_foundation.go",
-      "line": 810,
+      "line": 811,
       "params": "fromISO string, toISO string",
       "returns": "[]calendar.HolidayEvent, error",
       "uses_internal_packages": [
@@ -1210,7 +1210,7 @@
     {
       "method": "ListProjectDeletions",
       "file": "internal/desktop/app_projects.go",
-      "line": 657,
+      "line": 658,
       "params": "",
       "returns": "[]ProjectDeletionWire, error",
       "uses_internal_packages": []
@@ -1236,7 +1236,7 @@
     {
       "method": "ListResourceCalendars",
       "file": "internal/desktop/app_foundation.go",
-      "line": 290,
+      "line": 291,
       "params": "",
       "returns": "[]db.ResourceCalendar, error",
       "uses_internal_packages": []
@@ -1244,7 +1244,7 @@
     {
       "method": "ListScenarioCharts",
       "file": "internal/desktop/app_foundation.go",
-      "line": 435,
+      "line": 436,
       "params": "scenarioID string",
       "returns": "[]db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1254,7 +1254,7 @@
     {
       "method": "ListScenarios",
       "file": "internal/desktop/app_foundation.go",
-      "line": 344,
+      "line": 345,
       "params": "",
       "returns": "[]db.Scenario, error",
       "uses_internal_packages": []
@@ -1278,7 +1278,7 @@
     {
       "method": "ListStakeholders",
       "file": "internal/desktop/app_foundation.go",
-      "line": 225,
+      "line": 226,
       "params": "category string",
       "returns": "[]db.Stakeholder, error",
       "uses_internal_packages": []
@@ -1305,7 +1305,7 @@
     {
       "method": "Logout",
       "file": "internal/desktop/app_session.go",
-      "line": 590,
+      "line": 593,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -1313,7 +1313,7 @@
     {
       "method": "MoveTimelineEntry",
       "file": "internal/desktop/app_foundation.go",
-      "line": 570,
+      "line": 571,
       "params": "kind string, sourceID string, dateISO string",
       "returns": "[]timeline.Entry, error",
       "uses_internal_packages": [
@@ -1363,7 +1363,7 @@
     {
       "method": "OpenLogsFolder",
       "file": "internal/desktop/app_projects.go",
-      "line": 1109,
+      "line": 1126,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -1373,7 +1373,7 @@
     {
       "method": "OpenProject",
       "file": "internal/desktop/app_projects.go",
-      "line": 1216,
+      "line": 1233,
       "params": "path string",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": [
@@ -1396,7 +1396,7 @@
     {
       "method": "PrepareRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 525,
+      "line": 528,
       "params": "currentPassword string",
       "returns": "[]string, error",
       "uses_internal_packages": [
@@ -1418,7 +1418,7 @@
     {
       "method": "ProjectsOverview",
       "file": "internal/desktop/app_projects.go",
-      "line": 953,
+      "line": 970,
       "params": "",
       "returns": "[]ProjectSummary, error",
       "uses_internal_packages": [
@@ -1428,7 +1428,7 @@
     {
       "method": "PromoteScenarioChartToBaseline",
       "file": "internal/desktop/app_foundation.go",
-      "line": 498,
+      "line": 499,
       "params": "scenarioChartID string, name string",
       "returns": "db.Baseline, error",
       "uses_internal_packages": [
@@ -1438,7 +1438,7 @@
     {
       "method": "QuitToInstallUpdate",
       "file": "internal/desktop/app_foundation.go",
-      "line": 1123,
+      "line": 1124,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -1446,7 +1446,7 @@
     {
       "method": "RecoveryCodeStatus",
       "file": "internal/desktop/app_session.go",
-      "line": 490,
+      "line": 493,
       "params": "",
       "returns": "RecoveryCodeStatusWire, error",
       "uses_internal_packages": [
@@ -1469,7 +1469,7 @@
     {
       "method": "ResetAppSettings",
       "file": "internal/desktop/app_projects.go",
-      "line": 1096,
+      "line": 1113,
       "params": "",
       "returns": "AppSettings, error",
       "uses_internal_packages": []
@@ -1489,7 +1489,7 @@
     {
       "method": "ResetWithRecoveryCode",
       "file": "internal/desktop/app_session.go",
-      "line": 583,
+      "line": 586,
       "params": "username string, code string, newPassword string",
       "returns": "error",
       "uses_internal_packages": []
@@ -1497,7 +1497,7 @@
     {
       "method": "RestoreProjectArchive",
       "file": "internal/desktop/app_projects.go",
-      "line": 174,
+      "line": 175,
       "params": "",
       "returns": "ProjectFile, error",
       "uses_internal_packages": []
@@ -1516,7 +1516,7 @@
     {
       "method": "RunPortfolioAnalytics",
       "file": "internal/desktop/app_foundation.go",
-      "line": 868,
+      "line": 869,
       "params": "",
       "returns": "PortfolioSummaryWire, error",
       "uses_internal_packages": [
@@ -1528,7 +1528,7 @@
     {
       "method": "SaveAppSettings",
       "file": "internal/desktop/app_projects.go",
-      "line": 1082,
+      "line": 1099,
       "params": "s AppSettings",
       "returns": "error",
       "uses_internal_packages": []
@@ -1634,7 +1634,7 @@
     {
       "method": "SaveResourceCalendar",
       "file": "internal/desktop/app_foundation.go",
-      "line": 304,
+      "line": 305,
       "params": "c db.ResourceCalendar",
       "returns": "db.ResourceCalendar, error",
       "uses_internal_packages": [
@@ -1644,7 +1644,7 @@
     {
       "method": "SaveScenario",
       "file": "internal/desktop/app_foundation.go",
-      "line": 379,
+      "line": 380,
       "params": "s db.Scenario",
       "returns": "db.Scenario, error",
       "uses_internal_packages": [
@@ -1654,7 +1654,7 @@
     {
       "method": "SaveScenarioChart",
       "file": "internal/desktop/app_foundation.go",
-      "line": 477,
+      "line": 478,
       "params": "c db.ScenarioChart",
       "returns": "db.ScenarioChart, error",
       "uses_internal_packages": [
@@ -1685,7 +1685,7 @@
     {
       "method": "SaveStakeholder",
       "file": "internal/desktop/app_foundation.go",
-      "line": 238,
+      "line": 239,
       "params": "s db.Stakeholder",
       "returns": "db.Stakeholder, error",
       "uses_internal_packages": [
@@ -1970,7 +1970,7 @@
     {
       "method": "UpdateProjectMeta",
       "file": "internal/desktop/app_projects.go",
-      "line": 1390,
+      "line": 1407,
       "params": "wire ProjectMetaWire",
       "returns": "ProjectMetaWire, error",
       "uses_internal_packages": [

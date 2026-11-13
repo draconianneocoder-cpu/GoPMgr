@@ -238,8 +238,10 @@ func encryptedDSN(path string, dek []byte) (string, error) {
 	// go-sqlcipher treats everything after the first '?' as DSN query options
 	// and does not URL-decode the path, so a '?' (or fragment '#') in the path
 	// would let the path inject or override _pragma_* options — including the
-	// key. Confined GoPMgr project paths never contain these characters;
-	// reject rather than emit an ambiguous DSN.
+	// key. GoPMgr's own project folder names replace both characters
+	// (projectFolderSafe in internal/desktop); a path that still has one,
+	// for example from the user's data folder, is rejected rather than
+	// turned into an ambiguous DSN.
 	if strings.ContainsAny(path, "?#") {
 		return "", fmt.Errorf("db: project path contains an illegal character: %q", path)
 	}

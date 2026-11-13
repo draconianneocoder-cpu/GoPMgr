@@ -132,10 +132,16 @@ When refreshing the engine:
 3. Update the hashes here and in `internal/sqlitedriver/provenance_test.go`,
    the versions in `tools/sbom/components.json`, and
    `THIRD_PARTY_NOTICES.txt` if upstream's notice changed.
-4. Run `go test -count=1 ./internal/sqlitedriver`,
+4. Review the new engine's advisories and record the review in
+   `tools/engine-advisories/reviewed.json`: the four engine files' hashes,
+   the versions and any disposition, then run `make engine-advisories`
+   ([procedure](../../docs/engineering/engine-advisories.md)). Until then
+   `make test` fails: the hashes there pin the reviewed engine, as the
+   provenance test pins its source, and both must change together.
+5. Run `go test -count=1 ./internal/sqlitedriver`,
    `scripts/validate-encrypted-db.sh`, `reuse lint`, `make verify` and the
    broader release gates on macOS and Linux, and build on Windows.
-5. Check the repair tests' page offsets
+6. Check the repair tests' page offsets
    (`internal/desktop/repair_and_swap_test.go`) with a page sweep.
 
 Rolling back to the unmodified v4.4.2 module restores exposure to the
