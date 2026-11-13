@@ -1033,12 +1033,9 @@ func portfolioScheduleEVM(
 	if err := scheduleProjectTasks(p, tasks); err != nil {
 		return kernel.EVMetrics{}, false, nil
 	}
-	// DayOffset compares timestamps, while portfolio EVM is a date-based
-	// snapshot. Strip the clock so a midday run does not count tomorrow as
-	// another completed planning day and overstate PV.
-	asOfUTC := asOf.UTC()
-	reportingDate := time.Date(asOfUTC.Year(), asOfUTC.Month(), asOfUTC.Day(), 0, 0, 0, 0, time.UTC)
-	day, ok := kernel.DayOffset(start, reportingDate, calendar.For(p.CountryCode).IsWorkday)
+	// Portfolio EVM is a snapshot for asOf's UTC calendar date; DayOffset
+	// ignores the time of day.
+	day, ok := kernel.DayOffset(start, asOf.UTC(), calendar.For(p.CountryCode).IsWorkday)
 	if !ok {
 		return kernel.EVMetrics{}, false, nil
 	}

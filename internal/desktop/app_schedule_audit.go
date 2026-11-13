@@ -100,11 +100,8 @@ func (a *App) AuditSchedule(ctx context.Context, chartID, reportingDate, profile
 // auditProjectStart gives the audit the project's start as the calendar
 // date the app displays (AnchorSchedule formats dates in the start's own
 // zone), or "" when the stored value is not a date. The stored value may be
-// RFC3339 with a time and offset, which the audit does not accept.
-//
-// Unless such a value is midnight UTC, the app's scheduler can place
-// constraint dates a day early or late (KRN-02, docs/STATUS.md); the audit
-// uses the displayed date instead.
+// RFC3339 with a time and offset, which the audit does not accept. The
+// kernel reads it the same way (kernel.DayOffset, KRN-02).
 func auditProjectStart(stored string) string {
 	day, ok := parseProjectDate(stored)
 	if !ok {

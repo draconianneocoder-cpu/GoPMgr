@@ -242,11 +242,10 @@ what §3 left open:
 - **Inputs.** Tasks come from `cpmChartDataToKernelTasks`, which passes the
   stored constraint type through, sorted by ID. The project start is
   converted with `parseProjectDate` to the calendar date the app displays,
-  so an RFC3339 value is accepted. For one that is not midnight UTC, the
-  app's own scheduler places date constraints a day off (KRN-02 in STATUS),
-  so the audit can differ from the app by a day until KRN-02 is fixed. The work
-  calendar is the project country's. SQ-16 uses `resourceCapacityPlan`, the
-  plan resource levelling uses. SQ-18's baseline check reads the audited
+  so an RFC3339 value is accepted. Since the KRN-02 fix (STATUS), the app's
+  scheduler reads the start the same way, so the two agree for any stored
+  start. The work calendar is the project country's. SQ-16 uses
+  `resourceCapacityPlan`, the plan resource levelling uses. SQ-18's baseline check reads the audited
   chart's own baselines.
 - **Arguments.** Profile keys are `default` (or empty) and `dcma-style`; a
   display name is refused. The reporting date must be `YYYY-MM-DD` or empty.
