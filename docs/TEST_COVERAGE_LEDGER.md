@@ -1230,6 +1230,16 @@ Standalone CLI that produces the signed release manifest consumed by `internal/u
 | --- | --- | --- | --- | --- |
 | `main_test.go` | 1 | `run` (manifest generation + signing) | fixture/golden | Confirms a generated manifest is actually verifiable — round-trips through the same signature-checking logic `internal/update` uses on the client side, so manifest-generation and manifest-verification can't silently drift apart. |
 
+## `tools/engine-advisories` — 88.7%
+
+The vendored SQLite/SQLCipher engine against its advisory review (SEC-06); see
+`docs/engineering/engine-advisories.md`. `check` runs offline in `make test`;
+`scan` queries NVD and runs only through `make engine-advisories`.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `main_test.go` (added 2026-11-13) | 18 | `check`: the four engine files' hashes, the version macros and the SBOM's native entries against `reviewed.json`, and the record's own rules (strict fields, CVE IDs, only `not_affected`, reason and evidence required). `scan`: applicability from NVD configurations (bounds including and excluding, four-part versions, exact versions with update fields, the engine as a platform only, fail closed on missing configurations, an unnamed product, negation and unreadable values), paging, request spacing, retries on 5xx only, "no verdict" on any failure, warnings for a disposition NVD no longer returns or changed after the review, and `scan` running `check` first | fixture trees copied from the repository; an `httptest` NVD; a client that refuses any non-loopback address, so no test reaches NVD | `TestVendoredEngineIsTheReviewedOne` is the offline half of SEC-06 in `make test`. Fourteen seeded faults were each caught: ignoring `vulnerable`, passing an unnamed product, ignoring negation, passing an unreadable bound, reading Excluding as Including, dropping the hash, macro or SBOM check, accepting another component's disposition, reading one page, not retrying 5xx, retrying 403, scanning without checking, and accepting any status. The live NVD behaviour is evidence in the procedure, not a test. Not covered: `main` and the default client. |
+
 ## `tools/sbom` — 62.7%
 
 Release SBOM generator (CISA 2026 minimum elements, CycloneDX 1.7 and SPDX 3.0.1); see `docs/SBOM.md`.

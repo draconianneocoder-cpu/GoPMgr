@@ -32,7 +32,7 @@ export CC
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
-        module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
+        module-notices module-notices-check sbom-check engine-advisories engine-advisories-check module-notices-tests package-tarball-tests \
         frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests release-native-env-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
         shellcheck shellcheck-inventory shellcheck-tests shfmt-check shfmt-tests workflow-lint workflow-lint-tests workflow-security workflow-security-tests
@@ -285,6 +285,12 @@ module-notices-check: ## Fail if third_party/GO-MODULE-NOTICES.txt no longer mat
 
 sbom-check: ## Fail if tools/sbom/components.json does not review exactly what release builds ship (see docs/SBOM.md).
 	$(GO) run ./tools/sbom check
+
+engine-advisories-check: ## Fail if the vendored SQLite/SQLCipher engine is not the one reviewed in tools/engine-advisories/reviewed.json (offline; also run by make test).
+	$(GO) run ./tools/engine-advisories check
+
+engine-advisories: ## Online: fail if NVD lists an advisory for the vendored engine without a disposition. Needs services.nvd.nist.gov (see docs/engineering/engine-advisories.md).
+	$(GO) run ./tools/engine-advisories scan
 
 frontend-notices: ## Regenerate third_party/FRONTEND-NOTICES.txt from the production frontend bundle (needs npm ci).
 	cd frontend && node scripts/bundle-notices.mjs

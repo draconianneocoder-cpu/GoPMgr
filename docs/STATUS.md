@@ -87,7 +87,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Partly triaged 2026-11-13 on branch `claude/awesome-fermat-wh4ojv`, not on `main`: the six items the audit names are triaged, the plaintext-copy notice and help text are corrected, and four owner decisions are listed ([triage](review/sec-04-triage.md)). Blocked for the other ten: the scan report is not in the repository |
 | SEC-05 | Windows build of the engine and its random source | Unverified |
-| SEC-06 | No advisory check for the vendored C engine | Open. Planned: step A4 |
+| SEC-06 | No advisory check for the vendored C engine | Check implemented 2026-11-13 on branch `claude/awesome-fermat-wh4ojv`, not on `main` ([procedure](engineering/engine-advisories.md)). Offline: `make test` fails when the engine is not the reviewed one. Online: `make engine-advisories` fails on an NVD advisory without a disposition; passed 2026-11-13 with one `not_affected` (CVE-2026-119586, CLI shell only). Open: the online scan runs only when someone runs it; running it on a schedule or before release needs an owner decision. Not covered: CVEs NVD has not analysed |
 | SEC-07 | Power-loss and hostile-input qualification of migration and restore | Open; depends on the new format |
 | SEC-08 | FIDO2 / FIPS security keys | Proposed, approved in principle 2026-10-28 |
 | SEC-09 | minimatch, deepmerge (development only) | Open by decision: no compatible fix exists |
@@ -147,6 +147,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | DEC-HARDWARE | ARC-05, PS-00 |
 | DEC-INTEROP | PS-03 worker slices |
 | DEC-WINDOWS | SEC-05, Windows release claims |
+| DEC-ADVISORY-SCAN: when the engine advisory scan must run (before each release, on a schedule), and whether an old review fails it | SEC-06 enforcement |
 
 ## Proposed additions not yet taken up
 
