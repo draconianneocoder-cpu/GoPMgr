@@ -295,7 +295,9 @@ func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
 
 // The audit takes the project start as the calendar date the app displays.
 // The oracle is the start date scheduleProjectTasks gives an unconstrained
-// first task, so it does not reuse the conversion under test.
+// first task, so it does not reuse the conversion under test. Every value
+// here is a Monday: for a weekend start the app shows the next working day,
+// so the oracle would no longer be the stored date.
 func TestAuditProjectStartIsTheDisplayedDate(t *testing.T) {
 	for _, stored := range []string{
 		"2026-06-01",
