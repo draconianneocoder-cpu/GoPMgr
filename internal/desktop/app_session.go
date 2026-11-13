@@ -352,7 +352,10 @@ func (a *App) Login(username, password string) (users.Account, error) {
 	acc, principal, dek, err := a.store.SignIn(username, password)
 	if err != nil {
 		// Collapse both "no such user" and "password mismatch" into
-		// one error so the timing/message is identical.
+		// one message. The timing is not identical: an unknown name
+		// returns before the Argon2id work. Usernames are already
+		// readable locally (plaintext system.db, per-account folders),
+		// so this reveals nothing new; see docs/review/sec-04-triage.md.
 		if errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch) {
 			return users.Account{}, errors.New("invalid credentials")
 		}

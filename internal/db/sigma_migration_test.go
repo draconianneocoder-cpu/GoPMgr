@@ -4,8 +4,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/sigma/domain"
@@ -188,5 +190,64 @@ func TestMigrateSigmaProjectsSchema_IdempotentAcrossRepeatedOpens(t *testing.T) 
 	}
 	if created.ID == "" {
 		t.Fatal("expected a generated ID")
+	}
+}
+
+// A connection whose foreign keys could not be turned back on after a
+// migration must not return to the pool. SQLite ignores the pragma, with
+// no error, inside an open transaction, so an open transaction makes the
+// restore fail silently.
+func TestRestoreForeignKeysDiscardsAConnectionItCannotRestore(t *testing.T) {
+	d, err := InitDB(filepath.Join(t.TempDir(), "restore-fk.gopmgr"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	// One connection, so the next query must reuse it if it is pooled.
+	d.Conn.SetMaxOpenConns(1)
+	ctx := context.Background()
+	foreignKeys := func() int {
+		t.Helper()
+		var on int
+		if err := d.Conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
+			t.Fatal(err)
+		}
+		return on
+	}
+
+	// Control: a restore that works keeps the connection.
+	conn, err := d.Conn.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreForeignKeys(ctx, conn); err != nil {
+		t.Fatalf("restore on an idle connection: %v", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("a restored connection was discarded: %v", err)
+	}
+	if on := foreignKeys(); on != 1 {
+		t.Fatalf("foreign_keys after a successful restore = %d, want 1", on)
+	}
+
+	conn, err = d.Conn.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{"PRAGMA foreign_keys = OFF", "BEGIN"} {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	err = restoreForeignKeys(ctx, conn)
+	if err == nil || !strings.Contains(err.Error(), "still off") {
+		t.Fatalf("restore inside a transaction = %v, want the failure reported", err)
+	}
+	_ = conn.Close()
+	if on := foreignKeys(); on != 1 {
+		t.Fatalf("the pool served a connection with foreign_keys = %d after a failed restore", on)
 	}
 }

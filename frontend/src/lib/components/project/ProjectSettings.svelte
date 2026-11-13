@@ -17,7 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onDestroy, onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
-  import { t } from '../../i18n/i18n.svelte';
+  import { t, tParts } from '../../i18n/i18n.svelte';
   import { autosave } from '../../autosave.svelte';
   import { METHODOLOGIES } from '../../methodologies';
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
@@ -1811,8 +1811,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {/if}
 
            {#if encryptionBackupPath}
-             <p class="text-xs text-cyan-400">
-               Backup retained at: {encryptionBackupPath}
+             <!-- SEC-04: the kept copy is the whole project unencrypted, so say
+                  so, and say when it is safe to delete. -->
+             <p class="text-xs text-amber-300" data-testid="encryption-backup-notice">
+               {#each tParts('projectSettings.encryption.plaintextCopyKept', { path: encryptionBackupPath }) as part}{#if part.param === 'path'}<span class="font-mono break-all">{part.text}</span>{:else}{part.text}{/if}{/each}
              </p>
            {/if}
            {#if encryptionStatus}

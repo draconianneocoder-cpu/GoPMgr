@@ -60,7 +60,7 @@
   "lib/components/project/ProjectLaunchpad.svelte": 26,
   "lib/components/project/ProjectPicker.svelte": 22,
   "lib/components/project/ProjectRepairPanel.svelte": 8,
-  "lib/components/project/ProjectSettings.svelte": 133,
+  "lib/components/project/ProjectSettings.svelte": 132,
   "lib/components/project/ScenarioChartEditor.svelte": 15,
   "lib/components/project/StakeholderManager.svelte": 32,
   "lib/components/project/TimelineView.svelte": 9,

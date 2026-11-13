@@ -87,7 +87,7 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
-path = ["tools/sbom/components.json", "tools/sbom/signing-key.pub"]
+path = ["tools/sbom/components.json", "tools/sbom/signing-key.pub", "tools/engine-advisories/reviewed.json"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
