@@ -465,6 +465,121 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if !hasUsesPrefix(stepsWithRuns, "actions/setup-node@") {
 		return fmt.Errorf("jobs.assurance must set up Node")
 	}
+	return validateCIWebsiteWorkflow(config)
+}
+
+// Preserve the reviewed four-step pipeline, not arbitrary workflow semantics.
+// Changes to its commands, inputs or execution context require deliberate review.
+func validateCIWebsiteWorkflow(config map[string]any) error {
+	on, _ := stringMap(config["on"])
+	pr, ok := stringMap(on["pull_request"])
+	branches, _ := pr["branches"].([]any)
+	if !ok || len(pr) != 1 || len(branches) != 2 ||
+		((branches[0] != "main" || branches[1] != "master") &&
+			(branches[0] != "master" || branches[1] != "main")) {
+		return fmt.Errorf("website pull_request trigger must cover main and master without other filters")
+	}
+	jobs, _ := stringMap(config["jobs"])
+	job, ok := stringMap(jobs["website"])
+	if !ok {
+		return fmt.Errorf("jobs.website must be a mapping")
+	}
+	if job["name"] != "Website checks (source pins + output rules)" {
+		return fmt.Errorf("jobs.website name must retain the reviewed check identity")
+	}
+	if job["runs-on"] != "ubuntu-26.04" {
+		return fmt.Errorf("jobs.website runs-on must be ubuntu-26.04")
+	}
+	for _, key := range []string{"if", "needs"} {
+		if _, present := job[key]; present {
+			return fmt.Errorf("jobs.website must not define %s", key)
+		}
+	}
+	if value, present := job["continue-on-error"]; present && value != false {
+		return fmt.Errorf("jobs.website continue-on-error must be absent or false")
+	}
+	for _, scope := range []map[string]any{config, job} {
+		defaults, _ := stringMap(scope["defaults"])
+		run, _ := stringMap(defaults["run"])
+		for _, key := range []string{"shell", "working-directory"} {
+			if value, present := run[key]; present && (key != "working-directory" || value != ".") {
+				return fmt.Errorf("website must not inherit defaults.run.%s", key)
+			}
+		}
+		if err := validateWebsiteMakeEnvironment(scope); err != nil {
+			return err
+		}
+	}
+	steps, ok := job["steps"].([]any)
+	if !ok || len(steps) != 4 {
+		return fmt.Errorf("jobs.website must retain four ordered steps: checkout, tests, Go setup, production checks")
+	}
+	for i, raw := range steps {
+		step, ok := stringMap(raw)
+		if !ok {
+			return fmt.Errorf("jobs.website.steps[%d] must be a mapping", i)
+		}
+		for _, key := range []string{"if", "shell", "working-directory"} {
+			if _, present := step[key]; present {
+				return fmt.Errorf("jobs.website.steps[%d] must not define %s", i, key)
+			}
+		}
+		if value, present := step["continue-on-error"]; present && value != false {
+			return fmt.Errorf("jobs.website.steps[%d] continue-on-error must be absent or false", i)
+		}
+		if err := validateWebsiteMakeEnvironment(step); err != nil {
+			return err
+		}
+		switch i {
+		case 0:
+			if err := validateWebsiteAction(step, "actions/checkout", map[string]any{"persist-credentials": false, "fetch-depth": 0}); err != nil {
+				return err
+			}
+		case 2:
+			if err := validateWebsiteAction(step, "actions/setup-go", map[string]any{"go-version-file": "go.mod", "cache": false}); err != nil {
+				return err
+			}
+		default:
+			command := "make website-tests"
+			if i == 3 {
+				command = "make website-ci"
+			}
+			if _, present := step["uses"]; present || !hasExactRun([]map[string]any{step}, command, "") {
+				return fmt.Errorf("jobs.website.steps[%d] must run exactly %s", i, command)
+			}
+		}
+	}
+	return nil
+}
+
+func validateWebsiteMakeEnvironment(scope map[string]any) error {
+	env, _ := stringMap(scope["env"])
+	for _, key := range []string{"MAKEFLAGS", "GNUMAKEFLAGS", "MAKEFILES"} {
+		if _, present := env[key]; present {
+			return fmt.Errorf("website Make execution override %s is forbidden", key)
+		}
+	}
+	return nil
+}
+
+func validateWebsiteAction(step map[string]any, action string, expected map[string]any) error {
+	uses, _ := step["uses"].(string)
+	name, ref, _ := strings.Cut(uses, "@")
+	_, hasRun := step["run"]
+	if name != action || len(ref) != 40 || strings.Trim(ref, "0123456789abcdef") != "" || hasRun {
+		return fmt.Errorf("jobs.website requires pinned %s", action)
+	}
+	inputs, _ := stringMap(step["with"])
+	// Exact lowercase keys reject case-insensitive aliases and conflicting inputs,
+	// as well as checkout ref/repository/path/sparse overrides.
+	if len(inputs) != len(expected) {
+		return fmt.Errorf("jobs.website %s inputs must match the reviewed pipeline", strings.TrimPrefix(action, "actions/"))
+	}
+	for key, value := range expected {
+		if inputs[key] != value {
+			return fmt.Errorf("jobs.website %s inputs must match the reviewed pipeline", strings.TrimPrefix(action, "actions/"))
+		}
+	}
 	return nil
 }
 

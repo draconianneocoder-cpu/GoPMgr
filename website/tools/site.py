@@ -146,6 +146,11 @@ class Page(HTMLParser):
         self.feed(text)
 
     def handle_starttag(self, tag, attributes):
+        attributes = [(name.lower(), value) for name, value in attributes]
+        if len({name for name, _ in attributes}) != len(attributes):
+            # Browsers retain the first duplicate; dict() would retain the last.
+            self.errors.append('duplicate attribute')
+            return
         a = dict(attributes)
         if 'id' in a:
             if a['id'] in self.ids:
@@ -170,6 +175,8 @@ class Page(HTMLParser):
             self.errors.append('inline script')
         if tag == 'base':
             self.errors.append('base element')
+        if tag == 'meta' and (a.get('http-equiv') or '').strip().lower() == 'refresh':
+            self.errors.append('automatic refresh')
         if tag == 'meta' and (a.get('http-equiv') or '').lower() == 'content-security-policy':
             self.csp.append(a.get('content'))
         if tag == 'meta' and (a.get('name') or '').lower() == 'generator':

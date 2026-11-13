@@ -12,9 +12,8 @@ source tree in a fresh ignored `.tmp/website-build-*` directory.
 ## Local development
 
 Use Python 3.11 or later, Go, and the exact Hugo Extended executable recorded in
-`quality/dependencies.json`. Set `HUGO` to that executable's absolute path. The
-initial binary provenance is macOS ARM64 only; another platform needs a reviewed
-upstream archive checksum and extracted executable hash before building.
+`quality/dependencies.json`. Set `HUGO` to that executable's absolute path. Binary provenance is recorded for macOS ARM64 and Linux AMD64. Other
+platforms need reviewed archive and executable hashes before building.
 
 ```
 make website-build
@@ -24,9 +23,10 @@ make website-prepare-publication WEBSITE_REPORT=/absolute/path/to/build-report.j
 
 The final command is local only and fails closed while publication acceptance is
 blocked. No website command activates Actions, pushes, changes Pages settings or
-modifies the source checkout's Git index or refs. No workflow builds or
-publishes the site. One CI job runs `make website-tests`, which tests the
-checkers without Hugo. Existing application assurance jobs remain unconditional.
+modifies the source checkout's Git index or refs. The owner-approved website CI job runs the checker tests and `make website-ci`
+on every PR and main push. It provisions the pinned Linux Hugo, builds production
+output, and checks the exact returned artifact. It has no deployment permissions
+or publication step. Existing application assurance jobs remain unconditional.
 
 These commands need the full Git history: each page is checked against the
 commit its sources were reviewed at, which a shallow clone does not have.
@@ -94,6 +94,10 @@ fonts and data from this site only, and no inline script. The same text is the
 second policy, runs inline script, sets `<base>` or names the Hugo version.
 Change both places together and check search and the theme switch in a browser.
 
+The output checker also rejects automatic meta refresh and duplicate attributes.
+Refresh can navigate away despite the content policy; duplicate attributes can
+make a browser and a simple attribute dictionary interpret the same tag differently.
+
 GitHub Pages cannot send response headers, so two protections are missing: the
 site can be shown inside a frame on another site, and there is no HSTS header
 of its own (GitHub serves `github.io` over HTTPS only). The site has no forms,
@@ -102,3 +106,21 @@ accounts or actions, so framing has nothing to hijack.
 The theme import explicitly mounts assets, layouts, translations and icon data.
 Its unused stock static branding and web manifest are excluded; the public
 site uses the repository's Bobby assets and a local PNG favicon.
+
+## Linux production verification
+
+`make website-ci` downloads the official Hugo Extended Linux AMD64 archive into
+ignored task-local storage, verifies its pinned SHA-256 before parsing it, then
+verifies the executable before installing or running it. The cache is checked
+on every reuse; corruption and symlinks fail rather than trigger a silent repair.
+Downloads and archive expansion are bounded. It does not install system tools.
+For an already downloaded archive, use
+`python3 website/tools/provision_hugo.py --archive /absolute/archive.tar.gz`;
+the same checks apply. The source pin is in `quality/dependencies.json`.
+
+CI uses full Git history and the repository's pinned Go with `GOWORK=off`,
+without a shared writable cache. The JSON build result supplies the exact report
+path to the checker; no newest-directory lookup is used. Only the existing
+website job is extended. No Pages artifact, protected environment, deployment
+or required-check setting is created by this change. Linux build evidence does
+not close the manual accessibility or publication-acceptance gates.

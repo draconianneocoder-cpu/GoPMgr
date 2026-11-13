@@ -53,9 +53,9 @@ jobs:
   website:
     name: Website checks (source pins + output rules)
     runs-on: ubuntu-26.04
-    # Tests the companion site's checkers only. It does not run Hugo, build
-    # the site or publish anything. The source-pin tests read each cited file
-    # at the commit it was reviewed at, so this job needs the full history.
+    # Read-only website verification: checker tests and a pinned production
+    # Hugo build. No deployment permissions, secrets or publication.
+    # Reviewed source objects require full history.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -64,6 +64,15 @@ jobs:
 
       - name: Website checker tests
         run: make website-tests
+
+      - name: Set up Go for the isolated website module
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Verified Hugo production build and output checks
+        run: make website-ci
 
   verify:
     name: Verify (config + Wails pin + code-map + Go tests + frontend checks)

@@ -60,6 +60,47 @@ class OutputTests(unittest.TestCase):
             self.fixture(root)
             self.assertIn('index.html', site.output_check(root))
 
+    def test_meta_refresh_rejected(self):
+        fragments = (
+            '<meta http-equiv="refresh" content="0;url=https://example.org/">',
+            '<meta http-equiv="REFRESH" content="30;url=/GoPMgr/docs/">',
+            '<meta http-equiv="re&#x66;resh" content="0">',
+            '<meta http-equiv=" refresh " content="0" />',
+        )
+        for fragment in fragments:
+            with self.subTest(fragment=fragment), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.fixture(root)
+                page = root / 'index.html'
+                page.write_text(page.read_text() + fragment)
+                with self.assertRaisesRegex(ValueError, 'automatic refresh'):
+                    site.output_check(root)
+
+    def test_duplicate_attributes_cannot_hide_browser_behavior(self):
+        fragments = (
+            '<meta http-equiv="refresh" HTTP-EQUIV="unused" content="0;url=https://example.org/">',
+            '<script src="https://example.org/x.js" SRC="/GoPMgr/flexsearch.js"></script>',
+            '<a href="https://example.org/" href="/GoPMgr/docs/">Docs</a>',
+        )
+        for fragment in fragments:
+            with self.subTest(fragment=fragment), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.fixture(root)
+                page = root / 'docs/index.html'
+                page.write_text(page.read_text() + fragment)
+                with self.assertRaisesRegex(ValueError, 'duplicate attribute'):
+                    site.output_check(root)
+
+    def test_ordinary_metadata_and_separate_element_attributes_remain_valid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            page = root / 'index.html'
+            page.write_text(page.read_text() + '<meta name="description" content="Fixture">'
+                            '<a href="/GoPMgr/docs/">Docs</a>'
+                            '<a href="https://example.org/">External link, not an automatic redirect</a>')
+            self.assertIn('index.html', site.output_check(root))
+
     def test_faults(self):
         mutations = {
             'external resource': '<script src="https://example.org/a.js"></script>',

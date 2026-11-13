@@ -3,8 +3,8 @@
   "reviewer": "GoPMgr website implementation author",
   "files": {
     "README.md": {
-      "sha256": "f37af4ea8cfd5f6bbbbdc06a22a7c6c1e353df7f6c9a183a1840c7bcf7cbf792",
-      "size": 5926,
+      "sha256": "0e8ca8cb3130ecb6e2816d6109cfded58a410033a02cdfc2c6e32e3462dd8c81",
+      "size": 7379,
       "mode": "100644"
     },
     "assets/css/custom.css": {
@@ -138,8 +138,8 @@
       "mode": "100644"
     },
     "quality/dependencies.json": {
-      "sha256": "8111883124597536d5a85465a48a65c18bb37379cde330a3fc4fba964e8c7e8d",
-      "size": 1559,
+      "sha256": "622f4d52f3a70bdfe02932cd65c81b2acefff1f70faa90bdf5ffbf2dfd94aaba",
+      "size": 2119,
       "mode": "100644"
     },
     "quality/flexsearch-package.json": {
@@ -202,10 +202,20 @@
       "size": 325,
       "mode": "100755"
     },
+    "tools/ci.sh": {
+      "sha256": "69b7245e68550f56e9504f081c009d9f301223d3ba69632083c696e9d4ed0f7f",
+      "size": 559,
+      "mode": "100644"
+    },
     "tools/prepare-publication.sh": {
       "sha256": "2346beb9def2964c3a77dc1231ac28a6bb71c15e58e59f39e01d17d4a82af459",
       "size": 434,
       "mode": "100755"
+    },
+    "tools/provision_hugo.py": {
+      "sha256": "78b30d9f47e73161aba71a4a134571d00c86c6eead4f8c23e051e91a6b1e0cce",
+      "size": 5123,
+      "mode": "100644"
     },
     "tools/publication.py": {
       "sha256": "9c2fad12bf4b1a0b92fa6c0d2206975b8b9deadb414f169423629a0973a1f9c3",
@@ -213,8 +223,13 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "6994259a753e3c6f686e21cdfe6d6302fc40b51a11483fd06c58b6be4d189ce9",
-      "size": 18832,
+      "sha256": "b3d562ca8626b1322accce859414b96b9992a5d123345518a77f5a7dde30411d",
+      "size": 19269,
+      "mode": "100644"
+    },
+    "tools/test_provision_hugo.py": {
+      "sha256": "4d6ca3842afe8ca303ed9d4e313a0ab4d8bfe1181ac342e429e523a7d7e354a3",
+      "size": 6340,
       "mode": "100644"
     },
     "tools/test_publication.py": {
@@ -223,8 +238,8 @@
       "mode": "100644"
     },
     "tools/test_site.py": {
-      "sha256": "e275a781526fa797642b5e39e4525863eef95f5bc1c52fa1cf5e0023d58852a2",
-      "size": 22158,
+      "sha256": "7ea73b463e840f0d96ddc0a5d825cd9ae57fb5fbdb761e4cb7296f143279229e",
+      "size": 24280,
       "mode": "100644"
     }
   },
