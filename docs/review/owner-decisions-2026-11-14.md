@@ -34,7 +34,9 @@ decision says so.
 After choosing "Add a short delay", the maintainer asked for the timing of
 unknown usernames to be increased as well. Sign-in now does the same
 Argon2id work for a username with no account as for a wrong password, and
-both count toward the same delay. This replaces "Unknown-username timing is
+both count toward the same delay. The recovery-code reset on the sign-in
+screen does the same: a full set of checks for any name, and the same
+delay. This replaces "Unknown-username timing is
 not equalized" above; usernames remain readable locally, so this closes a
 timing difference, not a disclosure.
 

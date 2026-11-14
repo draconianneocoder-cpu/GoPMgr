@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -211,8 +212,23 @@ func TestUnknownAccountHashUsesTheCurrentParameters(t *testing.T) {
 		if err := VerifyPassword(password, unknownAccountHash); !errors.Is(err, ErrMismatch) {
 			t.Fatalf("VerifyPassword(%q, unknownAccountHash) = %v, want ErrMismatch", password, err)
 		}
-		// It returns nothing to check; this shows it runs to completion
-		// on any input. internal/users counts the calls sign-in makes.
-		VerifyUnknownAccount(password)
+	}
+}
+
+// VerifyUnknownAccount must do one Argon2id derivation at the current
+// parameters; an empty body would let unknown names fail fast again.
+func TestVerifyUnknownAccountDoesTheWork(t *testing.T) {
+	type call struct{ time, memory uint32 }
+	var calls []call
+	old := deriveKey
+	deriveKey = func(password, salt []byte, time, memory uint32, threads uint8, keyLen uint32) []byte {
+		calls = append(calls, call{time, memory})
+		return old(password, salt, time, memory, threads, keyLen)
+	}
+	t.Cleanup(func() { deriveKey = old })
+
+	VerifyUnknownAccount("any password")
+	if want := []call{{pwTime, pwMemory}}; !reflect.DeepEqual(calls, want) {
+		t.Fatalf("derivations = %v, want %v", calls, want)
 	}
 }

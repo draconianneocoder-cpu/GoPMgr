@@ -4,10 +4,13 @@
 package desktop
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
 	"time"
+
+	"gopmgr/internal/users"
 )
 
 func TestSignInDelaySchedule(t *testing.T) {
@@ -99,10 +102,21 @@ func TestSignInThrottleDelaysRepeatedFailures(t *testing.T) {
 			wantWaits: []time.Duration{time.Second, time.Second},
 		},
 		{
-			name: "but not just before it",
+			// The third failure is recorded before its 1 s wait, so
+			// advancing by the memory less that second lands exactly on
+			// the boundary.
+			name: "forgotten exactly at the boundary",
 			steps: []step{
 				{result: errTestInvalid}, {result: errTestInvalid}, {result: errTestInvalid},
-				{result: errTestInvalid, advance: signInFailureMemory - 2*time.Second},
+				{result: errTestInvalid, advance: signInFailureMemory - time.Second},
+			},
+			wantWaits: []time.Duration{time.Second},
+		},
+		{
+			name: "but not a moment before it",
+			steps: []step{
+				{result: errTestInvalid}, {result: errTestInvalid}, {result: errTestInvalid},
+				{result: errTestInvalid, advance: signInFailureMemory - time.Second - time.Nanosecond},
 			},
 			wantWaits: []time.Duration{time.Second, 2 * time.Second},
 		},
@@ -114,7 +128,7 @@ func TestSignInThrottleDelaysRepeatedFailures(t *testing.T) {
 			clock.install(&throttle)
 			for i, s := range tc.steps {
 				clock.now = clock.now.Add(s.advance)
-				err := throttle.attempt(func() error { return s.result }, isTestInvalid)
+				err := throttle.attempt(context.Background(), func() error { return s.result }, isTestInvalid)
 				if !errors.Is(err, s.result) || (s.result == nil) != (err == nil) {
 					t.Fatalf("attempt %d returned %v, want %v", i+1, err, s.result)
 				}
@@ -138,7 +152,7 @@ func TestSignInThrottleRunsOneAttemptAtATime(t *testing.T) {
 	}
 	first := make(chan error, 1)
 	go func() {
-		first <- throttle.attempt(func() error { return errTestInvalid }, isTestInvalid)
+		first <- throttle.attempt(context.Background(), func() error { return errTestInvalid }, isTestInvalid)
 	}()
 	select {
 	case <-waiting:
@@ -149,7 +163,7 @@ func TestSignInThrottleRunsOneAttemptAtATime(t *testing.T) {
 	started := make(chan struct{})
 	second := make(chan error, 1)
 	go func() {
-		second <- throttle.attempt(func() error { close(started); return nil }, isTestInvalid)
+		second <- throttle.attempt(context.Background(), func() error { close(started); return nil }, isTestInvalid)
 	}()
 	select {
 	case <-started:
@@ -197,5 +211,41 @@ func TestLoginDelaysUnknownNamesLikeWrongPasswords(t *testing.T) {
 	}
 	if app.signIns.failures != 0 {
 		t.Fatalf("failures after a successful sign-in = %d, want 0", app.signIns.failures)
+	}
+}
+
+// Quitting the app cancels its context, which ends a delay at once; the
+// failure is still returned.
+func TestSignInDelayEndsWhenTheAppQuits(t *testing.T) {
+	throttle := signInThrottle{failures: 10, lastFailure: time.Now()}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	start := time.Now()
+	err := throttle.attempt(ctx, func() error { return errTestInvalid }, isTestInvalid)
+	if !errors.Is(err, errTestInvalid) {
+		t.Fatalf("attempt = %v, want invalid credentials", err)
+	}
+	if took := time.Since(start); took >= signInFirstDelay {
+		t.Fatalf("a cancelled delay took %v, want it to end at once", took)
+	}
+}
+
+// A wrong recovery code on the sign-in screen counts toward the same
+// delay as a failed sign-in.
+func TestRecoveryResetCountsTowardTheSignInDelay(t *testing.T) {
+	app := newAdminTestApp(t)
+	clock := &fakeSignInClock{now: time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC)}
+	clock.install(&app.signIns)
+
+	if _, err := app.Login("nobody", "passphrase-long"); err == nil {
+		t.Fatal("Login nobody succeeded")
+	}
+	for range 2 {
+		if err := app.ResetWithRecoveryCode("nobody", "AAAA-BBBB-CCCC", "new-passphrase-long"); !errors.Is(err, users.ErrInvalidRecoveryCode) {
+			t.Fatalf("ResetWithRecoveryCode = %v, want ErrInvalidRecoveryCode", err)
+		}
+	}
+	if want := []time.Duration{time.Second}; !reflect.DeepEqual(clock.waits, want) {
+		t.Fatalf("waits = %v, want %v", clock.waits, want)
 	}
 }

@@ -4,6 +4,7 @@
 package desktop
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -12,7 +13,9 @@ import (
 // repeated failed sign-ins, each further failure waits before it answers,
 // up to signInDelayCap. Nothing locks an account out. An unknown username
 // counts as a failure exactly as a wrong password does, so the delay does
-// not tell them apart.
+// not tell them apart. Login and ResetWithRecoveryCode, the two credential
+// checks on the sign-in screen, share the count. The count is kept in
+// memory only, so restarting GoPMgr clears it.
 const (
 	// signInFreeFailures is how many failures in a row answer at once, so
 	// that a mistyped password costs nothing.
@@ -60,7 +63,9 @@ type signInThrottle struct {
 // before returning; any success clears the count. Other errors, such as a
 // disabled account (known only after the password matched), leave the
 // count as it is.
-func (t *signInThrottle) attempt(signIn func() error, invalid func(error) bool) error {
+// The wait ends early if ctx is cancelled (the app is quitting); the
+// failure is still returned.
+func (t *signInThrottle) attempt(ctx context.Context, signIn func() error, invalid func(error) bool) error {
 	t.gate.Lock()
 	defer t.gate.Unlock()
 	err := signIn()
@@ -78,7 +83,7 @@ func (t *signInThrottle) attempt(signIn func() error, invalid func(error) bool) 
 	t.failures++
 	t.lastFailure = now
 	if d := signInDelay(t.failures); d > 0 {
-		t.wait(d)
+		t.wait(ctx, d)
 	}
 	return err
 }
@@ -90,10 +95,27 @@ func (t *signInThrottle) clock() time.Time {
 	return time.Now()
 }
 
-func (t *signInThrottle) wait(d time.Duration) {
+func (t *signInThrottle) wait(ctx context.Context, d time.Duration) {
 	if t.sleep != nil {
 		t.sleep(d)
 		return
 	}
-	time.Sleep(d)
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
+}
+
+// lifetimeContext is the app's runtime context, cancelled when the app
+// begins to quit, or a context that is never cancelled before startup and
+// in tests.
+func (a *App) lifetimeContext() context.Context {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.ctx == nil {
+		return context.Background()
+	}
+	return a.ctx
 }

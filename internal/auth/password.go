@@ -39,6 +39,10 @@ const (
 	maxArgon2KeyLen  = 1<<32 - 1
 )
 
+// deriveKey is argon2.IDKey; a variable so that tests can see the work
+// VerifyPassword and VerifyUnknownAccount do.
+var deriveKey = argon2.IDKey
+
 // ErrInvalidHash is returned when the stored hash string is malformed.
 var ErrInvalidHash = errors.New("auth: invalid password hash format")
 
@@ -115,7 +119,7 @@ func VerifyPassword(password, encoded string) error {
 	threads8 := uint8(threads)  // #nosec G115 -- bounded by maxArgon2Threads above.
 	keyLen := uint32(len(want)) // #nosec G115 -- bounded by maxArgon2KeyLen above.
 
-	got := argon2.IDKey([]byte(password), salt, time, memory, threads8, keyLen)
+	got := deriveKey([]byte(password), salt, time, memory, threads8, keyLen)
 	if subtle.ConstantTimeCompare(got, want) == 1 {
 		return nil
 	}
