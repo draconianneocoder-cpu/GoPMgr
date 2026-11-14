@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -716,5 +717,45 @@ func TestCheckIgnoresTheReviewsAge(t *testing.T) {
 	var out bytes.Buffer
 	if err := run(context.Background(), []string{"check", "-root", root}, &out, nil, time.Now); err != nil {
 		t.Fatalf("check with a review from 2000 = %v, want a pass", err)
+	}
+}
+
+// make and check-release see only the command's exit status: a failing
+// check must exit 1 and a passing one 0. The test re-runs its own binary
+// with ENGINE_ADVISORIES_TEST_MAIN set, so main itself runs.
+func TestCommandExitStatus(t *testing.T) {
+	if root := os.Getenv("ENGINE_ADVISORIES_TEST_MAIN"); root != "" {
+		os.Args = []string{"engine-advisories", "check", "-root", root}
+		main()
+		os.Exit(0) // main returned: it succeeded
+	}
+	broken := writeTree(t)
+	editFile(t, broken, recordPath, func(s string) string {
+		return regexp.MustCompile(`"reviewed_on": "[0-9-]+"`).ReplaceAllString(s, `"reviewed_on": "not a date"`)
+	})
+	cases := []struct {
+		name string
+		root string
+		want int
+	}{
+		{"reviewed engine", writeTree(t), 0},
+		{"broken record", broken, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestCommandExitStatus$")
+			cmd.Env = append(os.Environ(), "ENGINE_ADVISORIES_TEST_MAIN="+tc.root)
+			out, err := cmd.CombinedOutput()
+			got := 0
+			var exit *exec.ExitError
+			if errors.As(err, &exit) {
+				got = exit.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("exit status = %d, want %d\n%s", got, tc.want, out)
+			}
+		})
 	}
 }

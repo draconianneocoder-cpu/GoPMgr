@@ -8,7 +8,10 @@ cd "$(dirname "$0")/.."
 fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
-advisory_stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-advisory-stub.XXXXXX")"
+# A relative path under the ignored .tmp/, so a TMPDIR with a space or
+# mounted noexec cannot break the advisory probe below.
+mkdir -p .tmp
+advisory_stub_dir="$(mktemp -d .tmp/gopmgr-advisory-stub.XXXXXX)"
 readme_text="$(tr '\n' ' ' <README.md)"
 agent_text="$(tr '\n' ' ' <docs/DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"; rm -rf "$advisory_stub_dir"' EXIT
@@ -100,8 +103,11 @@ fi
 # Then run the target with a stand-in `go` that fails: it must be called with
 # exactly the scan's arguments and no GOFLAGS, and its failure must reach
 # Make's exit status (this catches .IGNORE, -i, a replaced SHELL and an
-# exported GOFLAGS). A deliberate rewrite of check-release.sh's control flow
-# is caught by scripts/release-native-env_test.py, which runs the gate.
+# exported GOFLAGS). This guards against accidental or simple weakening. A
+# Makefile written to detect this probe (for example, conditional on how GO
+# was set) is left to code review. A rewrite of check-release.sh's control
+# flow is caught by scripts/release-native-env_test.py, which runs the gate,
+# and the tool's own exit status by TestCommandExitStatus.
 advisory_recipe="$(awk '
     /^engine-advisories:/ { targets++; active=1; next }
     /^[^[:space:]#]/ { active=0 }
