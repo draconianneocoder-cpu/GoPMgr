@@ -3,6 +3,9 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { helpTermId } from './help-glossary';
+  import HelpNavigation from './help/HelpNavigation.svelte';
   import AppHeader from './AppHeader.svelte';
   import HelpOverview from './help/HelpOverview.svelte';
   import HelpTutorials from './help/HelpTutorials.svelte';
@@ -14,8 +17,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let active = $state<SectionId>('getting-started');
 
-  function nav(id: SectionId) {
+  let content: HTMLElement;
+
+  async function nav(id: SectionId, termId?: string) {
     active = id;
+    query = '';
+    await tick();
+    if (termId) {
+      document.getElementById(helpTermId(termId))?.focus();
+    } else {
+      content.scrollTop = 0;
+      content.focus({ preventScroll: true });
+    }
   }
 
   // ── Search ────────────────────────────────────────────────────────
@@ -44,10 +57,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   const matchCount = $derived(filteredSidebar.reduce((n, g) => n + g.items.length, 0));
 </script>
 
-<div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+<div class="h-screen bg-slate-950 text-slate-100 flex flex-col">
   <AppHeader active="help" />
 
-  <div class="flex flex-1 overflow-hidden">
+  <div class="flex flex-1 min-h-0 overflow-hidden">
     <!-- Sidebar -->
     <nav
       class="w-52 shrink-0 border-r border-slate-800 overflow-y-auto py-4 px-2"
@@ -69,12 +82,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </p>
         {/if}
       </div>
-      {#each filteredSidebar as group}
+      {#each filteredSidebar as group (group.group)}
         <div class="mb-5">
           <p class="px-2 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             {group.group}
           </p>
-          {#each group.items as item}
+          {#each group.items as item (item.id)}
             <button
               onclick={() => nav(item.id)}
               class={`w-full text-left px-3 py-1.5 rounded text-xs font-medium transition-colors ${
@@ -91,9 +104,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </nav>
 
     <!-- Content -->
-    <main class="flex-1 overflow-y-auto">
+    <main bind:this={content} tabindex="-1" aria-labelledby="help-title" class="flex-1 min-w-0 overflow-y-auto">
       <div class="max-w-3xl mx-auto px-8 py-6">
-        <h1 class="sr-only">Help</h1>
+        <h1 id="help-title" class="sr-only">Help</h1>
+
+        <HelpNavigation {active} {nav} />
 
         <HelpOverview {active} {nav} />
         <HelpTutorials {active} {nav} />

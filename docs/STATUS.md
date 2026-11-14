@@ -45,6 +45,15 @@ record or an evidence file. Adopted on 2026-11-11
 | Package versions come from version tags only (`v[0-9]*`) | Implemented (PR 200) | `scripts/package-version-lib.sh` |
 | Signing, notarization, live update channel | Open: mechanism built, no keys provisioned | [ROADMAP.md](ROADMAP.md) current focus 4 |
 
+## Guide reference navigation
+
+The [user guide](user-guide.md) and
+[developer handbook](DEVELOPER_HANDBOOK.md) provide linked contents,
+alphabetical subject indexes and cross-linked glossaries.
+The in-app Help Guide shares the user glossary and provides direct definition
+lookup. Local frontend tests and browser keyboard checks passed; native
+installed-app and screen-reader qualification remain unverified.
+
 ## Companion website and repository controls
 
 | Item | Status | Pointer |
