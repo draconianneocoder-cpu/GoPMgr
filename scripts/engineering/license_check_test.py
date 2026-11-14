@@ -158,7 +158,8 @@ class ReleaseLicenseTests(unittest.TestCase):
 with open(os.environ['MAKE_TRACE'], 'a') as output:
     output.write(json.dumps(sys.argv[1:]) + '\n')
 if sys.argv[1:] in [[name] for name in ('config-check', 'installer-tool-pins',
-                                      'required-font-assets', 'windows-installer-scaffold')]:
+                                      'required-font-assets', 'windows-installer-scaffold',
+                                      'engine-advisories')]:
     sys.exit(0)
 if sys.argv[1:] == ['license-check']:
     os.execv(os.environ['REAL_MAKE'], [os.environ['REAL_MAKE'], *sys.argv[1:]])

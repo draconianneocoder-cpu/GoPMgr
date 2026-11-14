@@ -93,6 +93,10 @@ type App struct {
 
 	nativeCloseGuardReady bool
 	nativeClosePermit     bool
+
+	// signIns runs Login attempts one at a time and delays repeated
+	// failures (sign_in_delay.go).
+	signIns signInThrottle
 }
 
 // NewApp constructs an App at process start. It opens the system DB

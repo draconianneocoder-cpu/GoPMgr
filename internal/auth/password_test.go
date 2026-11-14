@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -186,5 +187,48 @@ func TestVerifyPasswordAcceptsPersistedV058Hash(t *testing.T) {
 	}
 	if err := VerifyPassword("incorrect-password", encoded); !errors.Is(err, ErrMismatch) {
 		t.Fatalf("wrong password: got %v, want mismatch", err)
+	}
+}
+
+// The unknown-account hash must cost what a current hash costs: the same
+// parameters, and a value VerifyPassword accepts as a hash (a malformed one
+// would return ErrInvalidHash before any Argon2id work).
+func TestUnknownAccountHashUsesTheCurrentParameters(t *testing.T) {
+	stored, err := HashPassword("valid password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := func(encoded string) string {
+		parts := strings.Split(encoded, "$")
+		if len(parts) != 6 {
+			t.Fatalf("hash %q has %d parts, want 6", encoded, len(parts))
+		}
+		return strings.Join(parts[1:4], "$")
+	}
+	if got, want := params(unknownAccountHash), params(stored); got != want {
+		t.Fatalf("unknown-account parameters = %s, want %s (those HashPassword uses)", got, want)
+	}
+	for _, password := range []string{"", "valid password"} {
+		if err := VerifyPassword(password, unknownAccountHash); !errors.Is(err, ErrMismatch) {
+			t.Fatalf("VerifyPassword(%q, unknownAccountHash) = %v, want ErrMismatch", password, err)
+		}
+	}
+}
+
+// VerifyUnknownAccount must do one Argon2id derivation at the current
+// parameters; an empty body would let unknown names fail fast again.
+func TestVerifyUnknownAccountDoesTheWork(t *testing.T) {
+	type call struct{ time, memory uint32 }
+	var calls []call
+	old := deriveKey
+	deriveKey = func(password, salt []byte, time, memory uint32, threads uint8, keyLen uint32) []byte {
+		calls = append(calls, call{time, memory})
+		return old(password, salt, time, memory, threads, keyLen)
+	}
+	t.Cleanup(func() { deriveKey = old })
+
+	VerifyUnknownAccount("any password")
+	if want := []call{{pwTime, pwMemory}}; !reflect.DeepEqual(calls, want) {
+		t.Fatalf("derivations = %v, want %v", calls, want)
 	}
 }

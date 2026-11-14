@@ -294,8 +294,10 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 // Requires the caller to be an administrator and the account's current
 // password (the one the admin set at creation) so the codes wrap the user's
 // data-encryption key — giving an admin-created account the same recovery
-// footing as a self-registered one. This adds no new password oracle: Login
-// already verifies passwords for any username at the same Argon2id cost.
+// footing as a self-registered one. Unlike Login it is not delayed after
+// failures: only a signed-in administrator can call it, and the password
+// hashes it checks against are readable in system.db by anyone with the
+// same OS account (docs/review/sec-04-triage.md, item 3).
 func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, error) {
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
@@ -349,14 +351,26 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 // DEK, which is zeroed at once.
 func (a *App) Login(username, password string) (users.Account, error) {
 	s := a.currentSession()
-	acc, principal, dek, err := a.store.SignIn(username, password)
+	var (
+		acc       users.Account
+		principal users.Principal
+		dek       []byte
+	)
+	invalid := func(err error) bool {
+		return errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch)
+	}
+	err := a.signIns.attempt(a.lifetimeContext(), func() error {
+		var err error
+		acc, principal, dek, err = a.store.SignIn(username, password)
+		return err
+	}, invalid)
 	if err != nil {
-		// Collapse both "no such user" and "password mismatch" into
-		// one message. The timing is not identical: an unknown name
-		// returns before the Argon2id work. Usernames are already
-		// readable locally (plaintext system.db, per-account folders),
-		// so this reveals nothing new; see docs/review/sec-04-triage.md.
-		if errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch) {
+		// Collapse both "no such user" and "password mismatch" into one
+		// message. Both run the same Argon2id work (users.SignIn) and
+		// count toward the same delay (sign_in_delay.go), so the time
+		// taken does not tell them apart either; see
+		// docs/review/sec-04-triage.md.
+		if invalid(err) {
 			return users.Account{}, errors.New("invalid credentials")
 		}
 		// Only returned after the password matched, so it tells nothing
@@ -584,7 +598,11 @@ func (a *App) DiscardRecoveryCodes() {
 // clicks "use a recovery code", enters username + code + new
 // password, and we verify + rotate atomically.
 func (a *App) ResetWithRecoveryCode(username, code, newPassword string) error {
-	return a.store.ResetWithRecoveryCode(username, code, newPassword)
+	// A wrong code and an unknown name both return ErrInvalidRecoveryCode
+	// after the same Argon2id work, and count toward the sign-in delay.
+	return a.signIns.attempt(a.lifetimeContext(), func() error {
+		return a.store.ResetWithRecoveryCode(username, code, newPassword)
+	}, func(err error) bool { return errors.Is(err, users.ErrInvalidRecoveryCode) })
 }
 
 // Logout clears the active session and closes any open project. An

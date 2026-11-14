@@ -66,17 +66,66 @@ func run(ctx context.Context, args []string, out io.Writer, nvd *nvdClient, now 
 	}
 }
 
+// maxReviewAgeDays is the oldest review the scan accepts (owner decision
+// DEC-ADVISORY-SCAN, 2026-11-14): one more than 90 days old fails it. Only
+// the online scan applies it, so the offline check run by make test never
+// fails because time has passed.
+const maxReviewAgeDays = 90
+
+// errReviewAge marks a review too old for the scan, or dated in the future.
+var errReviewAge = errors.New("the advisory review is out of date")
+
+// reviewAgeDays is the number of whole UTC calendar days from reviewed (a
+// UTC date at midnight) to now's UTC date. It is negative for a review
+// dated after today.
+func reviewAgeDays(reviewed, now time.Time) int {
+	n := now.UTC()
+	today := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+	return int(today.Sub(reviewed) / (24 * time.Hour))
+}
+
+// checkReviewAge fails a review older than maxReviewAgeDays, or dated
+// after today.
+func checkReviewAge(reviewedOn string, days int) error {
+	switch {
+	case days < 0:
+		return fmt.Errorf("%w: reviewed_on %s is after today's UTC date; reviewed_on is a UTC date", errReviewAge, reviewedOn)
+	case days > maxReviewAgeDays:
+		return fmt.Errorf("%w: reviewed on %s, %d days ago, more than the %d days allowed; review the advisories above and set reviewed_on (docs/engineering/engine-advisories.md)",
+			errReviewAge, reviewedOn, days, maxReviewAgeDays)
+	}
+	return nil
+}
+
 // scan reports every CVE NVD returns and fails on any that applies without
-// a disposition. Warnings never fail it: a disposition NVD no longer
-// returns, and a dispositioned CVE NVD changed after the review.
+// a disposition, when NVD gives no answer, or when the review is out of
+// date (checkReviewAge). An out-of-date review still queries NVD, so the
+// output is what the next review needs; its error is joined with any other.
+// Warnings never fail it: a disposition NVD no longer returns, and a
+// dispositioned CVE NVD changed after the review.
 func scan(ctx context.Context, r record, nvd *nvdClient, out io.Writer, now func() time.Time) error {
 	reviewed, err := r.reviewDate()
 	if err != nil {
 		return err
 	}
-	days := int(now().UTC().Sub(reviewed).Hours() / 24)
-	_, _ = fmt.Fprintf(out, "Review of %s, %d days ago.\n", r.ReviewedOn, days)
+	days := reviewAgeDays(reviewed, now())
+	unit := "days"
+	if days == 1 || days == -1 {
+		unit = "day"
+	}
+	_, _ = fmt.Fprintf(out, "Review of %s, %d %s ago (UTC dates); the scan allows %d.\n", r.ReviewedOn, days, unit, maxReviewAgeDays)
+	ageErr := checkReviewAge(r.ReviewedOn, days)
+	if err := errors.Join(scanNVD(ctx, r, reviewed, nvd, out), ageErr); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(out, "No advisory applies without a disposition.")
+	return nil
+}
 
+// scanNVD queries NVD for each component in turn and fails on the first
+// component NVD gives no answer for, or, once all are read, on any
+// applicable advisory without a disposition.
+func scanNVD(ctx context.Context, r record, reviewed time.Time, nvd *nvdClient, out io.Writer) error {
 	byID := map[string]disposition{}
 	for _, d := range r.Dispositions {
 		byID[d.ID] = d
@@ -144,7 +193,6 @@ func scan(ctx context.Context, r record, nvd *nvdClient, out io.Writer, now func
 	if len(undisposed) > 0 {
 		return fmt.Errorf("%d advisories apply to the vendored engine without a disposition: %v; see docs/engineering/engine-advisories.md", len(undisposed), undisposed)
 	}
-	_, _ = fmt.Fprintln(out, "No advisory applies without a disposition.")
 	return nil
 }
 

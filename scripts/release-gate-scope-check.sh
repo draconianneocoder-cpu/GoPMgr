@@ -8,9 +8,13 @@ cd "$(dirname "$0")/.."
 fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
+# A relative path under the ignored .tmp/, so a TMPDIR with a space or
+# mounted noexec cannot break the advisory probe below.
+mkdir -p .tmp
+advisory_stub_dir="$(mktemp -d .tmp/gopmgr-advisory-stub.XXXXXX)"
 readme_text="$(tr '\n' ' ' <README.md)"
 agent_text="$(tr '\n' ' ' <docs/DEVELOPER_HANDBOOK.md)"
-trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
+trap 'rm -f "$go_scope_matches" "$go_list_scope"; rm -rf "$advisory_stub_dir"' EXIT
 
 # The scope matcher is intentionally narrower than a general documentation
 # search: historical validation records must not be treated as live commands.
@@ -88,6 +92,71 @@ fi
 
 if ! rg -q 'check-wails-version\.sh' scripts/check-release.sh; then
 	echo "release-scope: check-release.sh must run scripts/check-wails-version.sh." >&2
+	fail=1
+fi
+
+# SEC-06 (owner decision DEC-ADVISORY-SCAN, 2026-11-14): the online engine
+# advisory scan is required before every tag, with no skip mode. Hold both the
+# Makefile recipe and the release section to their exact text, and check what
+# Make would really run (variable overrides, extra recipe lines, prerequisites)
+# and that the target stays phony, so a file of that name cannot satisfy it.
+# Then run the target with a stand-in `go` that fails: it must be called with
+# exactly the scan's arguments and no GOFLAGS, and its failure must reach
+# Make's exit status (this catches .IGNORE, -i, a replaced SHELL and an
+# exported GOFLAGS). This guards against accidental or simple weakening. A
+# Makefile written to detect this probe (for example, conditional on how GO
+# was set) is left to code review. A rewrite of check-release.sh's control
+# flow is caught by scripts/release-native-env_test.py, which runs the gate,
+# and the tool's own exit status by TestCommandExitStatus.
+advisory_recipe="$(awk '
+    /^engine-advisories:/ { targets++; active=1; next }
+    /^[^[:space:]#]/ { active=0 }
+    active && /^\t/ && $0 !~ /^\t[[:space:]]*#/ { print }
+    END { if (targets != 1) print "invalid engine-advisories target count" }
+' Makefile)"
+release_advisories="$(awk '
+    /^# --- 2e\. Vendored engine advisories / { starts++; active=1; next }
+    /^# --- / { if (active) ends++; active=0 }
+    active && NF && $0 !~ /^[[:space:]]*#/ { print }
+    END { if (starts != 1 || ends != 1) print "invalid advisory section count" }
+' scripts/check-release.sh)"
+expected_release_advisories="$(
+	cat <<'ADVISORIES'
+if ! make engine-advisories; then
+	echo "Vendored engine advisory scan failed. Run 'make engine-advisories' for details." >&2
+	exit 1
+fi
+echo "Vendored engine advisories checked."
+ADVISORIES
+)"
+advisory_make() {
+	env -u MAKEFLAGS -u MFLAGS -u GNUMAKEFLAGS -u GOFLAGS make --no-print-directory "$@"
+}
+advisory_dry_run="$(advisory_make -n engine-advisories 2>&1)" ||
+	advisory_dry_run="make -n engine-advisories failed: $advisory_dry_run"
+advisory_phony="$(advisory_make -p -n engine-advisories 2>/dev/null |
+	rg '^\.PHONY:' | tr ' ' '\n' | rg -cx 'engine-advisories' || true)"
+cat >"$advisory_stub_dir/go" <<'STUB'
+#!/bin/bash
+printf '%s\n' "$*" >"$(dirname "$0")/args"
+printf '%s\n' "${GOFLAGS-unset}" >"$(dirname "$0")/goflags"
+exit 1
+STUB
+chmod 0755 "$advisory_stub_dir/go"
+advisory_run="failure propagated"
+if advisory_make engine-advisories GO="$advisory_stub_dir/go" >/dev/null 2>&1; then
+	advisory_run="a failing scan let make engine-advisories succeed"
+elif [ "$(cat "$advisory_stub_dir/args" 2>/dev/null)" != 'run ./tools/engine-advisories scan' ]; then
+	advisory_run="make engine-advisories did not run the scan"
+elif [ "$(cat "$advisory_stub_dir/goflags")" != unset ]; then
+	advisory_run="make engine-advisories set GOFLAGS"
+fi
+if [ "$advisory_recipe" != $'\t$(GO) run ./tools/engine-advisories scan' ] ||
+	[ "$advisory_dry_run" != 'go run ./tools/engine-advisories scan' ] ||
+	[ "$advisory_phony" != 1 ] ||
+	[ "$advisory_run" != "failure propagated" ] ||
+	[ "$release_advisories" != "$expected_release_advisories" ]; then
+	echo "release-scope: check-release.sh must run make engine-advisories, whose recipe is exactly the online scan, and fail when it fails ($advisory_run)." >&2
 	fail=1
 fi
 

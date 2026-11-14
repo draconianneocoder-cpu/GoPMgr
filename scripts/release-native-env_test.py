@@ -57,9 +57,12 @@ else:
 with open(os.environ['CALL_LOG'],'a') as f:f.write('"reuse:'+sys.argv[1]+'"\\n')
 sys.exit(int(os.environ.get('REUSE_EXIT','0')))
 ''')
-        self.stub('make', '''import subprocess,sys
+        self.stub('make', '''import os,subprocess,sys
 if sys.argv[1:]==['license-check']:
     sys.exit(subprocess.run(['reuse','lint']).returncode)
+if sys.argv[1:]==['engine-advisories']:
+    with open(os.environ['CALL_LOG'],'a') as f:f.write('"make:engine-advisories"\\n')
+    sys.exit(int(os.environ.get('ADVISORY_EXIT','0')))
 ''')
         parser=self.root/'internal/cli/parser.go'
         parser.parent.mkdir(parents=True)
@@ -103,6 +106,15 @@ if sys.argv[1:]==['license-check']:
                                                    './internal/...','./tools/update-manifest'])
                     self.assertLess(self.calls().index('reuse:--version'),self.calls().index('go-env'))
                     self.assertLess(self.calls().index('reuse:lint'),self.calls().index('go-env'))
+                    self.assertLess(self.calls().index('reuse:lint'),self.calls().index('make:engine-advisories'))
+                    self.assertLess(self.calls().index('make:engine-advisories'),self.calls().index('go-env'))
+
+    def test_release_failed_advisory_scan_stops_before_any_go(self):
+        result=self.run_script('check-release.sh',{'ADVISORY_EXIT':'1'})
+        self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('make:engine-advisories', self.calls())
+        self.assertFalse([x for x in self.calls() if isinstance(x,dict)], self.calls())
+        self.assertIn('advisory scan failed', result.stdout+result.stderr)
 
     def test_all_encrypted_database_commands_keep_the_guard(self):
         result=self.run_script('validate-encrypted-db.sh',{'CHILD_STATUS':'0'})

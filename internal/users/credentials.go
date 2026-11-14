@@ -265,11 +265,15 @@ func enrollInSignInSavepoint(ctx context.Context, q accountWriter, username stri
 // transaction; without it, only a key made by this sign-in is enrolled.
 func (s *Store) signIn(username, password string, adminSession bool) (Account, Principal, []byte, error) {
 	if err := ValidateUsername(username); err != nil {
+		verifyUnknownAccount(password)
 		return Account{}, Principal{}, nil, ErrNoSuchUser
 	}
 	ctx := context.Background()
 	for attempt := 0; attempt < signInAttempts; attempt++ {
 		snapshot, err := s.readCredentialRow(ctx, s.conn, username)
+		if errors.Is(err, ErrNoSuchUser) {
+			verifyUnknownAccount(password)
+		}
 		if err != nil {
 			return Account{}, Principal{}, nil, err
 		}
@@ -330,15 +334,21 @@ func (s *Store) signIn(username, password string, adminSession bool) (Account, P
 	return Account{}, Principal{}, nil, ErrSignInContended
 }
 
+// verifyUnknownAccount spends a password check on a username with no
+// account, so that sign-in fails in about the same time for an unknown name
+// as for a wrong password. A variable so that tests can count the calls.
+var verifyUnknownAccount = auth.VerifyUnknownAccount
+
 // SignIn verifies username's password, unlocks its DEK, records the
 // sign-in, and runs the administrator's escrow session, all for the one
 // account incarnation whose password was checked. It returns that
 // account, its Principal, and the DEK, which the caller must clear.
 //
 // Unknown users and wrong passwords return ErrNoSuchUser or
-// auth.ErrMismatch, which callers show alike; ErrAccountDisabled and
-// ErrAccountIdentity come only after the password matched. An escrow
-// failure does not stop the sign-in; it is logged and retried next time.
+// auth.ErrMismatch, which callers show alike, after the same Argon2id work
+// (verifyUnknownAccount); ErrAccountDisabled and ErrAccountIdentity come
+// only after the password matched. An escrow failure does not stop the
+// sign-in; it is logged and retried next time.
 func (s *Store) SignIn(username, password string) (Account, Principal, []byte, error) {
 	return s.signIn(username, password, true)
 }
