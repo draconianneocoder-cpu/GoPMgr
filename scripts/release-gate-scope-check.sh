@@ -93,8 +93,11 @@ fi
 
 # SEC-06 (owner decision DEC-ADVISORY-SCAN, 2026-11-14): the online engine
 # advisory scan is required before every tag, with no skip mode. Hold both the
-# Makefile recipe and the release section to their exact text, so the scan
-# cannot be swapped for the offline check, ignored, or made to pass on failure.
+# Makefile recipe and the release section to their exact text, and check what
+# Make would really run (variable overrides, extra recipe lines, prerequisites)
+# and that the target stays phony, so a file of that name cannot satisfy it.
+# A deliberate rewrite of check-release.sh's control flow is caught by
+# scripts/release-native-env_test.py, which runs the gate.
 advisory_recipe="$(awk '
     /^engine-advisories:/ { targets++; active=1; next }
     /^[^[:space:]#]/ { active=0 }
@@ -116,7 +119,13 @@ fi
 echo "Vendored engine advisories checked."
 ADVISORIES
 )"
+advisory_dry_run="$(env -u MAKEFLAGS -u MFLAGS make --no-print-directory -n engine-advisories 2>&1)" ||
+	advisory_dry_run="make -n engine-advisories failed: $advisory_dry_run"
+advisory_phony="$(env -u MAKEFLAGS -u MFLAGS make --no-print-directory -p -n engine-advisories 2>/dev/null |
+	rg '^\.PHONY:' | tr ' ' '\n' | rg -cx 'engine-advisories' || true)"
 if [ "$advisory_recipe" != $'\t$(GO) run ./tools/engine-advisories scan' ] ||
+	[ "$advisory_dry_run" != 'go run ./tools/engine-advisories scan' ] ||
+	[ "$advisory_phony" != 1 ] ||
 	[ "$release_advisories" != "$expected_release_advisories" ]; then
 	echo "release-scope: check-release.sh must run make engine-advisories, whose recipe is exactly the online scan, and fail when it fails." >&2
 	fail=1

@@ -109,7 +109,11 @@ func scan(ctx context.Context, r record, nvd *nvdClient, out io.Writer, now func
 		return err
 	}
 	days := reviewAgeDays(reviewed, now())
-	_, _ = fmt.Fprintf(out, "Review of %s, %d days ago (UTC dates); the scan allows %d.\n", r.ReviewedOn, days, maxReviewAgeDays)
+	unit := "days"
+	if days == 1 || days == -1 {
+		unit = "day"
+	}
+	_, _ = fmt.Fprintf(out, "Review of %s, %d %s ago (UTC dates); the scan allows %d.\n", r.ReviewedOn, days, unit, maxReviewAgeDays)
 	ageErr := checkReviewAge(r.ReviewedOn, days)
 	if err := errors.Join(scanNVD(ctx, r, reviewed, nvd, out), ageErr); err != nil {
 		return err

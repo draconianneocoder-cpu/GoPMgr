@@ -213,7 +213,8 @@ script grows. As of this writing it covers (non-exhaustively): the Wails
 toolchain/CLI version check, version consistency, configuration format
 policy, native installer tool pins, required font assets, the Windows
 installer scaffold, the Linux runtime target, REUSE/SPDX, the online
-vendored-engine advisory scan (needs NVD), frontend build budget, release-scope guards, frontend stability, frontend runtime smoke,
+vendored-engine advisory scan (needs NVD), frontend build budget,
+release-scope guards, frontend stability, frontend runtime smoke,
 memory-safety scan, Go race tests, production build,
 encrypted-database validation, PDF/A-2u validation, and the PAdES harness
 regression target. Pre-merge GitHub CI also runs `make pades-harness-tests`

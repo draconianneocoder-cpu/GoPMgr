@@ -82,6 +82,10 @@ advisory_mutation ignored-failure scripts/check-release.sh 'if ! make engine-adv
 advisory_mutation passes-on-failure scripts/check-release.sh $'for details." >&2\n\texit 1\nfi\necho "Vendored engine advisories checked."' $'for details." >&2\n\texit 0\nfi\necho "Vendored engine advisories checked."'
 advisory_mutation offline-recipe Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t$(GO) run ./tools/engine-advisories check'
 advisory_mutation ignored-recipe Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t-$(GO) run ./tools/engine-advisories scan'
+advisory_mutation target-variable Makefile $'engine-advisories: ## Online' $'engine-advisories: GO := true\nengine-advisories: ## Online'
+advisory_mutation global-variable Makefile $'GO      := go\n' $'GO      := go\nGO      := true\n'
+advisory_mutation prerequisite Makefile $'engine-advisories: ## Online' $'engine-advisories: engine-advisories-check ## Online'
+advisory_mutation not-phony Makefile ' engine-advisories engine-advisories-check ' ' engine-advisories-check '
 advisory_mutation skip-variable Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t$(if $(SKIP_ADVISORIES),true,$(GO) run ./tools/engine-advisories scan)'
 
 unscoped_command="$(new_fixture unscoped-command)"

@@ -63,7 +63,9 @@ requests for the two components when each fits one page, 7 s apart. It
 retries a 5xx response or a failed connection up to three times (after 10, 20
 and 40 s); a 403, which NVD gives a rate-limited client, is not retried. Any
 failure ends with "no verdict": nothing was decided, and only the components
-queried before it are listed. That includes NVD's 403 for a rate-limited client, a reply that is
+queried before it are listed. A request may take up to 90 s, so a slow NVD can
+hold the release gate for several minutes before it reports; a normal run
+takes about 30 s, and one has taken 1 min 45 s. That includes NVD's 403 for a rate-limited client, a reply that is
 not a CVE API 2.0 page (wrong `format` or `version`, missing counts or
 timestamp, counts that do not add up), and cancellation.
 
