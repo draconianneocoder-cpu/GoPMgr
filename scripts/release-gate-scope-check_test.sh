@@ -86,6 +86,11 @@ advisory_mutation target-variable Makefile $'engine-advisories: ## Online' $'eng
 advisory_mutation global-variable Makefile $'GO      := go\n' $'GO      := go\nGO      := true\n'
 advisory_mutation prerequisite Makefile $'engine-advisories: ## Online' $'engine-advisories: engine-advisories-check ## Online'
 advisory_mutation not-phony Makefile ' engine-advisories engine-advisories-check ' ' engine-advisories-check '
+advisory_mutation ignore-target Makefile $'engine-advisories: ## Online' $'.IGNORE: engine-advisories\nengine-advisories: ## Online'
+advisory_mutation ignore-all Makefile $'GO      := go\n' $'GO      := go\nMAKEFLAGS += -i\n'
+advisory_mutation pattern-shell Makefile $'engine-advisories: ## Online' $'%-advisories: SHELL := /bin/true\nengine-advisories: ## Online'
+advisory_mutation target-shell Makefile $'engine-advisories: ## Online' $'engine-advisories-check engine-advisories: SHELL := /bin/true\nengine-advisories: ## Online'
+advisory_mutation exported-goflags Makefile $'engine-advisories: ## Online' $'engine-advisories-check engine-advisories: export GOFLAGS := -exec=true\nengine-advisories: ## Online'
 advisory_mutation skip-variable Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t$(if $(SKIP_ADVISORIES),true,$(GO) run ./tools/engine-advisories scan)'
 
 unscoped_command="$(new_fixture unscoped-command)"

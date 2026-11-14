@@ -53,6 +53,12 @@ with any other failure listed alongside.
   advisory appears" below, commit the new review, and tag again; the tag that
   failed is not reused.
 
+**Duration.** A normal run takes about 30 s; one has taken 1 min 45 s. Each
+attempt may take up to 90 s and a request makes up to four attempts with
+waits of 10, 20 and 40 s, so one slow request can take about 7.5 minutes and a
+run whose four requests all need their last attempt about 30 minutes before it
+reports.
+
 ## What the scan decides
 
 For each component it first asks NVD how many CVEs it lists for the product
@@ -63,11 +69,9 @@ requests for the two components when each fits one page, 7 s apart. It
 retries a 5xx response or a failed connection up to three times (after 10, 20
 and 40 s); a 403, which NVD gives a rate-limited client, is not retried. Any
 failure ends with "no verdict": nothing was decided, and only the components
-queried before it are listed. A request may take up to 90 s, so a slow NVD can
-hold the release gate for several minutes before it reports; a normal run
-takes about 30 s, and one has taken 1 min 45 s. That includes NVD's 403 for a rate-limited client, a reply that is
-not a CVE API 2.0 page (wrong `format` or `version`, missing counts or
-timestamp, counts that do not add up), and cancellation.
+queried before it are listed. Failures include NVD's 403, a reply that is not
+a CVE API 2.0 page (wrong `format` or `version`, missing counts or timestamp,
+counts that do not add up), and cancellation.
 
 It then re-decides each CVE from NVD's configurations, and fails closed:
 
