@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `60a0a04` (PR 209).
+**Last reviewed:** 2026-11-14, against `main` at `0952c8f` (PR 214).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
@@ -119,7 +119,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | --- | --- |
 | PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE) |
 | PS-01 Normalized connected model | Proposed (ARC-01) |
-| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11**, not yet implemented. Later slices proposed |
+| PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, and part b, the read-only `App.AuditSchedule` method, implemented 2026-11-13. Part c (findings panel) not started, so users cannot run it yet. SQA-024 (the 50,000-task measurement on the S0 hardware profile) is not done: it needs DEC-HARDWARE. Known limit: charts have no way to designate start and finish tasks, so SQ-01 and SQ-02 report every schedule's open start and end. Later slices proposed |
 | PS-03 File inspection and interoperability | Partial: MSPDI quick import and export. Worker slices need DEC-INTEROP |
 | PS-04 Large-schedule storage, audit, Gantt | Blocked (ARC-01 to ARC-05). Overallocation rescan fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | Proposed |
@@ -131,6 +131,17 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | Provider-neutral integrations | Proposed, approved in principle 2026-10-28. C-01 onward unauthorized |
 | Localization (ADR-008) | Phase 1 in progress: catalog, account screens, work-item editors done |
 
+## Reporting and extension planning
+
+Integrated 2026-11-13 against `ac20cbe711d9c03479cf937d82c5b7da991454d3`.
+This is documentary reconciliation; no new product behavior was implemented.
+
+| Item | Status | Pointer |
+| --- | --- | --- |
+| RILD-01 reporting and lifecycle workstream | Workstream establishment recorded in the supplied plan; detailed ADR-014 and RILD-0–7 implementation slices proposed. Existing reports remain partial foundations, not immutable-issue qualification | [ADR-014](design/ADR-014-reporting-integrity-and-lifecycle.md) |
+| Secure extension profiles and controls | ADR-015 proposed, source alias ADR-EXT-001. No Wasm runtime, public SDK, new package trust mechanism or community-native execution adopted | [ADR-015](design/ADR-015-secure-extension-platform.md) |
+| Requirement preservation and agent sequencing | Documentation integrated: 120 explicit reporting IDs, eight catalog families, 17 architecture contracts and 31 EXT IDs; future qualification states NOT RUN | [sequence](design/reporting-extension/implementation-plan.md), [assurance](testing/reporting-extension-assurance.md) |
+
 ## Build assurance (ADR-013)
 
 | Phase | Status |
@@ -138,6 +149,13 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | P0 to P5 | Implemented; see [ROADMAP.md](ROADMAP.md) |
 | P6 | Partly implemented: checkout guard, licensing, pinned govulncheck, native Make environments |
 | P7 to P9 | Proposed |
+
+## Known defects
+
+| ID | Defect | Status |
+| --- | --- | --- |
+| KRN-01 | A constraint can be out of force without anyone being told. `kernel.ApplyConstraintDates` leaves an SNET, FNLT or MFO constraint unapplied when its date cannot be read or placed. Any other stored type, such as MSO, SNLT or FNET, is scheduled as ASAP: the kernel never arms it and `internal/charts/dag/cpm.go` maps it to ASAP. The chart editor offers only the five supported types and the MSPDI import drops constraints (PS-03), so such a value comes from hand-edited or restored chart data | Open. Both are reported by the PS-02 audit as SQ-09 (`TestUnappliedConstraintDateIsReported`, `TestUnsupportedConstraintTypeIsReported`). A fix changes scheduling results, which PS-02 slice 1 may not do |
+| KRN-02 | A project start stored as RFC3339 with a time of day moved date constraints. `kernel.DayOffset` walks from the start instant and compares it with midnight-UTC constraint dates, so unless the start was midnight UTC a SNET, FNLT or MFO date landed a working day early or late, while the task dates shown still began on the stored calendar date. The report-export earned value, which passes the current time, also counted any time after midnight UTC as one more completed day. Reproduced in PS-02b review: start `2026-06-01T23:00:00-05:00` gives an MFO on 2026-06-03 offset 2 instead of 3, float -6 instead of -5; `2026-06-01T00:30:00+02:00` gives -4. Plain `YYYY-MM-DD` starts, which the MSPDI import and Project Settings write, are not affected | **Fixed 2026-11-13** on `fix/krn02-start-calendar-date`: `kernel.DayOffset` now compares calendar dates, each read in its own zone, which fixes every caller at once (the schedule, the chart's CPM view, levelling, the split preview and the status-date offsets). Scheduling results change only for a start stored with a time of day; earned value dated today (report exports, the combined report and the CPM editor's EVM panel) no longer counts the current day as completed after midnight UTC, so planned value, schedule variance and SPI drop by one day's planned work there and now match the portfolio, which already stripped the clock. Tests: `TestDayOffsetIgnoresTheStartsTimeOfDay`, `TestDayOffsetReadsTheDateInItsOwnZone`, and `TestAuditScheduleJudgesTheScheduleTheAppReports` over offset starts with hand-computed float |
 
 ## Decisions waiting for the owner
 

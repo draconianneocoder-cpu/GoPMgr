@@ -33,6 +33,53 @@ func TestDayOffset(t *testing.T) {
 	}
 }
 
+// KRN-02: offsets count calendar days, so the time of day and the offset
+// of the project start must not move them. Each start below is shown as
+// Monday 2026-06-01 by AnchorSchedule, so each must give the same offsets
+// as a plain midnight-UTC start (TestDayOffset). Before the fix, the
+// -05:00 evening start gave Wednesday offset 1 and the +02:00 start gave 3.
+func TestDayOffsetIgnoresTheStartsTimeOfDay(t *testing.T) {
+	starts := []string{
+		"2026-06-01T23:00:00-05:00", // 04:00 UTC on Tuesday
+		"2026-06-01T00:30:00+02:00", // 22:30 UTC on Sunday
+		"2026-06-01T12:00:00Z",
+		"2026-06-01T23:59:59+14:00",
+	}
+	cases := []struct {
+		date string
+		want float64
+	}{
+		{"2026-06-01", 0},
+		{"2026-06-03", 2},
+		{"2026-06-06", 5},
+		{"2026-06-08", 5},
+	}
+	for _, s := range starts {
+		start, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			t.Fatalf("parse %s: %v", s, err)
+		}
+		for _, c := range cases {
+			date, _ := time.Parse(DateLayout, c.date)
+			if got, ok := DayOffset(start, date, weekdaysOnly); !ok || got != c.want {
+				t.Errorf("start %s: DayOffset(%s) = (%v, %v), want (%v, true)", s, c.date, got, ok, c.want)
+			}
+		}
+	}
+}
+
+// The other argument is read the same way: a status date taken as a local
+// evening instant is still that local calendar day.
+func TestDayOffsetReadsTheDateInItsOwnZone(t *testing.T) {
+	date, err := time.Parse(time.RFC3339, "2026-06-03T22:00:00-07:00") // Thursday 05:00 UTC
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := DayOffset(conStart, date, weekdaysOnly); !ok || got != 2 {
+		t.Fatalf("DayOffset(Wednesday evening, -07:00) = (%v, %v), want (2, true)", got, ok)
+	}
+}
+
 func TestSNETDelaysStart(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 1},

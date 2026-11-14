@@ -286,6 +286,7 @@
         "gopmgr/internal/printing",
         "gopmgr/internal/reporting",
         "gopmgr/internal/rfc3161",
+        "gopmgr/internal/schedaudit",
         "gopmgr/internal/sigma/charts",
         "gopmgr/internal/sigma/domain",
         "gopmgr/internal/sigma/service",
@@ -388,7 +389,8 @@
         "gopmgr/internal/desktop",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
-        "gopmgr/internal/reporting"
+        "gopmgr/internal/reporting",
+        "gopmgr/internal/schedaudit"
       ],
       "imports_internal": [
         "gopmgr/internal/money"
@@ -467,6 +469,16 @@
         "github.com/digitorus/pkcs7",
         "github.com/digitorus/timestamp"
       ]
+    },
+    "gopmgr/internal/schedaudit": {
+      "dir": "internal/schedaudit",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/kernel"
+      ],
+      "notable_external_deps": []
     },
     "gopmgr/internal/sigma/charts": {
       "dir": "internal/sigma/charts",

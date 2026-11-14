@@ -7,7 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Status:** Slice 1 was AUTHORIZED for implementation on 2026-11-11
 ([decision](../review/evaluation-2026-11-10-response-plan.md)). Later slices
-remain proposed. Nothing here is implemented yet.
+remain proposed. Part PS-02a, the rules package `internal/schedaudit`, is
+implemented (§9), and so is PS-02b, the App method (§10). PS-02c is not
+started, so users cannot run the audit yet.
 **Plan:** [modernization plan](../design/professional-scheduling-modernization-plan.md) §3, §6.
 
 ## 1. Scope of slice 1
@@ -156,7 +158,7 @@ Percentage metrics are reported with numerator and denominator.
 1. **PS-02a:** the `internal/schedaudit` package (rules, profiles, finding
    type) with SQA-001 to 023 and 026 to 028. No App or UI change.
 2. **PS-02b:** the read-only `App.AuditSchedule(chartID, reportingDate,
-   profile)` method, with tests on a real encrypted project (SQA-020), chart
+   profile)` method (in Go it also takes the call's context first; see §10), with tests on a real encrypted project (SQA-020), chart
    selection (SQA-029) and the T2 measurement (SQA-024, 025).
 3. **PS-02c:** a read-only findings panel with keyboard navigation and screen
    reader semantics, and an export of the findings into the existing report
@@ -173,3 +175,89 @@ Percentage metrics are reported with numerator and denominator.
 | The wrong schedule or inactive constraints are audited | Load the named chart only (SQA-029); arm constraints before CPM (SQA-028) |
 | The flat schedule hides summary-level issues | Recorded as a known limit until S1/S3 adds hierarchy |
 | Dates depend on calendars | Use the kernel's `DayOffset` and country calendars only. No second calendar implementation (AP-03) |
+
+## 9. PS-02a as implemented (2026-11-13)
+
+`schedaudit.Audit(ctx, Input)` in `internal/schedaudit`. These points settle
+what §3 left open:
+
+- **Default profile.** A product choice, not a standard: SQ-06 reports a lag
+  over 10 working days, SQ-10 float over 44, SQ-12 a duration over 44. It sets
+  no pass/fail limits. DCMA-style uses §3's numbers; its lag limit is 0, so
+  every positive lag counts.
+- **Two copies.** Data rules (SQ-03, SQ-05, SQ-06, SQ-12, SQ-14) read the tasks
+  as stored. The scheduler clamps percent complete, so SQ-14 would otherwise
+  miss a value outside 0 to 100, which it reports as an error. CPM rules read a
+  second copy with constraints armed.
+- **Links.** Logic is the kernel's merge of typed links and legacy precedents
+  (`kernel.EffectiveLinks`). A link to a missing task is SQ-03 only and does
+  not count as logic for SQ-01, SQ-02 or SQ-13. A link type the kernel does not
+  recognise is scheduled as FS; SQ-07 reports it and does not count it as FS.
+- **Constraints.** A date constraint whose date the kernel cannot apply is
+  ignored by the scheduler without notice; SQ-09 reports it as an error (see
+  KRN-01 in [STATUS](../STATUS.md)).
+- **Not evaluated.** Any scheduler refusal (a cycle or a schedule too long)
+  marks SQ-09 to SQ-11, SQ-15 and SQ-16 not evaluated, with the reason. SQ-16
+  is stricter than §3 here because it needs early dates. SQ-04 runs its own
+  cycle search, so it names the members even when the kernel reports the
+  schedule as too long first. Without a reporting date, SQ-14 still runs but
+  does not compare actual dates with it.
+- **Milestones** are the `Milestone` flag only. A zero-duration task without
+  the flag is an ordinary task.
+- **Input errors.** An empty or duplicate task ID, or an invalid profile, is
+  refused with an error. An anchor ID that is not a task is an SQ-18 finding.
+- **Metrics.** Each is a share with its numerator and denominator. SQ-01 and
+  SQ-02 are counted together as `logic` over non-milestone tasks; SQ-12 and
+  SQ-17 also count non-milestone tasks; link rules count links whose
+  predecessor exists (SQ-03 counts every link); the rest count all tasks. A
+  metric with a zero denominator passes.
+- **Cancellation** is checked on entry, after scheduling and every 4,096
+  tasks in each loop. The kernel's scheduler and overallocation detector
+  cannot be interrupted, so they bound how quickly a cancelled audit stops.
+- **For PS-02b.** `Input.ProjectStart` and `Input.ReportingDate` take
+  `YYYY-MM-DD` only; the stored project date may be RFC3339, so the App
+  method must convert it or the audit reports a valid date as unreadable. The
+  method must also pass the chart's own capacity plan, and should report
+  constraint types the chart mapper drops (KRN-01), which never reach the
+  audit.
+- **Not yet done:** SQA-020's stored-chart half, SQA-024 and SQA-029 belong to
+  PS-02b, which reads a real project. §10 covers SQA-020 and SQA-029; SQA-024
+  remains open. 50,000 tasks took about 0.1 s on the
+  development Mac on 2026-11-13; that is not the SQA-024 measurement, which
+  needs the S0 hardware profile.
+
+## 10. PS-02b as implemented (2026-11-13)
+
+`App.AuditSchedule(ctx, chartID, reportingDate, profile)` in
+`internal/desktop/app_schedule_audit.go`. It returns `schedaudit.Result`.
+
+- **Context.** In Go, the first parameter is the frontend call's own context.
+  Wails v3.1.0 omits it from the TypeScript signature and cancels it when the
+  frontend cancels the call (`messageprocessor_call.go`), so a single audit
+  can be stopped without closing the application.
+- **Chart.** Exactly the named chart, through `chartForProject`; a chart of
+  another kind or with no tasks is refused. The result and every finding
+  carry its ID and its updated-at stamp as the revision. Nothing is written:
+  no chart save, no audit-log event.
+- **Inputs.** Tasks come from `cpmChartDataToKernelTasks`, which passes the
+  stored constraint type through, sorted by ID. The project start is
+  converted with `parseProjectDate` to the calendar date the app displays,
+  so an RFC3339 value is accepted. Since the KRN-02 fix (STATUS), the app's
+  scheduler reads the start the same way, so the two agree for any stored
+  start. The work calendar is the project country's. SQ-16 uses
+  `resourceCapacityPlan`, the plan resource levelling uses. SQ-18's baseline check reads the audited
+  chart's own baselines.
+- **Arguments.** Profile keys are `default` (or empty) and `dcma-style`; a
+  display name is refused. The reporting date must be `YYYY-MM-DD` or empty.
+- **Unsupported constraint types (KRN-01).** The kernel arms only SNET, FNLT
+  and MFO and honours ALAP; any other stored type is scheduled as ASAP, which
+  matches the chart mapper. SQ-09 now reports such a type as an error.
+- **Known limit: anchors.** Charts have no way to designate start and finish
+  tasks, so every audit runs without anchors and SQ-01 and SQ-02 report a
+  schedule's open start and end. Designating them needs a chart-model change.
+- **Cancellation.** Parsing the chart and reading its baselines and capacity
+  plan happen before the audit and do not check the context; the audit
+  itself checks it as in §9. Only an already-cancelled call is tested at the
+  App level.
+- **Not done.** SQA-024, the 50,000-task measurement on the S0 hardware
+  profile, needs DEC-HARDWARE. PS-02c, the findings panel, is not started.

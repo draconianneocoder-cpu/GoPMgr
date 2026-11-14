@@ -122,7 +122,7 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
 - `go.mod` requires Go 1.27.4 or later and pins Wails v3.1.0. CGO is required.
 - The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
   calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
-  its 208 exported methods are frontend API, listed in `code-map/app-api.json`.
+  its 209 exported methods are frontend API, listed in `code-map/app-api.json`.
   `frontend/src/lib/desktop-api.ts` re-exports the generated App namespace from
   `frontend/bindings/gopmgr/internal/desktop/index.ts`. Generate real bindings
   before frontend checks; do not restore ambient `window.go` declarations.
@@ -191,3 +191,17 @@ local website build. The owner-approved hosted website job runs checker tests
 and `make website-ci`, including the pinned Linux Hugo production build and
 output checks. It does not publish or authorize deployment. Follow
 `website/README.md` for evidence and blockers.
+
+## Reporting and extension plan work
+
+For reporting/lifecycle modernization or new extension capabilities, start with
+`docs/design/reporting-extension/implementation-plan.md`, ADR-014, ADR-015 and
+`docs/testing/reporting-extension-assurance.md`. Rebase the requirement registers
+against actual code; retain every original reporting/EXT identifier and explicit
+applicability. These detailed plans are proposed, not implementation authority.
+Existing authorized ADR-010/G1 slices retain their conditions. Host-native reports
+need not await Wasm; plugin writes cannot bypass ADR-011/format/audit/receipt gates.
+Distinguish RILD evidence levels from EXT trust profiles, preserve imported facts,
+exact calculations, historical audit bytes and original issued artifacts. Record
+missing decisions and unrun qualification honestly; do not reduce report scope or
+weaken tests to make a slice appear complete.

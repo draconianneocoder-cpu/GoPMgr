@@ -28,52 +28,52 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "20f23192cafeaa3f09f8928f6aad5d3c4336fc7e30516fb8aee2b086cdb4265d",
+      "sha256": "7aecf5fcb8cda6c1c1e0b925bb51855628a2cec1fdcd33ce855769c63ffd72e9",
       "size": 2132,
       "mode": "100644"
     },
     "content/community/_index.md": {
-      "sha256": "11ff823e1dca4d35936e4b169fa920348932b40ae48b6146a3bcce9b642bdb57",
+      "sha256": "d3232b1e9afcaeae6f149f8042a2d6db2f35343b9eb3c778b087be81a7a8a7f5",
       "size": 1414,
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "cbd97acda4a027ee648d8e13f3f4dc8b941a16f0b3bee0360baef404622b0f13",
+      "sha256": "a44bfa672fadc5e95a7dbe597034cb2ce7fb8682b39fb32223018e59dc9a599f",
       "size": 1703,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "1a461a60756de73c5d6d5c922e90f6a01657dbedce31808fccb03746da8ffd5e",
+      "sha256": "e524210772c0df4ce52031097bcfb1a7b0941561a9330bb93ee633bf132a6188",
       "size": 1979,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "305d7908d5eb514eb9a2886c43ef573f03ebec53ce4dafa69b25add6b9d9a7b9",
+      "sha256": "4a7d178396f5fca13065f412d76050d8c62ecd70d2090a3708d13a882cf407a1",
       "size": 2811,
       "mode": "100644"
     },
     "content/downloads/_index.md": {
-      "sha256": "60889af1cddd92c9a60106ff6e9ca171be087bb99463cbe5362ff24f35a81b01",
+      "sha256": "398d3d07bc6825c9d81ec1c7078e2959a520aca7986f3b34ed591b3367223f69",
       "size": 2015,
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "886c454975b64f1a22af33a0a88c27dbe14c95fd3e11184aef65787350813f56",
-      "size": 2315,
+      "sha256": "1bde155edd41445b8a5cec078b3a89c816e3b68a1831a23f9bbe81b7b2fd0e12",
+      "size": 2443,
       "mode": "100644"
     },
     "content/legal/_index.md": {
-      "sha256": "6ad43fe25b6ff6157a481a1a7af65935c4a7d5094238852eee0a5aae6dff6b23",
+      "sha256": "a31fda9224a6848a23d25d86f9a1a42ee94b9f3d26d8632cf3d5c958a4addf76",
       "size": 1915,
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "6a4c83d07e10740649102d63c39cc08c762a7377116872236efd981767a24034",
-      "size": 1718,
+      "sha256": "49c2e5b2f3c25f0ad7c16a34c071b551d87bfde43adad88da88fc8b1d222bba6",
+      "size": 2227,
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "5cbf00a582e9881880858f2a2420f81b2e4711ee9d37f3820e5d4c51d1bc7576",
+      "sha256": "5632adb583ddf0a80ea68be5b263aa8f8702ab7032dbda72c932cca18ae7a7e3",
       "size": 2114,
       "mode": "100644"
     },
@@ -153,8 +153,8 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "a3bea8cab6f7a3618bb69f9bde89c91b89c141e97f69c66f4884c390161522be",
-      "size": 8462,
+      "sha256": "06f3124a825533412c14a2b523651ab82bdb2615bfbc6648a608fca5909c300d",
+      "size": 8496,
       "mode": "100644"
     },
     "static/branding/bobby-dark.png": {
