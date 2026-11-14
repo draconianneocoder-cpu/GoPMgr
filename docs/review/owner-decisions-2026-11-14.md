@@ -29,6 +29,15 @@ decision says so.
 | SEC-04 items 3 and 4, sign-in attempts and timing | **Add a short delay** | An increasing delay after repeated failed sign-ins, up to a few seconds, with no lock-out. Unknown-username timing is not equalized; it stays recorded as residual risk. |
 | DEC-WINDOWS | **Unsupported preview** | Keep building the Windows `.exe`, labelled unverified preview in release notes, until a real Windows host qualifies it. No Windows support is advertised. SEC-05 stays unverified. |
 
+### Amendment, same day
+
+After choosing "Add a short delay", the maintainer asked for the timing of
+unknown usernames to be increased as well. Sign-in now does the same
+Argon2id work for a username with no account as for a wrong password, and
+both count toward the same delay. This replaces "Unknown-username timing is
+not equalized" above; usernames remain readable locally, so this closes a
+timing difference, not a disclosure.
+
 ## Architecture
 
 | Decision | Chosen option | What it authorizes |

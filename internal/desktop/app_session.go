@@ -349,14 +349,26 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 // DEK, which is zeroed at once.
 func (a *App) Login(username, password string) (users.Account, error) {
 	s := a.currentSession()
-	acc, principal, dek, err := a.store.SignIn(username, password)
+	var (
+		acc       users.Account
+		principal users.Principal
+		dek       []byte
+	)
+	invalid := func(err error) bool {
+		return errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch)
+	}
+	err := a.signIns.attempt(func() error {
+		var err error
+		acc, principal, dek, err = a.store.SignIn(username, password)
+		return err
+	}, invalid)
 	if err != nil {
-		// Collapse both "no such user" and "password mismatch" into
-		// one message. The timing is not identical: an unknown name
-		// returns before the Argon2id work. Usernames are already
-		// readable locally (plaintext system.db, per-account folders),
-		// so this reveals nothing new; see docs/review/sec-04-triage.md.
-		if errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch) {
+		// Collapse both "no such user" and "password mismatch" into one
+		// message. Both run the same Argon2id work (users.SignIn) and
+		// count toward the same delay (sign_in_delay.go), so the time
+		// taken does not tell them apart either; see
+		// docs/review/sec-04-triage.md.
+		if invalid(err) {
 			return users.Account{}, errors.New("invalid credentials")
 		}
 		// Only returned after the password matched, so it tells nothing

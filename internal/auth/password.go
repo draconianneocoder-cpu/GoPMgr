@@ -137,3 +137,22 @@ func NeedsRehash(encoded string) bool {
 	}
 	return memory < pwMemory || time < pwTime || threads < pwThreads
 }
+
+// unknownAccountHash is a hash at the current parameters with an all-zero
+// salt and key. No password is expected to derive the all-zero key; it
+// exists only to be verified against.
+var unknownAccountHash = fmt.Sprintf(
+	"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
+	argon2.Version,
+	pwMemory, pwTime, pwThreads,
+	base64.RawStdEncoding.EncodeToString(make([]byte, pwSaltLen)),
+	base64.RawStdEncoding.EncodeToString(make([]byte, pwKeyLen)),
+)
+
+// VerifyUnknownAccount does the work VerifyPassword does for an account
+// hashed at the current parameters (the same time and memory) and
+// discards the result. Sign-in calls it for a username with no account, so
+// that a failure takes about as long whether or not the name exists.
+func VerifyUnknownAccount(password string) {
+	_ = VerifyPassword(password, unknownAccountHash)
+}

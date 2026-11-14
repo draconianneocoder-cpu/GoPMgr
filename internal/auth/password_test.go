@@ -188,3 +188,31 @@ func TestVerifyPasswordAcceptsPersistedV058Hash(t *testing.T) {
 		t.Fatalf("wrong password: got %v, want mismatch", err)
 	}
 }
+
+// The unknown-account hash must cost what a current hash costs: the same
+// parameters, and a value VerifyPassword accepts as a hash (a malformed one
+// would return ErrInvalidHash before any Argon2id work).
+func TestUnknownAccountHashUsesTheCurrentParameters(t *testing.T) {
+	stored, err := HashPassword("valid password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := func(encoded string) string {
+		parts := strings.Split(encoded, "$")
+		if len(parts) != 6 {
+			t.Fatalf("hash %q has %d parts, want 6", encoded, len(parts))
+		}
+		return strings.Join(parts[1:4], "$")
+	}
+	if got, want := params(unknownAccountHash), params(stored); got != want {
+		t.Fatalf("unknown-account parameters = %s, want %s (those HashPassword uses)", got, want)
+	}
+	for _, password := range []string{"", "valid password"} {
+		if err := VerifyPassword(password, unknownAccountHash); !errors.Is(err, ErrMismatch) {
+			t.Fatalf("VerifyPassword(%q, unknownAccountHash) = %v, want ErrMismatch", password, err)
+		}
+		// It returns nothing to check; this shows it runs to completion
+		// on any input. internal/users counts the calls sign-in makes.
+		VerifyUnknownAccount(password)
+	}
+}
