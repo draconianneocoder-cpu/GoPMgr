@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -405,14 +406,35 @@ const (
 
 var shellBug = named("CVE-2026-119586", "2026-11-01T00:00:00.000", cveWith(match(true, anySQLite, "ei", "3.54.1")))
 
+// scanWith scans the repository's record against f, 18 days after its
+// review, so the tests hold whatever the record's date.
 func scanWith(t *testing.T, f *fakeNVD, waits *[]time.Duration) (string, error) {
+	t.Helper()
+	return scanRootAt(t, repoRoot, f, waits, reviewDay(t, repoRoot).AddDate(0, 0, 18))
+}
+
+func scanRootAt(t *testing.T, root string, f *fakeNVD, waits *[]time.Duration, at time.Time) (string, error) {
 	t.Helper()
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	var out bytes.Buffer
-	now := func() time.Time { return time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC) }
-	err := run(context.Background(), []string{"scan", "-root", repoRoot}, &out, testClient(srv, waits), now)
+	now := func() time.Time { return at }
+	err := run(context.Background(), []string{"scan", "-root", root}, &out, testClient(srv, waits), now)
 	return out.String(), err
+}
+
+// reviewDay is the record's reviewed_on in root.
+func reviewDay(t *testing.T, root string) time.Time {
+	t.Helper()
+	r, err := loadRecord(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, err := r.reviewDate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return day
 }
 
 func TestScanPassesWhenEveryApplicableAdvisoryHasADisposition(t *testing.T) {
@@ -422,7 +444,8 @@ func TestScanPassesWhenEveryApplicableAdvisoryHasADisposition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan: %v\n%s", err, out)
 	}
-	for _, want := range []string{"Review of 2026-11-13, 18 days ago.", "CVE-2026-119586 (Analyzed): applies", "No advisory applies without a disposition."} {
+	reviewed := reviewDay(t, repoRoot).Format(time.DateOnly)
+	for _, want := range []string{"Review of " + reviewed + ", 18 days ago (UTC dates); the scan allows 90.", "CVE-2026-119586 (Analyzed): applies", "No advisory applies without a disposition."} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -549,8 +572,9 @@ func TestScanGivesNoVerdictWhenCancelled(t *testing.T) {
 	t.Cleanup(srv.Close)
 	c := testClient(srv, nil)
 	c.sleep = func(ctx context.Context, d time.Duration) error { return context.Canceled }
-	err := run(context.Background(), []string{"scan", "-root", repoRoot}, &bytes.Buffer{}, c, time.Now)
-	if !errors.Is(err, errNoVerdict) {
+	day := reviewDay(t, repoRoot)
+	err := run(context.Background(), []string{"scan", "-root", repoRoot}, &bytes.Buffer{}, c, func() time.Time { return day })
+	if !errors.Is(err, errNoVerdict) || errors.Is(err, errReviewAge) {
 		t.Fatalf("scan = %v, want no verdict", err)
 	}
 }
@@ -601,5 +625,96 @@ func TestUnknownCommand(t *testing.T) {
 	}
 	if err := run(context.Background(), nil, &bytes.Buffer{}, nil, time.Now); err == nil {
 		t.Fatal("no command succeeded")
+	}
+}
+
+func TestReviewAgeCountsUTCCalendarDays(t *testing.T) {
+	reviewed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	east := time.FixedZone("UTC+14", 14*60*60)
+	cases := []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		{"the review day", reviewed, 0},
+		{"its last second", reviewed.Add(24*time.Hour - time.Second), 0},
+		{"an hour before it", reviewed.Add(-time.Hour), -1},
+		{"day 90, last second", reviewed.AddDate(0, 0, 91).Add(-time.Second), 90},
+		{"day 91, first second", reviewed.AddDate(0, 0, 91), 91},
+		{"a zone east of UTC still on the review day there", time.Date(2026, 1, 2, 9, 0, 0, 0, east), 0},
+	}
+	for _, tc := range cases {
+		if got := reviewAgeDays(reviewed, tc.now); got != tc.want {
+			t.Errorf("%s: reviewAgeDays = %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
+
+// The release gate's half of DEC-ADVISORY-SCAN: a review more than 90 UTC
+// days old, or dated after today, fails the scan, which still queries NVD
+// and reports what it found; its error joins any other.
+func TestScanFailsOnAReviewOutOfDate(t *testing.T) {
+	const reviewedOn = "2026-01-01"
+	reviewed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	other := named("CVE-2026-0042", "2025-11-01T00:00:00.000", cveWith(match(true, anySQLite, "ee", "3.55.0")))
+	clean := func() *fakeNVD {
+		return &fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 1, shellBug)}, sqlcipherCPE: {page(0, 0)}}}
+	}
+	cases := []struct {
+		name          string
+		at            time.Time
+		nvd           *fakeNVD
+		wantAge       bool
+		wantOther     error  // errNoVerdict, or nil
+		wantUndispose string // an advisory the error also names
+	}{
+		{"reviewed today", reviewed, clean(), false, nil, ""},
+		{"day 90, last second", reviewed.AddDate(0, 0, 91).Add(-time.Second), clean(), false, nil, ""},
+		{"day 91", reviewed.AddDate(0, 0, 91), clean(), true, nil, ""},
+		{"an hour before the review day", reviewed.Add(-time.Hour), clean(), true, nil, ""},
+		{"day 91 and an advisory without a disposition", reviewed.AddDate(0, 0, 91),
+			&fakeNVD{pages: map[string][]nvdPage{sqliteCPE: {page(0, 2, shellBug, other)}, sqlcipherCPE: {page(0, 0)}}}, true, nil, "SQLite CVE-2026-0042"},
+		{"day 91 and no answer from NVD", reviewed.AddDate(0, 0, 91), &fakeNVD{failStatus: http.StatusForbidden, fails: 1}, true, errNoVerdict, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := writeTree(t)
+			editFile(t, root, recordPath, func(s string) string {
+				return regexp.MustCompile(`"reviewed_on": "[0-9-]+"`).ReplaceAllString(s, `"reviewed_on": "`+reviewedOn+`"`)
+			})
+			out, err := scanRootAt(t, root, tc.nvd, nil, tc.at)
+			if got := errors.Is(err, errReviewAge); got != tc.wantAge {
+				t.Fatalf("scan = %v; out of date: %v, want %v\n%s", err, got, tc.wantAge, out)
+			}
+			if tc.wantOther != nil && !errors.Is(err, tc.wantOther) {
+				t.Fatalf("scan = %v, want it to include %v", err, tc.wantOther)
+			}
+			if tc.wantUndispose != "" && (err == nil || !strings.Contains(err.Error(), tc.wantUndispose)) {
+				t.Fatalf("scan = %v, want it to name %s", err, tc.wantUndispose)
+			}
+			if !tc.wantAge && tc.wantOther == nil && tc.wantUndispose == "" && err != nil {
+				t.Fatalf("scan = %v, want a pass\n%s", err, out)
+			}
+			passed := strings.Contains(out, "No advisory applies without a disposition.")
+			if passed != (err == nil) {
+				t.Fatalf("success line printed: %v, but scan = %v\n%s", passed, err, out)
+			}
+			if tc.nvd.pages != nil && !strings.Contains(out, "CVE-2026-119586") {
+				t.Fatalf("an out-of-date review must still report NVD's results:\n%s", out)
+			}
+		})
+	}
+}
+
+// The other half: the offline check, run by make test and CI, never fails
+// because the review has aged, so main does not go red on its own.
+func TestCheckIgnoresTheReviewsAge(t *testing.T) {
+	root := writeTree(t)
+	editFile(t, root, recordPath, func(s string) string {
+		return regexp.MustCompile(`"reviewed_on": "[0-9-]+"`).ReplaceAllString(s, `"reviewed_on": "2000-01-01"`)
+	})
+	var out bytes.Buffer
+	if err := run(context.Background(), []string{"check", "-root", root}, &out, nil, time.Now); err != nil {
+		t.Fatalf("check with a review from 2000 = %v, want a pass", err)
 	}
 }

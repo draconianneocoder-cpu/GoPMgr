@@ -21,6 +21,13 @@ For a prerelease, first resolve the decisions and evidence matrix in
    make check-release
    ```
 
+   It includes the online engine advisory scan (`make engine-advisories`),
+   which needs `services.nvd.nist.gov` and fails when the review in
+   `tools/engine-advisories/reviewed.json` is more than 90 days old. The tag's
+   preflight runs it again on the hosted runner, so make sure the review has
+   days to spare. A "no verdict" there is fixed by re-running the job, never by
+   skipping; see [engine advisories](engineering/engine-advisories.md).
+
 3. Confirm the package and release documentation describe only verified
    platforms and known limitations.
 4. Confirm the tracked license and release-reference records are current:

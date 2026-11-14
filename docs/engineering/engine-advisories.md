@@ -15,27 +15,55 @@ step A4 of the [response plan](../review/evaluation-2026-11-10-response-plan.md)
 | Command | Network | Fails when | Runs in |
 | --- | --- | --- | --- |
 | `make engine-advisories-check` | None | An engine file (`sqlite3.c`, `sqlite3.h`, `flags.go`, `gopmgr_rng.c`) differs from the reviewed hash, even at the same version; a version macro differs from the record; the SBOM's native entries name another version or CPE; the record breaks its own rules | `make test`, so `make verify` and CI (`TestVendoredEngineIsTheReviewedOne`) |
-| `make engine-advisories` | `services.nvd.nist.gov` | The offline check fails; NVD lists a CVE that applies to a reviewed version without a `not_affected` disposition; or NVD gives no answer ("no verdict") | Only when someone runs it |
+| `make engine-advisories` | `services.nvd.nist.gov` | The offline check fails; NVD lists a CVE that applies to a reviewed version without a `not_affected` disposition; NVD gives no answer ("no verdict"); or `reviewed_on` is more than 90 days old, or after today | `make check-release`, so every tag's preflight; and whenever someone runs it |
 
-The online scan is not in CI or `make check-release` yet. The owner decided on
-2026-11-14 ([record](../review/owner-decisions-2026-11-14.md)) that it becomes
-required in `check-release`, failing on a review older than 90 days; that is
-not implemented. **Until it is, run it:**
+The owner decided on 2026-11-14 ([record](../review/owner-decisions-2026-11-14.md),
+DEC-ADVISORY-SCAN) that the online scan is required in `check-release` before
+every tag and fails on a review more than 90 days old. There is no skip mode.
+`main` does not go red on its own: the offline check ignores the review's age
+(`TestCheckIgnoresTheReviewsAge`), and pre-merge CI does not run the scan.
 
-- before tagging any release candidate, and record the output with the release
-  evidence;
+**Release host.** The decision says NVD must be reachable from the release
+host. That means both the maintainer's machine running `make check-release`
+and the hosted runner of `release.yml`'s preflight job, which runs
+`make tag-preflight` and so `check-release`. No workflow was changed for this.
+
+**The review's age** is counted in whole UTC calendar days from `reviewed_on`,
+which is a UTC date, to today's UTC date: day 90 passes, day 91 fails. A
+`reviewed_on` after today's UTC date fails too, so a maintainer east of UTC
+should write the UTC date. An out-of-date review still queries NVD and prints
+what it found, since that is what the next review reads; the scan then fails,
+with any other failure listed alongside.
+
+**Run it yourself:**
+
+- before tagging, and keep the output with the release evidence; check that the
+  review has enough days left for the tag's preflight to run, or review first;
 - whenever the engine changes (the offline check forces a new review then);
-- at least monthly while the engine is unchanged.
+- at least monthly while the engine is unchanged, so a new advisory is found
+  before a release depends on it.
+
+**When the gate fails in a tag's preflight:**
+
+- "no verdict" (NVD refused, failed or was unreachable): re-run the job later.
+  Never skip the scan. NVD's limit for clients without an API key applies to
+  the hosted runner's shared address; supporting a key would put a secret
+  into `release.yml`, which is not authorized.
+- an advisory without a disposition, or an out-of-date review: follow "When an
+  advisory appears" below, commit the new review, and tag again; the tag that
+  failed is not reused.
 
 ## What the scan decides
 
 For each component it first asks NVD how many CVEs it lists for the product
 at any version; none means the CPE name is probably wrong, and the scan stops
 with "no verdict" rather than pass for want of a match. It then asks for CVEs
-matching the version's CPE (`virtualMatchString`) and reads every page. It
-waits 7 s between requests and retries a 5xx response or a failed connection
-up to three times. Any other failure ends with "no verdict": nothing was
-decided. That includes NVD's 403 for a rate-limited client, a reply that is
+matching the version's CPE (`virtualMatchString`) and reads every page: four
+requests for the two components when each fits one page, 7 s apart. It
+retries a 5xx response or a failed connection up to three times (after 10, 20
+and 40 s); a 403, which NVD gives a rate-limited client, is not retried. Any
+failure ends with "no verdict": nothing was decided, and only the components
+queried before it are listed. That includes NVD's 403 for a rate-limited client, a reply that is
 not a CVE API 2.0 page (wrong `format` or `version`, missing counts or
 timestamp, counts that do not add up), and cancellation.
 

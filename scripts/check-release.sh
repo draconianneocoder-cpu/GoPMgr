@@ -89,6 +89,19 @@ if ! make license-check; then
 fi
 echo "Licensing compliant."
 
+# --- 2e. Vendored engine advisories (SEC-06) --------------------------
+# Owner decision DEC-ADVISORY-SCAN (2026-11-14): required before every tag,
+# with no skip mode. It needs services.nvd.nist.gov, and fails when NVD lists
+# an advisory without a disposition, when NVD gives no verdict, or when the
+# review in tools/engine-advisories/reviewed.json is more than 90 days old.
+# Its output is release evidence. See docs/engineering/engine-advisories.md.
+if ! make engine-advisories; then
+	echo "Vendored engine advisory scan failed. Run 'make engine-advisories' for details." >&2
+	exit 1
+fi
+echo "Vendored engine advisories checked."
+
+# --- 2f. Frontend build budget ----------------------------------------
 if [ -f scripts/frontend-build-budget.sh ]; then
 	if ! bash scripts/frontend-build-budget.sh >/dev/null; then
 		echo "Frontend build budget failed. Run 'make frontend-build-budget' for details."

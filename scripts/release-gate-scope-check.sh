@@ -91,6 +91,37 @@ if ! rg -q 'check-wails-version\.sh' scripts/check-release.sh; then
 	fail=1
 fi
 
+# SEC-06 (owner decision DEC-ADVISORY-SCAN, 2026-11-14): the online engine
+# advisory scan is required before every tag, with no skip mode. Hold both the
+# Makefile recipe and the release section to their exact text, so the scan
+# cannot be swapped for the offline check, ignored, or made to pass on failure.
+advisory_recipe="$(awk '
+    /^engine-advisories:/ { targets++; active=1; next }
+    /^[^[:space:]#]/ { active=0 }
+    active && /^\t/ && $0 !~ /^\t[[:space:]]*#/ { print }
+    END { if (targets != 1) print "invalid engine-advisories target count" }
+' Makefile)"
+release_advisories="$(awk '
+    /^# --- 2e\. Vendored engine advisories / { starts++; active=1; next }
+    /^# --- / { if (active) ends++; active=0 }
+    active && NF && $0 !~ /^[[:space:]]*#/ { print }
+    END { if (starts != 1 || ends != 1) print "invalid advisory section count" }
+' scripts/check-release.sh)"
+expected_release_advisories="$(
+	cat <<'ADVISORIES'
+if ! make engine-advisories; then
+	echo "Vendored engine advisory scan failed. Run 'make engine-advisories' for details." >&2
+	exit 1
+fi
+echo "Vendored engine advisories checked."
+ADVISORIES
+)"
+if [ "$advisory_recipe" != $'\t$(GO) run ./tools/engine-advisories scan' ] ||
+	[ "$release_advisories" != "$expected_release_advisories" ]; then
+	echo "release-scope: check-release.sh must run make engine-advisories, whose recipe is exactly the online scan, and fail when it fails." >&2
+	fail=1
+fi
+
 # Configuration files control CI and packaging before application code runs.
 # Guard both the public target and its release invocation so the parser cannot
 # remain available but silently fall out of the publication path.

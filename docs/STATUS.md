@@ -88,7 +88,7 @@ the [2026-11-10 evaluation](review/independent-evaluation-2026-11-10.md).
 | SEC-03 | Backups contain the private signing key | Fixed 2026-11-11: excluded unless the user ticks the option for that backup; inclusion is audited. Backups made earlier still contain it |
 | SEC-04 | 16 low-severity scan items | Triaged 2026-11-13, all sixteen ([triage](review/sec-04-triage.md)). Four were fixed by earlier work, three small defects are fixed (a named-pipe hang in attachment import, `#` in project names, the plaintext opener's `?` guard), the plaintext-copy notice is corrected, one is refuted and one is SEC-09. Decided 2026-11-14 ([decisions](review/owner-decisions-2026-11-14.md)): an increasing sign-in delay without lock-out, and the same Argon2id work for an unknown username as for a wrong password, are implemented; clearing copied codes after 60 s and offering to delete the plaintext copy once the encrypted project opens are not yet. Open: two further confirmed findings held privately |
 | SEC-05 | Windows build of the engine and its random source | Unverified |
-| SEC-06 | No advisory check for the vendored C engine | Check implemented, PR 209 (2026-11-13) ([procedure](engineering/engine-advisories.md)). Offline: `make test` fails when the engine is not the reviewed one. Online: `make engine-advisories` fails on an NVD advisory without a disposition; passed 2026-11-13 with one `not_affected` (CVE-2026-119586, CLI shell only). Decided 2026-11-14, not yet implemented: the scan becomes required in `check-release`, failing on a review older than 90 days. Until then it runs only when someone runs it. Not covered: CVEs NVD has not analysed |
+| SEC-06 | No advisory check for the vendored C engine | Check implemented, PR 209 (2026-11-13) ([procedure](engineering/engine-advisories.md)). Offline: `make test` fails when the engine is not the reviewed one. Online: `make engine-advisories` fails on an NVD advisory without a disposition; passed 2026-11-13 with one `not_affected` (CVE-2026-119586, CLI shell only). Since 2026-11-14 ([decision](review/owner-decisions-2026-11-14.md)) the scan is required in `make check-release`, so in every tag's hosted preflight too, and fails on a review more than 90 UTC days old; `make release-scope` fails if it is removed or weakened. Not yet run as part of a real tag. Not covered: CVEs NVD has not analysed |
 | SEC-07 | Power-loss and hostile-input qualification of migration and restore | Open; depends on the new format |
 | SEC-08 | FIDO2 / FIPS security keys | Proposed, approved in principle 2026-10-28 |
 | SEC-09 | minimatch, deepmerge (development only) | Open by decision: no compatible fix exists |
@@ -160,11 +160,11 @@ This is documentary reconciliation; no new product behavior was implemented.
 ## Owner decisions
 
 Decided 2026-11-14 ([record](review/owner-decisions-2026-11-14.md)). Each
-authorizes only the slice named; none is implemented yet.
+authorizes only the slice named; the last column says which are implemented.
 
 | Decision | Chosen | Authorizes |
 | --- | --- | --- |
-| DEC-ADVISORY-SCAN | Release gate, review at most 90 days old | `make engine-advisories` in `check-release` |
+| DEC-ADVISORY-SCAN | Release gate, review at most 90 days old | `make engine-advisories` in `check-release`: implemented |
 | DEC-AUDIT | Approve the bridge design | ARC-03 design only; implementation needs approval |
 | DEC-FORMAT | Finish the design, then ratify | ADR-011 open items completed for ratification; no format change |
 | DEC-HARDWARE | Two profiles: mid-range laptop minimum, Apple Silicon reference | PS-00 fixtures and measurement; budgets after measuring |
