@@ -96,7 +96,7 @@ needs the same update here.
 
 ---
 
-## `internal/desktop` — 75.6%
+## `internal/desktop` — 75.7%
 
 The application layer: the Wails-bound App struct (reached from the frontend
 as `window.go.desktop.App`), its window, menu and lifecycle, and CLI/headless
