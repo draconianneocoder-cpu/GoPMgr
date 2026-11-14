@@ -58,8 +58,8 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "e5ce599e50bd0ab505e45ae5e2c84c16cf281d668291031f10d60208d96cd769",
-      "size": 2315,
+      "sha256": "1bde155edd41445b8a5cec078b3a89c816e3b68a1831a23f9bbe81b7b2fd0e12",
+      "size": 2443,
       "mode": "100644"
     },
     "content/legal/_index.md": {
@@ -68,8 +68,8 @@
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "909d1065fe68625bfa4ec452c59f76b18d96604496929839e453da9117290f55",
-      "size": 1718,
+      "sha256": "49c2e5b2f3c25f0ad7c16a34c071b551d87bfde43adad88da88fc8b1d222bba6",
+      "size": 2227,
       "mode": "100644"
     },
     "content/security/_index.md": {
@@ -153,8 +153,8 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "85b7c0a2e1d07eef17094f629301d721764a6a31ac96ba5a74fa20ef639ccbe4",
-      "size": 8462,
+      "sha256": "06f3124a825533412c14a2b523651ab82bdb2615bfbc6648a608fca5909c300d",
+      "size": 8496,
       "mode": "100644"
     },
     "static/branding/bobby-dark.png": {

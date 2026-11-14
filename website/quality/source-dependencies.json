@@ -41,13 +41,13 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-11",
-      "reviewer": "GoPMgr website implementation source review",
+      "last_reviewed": "2026-11-13",
+      "reviewer": "GoPMgr reporting/extension roadmap integration source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "f62cba2cd9b7f7fd6b8b2c94f79bacdad4e079279fec0515005314194aafd44e",
-          "reviewed_commit": "88b92cf935c77332cec4357789250126a5e6b314"
+          "sha256": "4636365ee83f12e1dca6708bdf0780162223c167943fbb8513b86b7981212d2d",
+          "reviewed_commit": "8aa1944f67cfba57f2eabb2d73d2619fb21279e9"
         },
         {
           "path": "docs/user-guide.md",
@@ -156,13 +156,13 @@
         "page.roadmap"
       ],
       "status": "planned",
-      "last_reviewed": "2026-11-11",
-      "reviewer": "GoPMgr website implementation source review",
+      "last_reviewed": "2026-11-13",
+      "reviewer": "GoPMgr reporting/extension roadmap integration source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "f62cba2cd9b7f7fd6b8b2c94f79bacdad4e079279fec0515005314194aafd44e",
-          "reviewed_commit": "88b92cf935c77332cec4357789250126a5e6b314"
+          "sha256": "4636365ee83f12e1dca6708bdf0780162223c167943fbb8513b86b7981212d2d",
+          "reviewed_commit": "8aa1944f67cfba57f2eabb2d73d2619fb21279e9"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",

@@ -5,12 +5,12 @@ weight = 10
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7"
-last_reviewed = "2026-11-11"
+applies_to = "Application snapshot 88b92cf935c7; planning review 8aa1944f67cf"
+last_reviewed = "2026-11-13"
 claim_ids = ["page.features"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/ROADMAP.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/8aa1944f67cfba57f2eabb2d73d2619fb21279e9/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/user-guide.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/user-guide.md"
@@ -21,7 +21,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-Everything below describes the current development source. The published alpha may not include it, and it has not been qualified on every platform.
+The application capabilities below describe the recorded application snapshot. The roadmap source was reviewed separately at planning commit `8aa1944f67cf`. The published alpha may not include it, and it has not been qualified on every platform.
 
 ## Scheduling and baselines
 
