@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Test strategy, quality gates and traceable acceptance matrix
 
+> **Additional planning obligations, 2026-11-14:**
+> [Resource-resilience acceptance](resource-resilience-assurance.md) adds MEM-T01–12
+> for each affected delivery. Preserve every existing test ID and oracle; these new
+> specifications are NOT RUN and do not establish worker or installed OS support.
+
 **Status:** ACCEPTED test strategy (maintainer, 2026-10-24; [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)); **no tests executed or claimed PASS**. **Date:** 2026-10-24.\
 **Normative references:** [ADR-010 v2.2](../design/ADR-010-plugin-architecture.md) and [implementation plan](../design/adr-010-implementation-plan.md).\
 **Important:** The earlier PLG, SCALE, REVIEW and ADR10 test inventories remain in the archived v2.0 and agent v2.1 drafts. **Retain those IDs in the agent's implementation ledger; do not erase or rename them to hide work.** The tests here add/update explicit v2.2 criteria. Existing cases need a machine-readable crosswalk before implementation.

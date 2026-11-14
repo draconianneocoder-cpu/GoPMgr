@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `22b7df1` (PR 213).
+**Last reviewed:** 2026-11-14, against `main` at `0952c8f` (PR 214).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
@@ -117,7 +117,7 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 
 | Package | Status |
 | --- | --- |
-| PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE) |
+| PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE); MR-0 resource contract and per-slice MEM evidence required |
 | PS-01 Normalized connected model | Proposed (ARC-01) |
 | PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, and part b, the read-only `App.AuditSchedule` method, implemented 2026-11-13. Part c (findings panel) not started, so users cannot run it yet. SQA-024 (the 50,000-task measurement on the S0 hardware profile) is not done: it needs DEC-HARDWARE. Known limit: charts have no way to designate start and finish tasks, so SQ-01 and SQ-02 report every schedule's open start and end. Later slices proposed |
 | PS-03 File inspection and interoperability | Partial: MSPDI quick import and export. Worker slices need DEC-INTEROP |
@@ -130,6 +130,17 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | PS-10 Advanced local-first capabilities | Proposed |
 | Provider-neutral integrations | Proposed, approved in principle 2026-10-28. C-01 onward unauthorized |
 | Localization (ADR-008) | Phase 1 in progress: catalog, account screens, work-item editors done |
+
+## Resource resilience
+
+Planning direction integrated 2026-11-14; no runtime behavior changed.
+
+| Item | Status | Pointer |
+| --- | --- | --- |
+| Global/subsystem memory admission and bounded queues | Not implemented. Required development contract MEM-01–12, stages MR-0–5; numeric profiles remain DEC-HARDWARE/OWN-10 decisions | [contract](design/resource-resilience.md) |
+| Existing Monte Carlo path | In-process tasks × iterations allocation with fixed input/worker caps; machine-aware preflight and cancellation are the first proposed MR-1 pilot, not implemented protection | `internal/desktop/app_charts.go`, `internal/kernel/montecarlo.go` |
+| Heavy-work worker isolation and safe retry | Accepted ADR-010 foundation and proposed ADR-015 detail; production global supervisor/admission and installed OOM containment not established. MR-1 host protection does not wait for G1 | [work sequence](design/resource-resilience.md#work-sequence-and-delivery-gates) |
+| Durability and qualification | Per-slice MEM-T01–12 are NOT RUN. No new queued-job journal, every-keystroke guarantee or cross-platform memory claim; existing format/audit/retention gates remain | [assurance](testing/resource-resilience-assurance.md) |
 
 ## Reporting and extension planning
 

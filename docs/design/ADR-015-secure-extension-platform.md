@@ -5,6 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-015: Capability-Secure, Resource-Bounded, Fault-Isolated Extension Platform
 
+**Required resource planning supplement (2026-11-14):** Apply
+[MEM-01–12 and MR-0–5](resource-resilience.md) from each affected slice, with
+[MEM-T01–12 evidence](../testing/resource-resilience-assurance.md). This adds
+completion obligations while preserving original requirements and historical
+baselines. Host admission need not wait for G1/Wasm; heavy-job isolation, numeric
+budgets and new durable schemas retain their applicable decisions. No runtime
+resilience or new implementation authority is established by this supplement.
+
 | Field | Value |
 |---|---|
 | Status | PROPOSED integrated design; no new implementation authorization or qualification |

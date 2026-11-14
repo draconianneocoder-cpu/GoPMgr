@@ -205,3 +205,16 @@ Distinguish RILD evidence levels from EXT trust profiles, preserve imported fact
 exact calculations, historical audit bytes and original issued artifacts. Record
 missing decisions and unrun qualification honestly; do not reduce report scope or
 weaken tests to make a slice appear complete.
+
+## Resource resilience
+
+For new or materially expanded memory-intensive work, and the inventory of existing
+heavy paths, read `docs/design/resource-resilience.md` and
+`docs/testing/resource-resilience-assurance.md`. Apply MEM-01–12 and the per-slice
+handoff before completion; missing mandatory evidence blocks the affected claim.
+MR-1 estimation/admission/cancellation protects existing host paths without waiting
+for G1. MR-2 isolation reuses its approved supervisor; MR-3 new durable schemas keep
+format/audit/retention gates. No numeric budget, runtime mechanism or implementation
+is authorized by a planning link. Preserve exact results, source facts, critical
+save capacity and honest queued/committed/checkpoint states; never claim fatal-OOM
+containment or every-keystroke durability from input caps or a green unit test.
