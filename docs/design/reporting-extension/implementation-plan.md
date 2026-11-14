@@ -35,6 +35,25 @@ DOCX retain their stated original review baseline, not current implementation st
    register and current status with exact evidence. Do not weaken assertions to
    declare a slice complete. Preserve all existing report capabilities and inputs.
 
+## Resource resilience due with each affected slice
+
+Read [the MEM contract](../resource-resilience.md) and
+[MEM-T01–12](../../testing/resource-resilience-assurance.md). RILD-0 must assign
+applicable MEM requirements, owners, workload profiles and independent oracles.
+RILD-2a/4/5 must demonstrate admission before large reads/decode, bounded output and
+critical-work reserves with their first affected delivery; MR-1 host protection
+is independent of G1. Heavy worker isolation uses MR-2 and the existing approved
+supervisor; bounded host-native reporting need not await Wasm or a public SDK.
+RILD-2b must additionally meet MR-3 durable acceptance/receipt/issue recovery under
+approved format/audit/retention contracts. RILD-6 includes honest accessible
+waiting/retry/checkpoint status. RILD-7 applies per-profile MR-5 qualification
+alongside each delivery, not as permission to defer earlier safety evidence.
+
+The registers' cross-cutting gate applies to every applicable row without replacing
+its original oracle or authorizing implementation. A reviewer must approve N/A
+with path/profile reasoning. Missing prerequisites or mandatory evidence keep the
+affected slice/claim BLOCKED; a successful small report cannot qualify a large one.
+
 ## Reporting dependency graph
 
 ```mermaid

@@ -10,6 +10,17 @@ extension runtime, containment mechanism or installed release is qualified here.
 Use the [execution plan](../design/reporting-extension/implementation-plan.md) and
 [requirement register](../design/reporting-extension/requirements.json).
 
+## Resource requirements alongside delivery
+
+[MEM-T01–12](resource-resilience-assurance.md) supplement each applicable reporting
+and extension oracle; preserve all existing T/Q/EXT IDs. The
+[MEM contract](../design/resource-resilience.md) makes profiling, early admission,
+bounded waiting, critical-work reserves, verified cleanup, safe retry and precise
+durable acknowledgement per-slice obligations. MR-1 does not wait for G1/Wasm;
+MR-2/3 stronger isolation/recovery claims retain their own decisions and evidence.
+RILD Q5/Q7/Q8 and EX3/4/6 incorporate applicable MEM results, not a new blanket
+final-stage waiver. New MEM cases are NOT RUN; no resilience is qualified here.
+
 ## Qualification and evidence
 
 RILD Q1 domain/provenance; Q2 math/semantics; Q3 snapshot/history; Q4 presentation

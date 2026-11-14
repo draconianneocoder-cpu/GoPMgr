@@ -5,6 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-014 Reporting integrity and lifecycle documentation
 
+**Required resource planning supplement (2026-11-14):** Apply
+[MEM-01–12 and MR-0–5](resource-resilience.md) from each affected slice, with
+[MEM-T01–12 evidence](../testing/resource-resilience-assurance.md). This adds
+completion obligations while preserving original requirements and historical
+baselines. Host admission need not wait for G1/Wasm; heavy-job isolation, numeric
+budgets and new durable schemas retain their applicable decisions. No runtime
+resilience or new implementation authority is established by this supplement.
+
 **Status:** Proposed detailed architecture; documentation integrated 2026-11-13.
 **Workstream:** RILD-01. The supplied plan records owner approval of workstream
 establishment. That direction is retained separately from approval of this detailed
