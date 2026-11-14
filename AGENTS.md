@@ -218,3 +218,24 @@ format/audit/retention gates. No numeric budget, runtime mechanism or implementa
 is authorized by a planning link. Preserve exact results, source facts, critical
 save capacity and honest queued/committed/checkpoint states; never claim fatal-OOM
 containment or every-keystroke durability from input caps or a green unit test.
+
+## Testing rules (anti-slop)
+
+Do not add tests by default. Add a test only when all of these are true:
+
+1. It protects an independent observable behavior, invariant, or contract that nothing else already covers.
+2. It would fail for a credible regression (not just a refactor or rename).
+3. Existing tests miss that failure. One contract gets one primary owner test at the strongest real boundary. Do not replay the same assertion across layers.
+4. Expected values are hardcoded, not computed by the code under test or its mocks.
+
+Reject and do not write:
+- Self-comparisons or “does not throw” probes
+- Implementation-shape or source-grep assertions
+- Duplicate contracts already covered elsewhere
+- Test-only production seams, flags, or injection hooks with no real caller
+- Mocks that supply the behavior being asserted
+- Change-detector tests that break on expected data updates
+
+When changing tests: prefer consolidating or deleting low-value ones over adding more. A behavior-preserving refactor must not require test changes.
+
+If unsure whether a test is needed, skip it and note why in the summary.
