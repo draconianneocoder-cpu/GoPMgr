@@ -11,6 +11,35 @@ end-user reference: it is searchable from the sidebar, opens with a
 ten-minute "Quick Start: Your First Project" tutorial, and ends with a
 Troubleshooting & FAQ and a keyboard-shortcuts reference.
 
+## Table of contents
+
+- [First Run](#first-run)
+- [Project Launchpad](#project-launchpad)
+- [Portfolio and Dashboard](#portfolio-and-dashboard)
+- [Reusable suppliers and items](#reusable-suppliers-and-items)
+- [Project Settings](#project-settings)
+- [Application Settings](#application-settings)
+- [Stakeholders, Timeline, Budget, and Cost Control](#stakeholders-timeline-budget-and-cost-control)
+- [Kanban, Sprints, and DORA](#kanban-sprints-and-dora)
+- [Charts](#charts)
+- [Documents and Combined Reports](#documents-and-combined-reports)
+- [Schedule Import and Export](#schedule-import-and-export)
+- [PDF Signing](#pdf-signing)
+- [Recovery Codes and Encryption](#recovery-codes-and-encryption)
+- [Administrator Access to Users' Data](#administrator-access-to-users-data)
+- [Fonts](#fonts)
+- [Command-Line Maintenance](#command-line-maintenance)
+- [Logs and Startup Diagnostics](#logs-and-startup-diagnostics)
+- [Keyboard Shortcuts and Accessibility](#keyboard-shortcuts-and-accessibility)
+- [Editor Save Behavior](#editor-save-behavior)
+- [Project Backups](#project-backups)
+- [Subject index](#subject-index)
+- [Glossary](#glossary)
+
+Use the contents for reading order, the [subject index](#subject-index) for
+alphabetical lookup, and the [glossary](#glossary) for meanings and distinctions.
+The same reference terms are available in the in-app Help Guide.
+
 ## First Run
 
 GoPMgr stores local data in a private platform-selected application-data
@@ -735,3 +764,269 @@ picker's **Deleted projects** list records each deletion: when and by whom,
 whether it finished, and whether the project's audit trail verified at that
 moment. It is a record only; to bring a project back, restore it from a
 backup.
+
+
+## Subject index
+
+Topics lead to instructions; definitions lead to individual glossary entries.
+Abbreviations and alternate labels are indexed alongside full terms.
+
+| Subject or term | Lookup |
+| --- | --- |
+| AC | [Definition](#user-term-actual-cost-ac) |
+| Account recovery codes | [Definition](#user-term-recovery-codes) |
+| Accountability | [Definition](#user-term-accountability) |
+| Actual Cost (AC) | [Definition](#user-term-actual-cost-ac) |
+| Administrator Access to Users' Data | [Topic](#administrator-access-to-users-data) |
+| Administrator Escrow | [Definition](#user-term-administrator-escrow) |
+| Administrator-Key Recovery Code | [Definition](#user-term-administrator-key-recovery-code) |
+| Agile | [Definition](#user-term-agile) |
+| Application Settings | [Topic](#application-settings) |
+| Archival PDF | [Definition](#user-term-pdf-a-2u) |
+| Audit Trail | [Definition](#user-term-audit-trail) |
+| Autosave | [Definition](#user-term-autosave) |
+| Backlog | [Definition](#user-term-backlog) |
+| Backup | [Definition](#user-term-backup) |
+| Baseline | [Definition](#user-term-baseline) |
+| Belt Level | [Definition](#user-term-belt-level) |
+| Budget | [Definition](#user-term-budget) |
+| Burn-Down Chart | [Definition](#user-term-burn-down-chart) |
+| Burn-Up Chart | [Definition](#user-term-burn-up-chart) |
+| Business Case | [Definition](#user-term-business-case) |
+| Card / Task (Kanban) | [Definition](#user-term-card-task-kanban) |
+| Change Failure Rate | [Definition](#user-term-change-failure-rate) |
+| Change Request | [Definition](#user-term-change-request) |
+| Charts | [Topic](#charts) |
+| Command-Line Maintenance | [Topic](#command-line-maintenance) |
+| Compliance Mode | [Definition](#user-term-compliance-mode) |
+| Control Chart | [Definition](#user-term-control-chart) |
+| Control Limits | [Definition](#user-term-control-limits) |
+| Cost Performance Index (CPI) | [Definition](#user-term-cost-performance-index-cpi) |
+| CPI | [Definition](#user-term-cost-performance-index-cpi) |
+| CPM | [Definition](#user-term-cpm) |
+| Critical Path | [Definition](#user-term-critical-path) |
+| Critical Path Method | [Definition](#user-term-cpm) |
+| CTQ | [Definition](#user-term-ctq) |
+| Cumulative Flow Diagram | [Definition](#user-term-cumulative-flow-diagram) |
+| Current Plan | [Definition](#user-term-current-plan) |
+| Cycle Time | [Definition](#user-term-cycle-time) |
+| Data Encryption Key | [Definition](#user-term-dek) |
+| DEK | [Definition](#user-term-dek) |
+| Deployment Frequency | [Definition](#user-term-deployment-frequency) |
+| Digital Signature | [Definition](#user-term-digital-signature) |
+| DMAIC | [Definition](#user-term-dmaic) |
+| Documents and Combined Reports | [Topic](#documents-and-combined-reports) |
+| DORA Metrics | [Definition](#user-term-dora-metrics) |
+| Earned Value (EV) | [Definition](#user-term-earned-value-ev) |
+| Earned Value (EVM) | [Definition](#user-term-earned-value-management-evm) |
+| Earned Value Management (EVM) | [Definition](#user-term-earned-value-management-evm) |
+| Editor Save Behavior | [Topic](#editor-save-behavior) |
+| Encryption at Rest | [Definition](#user-term-encryption-at-rest) |
+| Epic | [Definition](#user-term-epic) |
+| ES / EF | [Definition](#user-term-es-ef) |
+| Estimate (methodology-specific) | [Definition](#user-term-estimate-methodology-specific) |
+| EV | [Definition](#user-term-earned-value-ev) |
+| EVM | [Definition](#user-term-earned-value-management-evm) |
+| Export | [Definition](#user-term-export) |
+| First Run | [Topic](#first-run) |
+| Fishbone Diagram | [Definition](#user-term-fishbone-diagram) |
+| Float (Slack) | [Definition](#user-term-float-slack) |
+| Fonts | [Topic](#fonts) |
+| Forecast | [Definition](#user-term-forecast) |
+| Gantt Chart | [Definition](#user-term-gantt-chart) |
+| Issue | [Definition](#user-term-issue) |
+| Issue Log | [Definition](#user-term-issue-log) |
+| Iteration | [Definition](#user-term-iteration) |
+| Kaizen | [Definition](#user-term-kaizen) |
+| Kanban Board | [Definition](#user-term-kanban-board) |
+| Kanban, Sprints, and DORA | [Topic](#kanban-sprints-and-dora) |
+| Key Result (KR) | [Definition](#user-term-key-result-kr) |
+| Keyboard Shortcuts and Accessibility | [Topic](#keyboard-shortcuts-and-accessibility) |
+| Launchpad | [Definition](#user-term-launchpad) |
+| Lead Time | [Definition](#user-term-lead-time) |
+| Logs and Startup Diagnostics | [Topic](#logs-and-startup-diagnostics) |
+| LS / LF | [Definition](#user-term-ls-lf) |
+| Milestone | [Definition](#user-term-milestone) |
+| Monte Carlo Simulation | [Definition](#user-term-monte-carlo-simulation) |
+| MSPDI | [Definition](#user-term-mspdi) |
+| MTTR | [Definition](#user-term-mttr) |
+| Objective | [Definition](#user-term-objective) |
+| OKRs | [Definition](#user-term-okrs) |
+| P50 / P80 / P90 | [Definition](#user-term-p50-p80-p90) |
+| PAdES | [Definition](#user-term-pades) |
+| Pareto Chart | [Definition](#user-term-pareto-chart) |
+| Passphrase | [Definition](#user-term-passphrase) |
+| Password | [Definition](#user-term-passphrase) |
+| PDF Advanced Electronic Signatures | [Definition](#user-term-pades) |
+| PDF Signing | [Topic](#pdf-signing) |
+| PDF/A | [Definition](#user-term-pdf-a-2u) |
+| PDF/A-2u | [Definition](#user-term-pdf-a-2u) |
+| PERT | [Definition](#user-term-pert) |
+| Planned Value (PV) | [Definition](#user-term-planned-value-pv) |
+| Planning Meeting | [Definition](#user-term-planning-meeting) |
+| PMBOK | [Definition](#user-term-pmbok) |
+| Portfolio and Dashboard | [Topic](#portfolio-and-dashboard) |
+| PRINCE2 | [Definition](#user-term-prince2) |
+| Process Group | [Definition](#user-term-process-group) |
+| Project Backups | [Topic](#project-backups) |
+| Project Charter | [Definition](#user-term-project-charter) |
+| Project Database | [Definition](#user-term-project-database) |
+| Project Launchpad | [Topic](#project-launchpad) |
+| Project Settings | [Topic](#project-settings) |
+| Pull System | [Definition](#user-term-pull-system) |
+| PV | [Definition](#user-term-planned-value-pv) |
+| RACI Matrix | [Definition](#user-term-raci-matrix) |
+| Recovery Codes | [Definition](#user-term-recovery-codes) |
+| Recovery Codes and Encryption | [Topic](#recovery-codes-and-encryption) |
+| Resource Capacity | [Definition](#user-term-resource-capacity) |
+| Resource Leveling | [Definition](#user-term-resource-leveling) |
+| Retrospective | [Definition](#user-term-retrospective) |
+| Reusable suppliers and items | [Topic](#reusable-suppliers-and-items) |
+| Risk | [Definition](#user-term-risk) |
+| Risk Register | [Definition](#user-term-risk-register) |
+| Saved Change | [Definition](#user-term-saved-change) |
+| Scenario | [Definition](#user-term-scenario) |
+| Schedule Import and Export | [Topic](#schedule-import-and-export) |
+| Schedule Performance Index (SPI) | [Definition](#user-term-schedule-performance-index-spi) |
+| Scrum | [Definition](#user-term-scrum) |
+| Scrumban | [Definition](#user-term-scrumban) |
+| Sigma Level | [Definition](#user-term-sigma-level) |
+| SIPOC | [Definition](#user-term-sipoc) |
+| Solution Matrix | [Definition](#user-term-solution-matrix) |
+| SPI | [Definition](#user-term-schedule-performance-index-spi) |
+| Sprint | [Definition](#user-term-sprint) |
+| SQLCipher | [Definition](#user-term-sqlcipher) |
+| Stakeholder | [Definition](#user-term-stakeholder) |
+| Stakeholders, Timeline, Budget, and Cost Control | [Topic](#stakeholders-timeline-budget-and-cost-control) |
+| Story (Scrum) | [Definition](#user-term-story-scrum) |
+| Story Points | [Definition](#user-term-story-points) |
+| SWOT Matrix | [Definition](#user-term-swot-matrix) |
+| System Database | [Definition](#user-term-system-database) |
+| Throughput | [Definition](#user-term-throughput) |
+| Timeline | [Definition](#user-term-timeline) |
+| Tornado Ranking | [Definition](#user-term-tornado-ranking) |
+| User Story | [Definition](#user-term-user-story) |
+| Velocity | [Definition](#user-term-velocity) |
+| VoC | [Definition](#user-term-voc) |
+| WBS | [Definition](#user-term-wbs) |
+| WIP Limit | [Definition](#user-term-wip-limit) |
+| Work Breakdown Structure | [Definition](#user-term-wbs) |
+| Work Item | [Definition](#user-term-work-item) |
+| Work Package | [Definition](#user-term-work-package) |
+
+## Glossary
+
+Definitions distinguish related concepts; they do not certify that a workflow,
+format or platform has been qualified. Follow the relevant instructions and
+[implementation status](STATUS.md) for current availability. Shared user-reference
+entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
+
+| Term | Meaning | Compare with |
+| --- | --- | --- |
+| <a id="user-term-accountability"></a>**Accountability** | Ultimate ownership of an outcome. In RACI, the "A" — one person owns the result even if others do the work. | [RACI Matrix](#user-term-raci-matrix) |
+| <a id="user-term-actual-cost-ac"></a>**Actual Cost (AC)** | Cost recorded for work performed on the stated accounting basis. It is not the budgeted value of that work or necessarily cash already paid. | [Earned Value (EV)](#user-term-earned-value-ev), [Planned Value (PV)](#user-term-planned-value-pv) |
+| <a id="user-term-administrator-escrow"></a>**Administrator Escrow** | A separately protected administrator-key mechanism for enrolled user data. The documented recorded, read-only access rules still apply; escrow is not a user password or an unrestricted entitlement for every administrator. | [Administrator-Key Recovery Code](#user-term-administrator-key-recovery-code), [Recovery Codes](#user-term-recovery-codes) |
+| <a id="user-term-administrator-key-recovery-code"></a>**Administrator-Key Recovery Code** | A code for restoring the administrator key under the documented recovery conditions. It is distinct from one-time account recovery codes and does not replace required account data or backups. | [Recovery Codes](#user-term-recovery-codes), [Administrator Escrow](#user-term-administrator-escrow) |
+| <a id="user-term-agile"></a>**Agile** | Umbrella term for iterative delivery methodologies valuing customer collaboration and responding to change. Scrum, Kanban, and Scrumban are Agile frameworks. | — |
+| <a id="user-term-audit-trail"></a>**Audit Trail** | Recorded events and integrity evidence for project operations. An intact audit chain is not encryption and does not certify that every business fact is correct. | — |
+| <a id="user-term-autosave"></a>**Autosave** | Saving changed editor state on the configured cycle. An edit waiting for or still undergoing autosave is not yet saved; autosave is not an independent backup. | [Saved Change](#user-term-saved-change), [Backup](#user-term-backup) |
+| <a id="user-term-backlog"></a>**Backlog** | Ordered list of work items waiting to be pulled into active work. In Scrum: the Product Backlog. In Scrumban: maintained continuously. | — |
+| <a id="user-term-backup"></a>**Backup** | A retained copy of project data used for restoration. A report export is not a complete project backup; recovery codes are not copies of project data. | [Export](#user-term-export), [Recovery Codes](#user-term-recovery-codes) |
+| <a id="user-term-baseline"></a>**Baseline** | A saved reference plan used to compare later scope, dates or costs. Capturing a GoPMgr baseline does not itself prove formal approval; distinguish it from the editable current plan. | [Current Plan](#user-term-current-plan), [Forecast](#user-term-forecast) |
+| <a id="user-term-belt-level"></a>**Belt Level** | Six Sigma practitioner certification: Green Belt (part-time, local projects), Black Belt (full-time, cross-functional), Master Black Belt (strategic deployment). | — |
+| <a id="user-term-budget"></a>**Budget** | A planned amount or approved limit on the stated basis. Distinguish budget from committed costs, actual costs and a forecast; do not add amounts with overlapping coverage. | [Actual Cost (AC)](#user-term-actual-cost-ac), [Forecast](#user-term-forecast) |
+| <a id="user-term-burn-down-chart"></a>**Burn-Down Chart** | Remaining work (y) over time (x) with an ideal trajectory. Used in Scrum to track sprint progress. | — |
+| <a id="user-term-burn-up-chart"></a>**Burn-Up Chart** | Cumulative scope completed vs. total scope. Distinguishes scope growth from delivery progress. | — |
+| <a id="user-term-business-case"></a>**Business Case** | Document justifying the project investment: costs, benefits, risks, NPV/ROI. Primary go/no-go input. | — |
+| <a id="user-term-card-task-kanban"></a>**Card / Task (Kanban)** | A single unit of work on the Kanban Board. | — |
+| <a id="user-term-change-failure-rate"></a>**Change Failure Rate** | DORA metric: the share of deployments that cause a failure in production. Computed on the DORA dashboard from the deployments you record. | — |
+| <a id="user-term-change-request"></a>**Change Request** | Formal proposal to modify a project baseline (scope, schedule, cost, quality). Requires review and approval. | — |
+| <a id="user-term-compliance-mode"></a>**Compliance Mode** | Project Settings option that verifies the tamper-evident audit chain before a project opens and blocks the open if the chain has been altered. | — |
+| <a id="user-term-control-chart"></a>**Control Chart** | Time series with UCL and LCL. Points outside limits or non-random patterns indicate special-cause variation. | — |
+| <a id="user-term-control-limits"></a>**Control Limits** | Statistical boundaries on a Control Chart (±3σ from the process mean). Not the same as specification limits. | — |
+| <a id="user-term-cost-performance-index-cpi"></a>**Cost Performance Index (CPI)** | EV divided by AC on the stated cost/progress basis. Below one indicates cost inefficiency; a zero denominator makes the ratio undefined, not zero performance. | [Schedule Performance Index (SPI)](#user-term-schedule-performance-index-spi) |
+| <a id="user-term-cpm"></a>**CPM** | Critical Path Method: calculates dependency-based start/finish dates and float from modeled durations and relationships. It is not resource leveling. | [Resource Leveling](#user-term-resource-leveling), [Critical Path](#user-term-critical-path) |
+| <a id="user-term-critical-path"></a>**Critical Path** | Dependency-connected tasks controlling the calculated project finish in the modeled schedule. Interpret float and constraints separately; a zero-float description alone is insufficient for constrained schedules. | [Float (Slack)](#user-term-float-slack), [Resource Leveling](#user-term-resource-leveling) |
+| <a id="user-term-ctq"></a>**CTQ** | Critical to Quality. Measurable characteristic directly affecting customer perception of quality. Derived from VoC in Six Sigma. | — |
+| <a id="user-term-cumulative-flow-diagram"></a>**Cumulative Flow Diagram** | Stacked area chart of work items in each workflow state over time. Primary Kanban health indicator. | — |
+| <a id="user-term-current-plan"></a>**Current Plan** | The editable plan reflecting present choices. A baseline retains a reference for comparison; editing the current plan does not mean the reference was formally reapproved. | [Baseline](#user-term-baseline) |
+| <a id="user-term-cycle-time"></a>**Cycle Time** | Time from when a work item starts to when it is completed. Key delivery predictability metric in Kanban. | [Lead Time](#user-term-lead-time) |
+| <a id="user-term-dek"></a>**DEK** | Data Encryption Key: the per-user key used for encrypted project databases. It is stored wrapped on disk and unlocked in memory; it is not your passphrase, a recovery code or a signing key. | [Passphrase](#user-term-passphrase), [Recovery Codes](#user-term-recovery-codes), [Administrator Escrow](#user-term-administrator-escrow) |
+| <a id="user-term-deployment-frequency"></a>**Deployment Frequency** | DORA metric: how often the team ships to production. Recorded per deployment on the DORA dashboard. | — |
+| <a id="user-term-digital-signature"></a>**Digital Signature** | Cryptographic evidence linking signed bytes to a signer under a validation policy. It is not encryption, archival conformance or a guarantee of factual correctness. | [Encryption at Rest](#user-term-encryption-at-rest), [PDF/A-2u](#user-term-pdf-a-2u) |
+| <a id="user-term-dmaic"></a>**DMAIC** | Six Sigma improvement cycle: Define → Measure → Analyze → Improve → Control. For improving existing processes. | — |
+| <a id="user-term-dora-metrics"></a>**DORA Metrics** | Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in GoPMgr's DORA dashboard. | — |
+| <a id="user-term-earned-value-ev"></a>**Earned Value (EV)** | The budgeted value of completed work under the stated progress basis. It differs from planned value (PV) and actual cost (AC); EVM is the overall management method. | [Planned Value (PV)](#user-term-planned-value-pv), [Actual Cost (AC)](#user-term-actual-cost-ac), [Earned Value Management (EVM)](#user-term-earned-value-management-evm) |
+| <a id="user-term-earned-value-management-evm"></a>**Earned Value Management (EVM)** | Earned Value Management compares planned value, earned value and actual cost. EVM names the method; EV is the budgeted value of completed work, not the money spent. | [Earned Value (EV)](#user-term-earned-value-ev), [Cost Performance Index (CPI)](#user-term-cost-performance-index-cpi), [Schedule Performance Index (SPI)](#user-term-schedule-performance-index-spi) |
+| <a id="user-term-encryption-at-rest"></a>**Encryption at Rest** | Protection for stored data using a key, such as an encrypted project database. It does not automatically protect exported files, an unlocked session or copies stored elsewhere. | [Digital Signature](#user-term-digital-signature), [DEK](#user-term-dek) |
+| <a id="user-term-epic"></a>**Epic** | A large user story spanning multiple sprints, broken down into smaller stories before entering a sprint. | — |
+| <a id="user-term-es-ef"></a>**ES / EF** | Earliest Start / Earliest Finish. Calculated during the forward pass through a CPM network. | — |
+| <a id="user-term-estimate-methodology-specific"></a>**Estimate (methodology-specific)** | What each methodology usually calls an estimate. Scrum: Story Points. Kanban: Time Estimate. CPM: Duration. Waterfall: Duration. Lean: Effort. PRINCE2: Work Package Estimate. Six Sigma: Resource Plan. In GoPMgr, a work item's estimate is labelled Story points in Scrum and Scrumban projects and Points in others; CPM and Gantt tasks are estimated as a duration in days. | — |
+| <a id="user-term-export"></a>**Export** | An output file made for another tool, viewing or distribution. It need not retain all editable project data and is not a backup or evidence of formal document approval. | [Backup](#user-term-backup), [Saved Change](#user-term-saved-change) |
+| <a id="user-term-fishbone-diagram"></a>**Fishbone Diagram** | Also Ishikawa Diagram. Root-cause analysis: effect at the "head"; default cause categories (People, Process, Equipment, Materials, Environment, Measurement) are the "bones." Categories are editable. | — |
+| <a id="user-term-float-slack"></a>**Float (Slack)** | Amount of time a task can be delayed without delaying the project end date (total float) or a successor's start (free float). | [Critical Path](#user-term-critical-path) |
+| <a id="user-term-forecast"></a>**Forecast** | An estimate of a future outcome based on a named method and assumptions. It is neither an actual observation nor the approved reference plan. | — |
+| <a id="user-term-gantt-chart"></a>**Gantt Chart** | Schedule bars on a time axis with dependency arrows, critical-path highlighting, and progress bars. Shares data with CPM in GoPMgr. | — |
+| <a id="user-term-issue"></a>**Issue** | A problem or condition that has occurred and needs handling. A risk is an uncertain event; a change request proposes an alteration to the plan. | [Risk](#user-term-risk), [Change Request](#user-term-change-request) |
+| <a id="user-term-issue-log"></a>**Issue Log** | Tracks problems that have already occurred, with owner, priority, and resolution plan. Distinct from Risk Register (potential future events). | [Risk Register](#user-term-risk-register) |
+| <a id="user-term-iteration"></a>**Iteration** | A repeated work and review cycle, often time-boxed, such as a Scrum Sprint. A PRINCE2 management stage is a governance interval; continuous-flow methods need not use fixed iterations. | — |
+| <a id="user-term-kaizen"></a>**Kaizen** | Lean concept of continuous, incremental improvement made frequently by everyone involved in the process. | — |
+| <a id="user-term-kanban-board"></a>**Kanban Board** | Visual work management: columns = workflow states; cards = work items. WIP limits cap items per column. | — |
+| <a id="user-term-key-result-kr"></a>**Key Result (KR)** | OKRs: measurable, time-bound outcome tracking progress toward an Objective. Graded 0.0–1.0 at period close. | — |
+| <a id="user-term-launchpad"></a>**Launchpad** | GoPMgr's project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts. | — |
+| <a id="user-term-lead-time"></a>**Lead Time** | Total time from request to delivery. Includes queue time + cycle time. | [Cycle Time](#user-term-cycle-time) |
+| <a id="user-term-ls-lf"></a>**LS / LF** | Latest Start / Latest Finish. Calculated during the backward pass through a CPM network. | — |
+| <a id="user-term-milestone"></a>**Milestone** | A significant zero-duration schedule event. A Definition of Done is a completion-quality standard; a throughput target is a delivery-rate goal, not a milestone. | — |
+| <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
+| <a id="user-term-mspdi"></a>**MSPDI** | Microsoft Project Data Interchange — the .xml schedule format GoPMgr imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing. | — |
+| <a id="user-term-mttr"></a>**MTTR** | Mean Time to Restore. DORA metric: average hours to recover from a failed deployment. | — |
+| <a id="user-term-objective"></a>**Objective** | OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results. | — |
+| <a id="user-term-okrs"></a>**OKRs** | Objectives and Key Results. Goal-setting framework aligning teams to strategic outcomes through measurable, time-bound Key Results. | — |
+| <a id="user-term-p50-p80-p90"></a>**P50 / P80 / P90** | Confidence points from a Monte Carlo run: the finish day the project beats in 50%, 80%, or 90% of simulations. Commit to P80/P90 dates when the cost of being late is high. | — |
+| <a id="user-term-pades"></a>**PAdES** | PDF Advanced Electronic Signatures: signatures used to validate integrity and signer identity under a certificate/trust policy. Signing is not encryption and does not prove the report calculations are correct. | [PDF/A-2u](#user-term-pdf-a-2u), [Digital Signature](#user-term-digital-signature) |
+| <a id="user-term-pareto-chart"></a>**Pareto Chart** | Bar chart sorted descending with a cumulative-percentage line. Based on the 80/20 principle: ~80% of effects come from ~20% of causes. | — |
+| <a id="user-term-passphrase"></a>**Passphrase** | The account password used to authenticate and unlock protected key material. It is not the DEK itself; resetting a password is not equivalent to restoring encrypted project access. | [DEK](#user-term-dek), [Recovery Codes](#user-term-recovery-codes) |
+| <a id="user-term-pdf-a-2u"></a>**PDF/A-2u** | An archival PDF conformance target with Unicode text mapping. Conformance does not prove accessibility, correct content or indefinite preservation; it does not encrypt or digitally sign the file. | [PAdES](#user-term-pades), [Encryption at Rest](#user-term-encryption-at-rest) |
+| <a id="user-term-pert"></a>**PERT** | Program Evaluation and Review Technique. Network scheduling with three-point duration estimates per activity. | — |
+| <a id="user-term-planned-value-pv"></a>**Planned Value (PV)** | The budgeted value of work scheduled by the stated cutoff and baseline. It is not actual spending or the value of work already completed. | [Earned Value (EV)](#user-term-earned-value-ev), [Actual Cost (AC)](#user-term-actual-cost-ac) |
+| <a id="user-term-planning-meeting"></a>**Planning Meeting** | Scrum: Sprint Planning. Kanban: Replenishment Meeting. Lean: Plan-Do-Check-Act review. PRINCE2: Stage Planning Meeting. | — |
+| <a id="user-term-pmbok"></a>**PMBOK** | Project Management Body of Knowledge. PMI's comprehensive PM framework. A knowledge standard, not a delivery methodology. | — |
+| <a id="user-term-prince2"></a>**PRINCE2** | Projects In Controlled Environments. Process-based framework with seven principles, themes, and processes. Strong governance and stage-gate controls. | — |
+| <a id="user-term-process-group"></a>**Process Group** | PMBOK grouping of related PM processes: Initiating, Planning, Executing, Monitoring & Controlling, Closing. Corresponds to GoPMgr's document Phase categories. | — |
+| <a id="user-term-project-charter"></a>**Project Charter** | Foundational document formally authorizing a project. Captures purpose, objectives, scope, sponsor, high-level schedule and budget. | — |
+| <a id="user-term-project-database"></a>**Project Database** | The .gopmgr database containing one project and its records. It is distinct from system.db, which holds local account metadata. | [System Database](#user-term-system-database) |
+| <a id="user-term-pull-system"></a>**Pull System** | Work produced when downstream capacity exists, not pushed by a schedule. Core Lean and Kanban principle. | — |
+| <a id="user-term-raci-matrix"></a>**RACI Matrix** | Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task. | — |
+| <a id="user-term-recovery-codes"></a>**Recovery Codes** | One-time account codes for password reset; valid wrapped codes can also unlock the DEK. Codes may need reissuing after encryption migration. Lost credentials are not always recoverable, and these are not administrator-key recovery codes. | [DEK](#user-term-dek), [Administrator-Key Recovery Code](#user-term-administrator-key-recovery-code) |
+| <a id="user-term-resource-capacity"></a>**Resource Capacity** | The available working time or quantity for a resource over a period and calendar. Assignment demand may exceed capacity; capacity is not the amount of work already completed. | — |
+| <a id="user-term-resource-leveling"></a>**Resource Leveling** | Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings. | [CPM](#user-term-cpm), [Resource Capacity](#user-term-resource-capacity) |
+| <a id="user-term-retrospective"></a>**Retrospective** | Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons. | — |
+| <a id="user-term-risk"></a>**Risk** | An uncertain event or condition that may affect objectives. Once a problem occurs it is handled as an issue; documenting a risk does not by itself implement a response. | [Issue](#user-term-issue), [Risk Register](#user-term-risk-register) |
+| <a id="user-term-risk-register"></a>**Risk Register** | Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan. | [Issue Log](#user-term-issue-log) |
+| <a id="user-term-saved-change"></a>**Saved Change** | An edit whose save operation completed successfully. An in-flight or pending edit is not yet saved. Exporting a file and retaining a backup are separate actions. | [Autosave](#user-term-autosave), [Export](#user-term-export), [Backup](#user-term-backup) |
+| <a id="user-term-scenario"></a>**Scenario** | An isolated what-if partition. Charts copied into a scenario can be edited and compared against their captured baseline without touching the live plan, then promoted to a named schedule baseline or discarded. | — |
+| <a id="user-term-schedule-performance-index-spi"></a>**Schedule Performance Index (SPI)** | EV divided by PV on the stated baseline/progress basis. It compares budgeted work, not calendar finish-date slip; a zero denominator makes the ratio undefined. | [Critical Path](#user-term-critical-path), [Cost Performance Index (CPI)](#user-term-cost-performance-index-cpi) |
+| <a id="user-term-scrum"></a>**Scrum** | Agile framework with time-boxed sprints, Product Backlog, and three roles. Four ceremonies: Sprint Planning, Daily Scrum, Sprint Review, Retrospective. | — |
+| <a id="user-term-scrumban"></a>**Scrumban** | Hybrid of Scrum's prioritized backlog and Kanban's continuous pull flow. No fixed sprint cadence. | — |
+| <a id="user-term-sigma-level"></a>**Sigma Level** | A measure of process performance in Six Sigma. A quoted 3.4 defects per million for six sigma assumes the conventional 1.5-sigma shift; it is not automatic proof of a process capability. | — |
+| <a id="user-term-sipoc"></a>**SIPOC** | High-level process map: Suppliers → Inputs → Process → Outputs → Customers. Defines process boundaries in DMAIC Define phase. | — |
+| <a id="user-term-solution-matrix"></a>**Solution Matrix** | Six Sigma Improve tool. Evaluates solutions on Impact, Effort, Risk, and Cost. Statuses: Proposed, Pilot, Implemented. | — |
+| <a id="user-term-sprint"></a>**Sprint** | Scrum time-boxed iteration (typically 2 weeks). Contains a Sprint Goal, committed backlog items, Review, and Retrospective. | — |
+| <a id="user-term-sqlcipher"></a>**SQLCipher** | Open-source encrypted SQLite extension used by GoPMgr for database encryption at rest. Applies AES-256 to the entire project database file. | — |
+| <a id="user-term-stakeholder"></a>**Stakeholder** | Individual or group with an interest in or influence over the project. Mapped by power/interest in the Stakeholder Analysis Matrix. | — |
+| <a id="user-term-story-scrum"></a>**Story (Scrum)** | User-facing work item: "As a [role], I want [feature] so that [benefit]." Equivalent to a Task in most other methodologies. | — |
+| <a id="user-term-story-points"></a>**Story Points** | Relative effort estimate in Scrum. Team-defined scale (typically Fibonacci). Not correlated to hours. | — |
+| <a id="user-term-swot-matrix"></a>**SWOT Matrix** | 2x2 strategic analysis: Strengths, Weaknesses (internal) vs. Opportunities, Threats (external). | — |
+| <a id="user-term-system-database"></a>**System Database** | The local system.db account-metadata database. It is distinct from each project database; encrypting a project does not mean every application file or export is encrypted. | [Project Database](#user-term-project-database) |
+| <a id="user-term-throughput"></a>**Throughput** | Work items completed per unit time. Primary Kanban flow metric alongside cycle time. | — |
+| <a id="user-term-timeline"></a>**Timeline** | GoPMgr view showing the project's chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers. | — |
+| <a id="user-term-tornado-ranking"></a>**Tornado Ranking** | Monte Carlo output ranking which tasks drive schedule risk, combining how often each lands on the critical path with its P90−P50 duration spread. Fix the top bars first. | — |
+| <a id="user-term-user-story"></a>**User Story** | See Story (Scrum). | — |
+| <a id="user-term-velocity"></a>**Velocity** | Average story points completed per sprint. Used for capacity planning and release forecasting. | — |
+| <a id="user-term-voc"></a>**VoC** | Voice of Customer. Customer needs captured via surveys, interviews, or complaints. Input to CTQ derivation in Six Sigma. | — |
+| <a id="user-term-wbs"></a>**WBS** | Work Breakdown Structure. Hierarchical decomposition of total project scope into deliverables and work packages. | [Work Package](#user-term-work-package), [Work Item](#user-term-work-item) |
+| <a id="user-term-wip-limit"></a>**WIP Limit** | Work-In-Progress Limit. Maximum items in a Kanban column simultaneously. Prevents overloading and surfaces bottlenecks. | — |
+| <a id="user-term-work-item"></a>**Work Item** | An item managed in a work workflow, such as a task or story. Its workflow state or estimate is not automatically a connected schedule activity or WBS work package. | [Work Package](#user-term-work-package) |
+| <a id="user-term-work-package"></a>**Work Package** | A manageable unit of project scope in a WBS. It differs from a scheduled activity, an assigned resource and a report describing that work. | [Work Item](#user-term-work-item), [WBS](#user-term-wbs) |
+
+The Six Sigma shift convention is explained by [ASQ](https://asqasktheexperts.org/2016/10/07/six-sigma-statistical-meaning/).
