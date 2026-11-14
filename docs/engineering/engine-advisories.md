@@ -17,9 +17,10 @@ step A4 of the [response plan](../review/evaluation-2026-11-10-response-plan.md)
 | `make engine-advisories-check` | None | An engine file (`sqlite3.c`, `sqlite3.h`, `flags.go`, `gopmgr_rng.c`) differs from the reviewed hash, even at the same version; a version macro differs from the record; the SBOM's native entries name another version or CPE; the record breaks its own rules | `make test`, so `make verify` and CI (`TestVendoredEngineIsTheReviewedOne`) |
 | `make engine-advisories` | `services.nvd.nist.gov` | The offline check fails; NVD lists a CVE that applies to a reviewed version without a `not_affected` disposition; or NVD gives no answer ("no verdict") | Only when someone runs it |
 
-The online scan is not in CI or `make check-release`: a check that depends on
-NVD answering would need an owner decision (ADR-013: hosted CI and blocking
-status need authorization). **Until that decision, run it:**
+The online scan is not in CI or `make check-release` yet. The owner decided on
+2026-11-14 ([record](../review/owner-decisions-2026-11-14.md)) that it becomes
+required in `check-release`, failing on a review older than 90 days; that is
+not implemented. **Until it is, run it:**
 
 - before tagging any release candidate, and record the output with the release
   evidence;
