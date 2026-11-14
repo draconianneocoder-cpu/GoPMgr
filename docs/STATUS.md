@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `d764e50` (PR 208).
+**Last reviewed:** 2026-11-13, against `main` at `22b7df1` (PR 213).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,

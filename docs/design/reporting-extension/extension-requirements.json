@@ -1385,5 +1385,11 @@
       }
     }
   ],
-  "gate_mapping": "next_gate is the next planning/qualification checkpoint, never permission to defer an applicable control. phase_applicability retains repeated obligations; apply native E1 versus community Wasm E2 conditions separately. No new authorization."
+  "gate_mapping": "next_gate is the next planning/qualification checkpoint, never permission to defer an applicable control. phase_applicability retains repeated obligations; apply native E1 versus community Wasm E2 conditions separately. No new authorization.",
+  "current_status_review": {
+    "commit": "22b7df1",
+    "date": "2026-11-13",
+    "source": "../../STATUS.md",
+    "scope": "KRN-02 fixed in PR #213; KRN-01 and findings UI remain open. Original source/qualification baseline is retained; no runtime qualification added."
+  }
 }

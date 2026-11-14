@@ -7987,5 +7987,11 @@
     }
   ],
   "related_register": "extension-requirements.json",
-  "implementation_sequence": "implementation-plan.md"
+  "implementation_sequence": "implementation-plan.md",
+  "current_status_review": {
+    "commit": "22b7df1",
+    "date": "2026-11-13",
+    "source": "../../STATUS.md",
+    "scope": "KRN-02 fixed in PR #213; KRN-01 and findings UI remain open. Original source/qualification baseline is retained; no runtime qualification added."
+  }
 }

@@ -61,7 +61,7 @@ financial recognition rules, RAG thresholds or certainty about source facts.
 
 | Metric family | Controlling definition and pitfalls | Independent oracle |
 | --- | --- | --- |
-| Schedule/progress | Working-calendar finish/slip and explicit baseline; progress basis physical, duration or effort is named. KRN-01/KRN-02 limit affected claims. Do not double-count summary activities. | T-S01–04; independently enumerate working dates, constraints, lag, holidays, timezone/DST and remaining work. |
+| Schedule/progress | Working-calendar finish/slip and explicit baseline; progress basis physical, duration or effort is named. KRN-01 limits affected claims; retain KRN-02 regressions from PR #213. Do not double-count summary activities. | T-S01–04; independently enumerate working dates, constraints, lag, holidays, timezone/DST and remaining work. |
 | EVM | SV=EV−PV, CV=EV−AC; SPI=EV/PV, CPI=EV/AC; EAC method/version is named, not always BAC/CPI. Financial basis and ledger reconciliation are explicit. | T-F01; boundary zero/negative/correction cases; portfolio ratios use sums of applicable numerators and denominators. |
 | Investment/commercial | Cash-flow timing, discount/recognition policy, capital/operating basis, FX/date and rates are versioned; profit/revenue/invoice/cash are distinct. | T-F02–04; exact rational/decimal calculation and approved presentation rounding. Fractional JPY remains compatible under ADR-009. |
 | Resource/time | Sum assignment demand over shared identity once; calendar/leave and approved/pending/corrected time have distinct states. | T-R01–02; zero capacity with positive demand is overload, not a valid utilization ratio. |

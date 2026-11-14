@@ -39,8 +39,10 @@ Typed mutation commands, revision checks, receipts and crash-safe recovery below
 are future target controls. ARC-04 and applicable DEC-FORMAT/DEC-AUDIT/ADR-011
 gates precede extension project-write capabilities; arbitrary existing App methods
 are not an equivalent safe extension API. Imported facts must remain unmodified;
-host-derived values are separately versioned and attributed. KRN-01/KRN-02 limit
-claims for affected schedule and EVM calculations.
+host-derived values are separately versioned and attributed. At the original
+`ac20cbe` review baseline, KRN-01/KRN-02 limited affected schedule and EVM claims.
+KRN-02 is now fixed in PR #213 (`22b7df1`); retain its regressions. KRN-01 remains
+open and limits dependent claims.
 
 Use **EXT profile E0–E3** for execution trust, and **RILD evidence E0–E4** for
 report qualification. Host-native read-only reporting and its qualification can

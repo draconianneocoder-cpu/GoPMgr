@@ -11,6 +11,10 @@ of workstream establishment; detailed ADRs and new implementation slices remain
 proposed. No runtime, schema, dependency, financial-policy or release authorization
 is created by this plan. Existing conditional G1 authorizations retain their scope.
 
+Main synchronization reviewed against `22b7df1` (PR #213): KRN-02 is fixed;
+KRN-01 and remaining findings UI work stay open. The archived inputs and companion
+DOCX retain their stated original review baseline, not current implementation status.
+
 ## Read and decide before coding
 
 1. Read live `AGENTS.md`, `docs/STATUS.md`, `docs/ROADMAP.md`, the applicable accepted
@@ -58,7 +62,7 @@ RILD-3 dependencies apply; it may not infer missing data or silently narrow scop
 | Slice | Required outcome and prerequisites | Exit evidence and prohibited shortcuts |
 | --- | --- | --- |
 | RILD-0 | Rebase the 120 explicit requirements, eight expanded families and 17 architecture contracts; maintain metric definitions and 16 fixture specifications. | Every original ID and source row retained; owner and applicability assigned; decisions and qualification gaps explicit. Documentation integration is not runtime gate passage. |
-| RILD-1 | Surface read-only PS-02 findings and truthful missing/unsupported/stale states; name cutoff, baseline and calculation version. KRN-01 and KRN-02 remedies use separately authorized kernel work. | Q1/Q2 oracles reject unsupported semantics, false green status, unavailable-to-zero conversion and partial reads. Never alter scheduling results inside reporting/audit work. |
+| RILD-1 | Surface read-only PS-02 findings and truthful missing/unsupported/stale states; name cutoff, baseline and calculation version. KRN-01 remediation requires separately authorized kernel work; retain the KRN-02 regressions fixed in PR #213 (`22b7df1`). | Q1/Q2 oracles reject unsupported semantics, false green status, unavailable-to-zero conversion and partial reads. Never alter scheduling results inside reporting/audit work. |
 | RILD-2a | Capture consistent existing records in one project read transaction or verified immutable revision set; use a per-project vector for a portfolio. Compile and render the same typed IR. | Q1–Q4 as applicable; T-X01 and concurrency cases prove findings, calculations and outputs use identical revisions. No fictitious global transaction or unbounded read lock. |
 | RILD-2b | Design and implement immutable issue packages, exact approvals, retained bytes and recovery only after approved storage/retention/authority contracts. Coordinate DEC-FORMAT and DEC-AUDIT. | Q3/Q5, T-D01/T-X01: crashes at every durable boundary; incomplete staging never issued; repeat requests/receipts cannot double issue. A PDF-only export remains distinct from a committed issue. |
 | RILD-3 | Connected schedule/WBS/assignments/baselines through ADR-011 and ARC-01–08, PS-01/04/05, with format, audit and hardware decisions. | Migration/recovery, older-writer protection, source loss inventory and exact reconciliation. No incidental schema change to make a report easier. |

@@ -106,3 +106,13 @@ run or claimed for this documentation-only change. No push, hosted CI, publicati
 or application modification is included. The first future reporting slice is
 RILD-0: assign owners, approve bounded metric/acceptance contracts and resolve the
 specific decisions before dependent implementation.
+
+## Main synchronization before publication
+
+Reviewed against main `22b7df1` (PR #213) on 2026-11-13. Merged main into the
+planning branch without changing its application fixes. KRN-02 is fixed in main;
+current roadmap, execution and assurance text now retain its regression coverage
+rather than request a duplicate remedy. KRN-01 and the findings UI remain open.
+Original source archives, register row cells and the companion DOCX preserve their
+stated historical baselines. Current implementation status comes from STATUS.md.
+This documentation change does not qualify the kernel or authorize another slice.

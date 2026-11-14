@@ -46,9 +46,11 @@ arrays rather than a complete work-event history. Preserve these useful capabili
 and label their evidence correctly. Do not fabricate historical events.
 
 PS-02 rules and `App.AuditSchedule` are implemented; the findings panel remains open.
-Both KRN-01 and KRN-02 affect the truth of dependent schedule, EVM, baseline and
-resource claims. Their remedies require their separately authorized kernel slices;
-reporting and read-only audit work cannot change scheduling semantics incidentally.
+At the original review baseline, KRN-01 and KRN-02 affected dependent schedule,
+EVM, baseline and resource claims. Main now includes the KRN-02 calendar-date fix
+from PR #213 (`22b7df1`); retain its regression cases. KRN-01 remains open. Further
+kernel remedies require separately authorized slices; reporting and read-only
+audit work cannot change scheduling semantics incidentally.
 
 ## Integration invariants
 
@@ -149,7 +151,7 @@ Meetings, actions, decisions, risks, issues, changes, requirements and lessons s
 
 ## RILD-ARCH05 Schedule semantics and calculation contracts
 
-Scheduling is a report dependency, not just a display. KRN-01 and KRN-02 are correctness blockers for claims dependent on affected schedule semantics. Complete the user-facing PS-02 audit and implement verified constraint semantics under separate authorization; do not change results within the read-only audit slice.
+Scheduling is a report dependency, not just a display. KRN-01 remains a correctness blocker for affected schedule claims. KRN-02 was fixed in PR #213 (`22b7df1`); retain calendar-date and EVM status-date regressions when qualifying dependent claims. Complete the user-facing PS-02 audit and implement verified constraint semantics under separate authorization; do not change results within the read-only audit slice.
 
 | Requirement | Contract |
 | --- | --- |
