@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-13, against `main` at `d764e50` (PR 208).
+**Last reviewed:** 2026-11-13, against `main` at `22b7df1` (PR 213).
 Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
@@ -130,6 +130,17 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | PS-10 Advanced local-first capabilities | Proposed |
 | Provider-neutral integrations | Proposed, approved in principle 2026-10-28. C-01 onward unauthorized |
 | Localization (ADR-008) | Phase 1 in progress: catalog, account screens, work-item editors done |
+
+## Reporting and extension planning
+
+Integrated 2026-11-13 against `ac20cbe711d9c03479cf937d82c5b7da991454d3`.
+This is documentary reconciliation; no new product behavior was implemented.
+
+| Item | Status | Pointer |
+| --- | --- | --- |
+| RILD-01 reporting and lifecycle workstream | Workstream establishment recorded in the supplied plan; detailed ADR-014 and RILD-0–7 implementation slices proposed. Existing reports remain partial foundations, not immutable-issue qualification | [ADR-014](design/ADR-014-reporting-integrity-and-lifecycle.md) |
+| Secure extension profiles and controls | ADR-015 proposed, source alias ADR-EXT-001. No Wasm runtime, public SDK, new package trust mechanism or community-native execution adopted | [ADR-015](design/ADR-015-secure-extension-platform.md) |
+| Requirement preservation and agent sequencing | Documentation integrated: 120 explicit reporting IDs, eight catalog families, 17 architecture contracts and 31 EXT IDs; future qualification states NOT RUN | [sequence](design/reporting-extension/implementation-plan.md), [assurance](testing/reporting-extension-assurance.md) |
 
 ## Build assurance (ADR-013)
 

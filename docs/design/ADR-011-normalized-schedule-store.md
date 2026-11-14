@@ -5,6 +5,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-011: Normalized schedule store, project format gate and encrypted migration
 
+> **Proposed companion designs, 2026-11-13:** [ADR-014 reporting integrity](ADR-014-reporting-integrity-and-lifecycle.md)
+> and [ADR-015 secure extensions](ADR-015-secure-extension-platform.md). Follow the
+> [dependency sequence](reporting-extension/implementation-plan.md). These proposals
+> do not supersede accepted decisions, authorize migrations/commands or qualify
+> a worker. Historical owner records and current STATUS retain their authority.
+
 **Status:** Proposed. **Draft 1**, 2026-10-27.
 
 **Authority:** the maintainer's 2026-10-27 decisions ([record](../review/PS-04-owner-decisions-2026-10-27.md), items 3 and 4) authorize drafting this ADR, starting from the proposed domain-ownership table. They authorize **architectural design and review only**. Nothing here activates a schema, migrates a project or changes a production database. Each implementation slice named in §9 needs its own approval.

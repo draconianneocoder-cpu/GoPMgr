@@ -5,6 +5,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010: Local-first interoperable worker architecture, scalable project interchange, and future extension boundaries
 
+> **Proposed companion designs, 2026-11-13:** [ADR-014 reporting integrity](ADR-014-reporting-integrity-and-lifecycle.md)
+> and [ADR-015 secure extensions](ADR-015-secure-extension-platform.md). Follow the
+> [dependency sequence](reporting-extension/implementation-plan.md). These proposals
+> do not supersede accepted decisions, authorize migrations/commands or qualify
+> a worker. Historical owner records and current STATUS retain their authority.
+
 **Status:** ACCEPTED — architecture only, v2.2. The maintainer accepted it on 2026-10-24 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). **Not implemented or tested.** Only P00, P01/G0 and P02/S0 are authorized.\
 **Date:** 2026-10-24.\
 **Decider:** GoPMgr maintainer.\
