@@ -1242,7 +1242,7 @@ Standalone CLI that produces the signed release manifest consumed by `internal/u
 | --- | --- | --- | --- | --- |
 | `main_test.go` | 1 | `run` (manifest generation + signing) | fixture/golden | Confirms a generated manifest is actually verifiable — round-trips through the same signature-checking logic `internal/update` uses on the client side, so manifest-generation and manifest-verification can't silently drift apart. |
 
-## `tools/engine-advisories` — 90.6%
+## `tools/engine-advisories` — 90.7%
 
 The vendored SQLite/SQLCipher engine against its advisory review (SEC-06); see
 `docs/engineering/engine-advisories.md`. `check` runs offline in `make test`;
