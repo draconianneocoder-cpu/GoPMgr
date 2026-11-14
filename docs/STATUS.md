@@ -47,9 +47,9 @@ record or an evidence file. Adopted on 2026-11-11
 
 ## Guide reference navigation
 
-Local, unmerged work on `new-merge/guide-reference-navigation` adds linked
-contents, alphabetical subject indexes and cross-linked glossaries to the
-[user guide](user-guide.md) and [developer handbook](DEVELOPER_HANDBOOK.md).
+The [user guide](user-guide.md) and
+[developer handbook](DEVELOPER_HANDBOOK.md) provide linked contents,
+alphabetical subject indexes and cross-linked glossaries.
 The in-app Help Guide shares the user glossary and provides direct definition
 lookup. Local frontend tests and browser keyboard checks passed; native
 installed-app and screen-reader qualification remain unverified.
