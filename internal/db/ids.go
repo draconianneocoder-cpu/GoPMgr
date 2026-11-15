@@ -9,12 +9,11 @@ import (
 	"io"
 )
 
-// newID returns a short, URL-safe identifier prefixed with `prefix`,
-// e.g. newID("chart") → "chart_3f2a91b4". The body is 8 hex chars of
-// crypto/rand which is enough entropy for a per-user, per-project file
-// (2^32 namespace, no collision in practice).
+// newID returns a URL-safe identifier: prefix, an underscore, and 128 random
+// bits encoded as 32 lowercase hexadecimal characters. Existing stored IDs
+// remain opaque strings; this changes only newly generated identifiers.
 func newID(prefix string) (string, error) {
-	var buf [4]byte
+	var buf [16]byte
 	if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
 		return "", err
 	}

@@ -91,3 +91,12 @@ require functional, security, resource, platform, licensing and rollback
 evidence before removal. ADR-012 DF0 evidence alone is not production
 authorization. This documentation change proves no runtime gate and
 does not waive any outstanding approval or verification requirement.
+
+**Current correction, 2026-11-14:** the DuckDB-retention paragraph above
+records the earlier cutover boundary. The
+[2026-11-02 owner decision](ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)
+selected the Go-native engine and DuckDB was removed; DataFusion was
+[not adopted on 2026-11-09](../testing/adr-012-df0-g-report.md). A
+Rust/DataFusion Slice J cutover is not outstanding. This supersedes the
+analytics-retention condition above without enlarging G1 permission or
+waiving its independent qualification, migration and release gates.

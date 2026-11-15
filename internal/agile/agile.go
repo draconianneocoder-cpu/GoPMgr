@@ -150,11 +150,10 @@ type Deployment struct {
 
 // ----- ID generation -----
 
-// newID returns a short, URL-safe identifier prefixed with `prefix`.
-// Mirrors db.newID so the agile package can issue IDs without a db
-// import cycle.
+// newID returns a URL-safe identifier with the same prefix_ encoding as
+// db.newID: 128 random bits represented by 32 lowercase hexadecimal characters.
 func newID(prefix string) (string, error) {
-	var buf [4]byte
+	var buf [16]byte
 	if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
 		return "", err
 	}

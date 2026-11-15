@@ -20,6 +20,45 @@ func (failingAgileIDReader) Read([]byte) (int, error) {
 	return 0, errors.New("entropy unavailable")
 }
 
+func TestWorkItemIDRequiresFull128BitEntropy(t *testing.T) {
+	for _, partial := range []bool{false, true} {
+		name := "full entropy"
+		if partial {
+			name = "partial entropy leaves no work item"
+		}
+		t.Run(name, func(t *testing.T) {
+			_, store, _ := newAgileTestStore(t)
+			entropy := "0123456789abcdef"
+			if partial {
+				entropy = "0123456789abcde"
+			}
+			t.Cleanup(replaceAgileRandReader(t, strings.NewReader(entropy)))
+			item, err := store.SaveWorkItem(WorkItem{Title: "ID contract"})
+			if partial {
+				if !errors.Is(err, io.ErrUnexpectedEOF) || item.ID != "" {
+					t.Fatalf("SaveWorkItem = %+v, %v; want no ID and incomplete entropy error", item, err)
+				}
+				items, err := store.ListWorkItems("", "", "")
+				if err != nil || len(items) != 0 {
+					t.Fatalf("ListWorkItems = %+v, %v; want no persisted work items", items, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("SaveWorkItem: %v", err)
+			}
+			const want = "wi_30313233343536373839616263646566"
+			if item.ID != want {
+				t.Fatalf("work item ID = %q, want %q", item.ID, want)
+			}
+			persisted, err := store.GetWorkItem(want)
+			if err != nil || persisted.ID != want {
+				t.Fatalf("GetWorkItem = %+v, %v; want ID %q", persisted, err, want)
+			}
+		})
+	}
+}
+
 func TestAgileGeneratedIDsFailWhenEntropyUnavailable(t *testing.T) {
 	d, err := db.InitDB(filepath.Join(t.TempDir(), "agile-ids.pmforge"))
 	if err != nil {
