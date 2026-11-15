@@ -4,7 +4,7 @@
     {
       "method": "AcceptEncryptionWithoutRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 514,
+      "line": 528,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -70,7 +70,7 @@
     {
       "method": "AdminIssueRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 299,
+      "line": 301,
       "params": "username string, password string",
       "returns": "[]string, error",
       "uses_internal_packages": [
@@ -336,7 +336,7 @@
     {
       "method": "ChangePassword",
       "file": "internal/desktop/app_session.go",
-      "line": 431,
+      "line": 445,
       "params": "currentPassword string, newPassword string",
       "returns": "error",
       "uses_internal_packages": [
@@ -421,7 +421,7 @@
     {
       "method": "CompleteNativeClose",
       "file": "internal/desktop/app.go",
-      "line": 172,
+      "line": 176,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -481,7 +481,7 @@
     {
       "method": "ConfirmRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 555,
+      "line": 569,
       "params": "",
       "returns": "error",
       "uses_internal_packages": [
@@ -522,7 +522,7 @@
     {
       "method": "CurrentUser",
       "file": "internal/desktop/app_session.go",
-      "line": 602,
+      "line": 620,
       "params": "",
       "returns": "*users.Account",
       "uses_internal_packages": []
@@ -630,7 +630,7 @@
     {
       "method": "DiscardRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 576,
+      "line": 590,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -656,7 +656,7 @@
     {
       "method": "EnableNativeCloseGuard",
       "file": "internal/desktop/app.go",
-      "line": 163,
+      "line": 167,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -1054,7 +1054,7 @@
     {
       "method": "IssueRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 461,
+      "line": 475,
       "params": "",
       "returns": "[]string, error",
       "uses_internal_packages": []
@@ -1307,7 +1307,7 @@
     {
       "method": "Login",
       "file": "internal/desktop/app_session.go",
-      "line": 350,
+      "line": 352,
       "params": "username string, password string",
       "returns": "users.Account, error",
       "uses_internal_packages": [
@@ -1318,7 +1318,7 @@
     {
       "method": "Logout",
       "file": "internal/desktop/app_session.go",
-      "line": 593,
+      "line": 611,
       "params": "",
       "returns": "error",
       "uses_internal_packages": []
@@ -1409,7 +1409,7 @@
     {
       "method": "PrepareRecoveryCodes",
       "file": "internal/desktop/app_session.go",
-      "line": 528,
+      "line": 542,
       "params": "currentPassword string",
       "returns": "[]string, error",
       "uses_internal_packages": [
@@ -1459,7 +1459,7 @@
     {
       "method": "RecoveryCodeStatus",
       "file": "internal/desktop/app_session.go",
-      "line": 493,
+      "line": 507,
       "params": "",
       "returns": "RecoveryCodeStatusWire, error",
       "uses_internal_packages": [
@@ -1502,10 +1502,12 @@
     {
       "method": "ResetWithRecoveryCode",
       "file": "internal/desktop/app_session.go",
-      "line": 586,
+      "line": 600,
       "params": "username string, code string, newPassword string",
       "returns": "error",
-      "uses_internal_packages": []
+      "uses_internal_packages": [
+        "gopmgr/internal/users"
+      ]
     },
     {
       "method": "RestoreProjectArchive",

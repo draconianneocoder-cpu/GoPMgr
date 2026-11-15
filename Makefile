@@ -289,7 +289,7 @@ sbom-check: ## Fail if tools/sbom/components.json does not review exactly what r
 engine-advisories-check: ## Fail if the vendored SQLite/SQLCipher engine is not the one reviewed in tools/engine-advisories/reviewed.json (offline; also run by make test).
 	$(GO) run ./tools/engine-advisories check
 
-engine-advisories: ## Online: fail if NVD lists an advisory for the vendored engine without a disposition. Needs services.nvd.nist.gov (see docs/engineering/engine-advisories.md).
+engine-advisories: ## Online, required by check-release: fail if NVD lists an advisory for the vendored engine without a disposition, gives no verdict, or the review is over 90 days old. Needs services.nvd.nist.gov (see docs/engineering/engine-advisories.md).
 	$(GO) run ./tools/engine-advisories scan
 
 frontend-notices: ## Regenerate third_party/FRONTEND-NOTICES.txt from the production frontend bundle (needs npm ci).
@@ -343,7 +343,7 @@ package-linux-nfpm: ## Build .deb and .rpm via nfpm on a Linux host (distinct fr
 	@bash scripts/package-linux_test.sh
 	@bash scripts/package-linux.sh
 
-check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
+check-release: ## Run the full release gate (versions, REUSE, engine advisories (online), memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
 
 tag-preflight: ## Validate GOPMGR_RELEASE_TAG and run the full gate before tag-triggered packaging.

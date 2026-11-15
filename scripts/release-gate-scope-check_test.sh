@@ -61,6 +61,38 @@ GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST=1 \
 	bash "$historical_prose/scripts/release-gate-scope-check.sh" >/dev/null ||
 	fail "historical handbook prose was treated as a live quality gate"
 
+# SEC-06: the advisory scan must stay in the release gate, unchanged.
+advisory_message="check-release.sh must run make engine-advisories"
+advisory_mutation() {
+	local name="$1" file="$2" old="$3" new="$4"
+	local fixture
+	fixture="$(new_fixture "advisory-$name")"
+	python3 -B - "$fixture/$file" "$old" "$new" <<'PY'
+import sys
+path, old, new = sys.argv[1:]
+text = open(path).read()
+if text.count(old) != 1:
+    sys.exit("advisory mutation: %r not found once in %s" % (old, path))
+open(path, "w").write(text.replace(old, new))
+PY
+	expect_failure "$fixture" "$advisory_message"
+}
+advisory_mutation removed-call scripts/check-release.sh $'if ! make engine-advisories; then\n\techo "Vendored engine advisory scan failed. Run \'make engine-advisories\' for details." >&2\n\texit 1\nfi\n' ''
+advisory_mutation ignored-failure scripts/check-release.sh 'if ! make engine-advisories; then' 'if ! make engine-advisories || true; then'
+advisory_mutation passes-on-failure scripts/check-release.sh $'for details." >&2\n\texit 1\nfi\necho "Vendored engine advisories checked."' $'for details." >&2\n\texit 0\nfi\necho "Vendored engine advisories checked."'
+advisory_mutation offline-recipe Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t$(GO) run ./tools/engine-advisories check'
+advisory_mutation ignored-recipe Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t-$(GO) run ./tools/engine-advisories scan'
+advisory_mutation target-variable Makefile $'engine-advisories: ## Online' $'engine-advisories: GO := true\nengine-advisories: ## Online'
+advisory_mutation global-variable Makefile $'GO      := go\n' $'GO      := go\nGO      := true\n'
+advisory_mutation prerequisite Makefile $'engine-advisories: ## Online' $'engine-advisories: engine-advisories-check ## Online'
+advisory_mutation not-phony Makefile ' engine-advisories engine-advisories-check ' ' engine-advisories-check '
+advisory_mutation ignore-target Makefile $'engine-advisories: ## Online' $'.IGNORE: engine-advisories\nengine-advisories: ## Online'
+advisory_mutation ignore-all Makefile $'GO      := go\n' $'GO      := go\nMAKEFLAGS += -i\n'
+advisory_mutation pattern-shell Makefile $'engine-advisories: ## Online' $'%-advisories: SHELL := /bin/true\nengine-advisories: ## Online'
+advisory_mutation target-shell Makefile $'engine-advisories: ## Online' $'engine-advisories-check engine-advisories: SHELL := /bin/true\nengine-advisories: ## Online'
+advisory_mutation exported-goflags Makefile $'engine-advisories: ## Online' $'engine-advisories-check engine-advisories: export GOFLAGS := -exec=true\nengine-advisories: ## Online'
+advisory_mutation skip-variable Makefile $'\t$(GO) run ./tools/engine-advisories scan' $'\t$(if $(SKIP_ADVISORIES),true,$(GO) run ./tools/engine-advisories scan)'
+
 unscoped_command="$(new_fixture unscoped-command)"
 printf '%s\n' 'quality-check:' $'\tgo test ./...' >>"$unscoped_command/Makefile"
 expect_failure "$unscoped_command" "Go quality gates must use explicit first-party package roots"

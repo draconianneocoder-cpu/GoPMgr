@@ -189,13 +189,19 @@ func replaceRecoveryCodes(ctx context.Context, q accountWriter, username string,
 //
 // Verification scans every unused hash for the user and tries
 // auth.VerifyPassword on each. The fixed-time Argon2 cost makes this
-// O(n) but n ≤ 8, which is fine.
+// O(n) but n ≤ 8, which is fine. A code that matches none costs
+// RecoveryCodeCount checks whatever the account (SEC-04 item 4): checks
+// the account's unused codes do not use, or all of them for an unknown
+// name, are spent by verifyUnknownAccount. The new password is validated
+// first, so a weak one is refused alike for every name.
 func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error {
-	if err := ValidateUsername(username); err != nil {
-		return ErrInvalidRecoveryCode
-	}
 	if err := ValidatePassword(newPassword); err != nil {
 		return err
+	}
+	canon := canonicalise(code)
+	if err := ValidateUsername(username); err != nil {
+		spendRecoveryChecks(canon, 0)
+		return ErrInvalidRecoveryCode
 	}
 
 	// Begin the transaction now so scan and write are in the same
@@ -222,8 +228,8 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		return err
 	}
 
-	canon := canonicalise(code)
 	var matchID int64 = -1
+	checked := 0
 	var matchWrap string
 	for rows.Next() {
 		var id int64
@@ -239,6 +245,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 			_ = rows.Close()
 			return err
 		}
+		checked++
 		if auth.VerifyPassword(canon, hash) == nil {
 			matchID = id
 			matchWrap = wrap
@@ -255,6 +262,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	_ = rows.Close() // close before write ops to avoid cursor-across-write conflict
 
 	if matchID < 0 {
+		spendRecoveryChecks(canon, checked)
 		return ErrInvalidRecoveryCode
 	}
 
@@ -396,4 +404,14 @@ func canonicalise(s string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// spendRecoveryChecks brings a failed recovery-code reset that has made
+// done checks up to RecoveryCodeCount, so its time does not tell an
+// unknown name, or an account with few unused codes, from one with a full
+// set.
+func spendRecoveryChecks(code string, done int) {
+	for i := done; i < RecoveryCodeCount; i++ {
+		verifyUnknownAccount(code)
+	}
 }
