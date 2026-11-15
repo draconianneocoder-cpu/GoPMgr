@@ -7,7 +7,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Review date:** 2026-11-14. **Baseline:** `main` at
 `44d9f6de883af21c6fef6e981cef0010c33a1d1c`.
-This local change repairs generation width, not the whole Slice C contract.
+This repair addresses generation width, not the whole Slice C contract.
 
 ## Contract and compatibility
 
