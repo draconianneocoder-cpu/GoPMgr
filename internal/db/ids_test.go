@@ -18,6 +18,51 @@ func (failingIDReader) Read([]byte) (int, error) {
 	return 0, errors.New("entropy unavailable")
 }
 
+func TestProjectIDRequiresFull128BitEntropy(t *testing.T) {
+	for _, partial := range []bool{false, true} {
+		name := "full entropy"
+		if partial {
+			name = "partial entropy leaves no project or audit event"
+		}
+		t.Run(name, func(t *testing.T) {
+			d := newBackupTestDB(t)
+			// The second block supplies the independent audit-event ID.
+			entropy := "0123456789abcdef0123456789abcdef"
+			if partial {
+				entropy = "0123456789abcde"
+			}
+			t.Cleanup(replaceRandReader(t, strings.NewReader(entropy)))
+			project, err := d.UpsertProject(Project{Name: "ID contract"})
+			if partial {
+				if !errors.Is(err, io.ErrUnexpectedEOF) || project.ID != "" {
+					t.Fatalf("UpsertProject = %+v, %v; want no ID and incomplete entropy error", project, err)
+				}
+				for _, query := range []string{"SELECT COUNT(*) FROM project", "SELECT COUNT(*) FROM audit_events"} {
+					var count int
+					if err := d.Conn.QueryRow(query).Scan(&count); err != nil {
+						t.Fatal(err)
+					}
+					if count != 0 {
+						t.Fatalf("%s = %d, want 0", query, count)
+					}
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("UpsertProject: %v", err)
+			}
+			const want = "prj_30313233343536373839616263646566"
+			if project.ID != want {
+				t.Fatalf("project ID = %q, want %q", project.ID, want)
+			}
+			persisted, err := d.GetProject()
+			if err != nil || persisted.ID != want {
+				t.Fatalf("GetProject = %+v, %v; want ID %q", persisted, err, want)
+			}
+		})
+	}
+}
+
 func TestGeneratedProjectIDFailsWhenEntropyUnavailable(t *testing.T) {
 	d, err := InitDB(filepath.Join(t.TempDir(), "ids.pmforge"))
 	if err != nil {
