@@ -21,13 +21,18 @@ def git(repo, *args, data=None):
                                     '-C', str(repo), *args], input=data, env=env).decode().strip()
 
 
-def local_repository(path):
+def repository_path(path):
     value = str(path)
     if '://' in value or ':' in value or not Path(path).is_absolute():
         raise ValueError('only absolute filesystem repositories are allowed')
     resolved = Path(path).resolve(strict=True)
     if not resolved.is_dir():
         raise ValueError('repository must be a directory')
+    return resolved
+
+
+def local_repository(path):
+    resolved = repository_path(path)
     git(resolved, 'rev-parse', '--git-dir')
     return resolved
 

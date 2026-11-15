@@ -132,3 +132,20 @@ must use the observed tip as their sole parent. Retain the accepted payload and
 receipt outside the public tree. Publishing, Pages settings and production
 delivery checks require separate explicit authority; local preparation performs
 none of them. See `website/README.md` for the existing transaction contract.
+
+
+## Conditional publisher safeguards
+
+On 2026-11-15 the owner authorized implementing and testing the missing R11
+controls locally while retaining full acceptance. `website/tools/publisher.py`
+binds a private, expiring and revocable owner grant to the exact reviewed
+acceptance bytes and Git candidate. It checks the fixed repository/ref, immutable
+GitHub account/repository IDs, current push permission, raw Git inventory and
+sole-parent/initial-root rule before the exact-value lease transaction.
+
+The existing local preparation target remains local only. Neither this tool's
+implementation nor checker success authorizes invoking its explicit `publish`
+command. No live grant, remote push, Pages setting or deployment is part of this
+change. The website README defines the private grant and point-in-time revocation
+limits. Local transport fixtures substitute only the network destination at the
+process boundary; they do not establish live GitHub credential/hosting behavior.

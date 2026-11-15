@@ -91,7 +91,39 @@ The record is a review attestation, not a substitute for running the checks, a
 cryptographic signature, or permission to push. Do not put it in the public tree.
 The shell helper also accepts `--parent-repository /absolute/local/mirror`
 and `--expected-tip <observed SHA>`; the candidate is an isolated local Git tree.
-No production network transport is implemented or activated.
+The separately reviewed `tools/publisher.py` implements the conditional network
+boundary. It is not called by any Make build/preparation target, CI job or hook.
+Its default command is read-only `preflight`; `publish` is an explicit operation
+requiring a separate, current owner grant. Implementing this tool does not grant
+permission to run `publish`. No live publication grant is supplied in the tree.
+
+The private JSON grant must have exactly these fields: `schema_version` (1),
+`approval_id`, `status` (`approved`, or `revoked` to deny), timezone-aware
+`expires_at`, `repository`, `repository_id`, `ref`, `approved_by`, `publisher_id`,
+`commit`, `tree`, `expected_tip` (null only for initial absence), `source_digest`,
+`output_digest`, and `acceptance_sha256`. The maintainer creates and controls this
+file only after explicit publication approval. It binds the reviewed candidate
+and acceptance record; it is neither a signature nor an independent source of
+owner consent. Do not generate it automatically from an all-PASS acceptance file.
+Keep it and its revocation history outside the public payload.
+
+The destination is fixed to `draconianneocoder-cpu/GoPMgr`, repository ID
+`1277267642`, and `refs/heads/gh-pages`. Recreating/transferring the repository or
+changing its owner requires a reviewed policy change. The tool checks the
+immutable authenticated publisher ID, approving owner ID and repository push
+permission with the same credential used for Git. Credentials stay in child
+process environments, never arguments or receipts; Git error output is suppressed.
+The object transfer uses a fresh bare repository, not candidate/global Git
+configuration, then rechecks the raw tree and parents. The conditional update
+names the immutable commit and exact expected remote value. It never configures
+Pages or retries against a changed tip.
+
+The grant and acceptance are re-read before transport. Revocation is a final
+point-in-time check; it cannot atomically cancel a remote update already in
+flight. A timeout or failed update is unconfirmed: inspect the remote read-only
+before deciding any next action. Successful branch transfer still requires
+separate Pages delivery and served-byte verification. Local disposable-repository
+tests establish these control paths, not live GitHub publication or hosting.
 
 ## What a visitor's browser may load
 
