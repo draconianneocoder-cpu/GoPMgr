@@ -276,7 +276,7 @@ def build():
     pin = pins['hugo']['platforms'].get(key)
     require(pin and digest(Path(binary)) == pin['executable_sha256'], 'Hugo executable provenance not approved for this platform')
     version = run([binary, 'version'])
-    require(version.startswith('hugo v0.169.0-') and '+extended ' in version, 'incorrect Hugo version/edition')
+    require(version.startswith('hugo v0.170.0-'), 'incorrect Hugo version')
     env = dict(os.environ, GOWORK='off')
     before = {name: digest(SITE / name) for name in ('go.mod', 'go.sum')}
     source = snapshot()

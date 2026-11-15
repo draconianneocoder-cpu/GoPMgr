@@ -3,8 +3,8 @@
   "reviewer": "GoPMgr website implementation author",
   "files": {
     "README.md": {
-      "sha256": "0e8ca8cb3130ecb6e2816d6109cfded58a410033a02cdfc2c6e32e3462dd8c81",
-      "size": 7379,
+      "sha256": "089febac3f7cc0775ddb5ddce7aaa90e64dd48d1ec56e7e8fb3d6b20304cb3ec",
+      "size": 7843,
       "mode": "100644"
     },
     "assets/css/custom.css": {
@@ -93,8 +93,8 @@
       "mode": "100644"
     },
     "hugo.yaml": {
-      "sha256": "0fc63e5a6a9257ea9beb57b507b963c3d52e1e918635cadc8704bec3aa348446",
-      "size": 2279,
+      "sha256": "ca460716d0f65cc2f507a9bc0f0577641ed4e6242953a76873fbc717511cf2c5",
+      "size": 2260,
       "mode": "100644"
     },
     "layouts/404.html": {
@@ -138,8 +138,8 @@
       "mode": "100644"
     },
     "quality/dependencies.json": {
-      "sha256": "622f4d52f3a70bdfe02932cd65c81b2acefff1f70faa90bdf5ffbf2dfd94aaba",
-      "size": 2119,
+      "sha256": "23409804e4ca7544e944d0833e4d12561c14a4e6d2859972fa3673f2222888ac",
+      "size": 2222,
       "mode": "100644"
     },
     "quality/flexsearch-package.json": {
@@ -148,7 +148,7 @@
       "mode": "100644"
     },
     "quality/release-evidence.json": {
-      "sha256": "db00de550f136916ddb035f537bc15df9cbcb6d7a5a2c795da1962bc7c514c86",
+      "sha256": "6768504523cc0b23da98efd5f7fa3a6b746b92f0d0e2fe82dbca8a332f1d751e",
       "size": 1727,
       "mode": "100644"
     },
@@ -223,8 +223,8 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "b3d562ca8626b1322accce859414b96b9992a5d123345518a77f5a7dde30411d",
-      "size": 19269,
+      "sha256": "e8a8762ad353ab74b2a2ad66e3b1a1c70a6db5f733b353b7891f2f30ee320c38",
+      "size": 19233,
       "mode": "100644"
     },
     "tools/test_provision_hugo.py": {

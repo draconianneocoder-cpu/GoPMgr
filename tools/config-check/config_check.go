@@ -732,8 +732,11 @@ func validateWebsiteHugo(config map[string]any) error {
 		return fmt.Errorf("unexpected website module")
 	}
 	version, _ := stringMap(module["hugoVersion"])
-	if version["min"] != "0.169.0" || version["extended"] != true {
-		return fmt.Errorf("website requires Hugo Extended 0.169.0")
+	if version["min"] != "0.170.0" {
+		return fmt.Errorf("website requires Hugo 0.170.0")
+	}
+	if _, retired := version["extended"]; retired {
+		return fmt.Errorf("website must remove the retired extended setting for Hugo 0.170.0")
 	}
 	markup, _ := stringMap(config["markup"])
 	goldmark, _ := stringMap(markup["goldmark"])

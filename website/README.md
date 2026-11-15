@@ -11,9 +11,17 @@ source tree in a fresh ignored `.tmp/website-build-*` directory.
 
 ## Local development
 
-Use Python 3.11 or later, Go, and the exact Hugo Extended executable recorded in
+Use Python 3.11 or later, Go, and the exact Hugo executable recorded in
 `quality/dependencies.json`. Set `HUGO` to that executable's absolute path. Binary provenance is recorded for macOS ARM64 and Linux AMD64. Other
 platforms need reviewed archive and executable hashes before building.
+
+The owner approved Hugo 0.170.0 for publication acceptance on 2026-11-15.
+This release unifies the former standard/Extended editions and removes LibSass;
+the pinned Hextra site uses CSS and needs no Sass tool. The retired
+`hugoVersion.extended` setting is rejected rather than retained as an ineffective
+constraint. The update fixes the `highlight` wrapper-class and vendored-module
+path advisories published on 2026-11-13; archive and executable hashes remain
+mandatory.
 
 ```
 make website-build
