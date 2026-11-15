@@ -7,6 +7,16 @@ import type { Message } from '../catalog';
 // (docs/design/ADR-008-localization.md). Keys are grouped by screen; text in
 // {braces} is a placeholder and stays as written in every language.
 export const en = {
+  'help.contents.title': 'Table of contents',
+  'help.contents.description': 'Browse the guide in reading order. Choose a topic to open its instructions.',
+  'help.index.title': 'Subject index',
+  'help.index.description': 'Look up subjects, terms and abbreviations alphabetically. Definition opens the exact glossary entry; Topic opens the instructions.',
+  'help.lookup.definition': 'Definition',
+  'help.lookup.topic': 'Topic',
+  'help.lookup.compare': 'Compare with:',
+  'help.lookup.openDefinition': '{term}: Definition',
+  'help.lookup.openTopic': '{topic}: Topic',
+
   'common.password.show': 'Show password',
   'common.password.hide': 'Hide password',
   'common.username': 'Username',

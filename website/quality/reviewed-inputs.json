@@ -28,8 +28,8 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "7aecf5fcb8cda6c1c1e0b925bb51855628a2cec1fdcd33ce855769c63ffd72e9",
-      "size": 2132,
+      "sha256": "845fdb07cd7c08bc038746d895d31bfbbcf6e61362a347ea3449eafb4091492e",
+      "size": 2160,
       "mode": "100644"
     },
     "content/community/_index.md": {
@@ -38,18 +38,18 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "a44bfa672fadc5e95a7dbe597034cb2ce7fb8682b39fb32223018e59dc9a599f",
-      "size": 1703,
+      "sha256": "dc2d96c93aade462411e5bea60f8e5ffeea72af2be49b286b184f3516af65d6d",
+      "size": 1791,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "e524210772c0df4ce52031097bcfb1a7b0941561a9330bb93ee633bf132a6188",
-      "size": 1979,
+      "sha256": "5e13efa674b0353b5ef010529c357aa2bbdb632209fea4369996df625282ad8b",
+      "size": 2007,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "4a7d178396f5fca13065f412d76050d8c62ecd70d2090a3708d13a882cf407a1",
-      "size": 2811,
+      "sha256": "a033ebcd2bd27adcebb40766b254737ee2054a29f38f01c878b10c64c9b23c0b",
+      "size": 2839,
       "mode": "100644"
     },
     "content/downloads/_index.md": {
@@ -58,8 +58,8 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "1bde155edd41445b8a5cec078b3a89c816e3b68a1831a23f9bbe81b7b2fd0e12",
-      "size": 2443,
+      "sha256": "794562a4de91fac22ef0aa41c376565161ec342ae7e5f113775ead341c104d4a",
+      "size": 2471,
       "mode": "100644"
     },
     "content/legal/_index.md": {
@@ -68,13 +68,13 @@
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "49c2e5b2f3c25f0ad7c16a34c071b551d87bfde43adad88da88fc8b1d222bba6",
-      "size": 2227,
+      "sha256": "4b02c1b09a0c19d896f4c6f6cec47cc198088de165028f94c6623d1b9ba55ed9",
+      "size": 2615,
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "5632adb583ddf0a80ea68be5b263aa8f8702ab7032dbda72c932cca18ae7a7e3",
-      "size": 2114,
+      "sha256": "49bfc469eeaa08b763bf5fb82d54bc371eeea448f7009f9429a835209f1cd3aa",
+      "size": 2142,
       "mode": "100644"
     },
     "data/release-records.yaml": {
@@ -153,8 +153,8 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "06f3124a825533412c14a2b523651ab82bdb2615bfbc6648a608fca5909c300d",
-      "size": 8496,
+      "sha256": "1cc7914db3b392c7587eac8a25c03ed734bcc8331bd35dcd8d85f3e55ca76eb8",
+      "size": 8426,
       "mode": "100644"
     },
     "static/branding/bobby-dark.png": {

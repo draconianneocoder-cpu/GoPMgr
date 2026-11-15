@@ -75,6 +75,17 @@ If a requirement is technically difficult, unproven, unaffordable on target hard
 
 Until accepted, keep the original requirements and tests intact, mark the affected gate `BLOCKED`, continue **only unrelated safe work**, and do not publish a reduced-feature release under the original claims. No hidden default fallback, behind-the-scenes scope reduction, or doctored architecture narrative.
 
+## RESOURCE RESILIENCE PLANNING GATE
+
+For each affected memory-intensive path, read
+[the resource contract](../design/resource-resilience.md) and
+[MEM-T01–12](../testing/resource-resilience-assurance.md). Include the mandatory
+slice handoff and applicable evidence before completion. MR-1 host admission and
+cancellation do not wait for G1; isolation uses the existing supervisor when its
+prerequisites pass. No unbounded waiting/retry, allocation before admission,
+false durability acknowledgement or numerical/format reduction to fit a budget.
+Missing required evidence blocks that claim; planning does not authorize code.
+
 ## WORK EXECUTION PROTOCOL — REPEAT FOR EACH PR
 
 **Stage A: Reality check.** Run `pwd`, `git status --short`, `git log -1 --oneline`; inspect `AGENTS.md`, current code, ADRs, test names and platform requirements. Preserve unrelated user/agent changes. Identify missing acceptance/decision dependencies. Validate external APIs/versions/licenses from actual upstream code, not summaries or assumptions.

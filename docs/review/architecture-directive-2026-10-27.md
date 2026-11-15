@@ -18,6 +18,17 @@ on `main`, and the DuckDB 2.0 upgrade was not adopted. See the
 for exact revisions and validation limits. DuckDB remains in production;
 the DF0, integration and separate Slice J cutover gates still apply.
 
+**Current correction, 2026-11-14:** the consolidation paragraph above records
+the 2026-10-29 state. DuckDB was removed on 2026-11-02 in favour of the
+[Go-native engine](ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md); DataFusion was
+[not adopted on 2026-11-09](../testing/adr-012-df0-g-report.md). There is no
+outstanding Rust/DataFusion Slice J cutover. These later decisions supersede
+the DuckDB-retention and DataFusion-allocation/cutover directions below;
+reopening DataFusion requires a new owner decision. The recorded baseline
+and verbatim directive remain historical evidence, not the current work queue.
+For the bounded ID-width repair and remaining Slice C integrity work, see
+[the ID-generation evidence](../testing/id-generation-128-bit.md).
+
 **Relation to earlier records at the recorded baseline:** this refines, and does not replace:
 - the [PS-04 owner decisions](PS-04-owner-decisions-2026-10-27.md) from earlier the same day;
 - ADR-010 v2.2 and ADR-012 v0.2 with their accepted owner decisions, on [PR #140](https://github.com/draconianneocoder-cpu/GoPMgr/pull/140) and [PR #150](https://github.com/draconianneocoder-cpu/GoPMgr/pull/150), both unmerged at that baseline.

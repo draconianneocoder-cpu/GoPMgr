@@ -5,6 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan
 
+> **Resource delivery gates, 2026-11-14:** Apply
+> [MEM-01–12 / MR-0–5](resource-resilience.md) and the
+> [acceptance matrix](../testing/resource-resilience-assurance.md). MR-1 host
+> admission/cancellation is independent of G1; MR-2 isolation reuses G1's ordered
+> supervisor foundation. Admission precedes large load/decode. Applicable MEM
+> evidence is due with each affected slice, not deferred to G4/G7. Numeric budgets
+> and new durable schemas retain their owner decisions; no new code is authorized.
+
 **Status:** ACCEPTED target architecture (maintainer, 2026-10-24; [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Only P00, P01/G0 and P02/S0 are authorized (§8.2); no production code or schema change is authorized. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
 **Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.\
 **Plan owners:** maintainer approves contracts; implementation agents propose narrowly scoped PRs with independent verification.

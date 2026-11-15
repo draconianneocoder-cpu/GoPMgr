@@ -66,33 +66,64 @@ implementation rather than waiting until release validation fails.
 The appendices provide command, invariant, and checklist references for
 day-to-day work.
 
-### Chapter list
+<a id="chapter-list"></a>
 
-`AGENTS.md` asks automated agents not to read this handbook end to end
-and to search it instead. This list exists for that: match a topic to a
-chapter number, then jump or `rg` directly.
+## Table of contents
 
-- **Part I — Getting Started**: 1 Runtime shape and technologies · 2
-  Environment setup · 3 Repository tour
-- **Part II — Architecture and Boundaries**: 4 Application boundaries · 5
-  State and lifecycle · 6 Data architecture · 7 Compatibility contracts
-- **Part III — Implementing Changes**: 8 Go backend development · 9 Error
-  handling · 10 Svelte frontend development · 11 Persistence/migration
-  development · 12 Adding or changing a feature
-- **Part IV — Engineering Assurance**: 13 Testing strategy · 14
-  Repository verification · 15 Debugging and troubleshooting · 16
-  Concurrency and resource ownership · 17 Security engineering
-- **Part V — Documents, Export, and Signing**: 18 Export development · 19
-  PDF/A-2u · 20 PAdES signing
-- **Part VI — Maintenance and Release Engineering**: 21 Dependency
-  maintenance · 22 Documentation and ADRs · 23 Release engineering · 24
-  Vulnerability management · 25 Agent-assisted development
-- **Part VII — Contributor Workflow**: 26 Planning a change · 27
-  Implementing a change · 28 Reviewing a change · 29 Validation before
-  handoff
-- **Appendices**: A Command reference · B System invariants · C
-  Development checklists · D Troubleshooting matrix · E Glossary · F
-  Related repository documentation
+- [Preface](#preface)
+- [Part I — Getting Started](#part-i--getting-started)
+  - [1. GoPMgr for Developers](#1-gopmgr-for-developers)
+  - [2. Development Environment](#2-development-environment)
+  - [3. Repository Tour](#3-repository-tour)
+- [Part II — Architecture and System Boundaries](#part-ii--architecture-and-system-boundaries)
+  - [4. Application Boundaries](#4-application-boundaries)
+  - [5. Application State and Lifecycle](#5-application-state-and-lifecycle)
+  - [6. Data Architecture](#6-data-architecture)
+  - [7. Compatibility Contracts](#7-compatibility-contracts)
+- [Part III — Implementing Changes](#part-iii--implementing-changes)
+  - [8. Go Backend Development](#8-go-backend-development)
+  - [9. Error Handling](#9-error-handling)
+  - [10. Svelte Frontend Development](#10-svelte-frontend-development)
+  - [11. Persistence and Migration Development](#11-persistence-and-migration-development)
+  - [12. Adding or Changing a Feature](#12-adding-or-changing-a-feature)
+- [Part IV — Engineering Assurance](#part-iv--engineering-assurance)
+  - [13. Testing Strategy](#13-testing-strategy)
+  - [14. Repository Verification](#14-repository-verification)
+  - [15. Debugging and Troubleshooting](#15-debugging-and-troubleshooting)
+  - [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership)
+  - [17. Security Engineering](#17-security-engineering)
+- [Part V — Documents, Export, and Signing](#part-v--documents-export-and-signing)
+  - [18. Export Development](#18-export-development)
+  - [19. PDF/A-2u](#19-pdfa-2u)
+  - [20. PAdES Signing](#20-pades-signing)
+- [Part VI — Maintenance and Release Engineering](#part-vi--maintenance-and-release-engineering)
+  - [21. Dependency Maintenance](#21-dependency-maintenance)
+  - [22. Documentation and ADRs](#22-documentation-and-adrs)
+  - [23. Release Engineering](#23-release-engineering)
+  - [24. Vulnerability Management](#24-vulnerability-management)
+  - [25. Agent-Assisted Development](#25-agent-assisted-development)
+- [Part VII — Contributor Workflow](#part-vii--contributor-workflow)
+  - [26. Planning a Change](#26-planning-a-change)
+  - [27. Implementing a Change](#27-implementing-a-change)
+  - [28. Reviewing a Change](#28-reviewing-a-change)
+  - [29. Validation Before Handoff](#29-validation-before-handoff)
+- [Appendix A — Command Reference](#appendix-a--command-reference)
+- [Appendix B — System Invariants](#appendix-b--system-invariants)
+- [Appendix C — Development Checklists](#appendix-c--development-checklists)
+- [Backend change](#backend-change)
+- [Frontend change](#frontend-change)
+- [Persistence change](#persistence-change)
+- [Security-sensitive change](#security-sensitive-change)
+- [PDF/signing change](#pdfsigning-change)
+- [Release-sensitive change](#release-sensitive-change)
+- [Appendix D — Troubleshooting Matrix](#appendix-d--troubleshooting-matrix)
+- [Appendix E — Glossary](#appendix-e--glossary)
+- [Appendix F — Related Repository Documentation](#appendix-f--related-repository-documentation)
+- [Appendix G — Subject Index](#appendix-g--subject-index)
+
+Use contents for reading order, [the subject index](#appendix-g--subject-index)
+for alphabetical lookup and [the glossary](#appendix-e--glossary) for meanings and
+distinctions.
 
 ------------------------------------------------------------------------
 
@@ -1699,6 +1730,12 @@ Use `go.mod` and `frontend/package.json` for authoritative versions.
 
 Public documentation must describe current behavior.
 
+Keep both guides' linked contents, alphabetical subject indexes and glossaries
+current when headings or terminology change. Contents show reading order; indexes
+include subjects and aliases; glossaries define terms and distinguish nearby
+concepts. Keep shared user terms aligned with the in-app Help Guide and retain
+stable term anchors so incoming links continue to work.
+
 If something is:
 
 - planned — say it is planned;
@@ -2217,34 +2254,60 @@ These are high-value rules that should remain easy to find.
 
 # Appendix E — Glossary
 
-**ADR** — Architecture Decision Record documenting a durable
-architectural choice.
+These definitions describe development contracts, not feature-completion claims.
+[STATUS.md](STATUS.md) controls current implementation/qualification status.
+For user-facing domain terms, see the [User Guide glossary](user-guide.md#glossary).
 
-**CGO** — Go facility for calling C code. Required by important GoPMgr
-native database/analytics paths.
+| Term | Meaning and distinction | Compare with | Read more |
+| --- | --- | --- | --- |
+| <a id="dev-term-adr"></a>**ADR** | Architecture Decision Record. Acceptance gives a decision its stated authority; a proposed ADR or an accepted target is not proof of implementation. | [Implemented](#dev-term-implemented), [Qualified](#dev-term-qualified) | [22. Documentation and ADRs](#22-documentation-and-adrs) |
+| <a id="dev-term-api"></a>**API** | A callable contract between components. A Wails service method is one application API; it is not permission to expose arbitrary database writes to workers. | [Wails-bound method](#dev-term-wails-bound-method), [DTO](#dev-term-dto) | [4. Application Boundaries](#4-application-boundaries) |
+| <a id="dev-term-audit-chain"></a>**Audit chain** | Tamper-evident event history under its verification contract. Valid hashes do not encrypt records or establish that the underlying business facts are true. | [SQLCipher](#dev-term-sqlcipher), [Qualified](#dev-term-qualified) | [17. Security Engineering](#17-security-engineering) |
+| <a id="dev-term-baseline"></a>**Baseline** | A recorded comparison reference for a plan or measurement. A schedule baseline is distinct from a code commit or test-environment baseline; name which one is meant. | [Snapshot](#dev-term-snapshot), [Source identity](#dev-term-source-identity) | [7. Compatibility Contracts](#7-compatibility-contracts) |
+| <a id="dev-term-cancellation"></a>**Cancellation** | A request to stop work through an owned cancellation path. It does not by itself prove the worker exited, resources were reclaimed or a committed effect was undone. | [Reaping](#dev-term-reaping), [Context](#dev-term-context) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-cgo"></a>**CGO** | The Go facility for calling C code, required for the native SQLCipher database path. Native allocations are not all tracked by the Go garbage collector. | [Goroutine](#dev-term-goroutine), [Memory budget](#dev-term-memory-budget) | [6. Data Architecture](#6-data-architecture) |
+| <a id="dev-term-context"></a>**Context** | A Go context carrying cancellation, deadlines and request-scoped values. It is not the mutable application/session state or a database transaction. | [Cancellation](#dev-term-cancellation), [Transaction](#dev-term-transaction) | [5. Application State and Lifecycle](#5-application-state-and-lifecycle) |
+| <a id="dev-term-dek"></a>**DEK** | Data-encryption key for user project data, persisted wrapped and unlocked in memory. Distinguish it from account credentials, administrator escrow keys and PDF signing keys. | [SQLCipher](#dev-term-sqlcipher), [PHC string](#dev-term-phc-string) | [17. Security Engineering](#17-security-engineering) |
+| <a id="dev-term-dto"></a>**DTO** | Data transfer object at a component boundary. The desktop DTO adapter may normalize wire collections for editor views; raw generated bindings retain their wire distinctions. | [Generated bindings](#dev-term-generated-bindings), [Wails bridge](#dev-term-wails-bridge) | [4. Application Boundaries](#4-application-boundaries) |
+| <a id="dev-term-durable-acknowledgement"></a>**Durable acknowledgement** | An acknowledgement made after the storage contract required for persistence succeeds. Result availability, volatile queue acceptance and notification delivery are different states. | [Idempotency](#dev-term-idempotency), [Receipt](#dev-term-receipt) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-evm"></a>**EVM** | Earned Value Management. EV is the budgeted value of completed work; PV is planned value and AC actual cost. The method is distinct from any one metric or stored amount. | [Minor units](#dev-term-minor-units), [Qualified](#dev-term-qualified) | [7. Compatibility Contracts](#7-compatibility-contracts) |
+| <a id="dev-term-export"></a>**Export** | A generated representation for another tool or audience. It is not automatically a full project backup or an immutable approved/issued record. | [ReportIR](#dev-term-reportir), [Transaction](#dev-term-transaction) | [18. Export Development](#18-export-development) |
+| <a id="dev-term-generated-bindings"></a>**Generated bindings** | Generator-owned TypeScript interfaces/functions for the actual Go service. Generate them before frontend checks; hand-written ambient declarations are not equivalent evidence. | [DTO](#dev-term-dto), [Wails-bound method](#dev-term-wails-bound-method) | [4. Application Boundaries](#4-application-boundaries) |
+| <a id="dev-term-gomemlimit"></a>**GOMEMLIMIT** | A soft Go-runtime memory target. It is not a hard process-tree limit and does not cover all native allocations or the webview. | [Memory budget](#dev-term-memory-budget), [CGO](#dev-term-cgo) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-goroutine"></a>**Goroutine** | A concurrent Go execution unit sharing its process memory and failure boundary. It is not a worker process or fatal-OOM containment. | [Worker process](#dev-term-worker-process), [Cancellation](#dev-term-cancellation) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-idempotency"></a>**Idempotency** | A replay contract that prevents repetition from duplicating the defined effect. A request identifier alone does not prove safe retry; ambiguous commits require reconciliation. | [Receipt](#dev-term-receipt), [Durable acknowledgement](#dev-term-durable-acknowledgement) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-implemented"></a>**Implemented** | Behavior present in current code/main according to STATUS.md. It does not mean an architecture was merely accepted, a test passed or an installed platform was qualified. | [ADR](#dev-term-adr), [Qualified](#dev-term-qualified) | [22. Documentation and ADRs](#22-documentation-and-adrs) |
+| <a id="dev-term-integration-test"></a>**Integration test** | A test exercising collaborating components and their real boundary. It does not alone prove installed packaging, OS containment or release trust. | [Native qualification](#dev-term-native-qualification), [Unit test](#dev-term-unit-test) | [13. Testing Strategy](#13-testing-strategy) |
+| <a id="dev-term-memory-budget"></a>**Memory budget** | An allowance under an aggregate resource policy. Application-wide RAM/pressure-based enforcement is planned, not implemented; logical subsystem accounting is not a separate hard heap. | [GOMEMLIMIT](#dev-term-gomemlimit), [Reservation](#dev-term-reservation) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-minor-units"></a>**Minor units** | An exact monetary representation under the currency contract. It is not interchangeable with binary floating point; retain ADR-009 fractional-JPY compatibility. | [DTO](#dev-term-dto), [EVM](#dev-term-evm) | [7. Compatibility Contracts](#7-compatibility-contracts) |
+| <a id="dev-term-module"></a>**Module** | A Go dependency/namespace boundary governed by go.mod/go.sum. The isolated Hugo website module is not part of the desktop application module/build graph. | [Wails bridge](#dev-term-wails-bridge), [Source identity](#dev-term-source-identity) | [3. Repository Tour](#3-repository-tour) |
+| <a id="dev-term-native-qualification"></a>**Native qualification** | Recorded evidence from the actual installed application on the named OS/profile. A unit test, browser fixture, cross-build or signed binary alone does not qualify the whole workflow. | [Qualified](#dev-term-qualified), [Integration test](#dev-term-integration-test) | [23. Release Engineering](#23-release-engineering) |
+| <a id="dev-term-pades"></a>**PAdES** | PDF Advanced Electronic Signatures. Apply signing as the final PDF mutation, after PDF/A processing; validate trust separately from byte integrity and content correctness. | [PDF/A-2u](#dev-term-pdf-a-2u), [Export](#dev-term-export) | [20. PAdES Signing](#20-pades-signing) |
+| <a id="dev-term-pdf-a-2u"></a>**PDF/A-2u** | The archival PDF target used by the export path, including Unicode text mapping. It does not by itself prove accessibility, encryption, signature trust or correct calculations. | [PAdES](#dev-term-pades), [Qualified](#dev-term-qualified) | [19. PDF/A-2u](#19-pdfa-2u) |
+| <a id="dev-term-phc-string"></a>**PHC string** | The encoded password-hash representation containing algorithm, parameters, salt and result. It is not the password, an encryption key or a project database. | [DEK](#dev-term-dek), [SQLCipher](#dev-term-sqlcipher) | [17. Security Engineering](#17-security-engineering) |
+| <a id="dev-term-qualified"></a>**Qualified** | A capability supported by retained evidence for a stated source/build, platform, profile, workload and contract. Passing an unrelated test or accepting a design is insufficient. | [Implemented](#dev-term-implemented), [Test coverage](#dev-term-test-coverage) | [29. Validation Before Handoff](#29-validation-before-handoff) |
+| <a id="dev-term-reaping"></a>**Reaping** | Observing and completing owned process termination/cleanup. Sending a kill signal or requesting cancellation is not proof that capacity can be returned. | [Cancellation](#dev-term-cancellation), [Worker process](#dev-term-worker-process) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-receipt"></a>**Receipt** | A record identifying the outcome of an operation under its persistence contract. New generalized command/issue receipts remain gated; a worker result is not proof of host commit. | [Idempotency](#dev-term-idempotency), [Durable acknowledgement](#dev-term-durable-acknowledgement) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-reportir"></a>**ReportIR** | The proposed typed report intermediate representation compiled from reviewed snapshots for consistent rendering. The target contract is not an implemented universal reporting engine. | [Snapshot](#dev-term-snapshot), [Export](#dev-term-export) | [18. Export Development](#18-export-development) |
+| <a id="dev-term-reservation"></a>**Reservation** | An admission accounting credit made before expensive work. It is an estimate-based commitment, not ownership of physical RAM; cancellation alone does not release it. | [Memory budget](#dev-term-memory-budget), [Reaping](#dev-term-reaping) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
+| <a id="dev-term-reuse"></a>**REUSE** | The repository file-level copyright/licensing convention and its validation. A passing licensing check is not a security audit or a complete SBOM. | [SPDX](#dev-term-spdx), [SBOM](#dev-term-sbom) | [21. Dependency Maintenance](#21-dependency-maintenance) |
+| <a id="dev-term-sbom"></a>**SBOM** | Software Bill of Materials describing the components in the stated artifact/scope. It is not a vulnerability clearance, provenance attestation or inferred licensing verdict. | [SPDX](#dev-term-spdx), [REUSE](#dev-term-reuse) | [21. Dependency Maintenance](#21-dependency-maintenance) |
+| <a id="dev-term-schema-migration"></a>**Schema migration** | A controlled transformation of persistent structure/data. It differs from merely reading a schema level; new project-format changes retain their owner decisions. | [Transaction](#dev-term-transaction), [Source identity](#dev-term-source-identity) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-snapshot"></a>**Snapshot** | A consistent selected view of records/revisions used by a job or report. A multi-project revision vector is not automatically an atomic cross-file transaction. | [Baseline](#dev-term-baseline), [Transaction](#dev-term-transaction) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-source-identity"></a>**Source identity** | The exact reviewed inputs: commit plus relevant working-tree bytes, dependencies/tool identity and artifact relation. HEAD alone cannot describe an uncommitted build. | [Baseline](#dev-term-baseline), [Qualified](#dev-term-qualified) | [14. Repository Verification](#14-repository-verification) |
+| <a id="dev-term-spdx"></a>**SPDX** | A vocabulary/model for licensing and software metadata. A file identifier, a REUSE check and a full SBOM have distinct scopes. | [REUSE](#dev-term-reuse), [SBOM](#dev-term-sbom) | [21. Dependency Maintenance](#21-dependency-maintenance) |
+| <a id="dev-term-sqlcipher"></a>**SQLCipher** | The SQLite-compatible encrypted database technology used for encrypted project storage. It does not encrypt every application file, export or live process buffer. | [DEK](#dev-term-dek), [PHC string](#dev-term-phc-string) | [6. Data Architecture](#6-data-architecture) |
+| <a id="dev-term-test-coverage"></a>**Test coverage** | A measurement of code exercised under the stated instrumentation/run. It is diagnostic evidence, not proof of critical requirements, fault detection or release readiness. | [Qualified](#dev-term-qualified), [Unit test](#dev-term-unit-test) | [13. Testing Strategy](#13-testing-strategy) |
+| <a id="dev-term-transaction"></a>**Transaction** | A database consistency boundary for related operations. It is not a long-lived worker job; do not hold one across a queue wait or remote/external work. | [Snapshot](#dev-term-snapshot), [Durable acknowledgement](#dev-term-durable-acknowledgement) | [11. Persistence and Migration Development](#11-persistence-and-migration-development) |
+| <a id="dev-term-unit-test"></a>**Unit test** | A focused test of a behavior or decision. It cannot alone establish actual IPC, installed OS enforcement, package lifecycle or trusted signatures. | [Integration test](#dev-term-integration-test), [Native qualification](#dev-term-native-qualification) | [13. Testing Strategy](#13-testing-strategy) |
+| <a id="dev-term-wails-bridge"></a>**Wails bridge** | The Go-to-frontend service/runtime boundary. Generated service calls, DTO normalization and runtime events have separate ownership. | [Generated bindings](#dev-term-generated-bindings), [DTO](#dev-term-dto) | [4. Application Boundaries](#4-application-boundaries) |
+| <a id="dev-term-wails-bound-method"></a>**Wails-bound method** | An exported App service method callable through generated frontend bindings. It is an adapter, not automatically a safe public extension command. | [API](#dev-term-api), [Wails bridge](#dev-term-wails-bridge) | [4. Application Boundaries](#4-application-boundaries) |
+| <a id="dev-term-worker-process"></a>**Worker process** | An independently executing process supervised under the planned ADR-010 boundary. A separate process can isolate failures but is not, by itself, a qualified OS sandbox. | [Goroutine](#dev-term-goroutine), [Reaping](#dev-term-reaping) | [16. Concurrency and Resource Ownership](#16-concurrency-and-resource-ownership) |
 
-**DEK** — Data-encryption key. GoPMgr uses a per-user 32-byte DEK for
-encrypted project databases.
-
-**EVM** — Earned Value Management.
-
-**PAdES** — PDF Advanced Electronic Signatures. In GoPMgr, signing
-must be the final PDF mutation.
-
-**PDF/A-2u** — Archival PDF conformance target used by GoPMgr's PDF/A
-export path: ISO 19005-2 with every character mapped to Unicode.
-
-**PHC string** — Standard encoded representation used for password
-hashes such as Argon2id.
-
-**SQLCipher** — SQLite-compatible encrypted database technology used
-for encrypted `.gopmgr` files.
-
-**Wails bridge** — The Go-to-JavaScript binding surface exposed to the
-Svelte desktop frontend.
-
-**Wails-bound method** — An exported method on the application object
-callable from the frontend.
+Memory admission/isolation and generalized receipt/ReportIR entries above include
+planned controls; see the [resource contract](design/resource-resilience.md) and
+[reporting sequence](design/reporting-extension/implementation-plan.md). Existing
+approved persistence remains distinct from proposed new schemas.
 
 ------------------------------------------------------------------------
 
@@ -2288,3 +2351,100 @@ and Makefile targets verified during its 2026-08-19 revision. Re-verify
 the package table, CI platform matrix, and command reference the next
 time any of them changes materially — see the source-of-truth hierarchy
 in the Preface.*
+
+
+# Appendix G — Subject Index
+
+Look up subjects and terms alphabetically. Chapter entries lead to instructions;
+definition entries lead to individual glossary rows.
+
+| Subject or term | Lookup |
+| --- | --- |
+| Adding or Changing a Feature | [Chapter](#12-adding-or-changing-a-feature) |
+| ADR | [Definition](#dev-term-adr) |
+| Agent-Assisted Development | [Chapter](#25-agent-assisted-development) |
+| API | [Definition](#dev-term-api) |
+| Application Boundaries | [Chapter](#4-application-boundaries) |
+| Application State and Lifecycle | [Chapter](#5-application-state-and-lifecycle) |
+| Audit chain | [Definition](#dev-term-audit-chain) |
+| Autosave | [Chapter](#5-application-state-and-lifecycle) |
+| Backend change | [Chapter](#backend-change) |
+| Backups | [Chapter](#11-persistence-and-migration-development) |
+| Baseline | [Definition](#dev-term-baseline) |
+| Bindings | [Chapter](#4-application-boundaries) |
+| Cancellation | [Definition](#dev-term-cancellation) |
+| Cancellation and cleanup | [Chapter](#16-concurrency-and-resource-ownership) |
+| CGO | [Definition](#dev-term-cgo) |
+| Compatibility Contracts | [Chapter](#7-compatibility-contracts) |
+| Concurrency and Resource Ownership | [Chapter](#16-concurrency-and-resource-ownership) |
+| Context | [Definition](#dev-term-context) |
+| Data Architecture | [Chapter](#6-data-architecture) |
+| Debugging and Troubleshooting | [Chapter](#15-debugging-and-troubleshooting) |
+| DEK | [Definition](#dev-term-dek) |
+| Dependency Maintenance | [Chapter](#21-dependency-maintenance) |
+| Development Environment | [Chapter](#2-development-environment) |
+| Documentation and ADRs | [Chapter](#22-documentation-and-adrs) |
+| DTO | [Definition](#dev-term-dto) |
+| Durable acknowledgement | [Definition](#dev-term-durable-acknowledgement) |
+| Encryption | [Chapter](#17-security-engineering) |
+| Error Handling | [Chapter](#9-error-handling) |
+| EVM | [Definition](#dev-term-evm) |
+| Export | [Definition](#dev-term-export) |
+| Export Development | [Chapter](#18-export-development) |
+| Frontend change | [Chapter](#frontend-change) |
+| Generated bindings | [Definition](#dev-term-generated-bindings) |
+| Glossary | [Reference](#appendix-e--glossary) |
+| Go Backend Development | [Chapter](#8-go-backend-development) |
+| GOMEMLIMIT | [Definition](#dev-term-gomemlimit) |
+| GoPMgr for Developers | [Chapter](#1-gopmgr-for-developers) |
+| Goroutine | [Definition](#dev-term-goroutine) |
+| Idempotency | [Definition](#dev-term-idempotency) |
+| Implemented | [Definition](#dev-term-implemented) |
+| Implementing a Change | [Chapter](#27-implementing-a-change) |
+| Integration test | [Definition](#dev-term-integration-test) |
+| Licensing | [Chapter](#21-dependency-maintenance) |
+| Memory budget | [Definition](#dev-term-memory-budget) |
+| Memory pressure | [Chapter](#16-concurrency-and-resource-ownership) |
+| Migrations | [Chapter](#11-persistence-and-migration-development) |
+| Minor units | [Definition](#dev-term-minor-units) |
+| Module | [Definition](#dev-term-module) |
+| Native qualification | [Definition](#dev-term-native-qualification) |
+| PAdES | [Definition](#dev-term-pades) |
+| PAdES Signing | [Chapter](#20-pades-signing) |
+| PDF/A-2u | [Chapter](#19-pdfa-2u) |
+| PDF/A-2u | [Definition](#dev-term-pdf-a-2u) |
+| PDF/signing change | [Chapter](#pdfsigning-change) |
+| Persistence and Migration Development | [Chapter](#11-persistence-and-migration-development) |
+| Persistence change | [Chapter](#persistence-change) |
+| PHC string | [Definition](#dev-term-phc-string) |
+| Planning a Change | [Chapter](#26-planning-a-change) |
+| Qualified | [Definition](#dev-term-qualified) |
+| Reaping | [Definition](#dev-term-reaping) |
+| Receipt | [Definition](#dev-term-receipt) |
+| Release Engineering | [Chapter](#23-release-engineering) |
+| Release-sensitive change | [Chapter](#release-sensitive-change) |
+| ReportIR | [Definition](#dev-term-reportir) |
+| Repository Tour | [Chapter](#3-repository-tour) |
+| Repository Verification | [Chapter](#14-repository-verification) |
+| Reservation | [Definition](#dev-term-reservation) |
+| REUSE | [Definition](#dev-term-reuse) |
+| Reviewing a Change | [Chapter](#28-reviewing-a-change) |
+| SBOM | [Definition](#dev-term-sbom) |
+| Schema migration | [Definition](#dev-term-schema-migration) |
+| Security Engineering | [Chapter](#17-security-engineering) |
+| Security-sensitive change | [Chapter](#security-sensitive-change) |
+| Signing | [Chapter](#20-pades-signing) |
+| Snapshot | [Definition](#dev-term-snapshot) |
+| Source identity | [Definition](#dev-term-source-identity) |
+| SPDX | [Definition](#dev-term-spdx) |
+| SQLCipher | [Definition](#dev-term-sqlcipher) |
+| Svelte Frontend Development | [Chapter](#10-svelte-frontend-development) |
+| Test coverage | [Definition](#dev-term-test-coverage) |
+| Testing Strategy | [Chapter](#13-testing-strategy) |
+| Transaction | [Definition](#dev-term-transaction) |
+| Unit test | [Definition](#dev-term-unit-test) |
+| Validation Before Handoff | [Chapter](#29-validation-before-handoff) |
+| Vulnerability Management | [Chapter](#24-vulnerability-management) |
+| Wails bridge | [Definition](#dev-term-wails-bridge) |
+| Wails-bound method | [Definition](#dev-term-wails-bound-method) |
+| Worker process | [Definition](#dev-term-worker-process) |

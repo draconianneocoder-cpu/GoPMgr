@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { HELP_GLOSSARY } from './help-glossary';
+import { en } from '../i18n/messages/en';
+
 export type SectionId =
+  | 'contents'
+  | 'subject-index'
   | 'getting-started'
   | 'quick-start'
   | 'industry-matrix'
@@ -43,6 +48,8 @@ export const sidebar: { group: string; items: { id: SectionId; label: string }[]
   {
     group: 'Overview',
     items: [
+      { id: 'contents', label: en['help.contents.title'] },
+      { id: 'subject-index', label: en['help.index.title'] },
       { id: 'getting-started', label: 'Getting Started' },
       { id: 'industry-matrix', label: 'Industry & Methodology Matrix' },
     ],
@@ -116,7 +123,11 @@ export const sidebar: { group: string; items: { id: SectionId; label: string }[]
 // completeness guarantee could only be enforced by re-deriving the full
 // SectionId union from every content component's own exports, instead of
 // TypeScript checking one Record literal directly against the union.
+const glossaryTerms = HELP_GLOSSARY.flatMap((entry) => [entry.term, ...(entry.aliases ?? [])]).join(' ').toLowerCase();
+
 export const KEYWORDS: Record<SectionId, string> = {
+  contents: 'table of contents chapters reading order navigation',
+  'subject-index': `alphabetical index subjects topics definitions ${glossaryTerms}`,
   'getting-started':
     'first launch create account admin administrator passphrase password login sign in users data directory navigation menu recovery codes new project launchpad',
   'quick-start':
@@ -165,9 +176,27 @@ export const KEYWORDS: Record<SectionId, string> = {
   'sigma-pack': 'dmaic pack six sigma tollgate ctq sipoc capability control charts project view',
   shortcuts:
     'keyboard shortcuts hotkeys ctrl cmd save accessibility screen reader focus escape tab enter space navigate a11y announce reduced motion',
-  glossary: 'terms definitions vocabulary jargon meaning dictionary',
+  glossary: `terms definitions vocabulary jargon meaning dictionary ${glossaryTerms}`,
   install: 'install run linux windows macos webkit dependencies build wails cli headless requirements',
   troubleshooting:
     'troubleshoot faq problem help forgot password passphrase locked out reset recovery code admin lockout corrupt database repair check crash startup logs diagnostics font missing glyph webkit blank window signature unsigned agile views missing compliance blocked audit',
   cli: 'command line cli headless terminal maintenance check repair vacuum export audit stats schema dump format encrypt password env username scripts automation batch',
 };
+
+export interface HelpIndexEntry {
+  label: string;
+  section: SectionId;
+  kind: 'topic' | 'definition';
+  termId?: string;
+}
+
+const topics: HelpIndexEntry[] = sidebar.flatMap((group) => group.items)
+  .filter((item) => item.id !== 'contents' && item.id !== 'subject-index')
+  .map((item) => ({ label: item.label, section: item.id, kind: 'topic' }));
+const definitions: HelpIndexEntry[] = HELP_GLOSSARY.flatMap((entry) =>
+  [entry.term, ...(entry.aliases ?? [])].map((label) => ({
+    label, section: 'glossary', kind: 'definition', termId: entry.id,
+  })),
+);
+export const helpIndex: readonly HelpIndexEntry[] = [...topics, ...definitions]
+  .sort((a, b) => a.label.localeCompare(b.label, 'en'));

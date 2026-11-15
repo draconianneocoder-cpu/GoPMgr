@@ -5,6 +5,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010: Local-first interoperable worker architecture, scalable project interchange, and future extension boundaries
 
+> **Resource planning supplement, 2026-11-14:** The owner's
+> [required resource-resilience contract](resource-resilience.md) supplies MEM-01–12
+> and MR-0–5 completion obligations for affected paths, including existing host
+> work before G1 is ready. It preserves D-06, accepted authority and historical
+> decisions; no runtime, new schema, numerical budget or containment is adopted.
+
 > **Proposed companion designs, 2026-11-13:** [ADR-014 reporting integrity](ADR-014-reporting-integrity-and-lifecycle.md)
 > and [ADR-015 secure extensions](ADR-015-secure-extension-platform.md). Follow the
 > [dependency sequence](reporting-extension/implementation-plan.md). These proposals

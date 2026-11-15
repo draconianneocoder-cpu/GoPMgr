@@ -5,6 +5,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Professional scheduling and project controls modernization plan
 
+> **Required resource planning, 2026-11-14:**
+> [MEM-01–12 / MR-0–5](resource-resilience.md) apply to PS-00 profiles and every
+> affected PS/ARC delivery. Existing heavy paths enter the inventory; proposed
+> Monte Carlo admission/cancellation comes before capacity expansion and does not
+> wait for G1. See [acceptance](../testing/resource-resilience-assurance.md).
+> Format/audit decisions, exact results and 50k/100k objectives remain intact.
+
 **Status:** APPROVED strategic direction and priority order
 ([maintainer decision, 2026-10-26](../review/PS-professional-scheduling-ACCEPTED-OWNER-DECISION.md)).
 It changes no accepted ADR. Where it differs from ADR-010, ADR-011's reserved

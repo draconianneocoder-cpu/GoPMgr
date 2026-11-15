@@ -15,12 +15,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 > [retirement decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). This record is kept as history and as evidence
 > for possible future columnar analytics.
 
-**Status:** ACCEPTED by the maintainer on 2026-10-26 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)) as the binding target architecture, subject to its feasibility gates and reserved owner decisions. The DF0 feasibility spike is authorized; production integration, mandatory dependency changes, SQLCipher migrations, DuckDB removal and release packaging changes are not. ADR-002 stays implemented until a verified cutover. Verification notes: [repository verification](../review/adr-012-repository-verification.md).  
+**Status (reconciled 2026-11-14):** Historical architecture accepted on 2026-10-26 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)), superseded for the current analytics allocation by the [2026-11-02 Go-native retirement decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). DuckDB was removed; ADR-002's DuckDB half is superseded. The DataFusion spike concluded without adoption on 2026-11-09 ([DF0-G report](../testing/adr-012-df0-g-report.md)); no Rust/DataFusion Slice J cutover is outstanding. Reopening requires a new owner decision. The remaining text preserves the earlier design and evidence, not current implementation authority. Verification notes: [repository verification](../review/adr-012-repository-verification.md).  
 **Draft:** 0.2 · **Date:** 2026-10-26 · **Supersedes:** proposed draft v0.1 (preserved under `reference/v0.1/`)  
 **Decider:** GoPMgr maintainer  
 **Repository evidence baseline:** `main` at `28a758d154795bb2a20f3cbeb63a12e9130a88ea`, cross-checked against ADR-010 v2.2 on P00 branch `3d00f53` and P02/S0 PR #142. Reconfirm HEAD before execution.  
 **Companions:** [feasibility specification](../testing/adr-012-datafusion-feasibility-spike.md), [agent prompt](../agent/adr-012-coding-agent-instructions.md).  
-**Related ADRs:** ADR-001 (encrypted project data), ADR-002 (current implemented DuckDB decision), ADR-010 (accepted plugin platform), ADR-011 (reserved/anticipated normalized storage).  
+**Related ADRs:** ADR-001 (encrypted project data), ADR-002 (historical DuckDB decision; that half superseded), ADR-010 (accepted plugin platform), ADR-011 (reserved/anticipated normalized storage).  
 **Decision category:** Analytics backend and local IPC; *not* a project database replacement.
 
 ## 0. Executive decision

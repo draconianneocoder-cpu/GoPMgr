@@ -79,8 +79,8 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
 - Read existing files before editing. Do not guess APIs, versions,
   flags, commit SHAs, or package names; verify by reading code or
   documentation first.
-- Add or update focused tests when behavior changes. Documentation-only
-  changes should still be checked with `git diff --check`.
+- For behavior changes, inspect existing coverage and apply the testing rules
+  below. Documentation-only changes still need `git diff --check`.
 - Preserve REUSE/SPDX compliance. New tracked files need SPDX metadata
   directly or a `REUSE.toml` annotation when inline metadata is not
   possible.
@@ -91,6 +91,52 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   dirty worktree.
 - Be concise in public documentation. Summarize long generated output
   and point to the command or artifact that reproduces it.
+
+## Testing rules (anti-slop)
+
+Do not add tests by default or to increase a test count or coverage percentage.
+Add or extend a test only when all of these are true:
+
+1. It protects an observable behavior, invariant or contract against a specific
+   failure that existing tests do not already detect. Inspect those tests first;
+   prefer extending the primary owner test over creating another one.
+2. It would fail for a credible regression, not merely a harmless refactor,
+   rename or formatting change. Name the regression; when practical, demonstrate
+   that the test fails with that defect present and passes after the fix.
+3. It exercises the strongest practical real boundary for that contract. Give
+   each contract one primary owner test; do not replay the same assertion across
+   layers. Additional layers must expose a distinct failure, such as incorrect
+   wiring, serialization, persistence or platform behavior.
+4. Its oracle is independent of the implementation and its mocks. Hardcode
+   known expected values or use independently reviewed fixtures. Property-based,
+   fuzz and differential tests may use independently specified invariants or
+   reference implementations; never reproduce the production algorithm to
+   calculate its own expected answer.
+
+Reject and do not write:
+
+- Self-comparisons, tautologies or probes that only assert "does not throw".
+- Implementation-shape or source-grep assertions used as substitutes for
+  behavior. Static inspection is appropriate only when the inspected structure
+  is itself an explicit contract, such as a build or security policy; identify
+  that contract and the bypass being prevented.
+- Duplicate contracts already covered elsewhere without a distinct failure mode.
+- Test-only production seams, flags or injection hooks with no real caller.
+- Mocks that supply the behavior being asserted. Mock external boundaries only;
+  keep the decision or transformation under test real.
+- Change-detector tests or snapshots that break on expected data updates without
+  protecting a semantic contract. Never regenerate expected output blindly.
+
+When changing tests, prefer consolidating or deleting demonstrated low-value
+tests over adding more. Preserve every distinct useful failure detector; do not
+delete or weaken tests merely to make a change pass. A behavior-preserving
+refactor should leave contract assertions unchanged. Adapt necessary imports or
+setup without rewriting expectations to match the implementation.
+
+If unsure whether an additional test adds value, skip it and state why in the
+summary. An uncovered critical requirement is a verification gap to resolve or
+report as blocked, not permission to claim completion. These rules govern test
+selection; they do not waive existing required verification or release gates.
 
 ## Go Engineering Rules
 
@@ -205,3 +251,16 @@ Distinguish RILD evidence levels from EXT trust profiles, preserve imported fact
 exact calculations, historical audit bytes and original issued artifacts. Record
 missing decisions and unrun qualification honestly; do not reduce report scope or
 weaken tests to make a slice appear complete.
+
+## Resource resilience
+
+For new or materially expanded memory-intensive work, and the inventory of existing
+heavy paths, read `docs/design/resource-resilience.md` and
+`docs/testing/resource-resilience-assurance.md`. Apply MEM-01–12 and the per-slice
+handoff before completion; missing mandatory evidence blocks the affected claim.
+MR-1 estimation/admission/cancellation protects existing host paths without waiting
+for G1. MR-2 isolation reuses its approved supervisor; MR-3 new durable schemas keep
+format/audit/retention gates. No numeric budget, runtime mechanism or implementation
+is authorized by a planning link. Preserve exact results, source facts, critical
+save capacity and honest queued/committed/checkpoint states; never claim fatal-OOM
+containment or every-keystroke durability from input caps or a green unit test.

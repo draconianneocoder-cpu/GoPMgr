@@ -114,6 +114,14 @@ without merging on 2026-10-29: Wails 2.17.0 is already on main, and the
 remaining DuckDB 2.0 upgrade is outside the qualified retirement sequence.
 DuckDB remains at the existing version until the separate Slice J cutover.
 
+**Current correction, 2026-11-14:** that retention statement records the
+2026-10-29 consolidation state. DuckDB was removed on 2026-11-02 with the
+[Go-native replacement](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md),
+and DataFusion was [not adopted on 2026-11-09](adr-012-df0-g-report.md).
+A Rust/DataFusion Slice J cutover is not outstanding. The earlier commands
+and results in this file remain dated read-only-access evidence; they do not
+instruct agents to restore DuckDB or reopen the archived spike.
+
 [PR #163](https://github.com/draconianneocoder-cpu/GoPMgr/pull/163) was closed
 without merging on 2026-10-29, superseded by #166. Its branch
 `claude/slice-b-readonly-access` remains available at immutable head

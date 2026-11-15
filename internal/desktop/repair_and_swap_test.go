@@ -19,51 +19,12 @@ import (
 // past the schema/settings/project pages OpenProject's own startup
 // queries touch), then closes it and returns the file path with a
 // pristine copy of its bytes for corruption-and-restore round trips.
-// Used only by the two corruption-sweep tests below
-// (TestRepairAndSwapHealsReachableLightCorruption,
-// TestRepairAndSwapCanFailToHealEvenWhenReached) —
-// TestRepairAndSwapReportsSwapFailureForBadBakFile needs no corruption
-// and builds its own minimal fixture instead.
-//
-// The specific byte offsets used by those two tests were derived from an
-// exhaustive page-by-page corruption sweep against this exact fixture
-// (one byte flipped per 4096-byte page, OpenProject/ListStakeholders/
-// RepairAndSwap outcome recorded, byte restored, next page) — see
-// docs/beta-release-backlog.md's "Confirm self-heal is reachable on
-// real encrypted corruption" entry for the full sweep results. Both
-// offsets were confirmed to reproduce identically across repeated runs.
-// If a future schema migration changes the page layout, these offsets
-// may need to be re-derived the same way — the existing precedent for
-// this kind of fixed-offset fixture is internal/db/repair_selfheal_test.go's
-// corruptLightly (offset 4097 into a plaintext database).
-//
-// This already happened once: the sigma_projects FK-bug schema
-// migration (2026-08-17, adding sigma_projects.project_id and its
-// rebuild path) shifted this fixture's page layout enough that page
-// 99 — TestRepairAndSwapCanFailToHealEvenWhenReached's original
-// severe-corruption offset — moved into a page Migrate() itself now
-// fails to open, an outcome that test doesn't exercise. Re-swept pages
-// 90-160 with a temporary throwaway test (not committed) and found pages 113
-// and 114 as valid candidates. Page 113 reproduced the same "OpenProject and the first query both
-// succeed, RepairAndSwap's own VACUUM INTO fails" outcome across 3
-// repeated runs; TestRepairAndSwapHealsReachableLightCorruption's page
-// 3 offset was unaffected and confirmed still passing, unchanged.
-//
-// This happened a third time on 2026-08-23: the project-cost-ledger-scope.md
-// item 3 migration (cost_entries procurement columns + the new
-// cost_entry_attachments table) shifted the layout again, moving page 113
-// into a page Migrate() now fails to open. Re-swept pages 90-200 with a
-// temporary throwaway test (not committed) and found pages 119 and 120 as
-// valid candidates; page 119 reproduced the same reachable-but-unhealable
-// outcome across 3 repeated runs. Page 3 was unaffected and confirmed still
-// passing, unchanged.
-//
-// A fourth time on 2026-11-10: the SQLCipher 4.20.0 upgrade. Page 3 still
-// heals; the unhealable offset moved from page 119 to page 120. That sweep
-// also found that SQLCipher now puts a connection into a permanent error
-// state once a page fails to decrypt, so the repair makes its copy on a
-// fresh connection (db.InformativeSelfHeal).
-func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []byte) {
+// The light-corruption case retains its recorded page-3 offset. The severe
+// case targets the stakeholder project index's root page, discovered from
+// SQLite metadata after seeding, so record-size changes do not move the
+// corruption away from the query under test. Historical page-sweep evidence
+// is recorded in docs/beta-release-backlog.md.
+func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []byte, indexOffset int) {
 	t.Helper()
 	app = newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
@@ -76,6 +37,15 @@ func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []b
 			t.Fatalf("seed stakeholder %d: %v", i, err)
 		}
 	}
+	var rootPage, pageSize int
+	conn := app.requireDB().Conn
+	if err := conn.QueryRow(`SELECT rootpage FROM sqlite_master WHERE type = 'index' AND name = ?`,
+		"idx_stakeholders_project").Scan(&rootPage); err != nil {
+		t.Fatalf("stakeholder index root page: %v", err)
+	}
+	if err := conn.QueryRow("PRAGMA page_size").Scan(&pageSize); err != nil {
+		t.Fatalf("page size: %v", err)
+	}
 	if err := app.CloseProject(); err != nil {
 		t.Fatalf("CloseProject: %v", err)
 	}
@@ -84,7 +54,11 @@ func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []b
 	if err != nil {
 		t.Fatalf("read pristine file: %v", err)
 	}
-	return app, path, pristine
+	if pageSize <= 0 || rootPage < 2 || rootPage > len(pristine)/pageSize {
+		t.Fatalf("invalid index page %d, page size %d, file size %d", rootPage, pageSize, len(pristine))
+	}
+	indexOffset = (rootPage-1)*pageSize + 1 // SQLite page numbers are one-based.
+	return app, path, pristine, indexOffset
 }
 
 func corruptByteAt(t *testing.T, path string, pristine []byte, offset int) {
@@ -110,7 +84,7 @@ func corruptByteAt(t *testing.T, path string, pristine []byte, offset int) {
 // VACUUM INTO snapshot pass and heals it, after which the project is
 // fully queryable again.
 func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
-	app, path, pristine := seedRepairFixtureProject(t)
+	app, path, pristine, _ := seedRepairFixtureProject(t)
 	const page3Offset = 3*4096 + 1
 	corruptByteAt(t, path, pristine, page3Offset)
 
@@ -144,17 +118,9 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // TestRepairAndSwapCanFailToHealEvenWhenReached pins current, real
 // behavior discovered by the same sweep: RepairAndSwap being reachable
 // does not guarantee it can heal what it finds. This corruption pattern
-// (page 120 — re-derived 2026-11-10 after the SQLCipher 4.20.0 upgrade, whose
-// SQLite 3.54.1 core lays this fixture out one page longer; a full sweep
-// found pages 78, 120 and 121 with this outcome and the same 62 healable
-// pages as the old engine. Before that, page 119, re-derived 2026-08-23 after the project-cost-ledger-scope.md
-// item 3 migration (cost_entries procurement columns + the new
-// cost_entry_attachments table) again shifted this fixture's page layout;
-// the prior sweep had found page 113, which after this migration lands on
-// a page Migrate() itself now fails to open, an OpenProject-failure outcome
-// this test doesn't exercise) leaves OpenProject succeeding but a real query failing —
-// genuinely user-visible corruption, exactly the scenario RepairAndSwap
-// exists for — yet RepairAndSwap's own VACUUM INTO snapshot attempt
+// damages the stakeholder project index's root page, leaving OpenProject
+// succeeding but a real query failing: user-visible corruption, the scenario
+// RepairAndSwap exists for. Its VACUUM INTO snapshot attempt
 // fails with the same underlying error rather than producing a healthy
 // copy. This mirrors the existing, already-documented distinction in
 // internal/db/repair_selfheal_test.go between light corruption (VACUUM
@@ -166,9 +132,8 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // change that makes healing silently give up (or start succeeding) here
 // is a deliberate, reviewed change rather than an unnoticed regression.
 func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
-	app, path, pristine := seedRepairFixtureProject(t)
-	const page120Offset = 120*4096 + 1
-	corruptByteAt(t, path, pristine, page120Offset)
+	app, path, pristine, indexOffset := seedRepairFixtureProject(t)
+	corruptByteAt(t, path, pristine, indexOffset)
 
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: want success on this corruption pattern, got %v", err)
@@ -252,7 +217,7 @@ func TestRepairAndSwapIgnoresALeftoverSnapshotOnAHealthyProject(t *testing.T) {
 // for the whole operation, so the close must wait; without the lock it would
 // run first and the swap would install a handle for a project no longer open.
 func TestRepairAndSwapBlocksOtherCallsUntilTheSwapIsDone(t *testing.T) {
-	app, path, pristine := seedRepairFixtureProject(t)
+	app, path, pristine, _ := seedRepairFixtureProject(t)
 	corruptByteAt(t, path, pristine, 3*4096+1)
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: %v", err)
@@ -302,7 +267,7 @@ func failSwapWith(t *testing.T, fail func(d *db.Database, path string) error) {
 // RepairAndSwap heals it and reaches the swap.
 func openHealableProject(t *testing.T) (*App, string) {
 	t.Helper()
-	app, path, pristine := seedRepairFixtureProject(t)
+	app, path, pristine, _ := seedRepairFixtureProject(t)
 	corruptByteAt(t, path, pristine, 3*4096+1)
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: %v", err)

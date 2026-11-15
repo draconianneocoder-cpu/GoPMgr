@@ -34,6 +34,12 @@ near-term priority is making those workflows dependable for wider testing.
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
 
+Resource resilience is part of dependable save/recovery work, not a late optional
+optimization. Apply the [required resource contract](design/resource-resilience.md)
+and [acceptance matrix](testing/resource-resilience-assurance.md) before each affected
+memory-intensive slice is called complete. It establishes planning obligations,
+not implemented memory protection or approval of numeric budgets.
+
 ### Next prerelease: `v1.1.0-alpha.3` (owner decisions, 2026-11-11)
 
 The next prerelease is `v1.1.0-alpha.3`, explicitly unsigned, with the in-app
@@ -196,7 +202,7 @@ Approved priority order, with today's status from the
 
 | Work package | Priority | Status |
 | --- | --- | --- |
-| PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
+| PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open; MR-0 resource profile and MEM acceptance required before affected slices |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
 | PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11; rules and read-only `App.AuditSchedule` implemented, findings panel open: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
@@ -218,6 +224,28 @@ panel remains open. KRN-01 remains open; KRN-02 was fixed in PR #213
 of that and the security work ahead of it
 is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
 the 2026-11-10 independent evaluation.
+
+## Resource resilience and memory pressure
+
+Owner direction integrated 2026-11-14. Application-wide RAM/pressure-based admission,
+bounded queues and supervised heavy-work recovery are **not implemented**. Existing
+input caps and accepted ADR-010 worker architecture are partial foundations.
+
+| Required stage | When it must happen |
+| --- | --- |
+| MR-0 / PS-00 / DEC-HARDWARE | Profile host, UI, database/native memory and job pipelines; assign component/global budgets, system/save headroom and independent acceptance oracles before affected implementation planning. Numeric values require evidence and owner approval. |
+| MR-1 host protection | Establish estimation before load/decode, atomic admission, bounded waiting, early cancellation and critical-work reserves for existing in-process paths. First proposed remediation pilot: Monte Carlo; do not wait for G1 or Wasm. |
+| MR-2 isolation | Use the existing approved G1 sequence and supervisor for heavy jobs, with process-tree limits, verified cleanup and safe bounded retries before claiming worker-OOM containment. No competing supervisor or runtime adoption. |
+| MR-3 durability | Define volatile versus durable queue acceptance and draft/write guarantees. New journal/receipt/issue schemas require applicable format/audit/retention decisions; existing approved persistence improvements need not wait for new storage. |
+| MR-4 / RILD, PS, ARC adoption | Apply the contract from the first affected import, analytics, report/export or large-data/UI slice. Bounded host-native reporting stays independent of Wasm; preserve source fidelity and exact results. |
+| MR-5 per-delivery qualification | Execute applicable MEM-T01–12 alongside each stage and before the corresponding platform/profile/capacity claim, not only at final release. Failed or unrun mandatory evidence blocks that claim. |
+
+Follow the [contract and slice handoff](design/resource-resilience.md). Existing
+memory-intensive paths enter its MR-0 inventory too; they do not become qualified
+because they predate the gate. Temporary contention queues eligible requests;
+permanently oversized work is visibly blocked, not left waiting forever. No blind
+replay of writes/issued artifacts or promise that unpersisted keystrokes survive
+OS termination. Existing urgent security/save repairs retain their priority.
 
 ## Reporting integrity and secure extensions
 

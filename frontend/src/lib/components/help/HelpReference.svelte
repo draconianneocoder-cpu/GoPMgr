@@ -4,8 +4,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import type { SectionId } from '../help-sections';
+  import { HELP_GLOSSARY, helpTermId } from '../help-glossary';
+  import { t } from '../../i18n/i18n.svelte';
 
-  let { active, nav }: { active: SectionId; nav: (id: SectionId) => void } = $props();
+  let { active, nav }: { active: SectionId; nav: (id: SectionId, termId?: string) => void } = $props();
 </script>
 
         <!-- ── Charts ──────────────────────────────── -->
@@ -345,95 +347,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <h2 class="text-xl font-bold text-slate-100 mb-1">Glossary</h2>
           <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and GoPMgr-specific concepts.</p>
 
-          <div class="space-y-3 text-sm">
-            {#each [
-              { term: 'Accountability', def: 'Ultimate ownership of an outcome. In RACI, the "A" — one person owns the result even if others do the work.' },
-              { term: 'Agile', def: 'Umbrella term for iterative delivery methodologies valuing customer collaboration and responding to change. Scrum, Kanban, and Scrumban are Agile frameworks.' },
-              { term: 'Backlog', def: 'Ordered list of work items waiting to be pulled into active work. In Scrum: the Product Backlog. In Scrumban: maintained continuously.' },
-              { term: 'Baseline', def: 'The approved, time-phased plan for scope, schedule, or cost against which performance is measured. Changes require formal change control.' },
-              { term: 'Belt Level', def: 'Six Sigma practitioner certification: Green Belt (part-time, local projects), Black Belt (full-time, cross-functional), Master Black Belt (strategic deployment).' },
-              { term: 'Burn-Down Chart', def: 'Remaining work (y) over time (x) with an ideal trajectory. Used in Scrum to track sprint progress.' },
-              { term: 'Burn-Up Chart', def: 'Cumulative scope completed vs. total scope. Distinguishes scope growth from delivery progress.' },
-              { term: 'Business Case', def: 'Document justifying the project investment: costs, benefits, risks, NPV/ROI. Primary go/no-go input.' },
-              { term: 'Card / Task (Kanban)', def: 'A single unit of work on the Kanban Board.' },
-              { term: 'Change Failure Rate', def: 'DORA metric: the share of deployments that cause a failure in production. Computed on the DORA dashboard from the deployments you record.' },
-              { term: 'Change Request', def: 'Formal proposal to modify a project baseline (scope, schedule, cost, quality). Requires review and approval.' },
-              { term: 'Compliance Mode', def: 'Project Settings option that verifies the tamper-evident audit chain before a project opens and blocks the open if the chain has been altered.' },
-              { term: 'Control Chart', def: 'Time series with UCL and LCL. Points outside limits or non-random patterns indicate special-cause variation.' },
-              { term: 'Control Limits', def: 'Statistical boundaries on a Control Chart (±3σ from the process mean). Not the same as specification limits.' },
-              { term: 'CPM', def: 'Critical Path Method. Network scheduling identifying the longest dependency chain. Critical path tasks have zero float.' },
-              { term: 'Critical Path', def: 'Sequence of tasks from start to end with zero total float. Any delay to a critical path task delays the project end date.' },
-              { term: 'CTQ', def: 'Critical to Quality. Measurable characteristic directly affecting customer perception of quality. Derived from VoC in Six Sigma.' },
-              { term: 'Cumulative Flow Diagram', def: 'Stacked area chart of work items in each workflow state over time. Primary Kanban health indicator.' },
-              { term: 'Cycle Time', def: 'Time from when a work item starts to when it is completed. Key delivery predictability metric in Kanban.' },
-              { term: 'DEK', def: 'Data Encryption Key. The per-user key that encrypts project databases. It is stored only in wrapped (encrypted) form — unlocked by your passphrase or a recovery code, never persisted raw.' },
-              { term: 'Deployment Frequency', def: 'DORA metric: how often the team ships to production. Recorded per deployment on the DORA dashboard.' },
-              { term: 'DMAIC', def: 'Six Sigma improvement cycle: Define → Measure → Analyze → Improve → Control. For improving existing processes.' },
-              { term: 'DORA Metrics', def: 'Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in GoPMgr\'s DORA dashboard.' },
-              { term: 'Earned Value (EVM)', def: 'Progress accounting that compares work performed against plan and cost. SPI (Schedule Performance Index) and CPI (Cost Performance Index) read 1.0 as on-plan; below 1.0 means behind schedule / over cost. Surfaces on the Dashboard and in combined reports with a linked CPM schedule.' },
-              { term: 'Epic', def: 'A large user story spanning multiple sprints, broken down into smaller stories before entering a sprint.' },
-              { term: 'ES / EF', def: 'Earliest Start / Earliest Finish. Calculated during the forward pass through a CPM network.' },
-              { term: 'Estimate (methodology-specific)', def: 'What each methodology usually calls an estimate. Scrum: Story Points. Kanban: Time Estimate. CPM: Duration. Waterfall: Duration. Lean: Effort. PRINCE2: Work Package Estimate. Six Sigma: Resource Plan. In GoPMgr, a work item\'s estimate is labelled Story points in Scrum and Scrumban projects and Points in others; CPM and Gantt tasks are estimated as a duration in days.' },
-              { term: 'Fishbone Diagram', def: 'Also Ishikawa Diagram. Root-cause analysis: effect at the "head"; default cause categories (People, Process, Equipment, Materials, Environment, Measurement) are the "bones." Categories are editable.' },
-              { term: 'Float (Slack)', def: 'Amount of time a task can be delayed without delaying the project end date (total float) or a successor\'s start (free float).' },
-              { term: 'Gantt Chart', def: 'Schedule bars on a time axis with dependency arrows, critical-path highlighting, and progress bars. Shares data with CPM in GoPMgr.' },
-              { term: 'Issue Log', def: 'Tracks problems that have already occurred, with owner, priority, and resolution plan. Distinct from Risk Register (potential future events).' },
-              { term: 'Iteration', def: 'Time-boxed work cycle. Scrum: Sprint. PRINCE2: Management Stage. Lean: Flow Cycle. Scrumban: continuous (no fixed iteration).' },
-              { term: 'Kaizen', def: 'Lean concept of continuous, incremental improvement made frequently by everyone involved in the process.' },
-              { term: 'Kanban Board', def: 'Visual work management: columns = workflow states; cards = work items. WIP limits cap items per column.' },
-              { term: 'Key Result (KR)', def: 'OKRs: measurable, time-bound outcome tracking progress toward an Objective. Graded 0.0–1.0 at period close.' },
-              { term: 'Launchpad', def: 'GoPMgr\'s project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts.' },
-              { term: 'Lead Time', def: 'Total time from request to delivery. Includes queue time + cycle time.' },
-              { term: 'LS / LF', def: 'Latest Start / Latest Finish. Calculated during the backward pass through a CPM network.' },
-              { term: 'Milestone', def: 'Significant project event with no duration. Scrum: Definition of Done. Kanban: Throughput Target. CPM: Schedule Milestone.' },
-              { term: 'Monte Carlo Simulation', def: 'Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.' },
-              { term: 'MSPDI', def: 'Microsoft Project Data Interchange — the .xml schedule format GoPMgr imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing.' },
-              { term: 'MTTR', def: 'Mean Time to Restore. DORA metric: average hours to recover from a failed deployment.' },
-              { term: 'Objective', def: 'OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results.' },
-              { term: 'OKRs', def: 'Objectives and Key Results. Goal-setting framework aligning teams to strategic outcomes through measurable, time-bound Key Results.' },
-              { term: 'P50 / P80 / P90', def: 'Confidence points from a Monte Carlo run: the finish day the project beats in 50%, 80%, or 90% of simulations. Commit to P80/P90 dates when the cost of being late is high.' },
-              { term: 'PAdES', def: 'PDF Advanced Electronic Signatures. Standard for embedding cryptographic signatures into PDF files. GoPMgr generates PAdES-compliant signed exports.' },
-              { term: 'Pareto Chart', def: 'Bar chart sorted descending with a cumulative-percentage line. Based on the 80/20 principle: ~80% of effects come from ~20% of causes.' },
-              { term: 'PDF/A-2u', def: 'The archival PDF format GoPMgr writes. The file holds everything it needs to look the same for decades, and every character maps to Unicode, so its text can be searched, copied, and read aloud.' },
-              { term: 'PERT', def: 'Program Evaluation and Review Technique. Network scheduling with three-point duration estimates per activity.' },
-              { term: 'Planning Meeting', def: 'Scrum: Sprint Planning. Kanban: Replenishment Meeting. Lean: Plan-Do-Check-Act review. PRINCE2: Stage Planning Meeting.' },
-              { term: 'PMBOK', def: 'Project Management Body of Knowledge. PMI\'s comprehensive PM framework. A knowledge standard, not a delivery methodology.' },
-              { term: 'PRINCE2', def: 'Projects In Controlled Environments. Process-based framework with seven principles, themes, and processes. Strong governance and stage-gate controls.' },
-              { term: 'Process Group', def: 'PMBOK grouping of related PM processes: Initiating, Planning, Executing, Monitoring & Controlling, Closing. Corresponds to GoPMgr\'s document Phase categories.' },
-              { term: 'Project Charter', def: 'Foundational document formally authorizing a project. Captures purpose, objectives, scope, sponsor, high-level schedule and budget.' },
-              { term: 'Pull System', def: 'Work produced when downstream capacity exists, not pushed by a schedule. Core Lean and Kanban principle.' },
-              { term: 'RACI Matrix', def: 'Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task.' },
-              { term: 'Recovery Codes', def: 'GoPMgr one-time codes that allow passphrase reset from the login screen without the current passphrase. Generate from App Settings. Required before enabling database encryption.' },
-              { term: 'Resource Leveling', def: 'Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings.' },
-              { term: 'Retrospective', def: 'Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons.' },
-              { term: 'Risk Register', def: 'Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan.' },
-              { term: 'Scenario', def: 'An isolated what-if partition. Charts copied into a scenario can be edited and compared against their captured baseline without touching the live plan, then promoted to a named schedule baseline or discarded.' },
-              { term: 'Scrum', def: 'Agile framework with time-boxed sprints, Product Backlog, and three roles. Four ceremonies: Sprint Planning, Daily Scrum, Sprint Review, Retrospective.' },
-              { term: 'Scrumban', def: 'Hybrid of Scrum\'s prioritized backlog and Kanban\'s continuous pull flow. No fixed sprint cadence.' },
-              { term: 'Sigma Level', def: 'Process quality metric. 6 sigma = 3.4 DPMO. Use Control Charts and Pareto Charts to track improvement.' },
-              { term: 'SIPOC', def: 'High-level process map: Suppliers → Inputs → Process → Outputs → Customers. Defines process boundaries in DMAIC Define phase.' },
-              { term: 'Solution Matrix', def: 'Six Sigma Improve tool. Evaluates solutions on Impact, Effort, Risk, and Cost. Statuses: Proposed, Pilot, Implemented.' },
-              { term: 'Sprint', def: 'Scrum time-boxed iteration (typically 2 weeks). Contains a Sprint Goal, committed backlog items, Review, and Retrospective.' },
-              { term: 'SQLCipher', def: 'Open-source encrypted SQLite extension used by GoPMgr for database encryption at rest. Applies AES-256 to the entire project database file.' },
-              { term: 'Stakeholder', def: 'Individual or group with an interest in or influence over the project. Mapped by power/interest in the Stakeholder Analysis Matrix.' },
-              { term: 'Story (Scrum)', def: 'User-facing work item: "As a [role], I want [feature] so that [benefit]." Equivalent to a Task in most other methodologies.' },
-              { term: 'Story Points', def: 'Relative effort estimate in Scrum. Team-defined scale (typically Fibonacci). Not correlated to hours.' },
-              { term: 'SWOT Matrix', def: '2x2 strategic analysis: Strengths, Weaknesses (internal) vs. Opportunities, Threats (external).' },
-              { term: 'Throughput', def: 'Work items completed per unit time. Primary Kanban flow metric alongside cycle time.' },
-              { term: 'Timeline', def: 'GoPMgr view showing the project\'s chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers.' },
-              { term: 'Tornado Ranking', def: 'Monte Carlo output ranking which tasks drive schedule risk, combining how often each lands on the critical path with its P90−P50 duration spread. Fix the top bars first.' },
-              { term: 'User Story', def: 'See Story (Scrum).' },
-              { term: 'Velocity', def: 'Average story points completed per sprint. Used for capacity planning and release forecasting.' },
-              { term: 'VoC', def: 'Voice of Customer. Customer needs captured via surveys, interviews, or complaints. Input to CTQ derivation in Six Sigma.' },
-              { term: 'WBS', def: 'Work Breakdown Structure. Hierarchical decomposition of total project scope into deliverables and work packages.' },
-              { term: 'WIP Limit', def: 'Work-In-Progress Limit. Maximum items in a Kanban column simultaneously. Prevents overloading and surfaces bottlenecks.' },
-            ] as entry}
+          <dl class="space-y-3 text-sm">
+            {#each HELP_GLOSSARY as entry (entry.id)}
               <div class="border-b border-slate-800 pb-3">
-                <dt class="font-medium text-slate-100">{entry.term}</dt>
-                <dd class="text-slate-400 mt-0.5">{entry.def}</dd>
+                <dt id={helpTermId(entry.id)} tabindex="-1" class="font-medium text-slate-100 rounded focus:outline focus:outline-2 focus:outline-cyan-300">{entry.term}</dt>
+                <dd class="text-slate-400 mt-0.5">
+                  {entry.def}
+                  {#if entry.see?.length}
+                    <p class="mt-2 flex flex-wrap gap-2">
+                      <span>{t('help.lookup.compare')}</span>
+                      {#each entry.see as relatedId (relatedId)}
+                        {@const related = HELP_GLOSSARY.find((term) => term.id === relatedId)!}
+                        <button type="button" class="text-cyan-400 underline hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300" aria-label={t('help.lookup.openDefinition', { term: related.term })} onclick={() => nav('glossary', related.id)}>{related.term}</button>
+                      {/each}
+                    </p>
+                  {/if}
+                </dd>
               </div>
             {/each}
-          </div>
+          </dl>
 
         <!-- ── Installing & Running ──────────────────────────────── -->
         {:else if active === 'install'}

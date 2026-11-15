@@ -7993,5 +7993,35 @@
     "date": "2026-11-13",
     "source": "../../STATUS.md",
     "scope": "KRN-02 fixed in PR #213; KRN-01 and findings UI remain open. Original source/qualification baseline is retained; no runtime qualification added."
+  },
+  "cross_cutting_development_gate": {
+    "contract": "../resource-resilience.md",
+    "assurance": "../../testing/resource-resilience-assurance.md",
+    "requirements": [
+      "MEM-01",
+      "MEM-02",
+      "MEM-03",
+      "MEM-04",
+      "MEM-05",
+      "MEM-06",
+      "MEM-07",
+      "MEM-08",
+      "MEM-09",
+      "MEM-10",
+      "MEM-11",
+      "MEM-12"
+    ],
+    "application": "Every applicable row retains its original oracle and additionally supplies the MEM slice handoff; path/profile N/A needs independent reviewer agreement. Missing mandatory evidence blocks the affected completion/qualification claim.",
+    "phase_mapping": {
+      "MR-0": "RILD-0 / PS-00 profiles and contracts",
+      "MR-1": "Existing host paths and first affected RILD-2a/4/5 delivery, independent of G1",
+      "MR-2": "Heavy worker isolation after existing approved G1 prerequisites",
+      "MR-3": "New durable queues/journals/receipts with applicable format/audit/retention decisions and RILD-2b",
+      "MR-4": "Each affected PS/ARC/RILD/EXT domain",
+      "MR-5": "Applicable Q5/Q7/Q8 and EX3/4/6 qualification alongside delivery"
+    },
+    "qualification": "NOT RUN",
+    "implementation_authorized": false,
+    "enforcement": "Required review handoff; no implemented automated CI/runtime gate claimed"
   }
 }
