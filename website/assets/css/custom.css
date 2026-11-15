@@ -28,3 +28,7 @@ body{color:var(--site-ink);background:var(--site-surface)}
 nav button,.hextra-footer button{min-height:44px;min-width:44px}
 /* The theme's grey search label is 4.3:1 in light mode and its key hint 3.3:1 in dark mode. */
 .hextra-search-trigger-label,.hextra-search-trigger-kbd{color:var(--site-muted)}
+
+/* Hextra 0.13's inclusive max-width:48rem drawer overlaps its >=48rem desktop
+   utilities at exactly 768px. Restore desktop sidebar geometry at that boundary. */
+@media(min-width:48rem){.hextra-sidebar-container{position:sticky;top:var(--hextra-navbar-height);bottom:auto;width:16rem;padding-top:0;z-index:auto;background:transparent}}

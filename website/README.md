@@ -60,6 +60,13 @@ review, and an acceptance record that names this repository's GitHub
 private-reporting channel. Automated HTML checks are not a screen-reader test
 or a native application qualification.
 
+Visual acceptance also checks the three documentation routes at 767, 768 and
+769 CSS pixels in both themes. Hextra 0.13's inclusive mobile drawer rule overlaps
+its desktop utilities at exactly 48rem; the local CSS restores desktop sidebar
+geometry. Verify heading and body content are unobstructed with screenshots and
+point hit-testing inside `main`, plus mobile open/close, focus and scrolling.
+Zero axe violations or horizontal overflow alone cannot establish this contract.
+
 GitHub private vulnerability reporting is enabled. The public security page
 links <https://github.com/draconianneocoder-cpu/GoPMgr/security/advisories/new>.
 No artifact is publication-accepted until the outstanding acceptance checks are

@@ -3,13 +3,13 @@
   "reviewer": "GoPMgr website implementation author",
   "files": {
     "README.md": {
-      "sha256": "bb9621bb2d3c248c2f11da34443985b9bbbdb9406217663e17dfd60e58dd8fe8",
-      "size": 10098,
+      "sha256": "346efc6c895e25fd8279849f9c9faa3f6f8e73fa5dd2915ebdb3f0149ffebcae",
+      "size": 10577,
       "mode": "100644"
     },
     "assets/css/custom.css": {
-      "sha256": "8c349467d5888576f7bd3a0b06856259b2d77d06cc35b9e9ca9aba4695b4dfb2",
-      "size": 3476,
+      "sha256": "0464ba7f66cf8c57ee349a5bb1234c1d58da7946e67bc590147870e31cb92a40",
+      "size": 3815,
       "mode": "100644"
     },
     "assets/js/core/menu.js": {
