@@ -40,7 +40,9 @@ func (a *App) PlaintextCopyPath(path string) (string, error) {
 // DeletePlaintextCopy deletes the unencrypted copy of the project at path
 // and returns the deleted path. The encrypted project must be the one open
 // in this session, and must open again read-only with the session's key and
-// pass its integrity checks first (db.RemovePlaintextBackup).
+// pass its integrity checks first (db.RemovePlaintextBackup). A copy that is
+// already gone counts as deleted; every other refusal is an error, so the
+// screen never reports a deletion that did not happen.
 func (a *App) DeletePlaintextCopy(path string) (string, error) {
 	clean, s, err := a.projectPathFor(path)
 	if err != nil {
@@ -53,6 +55,9 @@ func (a *App) DeletePlaintextCopy(path string) (string, error) {
 	err = a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		removed, err = db.RemovePlaintextBackup(clean, dek)
+		if errors.Is(err, db.ErrNoPlaintextBackup) {
+			removed, err = db.PlaintextBackupPath(clean), nil
+		}
 		return err
 	})
 	return removed, err

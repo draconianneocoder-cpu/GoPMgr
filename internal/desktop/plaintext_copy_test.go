@@ -62,6 +62,10 @@ func TestDeletePlaintextCopyNeedsTheEncryptedProjectOpen(t *testing.T) {
 	if got, err := app.PlaintextCopyPath(path); err != nil || got != "" {
 		t.Fatalf("PlaintextCopyPath after deleting = %q, %v; want none", got, err)
 	}
+	// Asked again, a copy already gone counts as deleted, not as an error.
+	if again, err := app.DeletePlaintextCopy(path); err != nil || again != backup {
+		t.Fatalf("DeletePlaintextCopy again = %q, %v; want %q", again, err, backup)
+	}
 	if _, err := app.db.SaveChart(db.Chart{ProjectID: proj.ID, Kind: "cpm", Title: "After", Data: `{"nodes":[],"edges":[]}`}); err != nil {
 		t.Fatalf("the open project stopped working after the deletion: %v", err)
 	}

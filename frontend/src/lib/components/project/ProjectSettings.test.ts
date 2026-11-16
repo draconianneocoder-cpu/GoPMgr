@@ -738,6 +738,7 @@ describe('database encryption and recovery codes', () => {
     expect(utils.queryByRole('button', { name: 'Delete the unencrypted copy…' })).not.toBeInTheDocument();
     expect(app.DeletePlaintextCopy).not.toHaveBeenCalled();
     expect(session.projectPath).toBeNull();
+    expect(session.project).toBeNull();
   });
 
   it('with legacy codes, guides through new codes and then encrypts, never offering to skip', async () => {
@@ -985,16 +986,18 @@ describe('deleting the unencrypted copy', () => {
     expect(utils.getByRole('button', { name: 'Delete the unencrypted copy…' })).toBeInTheDocument();
   });
 
-  it('treats a copy that is already gone as deleted', async () => {
+  it('never reports a refused deletion as done, even when the follow-up finds no copy', async () => {
+    // The backend refuses when the project is no longer open, and then also
+    // answers "no copy to offer": that must not read as "deleted".
     const utils = await encryptedWithCopy({
-      DeletePlaintextCopy: vi.fn(async () => { throw new Error('db: no unencrypted copy of this project'); }),
+      DeletePlaintextCopy: vi.fn(async () => { throw new Error('open the encrypted project first'); }),
     });
     await fireEvent.click(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' }));
     (app.PlaintextCopyPath as ReturnType<typeof vi.fn>).mockResolvedValue('');
     await fireEvent.click(within(await utils.findByRole('alertdialog')).getByRole('button', { name: 'Delete the copy' }));
 
-    expect(await utils.findByText('The unencrypted copy was deleted.')).toBeInTheDocument();
-    expect(utils.queryByText(/The unencrypted copy was kept/)).not.toBeInTheDocument();
+    expect(await utils.findByText('The unencrypted copy was kept: open the encrypted project first')).toHaveAttribute('role', 'alert');
+    expect(utils.queryByText('The unencrypted copy was deleted.')).not.toBeInTheDocument();
   });
 
   it('does nothing when the confirmation is cancelled', async () => {

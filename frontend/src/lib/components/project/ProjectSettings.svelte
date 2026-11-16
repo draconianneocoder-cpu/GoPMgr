@@ -491,8 +491,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     copyDeleteBusy = true;
     copyDeleteError = '';
     copyDeleteStatus = '';
+    // Only the backend's success says the copy is gone (it reports a copy
+    // already gone as deleted); a refusal stays an alert whatever the
+    // follow-up query finds, since an empty answer can also mean the project
+    // is not open or the check failed.
+    let deleted = false;
     try {
       await desktopApi.DeletePlaintextCopy(session.projectPath);
+      deleted = true;
       copyDeleteStatus = t('projectSettings.encryption.copyDeleted');
     } catch (err: any) {
       copyDeleteError = t('projectSettings.encryption.copyDeleteFailed', { error: String(err?.message ?? err) });
@@ -501,14 +507,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       copyDeleteConfirming = false;
     }
     await refreshPlaintextCopy();
-    // Already gone counts as deleted, not as an error beside a stale offer.
-    if (!plaintextCopyPath && copyDeleteError) {
-      copyDeleteError = '';
-      copyDeleteStatus = t('projectSettings.encryption.copyDeleted');
+    if (deleted) {
+      encryptionBackupPath = '';
+      // The Delete button is gone; keep focus somewhere meaningful.
+      copyStatusEl?.focus();
     }
-    if (!plaintextCopyPath) encryptionBackupPath = '';
-    // The Delete button is gone; keep focus somewhere meaningful.
-    copyStatusEl?.focus();
   }
 
   async function loadEncryptionState() {
