@@ -96,7 +96,7 @@ needs the same update here.
 
 ---
 
-## `internal/desktop` — 76.1%
+## `internal/desktop` — 76.3%
 
 The application layer: the Wails-bound App struct (reached from the frontend
 as `window.go.desktop.App`), its window, menu and lifecycle, and CLI/headless
@@ -427,7 +427,7 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 79.1%
+## `internal/db` — 79.2%
 
 Candidate additions: `readonly_legacy_test.go` has six file-backed tests for
 required project columns, additive defaults, legacy timestamp ordering,
