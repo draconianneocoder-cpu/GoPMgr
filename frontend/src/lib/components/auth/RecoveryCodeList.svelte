@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
+  import { t } from '../../i18n/i18n.svelte';
   import { onDestroy } from 'svelte';
   import Button from '../Button.svelte';
 
@@ -28,6 +29,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   } = $props();
 
   let copied = $state(false);
+  let copyError = $state('');
+  // Ties the clearing note to the Copy button for screen readers; unique per
+  // list, since a parent can show more than one.
+  const uid = $props.id();
+  const copyNoteId = `recovery-copy-note-${uid}`;
   // One save dialog at a time, whichever button opened it.
   let saving = $state<'' | 'text' | 'sheet'>('');
   let savedPath = $state('');
@@ -39,14 +45,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (copiedTimer) clearTimeout(copiedTimer);
   });
 
+  // The backend writes the clipboard and clears it 60 seconds later if it
+  // still holds the codes, or at a normal quit (SEC-04 item 1). It owns the
+  // timer, so closing this screen does not stop the clearing.
   async function copyCodes() {
+    copyError = '';
     try {
-      await navigator.clipboard.writeText(codes.join('\n'));
+      await desktopApi.CopyRecoveryCodes(codes);
       copied = true;
       if (copiedTimer) clearTimeout(copiedTimer);
       copiedTimer = setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard may be unavailable; the codes stay visible to copy by hand.
+    } catch (err: any) {
+      // The codes stay visible, to save or write down instead.
+      copied = false;
+      copyError = t('recoveryCodes.copyFailed', { error: String(err?.message ?? err) });
     }
   }
 
@@ -87,8 +99,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/each}
   </ul>
   <div class="flex flex-wrap gap-2">
-    <Button size="compact" class="font-semibold uppercase tracking-wide text-slate-100" onclick={copyCodes}>
-      {copied ? 'Copied ✓' : 'Copy'}
+    <Button size="compact" class="font-semibold uppercase tracking-wide text-slate-100" onclick={copyCodes} aria-describedby={copyNoteId}>
+      {copied ? t('recoveryCodes.copied') : t('recoveryCodes.copy')}
     </Button>
     <Button size="compact" class="font-semibold uppercase tracking-wide text-slate-100" onclick={() => saveCodes('text')} disabled={saving !== ''}>
       {saving === 'text' ? 'Saving…' : 'Save as .txt…'}
@@ -97,9 +109,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {saving === 'sheet' ? 'Saving…' : 'Save printable PDF…'}
     </Button>
   </div>
+  <p id={copyNoteId} class="text-[11px] text-slate-400">{t('recoveryCodes.copyClears')}</p>
   <p class="text-[11px] text-slate-400 min-h-[1rem] break-all" aria-live="polite">
-    {copied ? 'Recovery codes copied to the clipboard.' : savedPath ? savedMessage : ''}
+    {copied ? t('recoveryCodes.copiedStatus') : savedPath ? savedMessage : ''}
   </p>
+  {#if copyError}
+    <p class="text-[11px] text-red-400" role="alert">{copyError}</p>
+  {/if}
   {#if saveError}
     <p class="text-[11px] text-red-400" role="alert">{saveError}</p>
   {/if}

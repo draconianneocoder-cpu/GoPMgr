@@ -17,6 +17,7 @@ let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   app = {
+    CopyRecoveryCodes: vi.fn(async () => undefined),
     SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/codes.txt'),
     SaveRecoverySheetPDF: vi.fn(async () => '/Users/alice/sheet.pdf'),
   };
@@ -34,15 +35,30 @@ function renderList(props: Record<string, unknown> = {}) {
 }
 
 describe('RecoveryCodeList', () => {
-  it('shows every code and copies them one per line', async () => {
-    const writeText = vi.fn(async () => undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+  it('shows every code and copies them through the app, which clears them later', async () => {
     const { utils } = renderList();
 
     for (const code of codes) expect(utils.getByText(code)).toBeInTheDocument();
+    const copy = utils.getByRole('button', { name: 'Copy' });
+    expect(copy).toHaveAccessibleDescription(
+      '60 seconds after you copy them, GoPMgr clears the clipboard if it still holds these codes.',
+    );
+    await fireEvent.click(copy);
+    expect(app.CopyRecoveryCodes).toHaveBeenCalledWith(codes);
+    expect(await utils.findByText('Recovery codes copied.')).toBeInTheDocument();
+    expect(utils.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('says when the codes could not be copied and keeps them on screen', async () => {
+    app.CopyRecoveryCodes = vi.fn(async () => { throw new Error('the clipboard is not available'); });
+    const { utils } = renderList();
+
     await fireEvent.click(utils.getByRole('button', { name: 'Copy' }));
-    expect(writeText).toHaveBeenCalledWith(codes.join('\n'));
-    expect(await utils.findByText('Recovery codes copied to the clipboard.')).toBeInTheDocument();
+    expect(await utils.findByRole('alert')).toHaveTextContent(
+      'Could not copy the codes: the clipboard is not available',
+    );
+    expect(utils.queryByText('Recovery codes copied.')).not.toBeInTheDocument();
+    for (const code of codes) expect(utils.getByText(code)).toBeInTheDocument();
   });
 
   it('saves for the named account and says where the file went', async () => {
