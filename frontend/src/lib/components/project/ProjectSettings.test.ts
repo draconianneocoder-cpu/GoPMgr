@@ -682,10 +682,15 @@ function codesBackend(initial: { unused: number; legacy: boolean }) {
   };
 }
 
+const COPY = '/tmp/gopmgr/plan.gopmgr.pre-encryption.bak';
+
 async function openProtection(backend: ReturnType<typeof codesBackend>, extra: Record<string, unknown> = {}) {
   Object.assign(app, backend, {
     IsProjectEncrypted: vi.fn(async () => false),
-    EncryptProjectAtRest: vi.fn(async () => '/tmp/gopmgr/plan.gopmgr.pre-encryption.bak'),
+    EncryptProjectAtRest: vi.fn(async () => COPY),
+    OpenProject: vi.fn(async () => ({ id: 'p1', name: 'Plan' })),
+    PlaintextCopyPath: vi.fn(async () => COPY),
+    DeletePlaintextCopy: vi.fn(async () => COPY),
     ...extra,
   });
   session.projectPath = '/tmp/gopmgr/plan.gopmgr';
@@ -711,11 +716,28 @@ describe('database encryption and recovery codes', () => {
     expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
     expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce();
     expect(utils.queryByRole('region', { name: /save a way back in/i })).not.toBeInTheDocument();
-    // The kept copy is plaintext: the notice names the file and says so.
-    const notice = utils.getByTestId('encryption-backup-notice');
-    expect(notice).toHaveTextContent('/tmp/gopmgr/plan.gopmgr.pre-encryption.bak');
+    // Encrypting closes the project; it is opened again, encrypted.
+    expect(app.OpenProject).toHaveBeenCalledWith('/tmp/gopmgr/plan.gopmgr');
+    // The kept copy is plaintext: the notice names the file and says so,
+    // and deleting it is offered once the encrypted project has opened.
+    const notice = await utils.findByTestId('encryption-backup-notice');
+    expect(notice).toHaveTextContent(COPY);
     expect(notice).toHaveTextContent(/unencrypted copy/);
-    expect(notice).toHaveTextContent(/delete the copy/);
+    expect(notice).toHaveTextContent(/Delete the copy once/);
+    expect(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' })).toBeInTheDocument();
+  });
+
+  it('when the encrypted project does not open again, says so, keeps the copy and closes the project', async () => {
+    const utils = await openProtection(codesBackend({ unused: 8, legacy: false }), {
+      OpenProject: vi.fn(async () => { throw new Error('audit verification failed'); }),
+    });
+    await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
+    const alert = await utils.findByText(/did not open again: audit verification failed/);
+    expect(alert).toHaveAttribute('role', 'alert');
+    expect(utils.getByTestId('encryption-backup-notice')).toHaveTextContent(COPY);
+    expect(utils.queryByRole('button', { name: 'Delete the unencrypted copy…' })).not.toBeInTheDocument();
+    expect(app.DeletePlaintextCopy).not.toHaveBeenCalled();
+    expect(session.projectPath).toBeNull();
   });
 
   it('with legacy codes, guides through new codes and then encrypts, never offering to skip', async () => {
@@ -916,5 +938,70 @@ describe('project backup and the signing certificate', () => {
     expect(queryByRole('checkbox', { name: /include my signing certificate file/i })).toBeNull();
     await fireEvent.click(getByRole('button', { name: /create backup/i }));
     await waitFor(() => expect(app.SecureArchive).toHaveBeenCalledWith('/projects/p/project.gopmgr', false));
+  });
+});
+
+describe('deleting the unencrypted copy', () => {
+  async function encryptedWithCopy(extra: Record<string, unknown> = {}) {
+    return openProtection(codesBackend({ unused: 8, legacy: false }), {
+      IsProjectEncrypted: vi.fn(async () => true),
+      ...extra,
+    });
+  }
+
+  it('offers it for an open encrypted project that still has one, and not otherwise', async () => {
+    let utils = await encryptedWithCopy();
+    expect(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' })).toBeInTheDocument();
+    utils.unmount();
+    utils = await encryptedWithCopy({ PlaintextCopyPath: vi.fn(async () => '') });
+    await utils.findByText('Encrypted');
+    expect(utils.queryByRole('button', { name: 'Delete the unencrypted copy…' })).not.toBeInTheDocument();
+  });
+
+  it('deletes it after confirmation and says so', async () => {
+    const utils = await encryptedWithCopy();
+    await fireEvent.click(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' }));
+    const dialog = await utils.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent(COPY);
+    expect(dialog).toHaveTextContent(/Secure Archive/);
+    (app.PlaintextCopyPath as ReturnType<typeof vi.fn>).mockResolvedValue('');
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Delete the copy' }));
+
+    expect(app.DeletePlaintextCopy).toHaveBeenCalledWith('/tmp/gopmgr/plan.gopmgr');
+    const status = await utils.findByText('The unencrypted copy was deleted.');
+    expect(status).toHaveFocus();
+    expect(utils.queryByRole('button', { name: 'Delete the unencrypted copy…' })).not.toBeInTheDocument();
+    expect(utils.queryByText(/The unencrypted copy was kept/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the offer and says why when the copy could not be deleted', async () => {
+    const utils = await encryptedWithCopy({
+      DeletePlaintextCopy: vi.fn(async () => { throw new Error('the encrypted project failed its integrity check'); }),
+    });
+    await fireEvent.click(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' }));
+    await fireEvent.click(within(await utils.findByRole('alertdialog')).getByRole('button', { name: 'Delete the copy' }));
+
+    expect(await utils.findByText('The unencrypted copy was kept: the encrypted project failed its integrity check')).toHaveAttribute('role', 'alert');
+    expect(utils.getByRole('button', { name: 'Delete the unencrypted copy…' })).toBeInTheDocument();
+  });
+
+  it('treats a copy that is already gone as deleted', async () => {
+    const utils = await encryptedWithCopy({
+      DeletePlaintextCopy: vi.fn(async () => { throw new Error('db: no unencrypted copy of this project'); }),
+    });
+    await fireEvent.click(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' }));
+    (app.PlaintextCopyPath as ReturnType<typeof vi.fn>).mockResolvedValue('');
+    await fireEvent.click(within(await utils.findByRole('alertdialog')).getByRole('button', { name: 'Delete the copy' }));
+
+    expect(await utils.findByText('The unencrypted copy was deleted.')).toBeInTheDocument();
+    expect(utils.queryByText(/The unencrypted copy was kept/)).not.toBeInTheDocument();
+  });
+
+  it('does nothing when the confirmation is cancelled', async () => {
+    const utils = await encryptedWithCopy();
+    await fireEvent.click(await utils.findByRole('button', { name: 'Delete the unencrypted copy…' }));
+    await fireEvent.click(within(await utils.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
+    expect(app.DeletePlaintextCopy).not.toHaveBeenCalled();
+    expect(utils.getByRole('button', { name: 'Delete the unencrypted copy…' })).toBeInTheDocument();
   });
 });

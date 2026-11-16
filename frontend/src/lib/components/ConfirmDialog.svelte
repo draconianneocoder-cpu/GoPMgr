@@ -134,7 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       onkeydown={onDialogKeydown}
     >
       <h2 id="confirm-dialog-title" class="text-base font-bold text-slate-100">{title}</h2>
-      <p id="confirm-dialog-description" class="mt-2 text-sm text-slate-400">{message}</p>
+      <p id="confirm-dialog-description" class="mt-2 text-sm text-slate-400 break-words">{message}</p>
       <div class="mt-5 flex flex-wrap justify-end gap-2">
         <Button variant="ghost" size="md" onclick={onCancel} disabled={busy}>{cancelLabel}</Button>
         <Button variant={tone === 'danger' ? 'danger' : 'caution'} size="md" onclick={onConfirm} disabled={busy}>

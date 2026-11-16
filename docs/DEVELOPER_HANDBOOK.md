@@ -969,7 +969,8 @@ The established sequence is:
 2. verify the plaintext source;
 3. export with `sqlcipher_export` into a temporary encrypted sibling;
 4. verify encrypted integrity;
-5. retain the plaintext source as `<project>.pre-encryption.bak`;
+5. keep the plaintext source as `<project>.pre-encryption.bak`, until the
+   user deletes it from Project Settings (`db.RemovePlaintextBackup`);
 6. publish the encrypted database only after validation;
 7. tighten permissions where supported.
 

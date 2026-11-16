@@ -23,6 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import Tabs from '../Tabs.svelte';
   import Button from '../Button.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
   import RecoveryCodesPanel from '../auth/RecoveryCodesPanel.svelte';
   import RecoveryCodesGate from '../auth/RecoveryCodesGate.svelte';
   import ProjectRepairPanel from './ProjectRepairPanel.svelte';
@@ -151,6 +152,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let encryptionStatus = $state('');
   let encryptionError = $state('');
   let encryptionBackupPath = $state('');
+  // SEC-04 item 2: the unencrypted copy encryption keeps, offered for
+  // deletion only while the encrypted project is open (the backend checks).
+  let plaintextCopyPath = $state('');
+  let copyDeleteConfirming = $state(false);
+  let copyDeleteBusy = $state(false);
+  let copyDeleteStatus = $state('');
+  let copyDeleteError = $state('');
+  let copyStatusEl = $state<HTMLElement>();
   let archiveBusy = $state(false);
   // Asked for again on every backup: the certificate file holds the private
   // signing key, so including it is never a remembered default.
@@ -463,10 +472,51 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // Asks the backend whether an unencrypted copy is still there to offer.
+  // Only the open encrypted project can answer yes.
+  async function refreshPlaintextCopy() {
+    if (!session.projectPath || encryptionState !== 'encrypted') {
+      plaintextCopyPath = '';
+      return;
+    }
+    try {
+      plaintextCopyPath = await desktopApi.PlaintextCopyPath(session.projectPath);
+    } catch {
+      plaintextCopyPath = '';
+    }
+  }
+
+  async function deletePlaintextCopy() {
+    if (!session.projectPath || copyDeleteBusy) return;
+    copyDeleteBusy = true;
+    copyDeleteError = '';
+    copyDeleteStatus = '';
+    try {
+      await desktopApi.DeletePlaintextCopy(session.projectPath);
+      copyDeleteStatus = t('projectSettings.encryption.copyDeleted');
+    } catch (err: any) {
+      copyDeleteError = t('projectSettings.encryption.copyDeleteFailed', { error: String(err?.message ?? err) });
+    } finally {
+      copyDeleteBusy = false;
+      copyDeleteConfirming = false;
+    }
+    await refreshPlaintextCopy();
+    // Already gone counts as deleted, not as an error beside a stale offer.
+    if (!plaintextCopyPath && copyDeleteError) {
+      copyDeleteError = '';
+      copyDeleteStatus = t('projectSettings.encryption.copyDeleted');
+    }
+    if (!plaintextCopyPath) encryptionBackupPath = '';
+    // The Delete button is gone; keep focus somewhere meaningful.
+    copyStatusEl?.focus();
+  }
+
   async function loadEncryptionState() {
     encryptionStatus = '';
     encryptionError = '';
     encryptionBackupPath = '';
+    copyDeleteStatus = '';
+    copyDeleteError = '';
     if (!session.projectPath) {
       encryptionState = 'unknown';
       encryptionError = 'Open this project from the project list before checking database encryption.';
@@ -479,6 +529,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       encryptionState = 'unknown';
       encryptionError = `Could not check encryption: ${err}`;
     }
+    await refreshPlaintextCopy();
   }
 
   async function encryptDatabase() {
@@ -510,6 +561,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // The backend refuses when codes changed since the check; ask again.
       encryptGate = await recoveryGateNeeded();
       if (!encryptGate) encryptionError = String(err?.message ?? err);
+      encryptionBusy = false;
+      return;
+    }
+    // Encrypting closes the project; open it again, encrypted, so the rest
+    // of GoPMgr keeps working on it. Its copy is offered for deletion only
+    // after this open succeeds.
+    try {
+      session.project = await desktopApi.OpenProject(session.projectPath);
+      await refreshPlaintextCopy();
+    } catch (err: any) {
+      encryptionError = t('projectSettings.encryption.reopenFailed', { error: String(err?.message ?? err) });
+      session.project = null;
+      session.projectPath = null;
     } finally {
       encryptionBusy = false;
     }
@@ -1810,13 +1874,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {/if}
            {/if}
 
-           {#if encryptionBackupPath}
+           {#if plaintextCopyPath || encryptionBackupPath}
              <!-- SEC-04: the kept copy is the whole project unencrypted, so say
-                  so, and say when it is safe to delete. -->
+                  so, and offer to delete it once the encrypted project is open. -->
              <p class="text-xs text-amber-300" data-testid="encryption-backup-notice">
-               {#each tParts('projectSettings.encryption.plaintextCopyKept', { path: encryptionBackupPath }) as part}{#if part.param === 'path'}<span class="font-mono break-all">{part.text}</span>{:else}{part.text}{/if}{/each}
+               {#each tParts('projectSettings.encryption.plaintextCopyKept', { path: plaintextCopyPath || encryptionBackupPath }) as part}{#if part.param === 'path'}<span class="font-mono break-all">{part.text}</span>{:else}{part.text}{/if}{/each}
              </p>
+             {#if plaintextCopyPath}
+               <Button variant="danger" size="compact" onclick={() => (copyDeleteConfirming = true)} disabled={copyDeleteBusy}>
+                 {t('projectSettings.encryption.deleteCopy')}
+               </Button>
+             {/if}
            {/if}
+           <p class="text-xs text-cyan-400 min-h-[1rem]" role="status" tabindex="-1" bind:this={copyStatusEl}>{copyDeleteStatus}</p>
+           {#if copyDeleteError}
+             <p class="text-xs text-red-400" role="alert">{copyDeleteError}</p>
+           {/if}
+           <ConfirmDialog
+             open={copyDeleteConfirming}
+             title={t('projectSettings.encryption.deleteCopyTitle')}
+             message={t('projectSettings.encryption.deleteCopyBody', { path: plaintextCopyPath })}
+             confirmLabel={t('projectSettings.encryption.deleteCopyConfirm')}
+             busy={copyDeleteBusy}
+             onConfirm={deletePlaintextCopy}
+             onCancel={() => (copyDeleteConfirming = false)}
+           />
            {#if encryptionStatus}
              <p class="text-xs text-cyan-400">{encryptionStatus}</p>
            {/if}

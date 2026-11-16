@@ -621,6 +621,16 @@ export function DeleteDocument(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * DeletePlaintextCopy deletes the unencrypted copy of the project at path
+ * and returns the deleted path. The encrypted project must be the one open
+ * in this session, and must open again read-only with the session's key and
+ * pass its integrity checks first (db.RemovePlaintextBackup).
+ */
+export function DeletePlaintextCopy(path: string): $CancellablePromise<string> {
+    return $Call.ByName("gopmgr/internal/desktop.App.DeletePlaintextCopy", path);
+}
+
+/**
  * DeleteProject permanently removes a project file (.gopmgr, or legacy .pmforge) and its
  * WAL/SHM sidecars from the signed-in user's projects folder. If the project
  * is the one currently open it is closed first so we never unlink an in-use
@@ -1373,6 +1383,15 @@ export function OpenLogsFolder(): $CancellablePromise<void> {
  */
 export function OpenProject(path: string): $CancellablePromise<$models.ProjectMetaWire> {
     return $Call.ByName("gopmgr/internal/desktop.App.OpenProject", path);
+}
+
+/**
+ * PlaintextCopyPath returns the path of the unencrypted copy of the project
+ * at path when the copy, or a file left from it, still exists and the
+ * encrypted project is the one open in this session; otherwise "".
+ */
+export function PlaintextCopyPath(path: string): $CancellablePromise<string> {
+    return $Call.ByName("gopmgr/internal/desktop.App.PlaintextCopyPath", path);
 }
 
 /**

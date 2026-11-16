@@ -568,7 +568,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Open the project you want to encrypt. The project must be opened from the project list (not just selected).</li>
               <li>Go to Project Settings (File &rarr; Project Settings, or the gear icon).</li>
               <li>Find the "Database Encryption" section. It shows the current state: Plaintext or Encrypted.</li>
-              <li>Click "Encrypt Database." GoPMgr keeps an unencrypted copy of the project beside it and shows where. Anyone who can read that copy can read the project, so delete it once the encrypted project opens correctly.</li>
+              <li>Click "Encrypt Database." GoPMgr keeps an unencrypted copy of the project beside it, shows where, and opens the project again, now encrypted. Anyone who can read that copy can read the project. While the encrypted project is open, "Delete the unencrypted copy…" deletes it after checking that the encrypted project opens with your key. GoPMgr never deletes it by itself, and deleting is not secure erasure: the file may remain recoverable from the disk or from other backups.</li>
               <li>After encryption completes, the state badge changes to "Encrypted."</li>
             </ol>
           </section>
@@ -607,7 +607,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Automatic safety nets</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li>When you migrate a plaintext project to encrypted storage, GoPMgr <span class="font-medium text-slate-100">retains a pre-migration backup</span> and shows you its path — keep it until you have verified the encrypted project opens.</li>
+              <li>When you migrate a plaintext project to encrypted storage, GoPMgr <span class="font-medium text-slate-100">keeps an unencrypted pre-migration copy</span> and shows you its path, until you delete it from Project Settings once the encrypted project opens.</li>
               <li>Editors auto-save on an interval (App Settings) and show the last save time, so a crash costs at most the interval.</li>
               <li>Every export is written to your private <span class="font-mono text-xs">exports</span> folder with owner-only permissions.</li>
             </ul>
