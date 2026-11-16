@@ -3,13 +3,13 @@
   "reviewer": "GoPMgr website implementation author",
   "files": {
     "README.md": {
-      "sha256": "0e8ca8cb3130ecb6e2816d6109cfded58a410033a02cdfc2c6e32e3462dd8c81",
-      "size": 7379,
+      "sha256": "346efc6c895e25fd8279849f9c9faa3f6f8e73fa5dd2915ebdb3f0149ffebcae",
+      "size": 10577,
       "mode": "100644"
     },
     "assets/css/custom.css": {
-      "sha256": "8c349467d5888576f7bd3a0b06856259b2d77d06cc35b9e9ca9aba4695b4dfb2",
-      "size": 3476,
+      "sha256": "0464ba7f66cf8c57ee349a5bb1234c1d58da7946e67bc590147870e31cb92a40",
+      "size": 3815,
       "mode": "100644"
     },
     "assets/js/core/menu.js": {
@@ -63,8 +63,8 @@
       "mode": "100644"
     },
     "content/legal/_index.md": {
-      "sha256": "a31fda9224a6848a23d25d86f9a1a42ee94b9f3d26d8632cf3d5c958a4addf76",
-      "size": 1915,
+      "sha256": "ab585fa6217559d0a07c30e2f6841e207d23600810207c5bc4b1ed44c93ebfb4",
+      "size": 2344,
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
@@ -93,8 +93,8 @@
       "mode": "100644"
     },
     "hugo.yaml": {
-      "sha256": "0fc63e5a6a9257ea9beb57b507b963c3d52e1e918635cadc8704bec3aa348446",
-      "size": 2279,
+      "sha256": "ca460716d0f65cc2f507a9bc0f0577641ed4e6242953a76873fbc717511cf2c5",
+      "size": 2260,
       "mode": "100644"
     },
     "layouts/404.html": {
@@ -138,8 +138,8 @@
       "mode": "100644"
     },
     "quality/dependencies.json": {
-      "sha256": "622f4d52f3a70bdfe02932cd65c81b2acefff1f70faa90bdf5ffbf2dfd94aaba",
-      "size": 2119,
+      "sha256": "55213d8333f915099b87dd082104bea224213d105b9060542992f2ce5c00937e",
+      "size": 2926,
       "mode": "100644"
     },
     "quality/flexsearch-package.json": {
@@ -148,12 +148,12 @@
       "mode": "100644"
     },
     "quality/release-evidence.json": {
-      "sha256": "db00de550f136916ddb035f537bc15df9cbcb6d7a5a2c795da1962bc7c514c86",
+      "sha256": "6768504523cc0b23da98efd5f7fa3a6b746b92f0d0e2fe82dbca8a332f1d751e",
       "size": 1727,
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "51643fdc7f83fd8aa251bd01a86bad5612685881f802f7cae0422d42403cc065",
+      "sha256": "b0ac975794b2a3d732e6637ab2343bb013dd9e68f3a45eee567259cfd91d57c3",
       "size": 8426,
       "mode": "100644"
     },
@@ -192,6 +192,11 @@
       "size": 1060,
       "mode": "100644"
     },
+    "static/licenses/Tailwind.txt": {
+      "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985",
+      "size": 1071,
+      "mode": "100644"
+    },
     "tools/build.sh": {
       "sha256": "b4299bbb0f9239c57a17ac7854933ba5ed8172c3fae81ec8f304869ae623e8e9",
       "size": 325,
@@ -218,13 +223,18 @@
       "mode": "100644"
     },
     "tools/publication.py": {
-      "sha256": "9c2fad12bf4b1a0b92fa6c0d2206975b8b9deadb414f169423629a0973a1f9c3",
-      "size": 4902,
+      "sha256": "5c5de3f13496cd24badbeed73eac031ba2c9c385aac3fede2e1e53bae3e9fbb6",
+      "size": 4988,
+      "mode": "100644"
+    },
+    "tools/publisher.py": {
+      "sha256": "4d36a90ac58db14a6ff24b8f52a094c3435b1b753b4d6e183c4128174ab5d143",
+      "size": 12829,
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "b3d562ca8626b1322accce859414b96b9992a5d123345518a77f5a7dde30411d",
-      "size": 19269,
+      "sha256": "843197af8753769250438a0139c8e2994fc1b311383864b77e5a6a0a9d4f2fac",
+      "size": 19609,
       "mode": "100644"
     },
     "tools/test_provision_hugo.py": {
@@ -233,13 +243,18 @@
       "mode": "100644"
     },
     "tools/test_publication.py": {
-      "sha256": "39200bbc0f1cd160e21591a8d3744d176cd06f4dff9f4acdcb8c3d289e25ce15",
-      "size": 4634,
+      "sha256": "435833cefc993c5a62cbfb889871eae924a4e8fc779604454bc1b92f4ee03166",
+      "size": 7253,
+      "mode": "100644"
+    },
+    "tools/test_publisher.py": {
+      "sha256": "5e47b96645d7c4566d53676f03e5ab34f9fd71638afcd21a2a054b05095d7902",
+      "size": 14282,
       "mode": "100644"
     },
     "tools/test_site.py": {
-      "sha256": "7ea73b463e840f0d96ddc0a5d825cd9ae57fb5fbdb761e4cb7296f143279229e",
-      "size": 24280,
+      "sha256": "4073a178c33dfa74e23f428806f1155ba68cad0539a34840c39210397af61859",
+      "size": 25270,
       "mode": "100644"
     }
   },

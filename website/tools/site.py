@@ -195,6 +195,12 @@ def output_check(public):
     files = inventory(public)
     require('.nojekyll' in files, 'missing .nojekyll')
     require(all(item['mode'] == '100644' for item in files.values()), 'public output must contain only mode 100644 files')
+    pins = json.loads((SITE / 'quality/dependencies.json').read_text())
+    for source, expected_hash in pins['files'].items():
+        if source.startswith('static/licenses/'):
+            target = source.removeprefix('static/')
+            require(target in files and files[target]['sha256'] == expected_hash,
+                    f'distribution license mismatch: {target}')
     pages = {name: Page((public / name).read_text()) for name in files if name.endswith('.html')}
     expected = {route.lstrip('/') + 'index.html' for route in ROUTES} | {'404.html'}
     require(set(pages) == expected, 'unexpected or missing generated HTML routes')
@@ -276,7 +282,7 @@ def build():
     pin = pins['hugo']['platforms'].get(key)
     require(pin and digest(Path(binary)) == pin['executable_sha256'], 'Hugo executable provenance not approved for this platform')
     version = run([binary, 'version'])
-    require(version.startswith('hugo v0.169.0-') and '+extended ' in version, 'incorrect Hugo version/edition')
+    require(version.startswith('hugo v0.170.0-'), 'incorrect Hugo version')
     env = dict(os.environ, GOWORK='off')
     before = {name: digest(SITE / name) for name in ('go.mod', 'go.sum')}
     source = snapshot()

@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -45,6 +46,9 @@ class OutputTests(unittest.TestCase):
             canonical = site.BASE + route.lstrip('/')
             page.write_text(f'{self.policy()}<link rel="canonical" href="{canonical}"><main><h1>Fixture</h1><aside data-status="development"></aside><a href="/GoPMgr/docs/">Docs</a></main>')
         (root / '404.html').write_text(f'{self.policy()}<link rel="canonical" href="{site.BASE}404.html"><main><h1>Missing</h1></main>')
+        (root / 'licenses').mkdir()
+        for source in (site.SITE / 'static/licenses').glob('*.txt'):
+            shutil.copyfile(source, root / 'licenses' / source.name)
         (root / '.nojekyll').touch()
         (root / 'flexsearch.js').write_text('// fixture')
         (root / 'search.json').write_text('{}')
@@ -59,6 +63,21 @@ class OutputTests(unittest.TestCase):
             root = Path(tmp)
             self.fixture(root)
             self.assertIn('index.html', site.output_check(root))
+
+    def test_distribution_notice_bytes_match_reviewed_pins(self):
+        for source in (site.SITE / 'static/licenses').glob('*.txt'):
+            for mutation in ('missing', 'empty'):
+                with self.subTest(notice=source.name, mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    self.fixture(root)
+                    site.output_check(root)
+                    public_notice = root / 'licenses' / source.name
+                    if mutation == 'missing':
+                        public_notice.unlink()
+                    else:
+                        public_notice.write_bytes(b'')
+                    with self.assertRaisesRegex(ValueError, 'distribution license mismatch'):
+                        site.output_check(root)
 
     def test_meta_refresh_rejected(self):
         fragments = (
