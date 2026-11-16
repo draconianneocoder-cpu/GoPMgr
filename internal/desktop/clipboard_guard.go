@@ -36,7 +36,8 @@ import (
 // the user's quit. Admission is the closing flag instead: a Copy after flush
 // is refused, a Copy that finishes during flush is cleared at once (its RPC
 // is counted by the runtime middleware, so shutdown waits for it), and a
-// later timer does nothing. A timer whose onMain is queued after the loop has
+// later timer does nothing, or, if the quit-time clear found other text
+// there, makes one more clear that still reads first. A timer whose onMain is queued after the loop has
 // stopped stays blocked, holding nothing, until the process exits.
 //
 // closing is one-way. That holds because every beginQuit follows a

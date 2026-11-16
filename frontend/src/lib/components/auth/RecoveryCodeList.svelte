@@ -32,7 +32,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let copyError = $state('');
   // Ties the clearing note to the Copy button for screen readers; unique per
   // list, since a parent can show more than one.
-  const copyNoteId = `recovery-copy-note-${Math.random().toString(36).slice(2)}`;
+  const uid = $props.id();
+  const copyNoteId = `recovery-copy-note-${uid}`;
   // One save dialog at a time, whichever button opened it.
   let saving = $state<'' | 'text' | 'sheet'>('');
   let savedPath = $state('');
