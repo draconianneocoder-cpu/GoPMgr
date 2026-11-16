@@ -154,6 +154,12 @@ export const en = {
     "If you forget your password, a recovery code is the only way to reset it and keep your encrypted projects. Save them somewhere safe — you won't be shown them again.",
   'recoveryCodes.saved': 'I have saved my recovery codes somewhere safe.',
   'recoveryCodes.continue': 'CONTINUE TO GOPMGR',
+  'recoveryCodes.copy': 'Copy',
+  'recoveryCodes.copied': 'Copied ✓',
+  'recoveryCodes.copiedStatus': 'Recovery codes copied.',
+  'recoveryCodes.copyClears':
+    '60 seconds after you copy them, GoPMgr clears the clipboard if it still holds these codes.',
+  'recoveryCodes.copyFailed': 'Could not copy the codes: {error}',
 
   'sigma.solutions.cost': 'Cost',
   'sigma.solutions.costIn': 'Cost ({currency})',

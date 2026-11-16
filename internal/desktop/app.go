@@ -373,6 +373,7 @@ func Main(assets fs.FS) {
 	gui := application.New(buildAppOptions(app, assets))
 	window := gui.Window.NewWithOptions(mainWindowOptions())
 	app.native.app, app.native.window = gui, window
+	app.native.clipboard.clip, app.native.clipboard.onMain = gui.Clipboard, application.InvokeSync
 	gui.Menu.Set(buildAppMenu(app, runtime.GOOS))
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		if app.beforeClose(app.ctx) {

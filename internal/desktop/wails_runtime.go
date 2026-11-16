@@ -20,6 +20,9 @@ type wailsRuntime struct {
 	life   *runtimehost.Lifetime
 	app    *application.App
 	window *application.WebviewWindow
+	// clipboard clears copied recovery codes (clipboard_guard.go); its
+	// clipboard is set with app and window in Main.
+	clipboard clipboardGuard
 }
 
 func newWailsRuntime() *wailsRuntime { return &wailsRuntime{life: runtimehost.New()} }
@@ -39,6 +42,8 @@ func (r *wailsRuntime) requestQuit() {
 }
 
 func (r *wailsRuntime) beginQuit() {
+	// Before shutdown begins, while the event loop still runs.
+	r.clipboard.flush()
 	if err := r.life.BeginShutdown(r.requestQuit); err != nil {
 		// CompleteNativeClose reserved native UI admission before this call.
 		log.Printf("native quit admission: %v", err)

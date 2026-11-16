@@ -81,6 +81,38 @@ export interface EVMetrics {
 }
 
 /**
+ * LinkType enumerates the four precedence-diagramming (PDM)
+ * relationship types between a predecessor and its successor.
+ */
+export enum LinkType {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * FinishToStart: successor starts after predecessor finishes
+     * (the classic CPM arrow; the default everywhere).
+     */
+    FinishToStart = "FS",
+
+    /**
+     * StartToStart: successor starts after predecessor starts.
+     */
+    StartToStart = "SS",
+
+    /**
+     * FinishToFinish: successor finishes after predecessor finishes.
+     */
+    FinishToFinish = "FF",
+
+    /**
+     * StartToFinish: successor finishes after predecessor starts.
+     */
+    StartToFinish = "SF",
+};
+
+/**
  * ProbabilityPoint is one cumulative probability point for a sampled
  * finish-day curve.
  */
