@@ -308,6 +308,25 @@ if rg -q '(fetch-fonts\.sh|make fonts)' .github/workflows; then
 	fail=1
 fi
 
+# DEC-WINDOWS (owner decision, 2026-11-14): every release's notes start
+# with the notice that the Windows installer is an unverified preview, and
+# no Windows support is advertised until a real Windows host qualifies it.
+# The flag must be an argument of the one `gh release create` command (its
+# lines up to dist/*), not merely present somewhere in the workflow.
+release_create="$(awk '
+    /gh release create / { active=1; starts++ }
+    active { print }
+    active && /dist\/\*/ { active=0 }
+    END { if (starts != 1) print "invalid gh release create count" }
+' .github/workflows/release.yml)"
+if ! printf '%s\n' "$release_create" | rg -q -- '^[[:space:]]+--notes-file docs/release-notes/platform-notice\.md \\$' ||
+	printf '%s\n' "$release_create" | rg -q 'invalid gh release create count' ||
+	! rg -Fq '**Windows: unverified preview.**' docs/release-notes/platform-notice.md ||
+	! rg -Fq 'GoPMgr does not support Windows yet.' docs/release-notes/platform-notice.md; then
+	echo "release-scope: release notes must start with docs/release-notes/platform-notice.md, which labels the Windows installer an unverified preview." >&2
+	fail=1
+fi
+
 # The macOS CGO build can fill the hosted runner with disposable Go caches
 # before hdiutil stages the app. Preserve the post-build reclamation contract;
 # it is runner-only and must not be moved into the developer packaging script.
