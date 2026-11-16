@@ -4,12 +4,12 @@ description = "Prepare a safe evaluation workspace."
 weight = 30
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a"
-last_reviewed = "2026-11-14"
+applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, 49f0fe5d727f"
+last_reviewed = "2026-11-16"
 claim_ids = ["page.docs.getting-started"]
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/49f0fe5d727fd4eff383d2c6e3c767ea7cfa0408/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/user-guide.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md"

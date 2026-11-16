@@ -28,8 +28,8 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "845fdb07cd7c08bc038746d895d31bfbbcf6e61362a347ea3449eafb4091492e",
-      "size": 2160,
+      "sha256": "d4971a4571fbfb8eee5c1aca40fc8ccdf8bc82b9ac1c7dda46c153e26df5df69",
+      "size": 2174,
       "mode": "100644"
     },
     "content/community/_index.md": {
@@ -38,22 +38,22 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "dc2d96c93aade462411e5bea60f8e5ffeea72af2be49b286b184f3516af65d6d",
-      "size": 1791,
+      "sha256": "fd0800d46412fc1d3fd697c1c2bc4428ef00e51e2b027e34b1ae9759b9558800",
+      "size": 1805,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "5e13efa674b0353b5ef010529c357aa2bbdb632209fea4369996df625282ad8b",
-      "size": 2007,
+      "sha256": "d8a4c5b6f82c9da67faf2832d7b0fb5b8c92c2237db8ae88029df5ccf997d140",
+      "size": 2021,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "a033ebcd2bd27adcebb40766b254737ee2054a29f38f01c878b10c64c9b23c0b",
-      "size": 2839,
+      "sha256": "5bfc2c6595e5e715aa9973c9607315fe0e992b08e199a8a120344c7488a10897",
+      "size": 2853,
       "mode": "100644"
     },
     "content/downloads/_index.md": {
-      "sha256": "398d3d07bc6825c9d81ec1c7078e2959a520aca7986f3b34ed591b3367223f69",
+      "sha256": "62e470128c1c5a0b4856cacf4ee472448e04a6bfb09816ecf04234118c23f48e",
       "size": 2015,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "d652e909a4d20fea898bb35b433694940aec1414ba44bfd26cc833bc6fb3b937",
+      "sha256": "b0ac975794b2a3d732e6637ab2343bb013dd9e68f3a45eee567259cfd91d57c3",
       "size": 8426,
       "mode": "100644"
     },

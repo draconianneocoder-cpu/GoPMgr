@@ -397,6 +397,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "GoPMgr $GITHUB_REF_NAME" \
             --draft \
+            --notes-file docs/release-notes/platform-notice.md \
             --generate-notes \
             "${publication_args[@]}" \
             dist/*

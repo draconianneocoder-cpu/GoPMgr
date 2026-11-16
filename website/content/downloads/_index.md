@@ -6,11 +6,11 @@ layout = "wide"
 [params]
 status = "historical"
 applies_to = "Historical v1.1.0-alpha.2"
-last_reviewed = "2026-11-11"
+last_reviewed = "2026-11-16"
 claim_ids = ["page.downloads"]
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/49f0fe5d727fd4eff383d2c6e3c767ea7cfa0408/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/published-release-tags.txt"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/published-release-tags.txt"

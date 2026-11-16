@@ -40,7 +40,7 @@ not claimed as passed. See the
 
 | Platform | File | How you install it |
 |---|---|---|
-| Windows 10/11 (x86-64) | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
+| Windows (x86-64), unverified preview: not supported yet | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
 | macOS 26 Tahoe or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
 | Debian / Ubuntu (x86-64) | `gopmgr-<version>-amd64.deb` | `apt` / `dpkg` |
 | Fedora / RHEL / openSUSE (x86-64) | `gopmgr-<version>-x86_64.rpm` | `dnf` / `rpm` |
@@ -48,6 +48,11 @@ not claimed as passed. See the
 ## Install
 
 ### Windows (`.exe`)
+
+The Windows installer is an unverified preview: it is built automatically,
+but no one has built, installed or run the current release on a real Windows
+computer, and GoPMgr does not support Windows yet. Try it only with
+fictional projects, and keep backups.
 
 Double-click the installer and follow the prompts. If SmartScreen appears,
 choose **More info → Run anyway**.
