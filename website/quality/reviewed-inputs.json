@@ -63,8 +63,8 @@
       "mode": "100644"
     },
     "content/legal/_index.md": {
-      "sha256": "a31fda9224a6848a23d25d86f9a1a42ee94b9f3d26d8632cf3d5c958a4addf76",
-      "size": 1915,
+      "sha256": "ab585fa6217559d0a07c30e2f6841e207d23600810207c5bc4b1ed44c93ebfb4",
+      "size": 2344,
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
@@ -138,8 +138,8 @@
       "mode": "100644"
     },
     "quality/dependencies.json": {
-      "sha256": "23409804e4ca7544e944d0833e4d12561c14a4e6d2859972fa3673f2222888ac",
-      "size": 2222,
+      "sha256": "55213d8333f915099b87dd082104bea224213d105b9060542992f2ce5c00937e",
+      "size": 2926,
       "mode": "100644"
     },
     "quality/flexsearch-package.json": {
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "1cc7914db3b392c7587eac8a25c03ed734bcc8331bd35dcd8d85f3e55ca76eb8",
+      "sha256": "77423c7cdc783b4e72c3bfad80e2b4b8ff836ec2f7c0c7e000731aa46f79c449",
       "size": 8426,
       "mode": "100644"
     },
@@ -192,6 +192,11 @@
       "size": 1060,
       "mode": "100644"
     },
+    "static/licenses/Tailwind.txt": {
+      "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985",
+      "size": 1071,
+      "mode": "100644"
+    },
     "tools/build.sh": {
       "sha256": "b4299bbb0f9239c57a17ac7854933ba5ed8172c3fae81ec8f304869ae623e8e9",
       "size": 325,
@@ -228,8 +233,8 @@
       "mode": "100644"
     },
     "tools/site.py": {
-      "sha256": "e8a8762ad353ab74b2a2ad66e3b1a1c70a6db5f733b353b7891f2f30ee320c38",
-      "size": 19233,
+      "sha256": "843197af8753769250438a0139c8e2994fc1b311383864b77e5a6a0a9d4f2fac",
+      "size": 19609,
       "mode": "100644"
     },
     "tools/test_provision_hugo.py": {
@@ -248,8 +253,8 @@
       "mode": "100644"
     },
     "tools/test_site.py": {
-      "sha256": "7ea73b463e840f0d96ddc0a5d825cd9ae57fb5fbdb761e4cb7296f143279229e",
-      "size": 24280,
+      "sha256": "4073a178c33dfa74e23f428806f1155ba68cad0539a34840c39210397af61859",
+      "size": 25270,
       "mode": "100644"
     }
   },

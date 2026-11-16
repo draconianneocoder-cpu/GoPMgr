@@ -34,6 +34,17 @@
     "static/licenses/Documentation.txt": "d024962f1f4966c102b40d9fd9cc834a3f0b3c1397b41444b7cd7925640dc929",
     "static/licenses/FlexSearch.txt": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
     "static/licenses/Hextra.txt": "749fbcaf565aeec8feab572b554ad7f4798397521b737a35ee1dbdbfe6b9c1db",
-    "assets/js/vendor/flexsearch.bundle.min.js": "433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c"
+    "assets/js/vendor/flexsearch.bundle.min.js": "433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c",
+    "static/licenses/Tailwind.txt": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+  },
+  "tailwindcss": {
+    "version": "4.3.0",
+    "tarball": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.0.tgz",
+    "integrity": "sha512-y6nxMGB1nMW9R6k96e5gdIFzcfL/gTJRNaqGes1YvkLnPVXzWgbqFF2yLC0T8G774n24cx3Pe8XrKoniCOAH+Q==",
+    "tarball_sha256": "f0603a3504a60414e23d8cba1e6abae24e697f450796e7e260db5cbf5e44bc1b",
+    "license_sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985",
+    "source_commit": "588bd7371f4cae96426e1387819b7fd1d99765f9",
+    "license": "MIT",
+    "distribution": "CSS compiled by pinned Hextra; no additional build tool installed"
   }
 }

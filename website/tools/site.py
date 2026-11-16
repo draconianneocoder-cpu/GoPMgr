@@ -195,6 +195,12 @@ def output_check(public):
     files = inventory(public)
     require('.nojekyll' in files, 'missing .nojekyll')
     require(all(item['mode'] == '100644' for item in files.values()), 'public output must contain only mode 100644 files')
+    pins = json.loads((SITE / 'quality/dependencies.json').read_text())
+    for source, expected_hash in pins['files'].items():
+        if source.startswith('static/licenses/'):
+            target = source.removeprefix('static/')
+            require(target in files and files[target]['sha256'] == expected_hash,
+                    f'distribution license mismatch: {target}')
     pages = {name: Page((public / name).read_text()) for name in files if name.endswith('.html')}
     expected = {route.lstrip('/') + 'index.html' for route in ROUTES} | {'404.html'}
     require(set(pages) == expected, 'unexpected or missing generated HTML routes')
