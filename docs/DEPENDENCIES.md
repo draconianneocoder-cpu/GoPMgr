@@ -97,12 +97,15 @@ third-party library per platform from the build.
   are recorded in `third_party/go-sqlcipher/GOPMGR.md`. govulncheck cannot
   see this C code; its advisories are reviewed with `tools/engine-advisories`
   ([procedure](engineering/engine-advisories.md)).
-- `golang.org/x/crypto` v0.58.1-0.20261009181718-2f1f834330b2: Argon2id and
-  PKCS#12 support. The owner-approved upstream commit separates the deprecated
-  OpenPGP module, resolving the selected main-module advisory without adding an
-  OpenPGP dependency. Retained crypto source and module requirements match
-  v0.58.0; see [compatibility and validation](engineering/xcrypto-advisory-plan.md).
-  This exact pseudo-version is intentional while no fixed stable tag exists.
+- `golang.org/x/crypto` v0.59.0: Argon2id and PKCS#12 support. From
+  2026-11-05 GoPMgr used the owner-approved upstream commit
+  v0.58.1-0.20261009181718-2f1f834330b2, which separated the deprecated
+  OpenPGP module and resolved GO-2026-5932, because no fixed stable tag
+  existed ([compatibility and validation](engineering/xcrypto-advisory-plan.md)).
+  v0.59.0 is that stable tag: the six x/crypto packages GoPMgr links
+  (argon2, blake2b, md4, pkcs12 and its rc2, ripemd160) are byte-identical to
+  the approved commit, no OpenPGP code returns, and the remaining differences
+  are in packages GoPMgr does not link (mostly ssh). Checked 2026-11-16.
 - `golang.org/x/sys`: Windows `MoveFileEx` with replace-existing and
   write-through flags for atomic canonical-path publication after SQLCipher
   migration.
