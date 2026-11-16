@@ -574,7 +574,7 @@
     {
       "method": "DeletePlaintextCopy",
       "file": "internal/desktop/app_plaintext_copy.go",
-      "line": 44,
+      "line": 46,
       "params": "path string",
       "returns": "string, error",
       "uses_internal_packages": [
