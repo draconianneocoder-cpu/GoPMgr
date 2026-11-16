@@ -168,7 +168,7 @@ selection; they do not waive existing required verification or release gates.
 - `go.mod` requires Go 1.27.4 or later and pins Wails v3.1.0. CGO is required.
 - The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
   calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
-  its 210 exported methods are frontend API, listed in `code-map/app-api.json`.
+  its 212 exported methods are frontend API, listed in `code-map/app-api.json`.
   `frontend/src/lib/desktop-api.ts` re-exports the generated App namespace from
   `frontend/bindings/gopmgr/internal/desktop/index.ts`. Generate real bindings
   before frontend checks; do not restore ambient `window.go` declarations.

@@ -158,7 +158,7 @@ export const KEYWORDS: Record<SectionId, string> = {
   'import-export':
     'import export ms project xml mspdi mpp interchange schedule report pdf docx odt csv html spreadsheet round trip',
   backups:
-    'backup data safety copy project files gopmgr folder pre-encryption backup retained restore integrity check repair vacuum maintenance cli recovery',
+    'backup data safety copy project files gopmgr folder pre-encryption backup unencrypted copy delete restore integrity check repair vacuum maintenance cli recovery',
   timeline: 'calendar holidays country milestones dates schedule view months workdays',
   stakeholders: 'stakeholder manager power interest grid raci contacts influence engagement contract rates',
   'report-composer': 'combined report multiple documents charts assemble pdf export sections cover page',

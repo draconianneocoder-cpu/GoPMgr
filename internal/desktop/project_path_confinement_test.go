@@ -53,6 +53,17 @@ func TestPathTakingIPCMethodsConfineToOwnProjectsDir(t *testing.T) {
 			t.Fatal("EncryptProjectAtRest accepted a path outside the user's projects dir")
 		}
 	})
+	t.Run("PlaintextCopyPath", func(t *testing.T) {
+		if _, err := app.PlaintextCopyPath(outside); err == nil {
+			t.Fatal("PlaintextCopyPath accepted a path outside the user's projects dir")
+		}
+	})
+	t.Run("DeletePlaintextCopy", func(t *testing.T) {
+		// Refused by confinement, not merely because no project is open.
+		if _, err := app.DeletePlaintextCopy(outside); err == nil || errors.Is(err, errOpenToDeleteCopy) {
+			t.Fatalf("DeletePlaintextCopy = %v, want the confinement refusal", err)
+		}
+	})
 	t.Run("SecureArchive", func(t *testing.T) {
 		if _, err := app.SecureArchive(outside, false); err == nil {
 			t.Fatal("SecureArchive accepted a path outside the user's projects dir")

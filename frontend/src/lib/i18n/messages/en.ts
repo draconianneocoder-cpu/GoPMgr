@@ -440,7 +440,16 @@ export const en = {
   'projectSettings.backup.includeCertHelp':
     'The file holds your private signing key, so anyone who gets the backup gets the key. Restoring a backup never needs it. Leave this off unless you want this backup to carry a spare copy.',
   'projectSettings.encryption.plaintextCopyKept':
-    'An unencrypted copy of this project was kept at {path}. Anyone who can read that file can read the project. Once the encrypted project opens correctly, delete the copy.',
+    'An unencrypted copy of this project is at {path}. Anyone who can read that file can read the project. Delete the copy once you no longer need a way back to the unencrypted project.',
+  'projectSettings.encryption.deleteCopy': 'Delete the unencrypted copy…',
+  'projectSettings.encryption.deleteCopyTitle': 'Delete the unencrypted copy?',
+  'projectSettings.encryption.deleteCopyBody':
+    'GoPMgr will delete {path}, after checking that the encrypted project opens with your key. The encrypted project stays. GoPMgr cannot undo this, so keep a Secure Archive backup if you may need one. Deleting is not secure erasure: the file may remain recoverable from the disk or from other backups.',
+  'projectSettings.encryption.deleteCopyConfirm': 'Delete the copy',
+  'projectSettings.encryption.copyDeleted': 'The unencrypted copy was deleted.',
+  'projectSettings.encryption.copyDeleteFailed': 'The unencrypted copy was kept: {error}',
+  'projectSettings.encryption.reopenFailed':
+    'The project was encrypted but did not open again: {error}. Open it from the project list. Its unencrypted copy is kept.',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;
