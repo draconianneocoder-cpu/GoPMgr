@@ -232,13 +232,24 @@ codes before the new ones are saved. `App.IssueRecoveryCodes` refuses a session 
 issuing codes that could not recover it. App Settings counts a legacy code
 (no DEK wrap) as unsafe, not as a working code.
 
+Copied recovery codes are cleared from the clipboard 60 seconds after the
+latest Copy, or at a normal quit before then, only if the clipboard still
+holds exactly those codes. Clipboard history and sync may keep their own
+copy, a crash within 60 seconds leaves the codes, and codes copied by hand
+are not covered.
+
 Plaintext-to-encrypted migration must:
 
 - Reject already encrypted sources.
 - Verify the plaintext source before export.
 - Export with `sqlcipher_export` into a temporary encrypted sibling.
 - Verify encrypted integrity before publish.
-- Retain the plaintext source as `<project>.pre-encryption.bak`.
+- Keep the plaintext source as `<project>.pre-encryption.bak` until the user
+  deletes it. Project Settings offers that only while the encrypted project
+  is open, and first checks that it opens read-only with the user's key and
+  passes its integrity checks. GoPMgr never deletes the copy by itself, and
+  deleting it is not secure erasure: it may remain recoverable from the disk
+  or from other backups.
 - Tighten file permissions on the published encrypted database.
 
 ## Secrets
