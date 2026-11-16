@@ -89,6 +89,15 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   otherwise.
 - Stage intentionally by path or hunk. Avoid broad `git add .` in a
   dirty worktree.
+- Before opening or updating a pull request, inspect the affected coverage
+  evidence and
+  `docs/TEST_COVERAGE_LEDGER.md`, and run `make coverage-ledger-current`
+  and `make coverage-ledger-drift` on the exact source to be submitted. Repeat
+  affected checks after subsequent changes. `make verify` alone does not run
+  the measured-coverage drift check. Correct stale entries against measured
+  results; never weaken assertions or add tests merely to match a percentage.
+  Record the commands, source revision and platform; if the required coverage
+  baseline cannot be verified, report the blocker before submitting the PR.
 - Be concise in public documentation. Summarize long generated output
   and point to the command or artifact that reproduces it.
 
