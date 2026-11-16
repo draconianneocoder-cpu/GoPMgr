@@ -572,6 +572,16 @@
       ]
     },
     {
+      "method": "DeletePlaintextCopy",
+      "file": "internal/desktop/app_plaintext_copy.go",
+      "line": 46,
+      "params": "path string",
+      "returns": "string, error",
+      "uses_internal_packages": [
+        "gopmgr/internal/db"
+      ]
+    },
+    {
       "method": "DeleteProject",
       "file": "internal/desktop/app_projects.go",
       "line": 492,
@@ -1401,6 +1411,16 @@
         "gopmgr/internal/admin",
         "gopmgr/internal/db",
         "gopmgr/internal/sigma/service"
+      ]
+    },
+    {
+      "method": "PlaintextCopyPath",
+      "file": "internal/desktop/app_plaintext_copy.go",
+      "line": 25,
+      "params": "path string",
+      "returns": "string, error",
+      "uses_internal_packages": [
+        "gopmgr/internal/db"
       ]
     },
     {

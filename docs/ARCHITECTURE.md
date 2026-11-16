@@ -153,9 +153,10 @@ the operation error alongside cleanup diagnostics. See
 [account cleanup evidence](testing/account-transaction-cleanup.md).
 
 Project encryption migration uses `sqlcipher_export` into a temporary
-encrypted sibling, verifies the destination, retains the plaintext
-source as `<project>.pre-encryption.bak`, and publishes the encrypted
-database only after integrity checks pass.
+encrypted sibling, verifies the destination, keeps the plaintext
+source as `<project>.pre-encryption.bak` until the user deletes it from
+Project Settings, and publishes the encrypted database only after
+integrity checks pass.
 
 ## Frontend Architecture
 

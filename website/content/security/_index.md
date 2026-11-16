@@ -5,12 +5,12 @@ weight = 80
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a"
-last_reviewed = "2026-11-14"
+applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, d704af051d60"
+last_reviewed = "2026-11-16"
 claim_ids = ["page.security"]
 [[params.sources]]
 label = "docs/SECURITY.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/SECURITY.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/d704af051d6049ab1a14e0ef92b6a063d87668c6/docs/SECURITY.md"
 [[params.sources]]
 label = "docs/user-guide.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md"
@@ -25,7 +25,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 GoPMgr is local-first. Operating-system account security, backups and careful handling of recovery codes remain essential. Project encryption, local authentication and document signatures address different risks; none is an absolute guarantee against attacks or data loss.
 
-[Read the canonical security model](https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/SECURITY.md) and [recovery-code guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#recovery-codes-and-encryption).
+[Read the canonical security model](https://github.com/draconianneocoder-cpu/GoPMgr/blob/d704af051d6049ab1a14e0ef92b6a063d87668c6/docs/SECURITY.md) and [recovery-code guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#recovery-codes-and-encryption).
 
 ## Report a vulnerability
 
