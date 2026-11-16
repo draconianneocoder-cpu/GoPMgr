@@ -36,7 +36,7 @@ record or an evidence file. Adopted on 2026-11-11
 | Go 1.27.4 required | Implemented (PR 199) | [DEPENDENCIES.md](DEPENDENCIES.md) |
 | Wails 3.1.0, Svelte 5, GTK 4 / WebKitGTK 6.0 on Linux | Implemented 2026-11-09 | [migration evidence](testing/wails-v3-migration-evidence.md) |
 | Native qualification on macOS 26 and Ubuntu 26.04 | Open: installed-app lifecycle, recovery, dialogs, accessibility not qualified | [ROADMAP.md](ROADMAP.md) current focus 1 to 3 |
-| Windows | Unsupported preview by decision (2026-11-14): artifacts are built and labelled unverified; no Windows host has built or run the current tree | [next-alpha plan](next-alpha-release-plan.md) |
+| Windows | Unsupported preview by decision (2026-11-14): the installer is still built; every release's notes start with `docs/release-notes/platform-notice.md`, which calls it an unverified preview and says Windows is not supported yet (`make release-scope` fails if it is dropped); INSTALL.md and the in-app help say the same. No Windows host has built or run the current tree. The update manifest still lists the Windows installer | [next-alpha plan](next-alpha-release-plan.md) |
 | SQLCipher 4.20.0 / SQLite 3.54.1 engine, go-sqlcipher 4.4.2 Go bindings | Implemented (PR 196) | [upgrade evidence](testing/sqlcipher-4.20-upgrade.md) |
 | Engine distrusts file schemas (`trusted_schema` off, defensive mode) | Implemented (PR 199) | `internal/sqlitedriver/hardening_test.go` |
 | Analytics: Go-native, Arrow-Go for Parquet | Implemented. DuckDB retired 2026-11-02; DataFusion not adopted 2026-11-09 | [DF0-G report](testing/adr-012-df0-g-report.md) |
@@ -190,7 +190,7 @@ authorizes only the slice named; the last column says which are implemented.
 | DEC-FORMAT | Finish the design, then ratify | ADR-011 open items completed for ratification; no format change |
 | DEC-HARDWARE | Two profiles: mid-range laptop minimum, Apple Silicon reference | PS-00 fixtures and measurement; budgets after measuring |
 | DEC-INTEROP | G1 only | MPXJ worker supervisor and bridge, inactive behind a flag |
-| DEC-WINDOWS | Unsupported preview | Windows artifacts labelled unverified; no support claims |
+| DEC-WINDOWS | Unsupported preview | Windows artifacts labelled unverified; no support claims: implemented |
 
 SEC-04's security choices of the same day are in the SEC-04 row above.
 

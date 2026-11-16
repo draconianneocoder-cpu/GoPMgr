@@ -24,6 +24,8 @@ new_fixture() {
 	cp "$ROOT/Makefile" "$fixture/Makefile"
 	cp "$ROOT/scripts/check-release.sh" "$fixture/scripts/check-release.sh"
 	cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
+	mkdir -p "$fixture/docs/release-notes"
+	cp "$ROOT/docs/release-notes/platform-notice.md" "$fixture/docs/release-notes/platform-notice.md"
 	cp "$ROOT/scripts/check-coverage-ledger-drift.sh" "$fixture/scripts/check-coverage-ledger-drift.sh"
 	cp "$ROOT/scripts/check-help-guide-current.sh" "$fixture/scripts/check-help-guide-current.sh"
 	cp "$ROOT/frontend/src/lib/components/help/HelpReference.svelte" "$fixture/frontend/src/lib/components/help/HelpReference.svelte"
@@ -60,6 +62,24 @@ printf '%s\n' 'Historical evidence: go test ./... passed before this gate existe
 GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST=1 \
 	bash "$historical_prose/scripts/release-gate-scope-check.sh" >/dev/null ||
 	fail "historical handbook prose was treated as a live quality gate"
+
+# DEC-WINDOWS: release notes keep the Windows unverified-preview notice.
+windows_message="labels the Windows installer an unverified preview"
+windows_notes_dropped="$(new_fixture windows-notes-dropped)"
+python3 -B - "$windows_notes_dropped/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "            --notes-file docs/release-notes/platform-notice.md \\\n"
+if text.count(old) != 1:
+    sys.exit("windows fixture: notes-file line not found once")
+open(path, "w").write(text.replace(old, ""))
+PY
+expect_failure "$windows_notes_dropped" "$windows_message"
+windows_notice_softened="$(new_fixture windows-notice-softened)"
+sed -i.bak 's/GoPMgr does not support Windows yet\./GoPMgr runs on Windows./' "$windows_notice_softened/docs/release-notes/platform-notice.md"
+rm -f "$windows_notice_softened/docs/release-notes/platform-notice.md.bak"
+expect_failure "$windows_notice_softened" "$windows_message"
 
 # SEC-06: the advisory scan must stay in the release gate, unchanged.
 advisory_message="check-release.sh must run make engine-advisories"

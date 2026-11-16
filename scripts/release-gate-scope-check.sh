@@ -311,6 +311,16 @@ fi
 # The macOS CGO build can fill the hosted runner with disposable Go caches
 # before hdiutil stages the app. Preserve the post-build reclamation contract;
 # it is runner-only and must not be moved into the developer packaging script.
+# DEC-WINDOWS (owner decision, 2026-11-14): every release's notes start
+# with the notice that the Windows installer is an unverified preview, and
+# no Windows support is advertised until a real Windows host qualifies it.
+if ! rg -Fq -- "--notes-file docs/release-notes/platform-notice.md \\" .github/workflows/release.yml ||
+	! rg -Fq '**Windows: unverified preview.**' docs/release-notes/platform-notice.md ||
+	! rg -Fq 'GoPMgr does not support Windows yet.' docs/release-notes/platform-notice.md; then
+	echo "release-scope: release notes must start with docs/release-notes/platform-notice.md, which labels the Windows installer an unverified preview." >&2
+	fail=1
+fi
+
 if ! rg -Fq 'name: Reclaim macOS packaging space' .github/workflows/release.yml ||
 	! rg -Fq 'go clean -cache -modcache' .github/workflows/release.yml ||
 	! rg -Fq 'npm cache clean --force' .github/workflows/release.yml; then
