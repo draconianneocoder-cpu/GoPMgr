@@ -76,6 +76,19 @@ if text.count(old) != 1:
 open(path, "w").write(text.replace(old, ""))
 PY
 expect_failure "$windows_notes_dropped" "$windows_message"
+windows_notes_moved="$(new_fixture windows-notes-moved)"
+python3 -B - "$windows_notes_moved/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "            --notes-file docs/release-notes/platform-notice.md \\\n"
+if text.count(old) != 1:
+    sys.exit("windows fixture: notes-file line not found once")
+text = text.replace(old, "")
+text = "# " + old.strip() + "\n" + text
+open(path, "w").write(text)
+PY
+expect_failure "$windows_notes_moved" "$windows_message"
 windows_notice_softened="$(new_fixture windows-notice-softened)"
 sed -i.bak 's/GoPMgr does not support Windows yet\./GoPMgr runs on Windows./' "$windows_notice_softened/docs/release-notes/platform-notice.md"
 rm -f "$windows_notice_softened/docs/release-notes/platform-notice.md.bak"

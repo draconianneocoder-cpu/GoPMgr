@@ -11,3 +11,5 @@ is removed or stops saying so.
 > Windows computer. GoPMgr does not support Windows yet. Try it only with fictional
 > projects, expect problems, and keep backups. The installer has no Authenticode
 > signature, so Windows SmartScreen warns about it.
+
+---

@@ -114,7 +114,9 @@ Before the tag, also require:
    metadata, signature/trust result, SHA-256 digest, generated note, and
    required limitation before publishing the draft. Review the signed-update
    manifest when the channel is configured; otherwise record that the channel
-   is disabled and no manifest was produced.
+   is disabled and no manifest was produced. Keep the platform notice from
+   `docs/release-notes/platform-notice.md` at the top of the notes; if the
+   draft's notes are rewritten by hand, put it back first.
 6. Publish the reviewed draft as a GitHub prerelease, not a general release.
    Add the tag to
    `published-release-tags.txt` only after the public release exists and has
