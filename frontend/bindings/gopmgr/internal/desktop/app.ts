@@ -624,7 +624,9 @@ export function DeleteDocument(id: string): $CancellablePromise<void> {
  * DeletePlaintextCopy deletes the unencrypted copy of the project at path
  * and returns the deleted path. The encrypted project must be the one open
  * in this session, and must open again read-only with the session's key and
- * pass its integrity checks first (db.RemovePlaintextBackup).
+ * pass its integrity checks first (db.RemovePlaintextBackup). A copy that is
+ * already gone counts as deleted; every other refusal is an error, so the
+ * screen never reports a deletion that did not happen.
  */
 export function DeletePlaintextCopy(path: string): $CancellablePromise<string> {
     return $Call.ByName("gopmgr/internal/desktop.App.DeletePlaintextCopy", path);
