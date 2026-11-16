@@ -89,6 +89,24 @@ var recoverySheetPDF = recoveryCodesFormat{
 	},
 }
 
+// checkShownRecoveryCodes is what Save and Copy require of codes the
+// frontend hands back: a signed-in session and one set of well-formed codes,
+// so neither becomes a general file or clipboard writer.
+func (a *App) checkShownRecoveryCodes(codes []string) error {
+	if a.requireUser() == nil {
+		return errors.New("not signed in")
+	}
+	if len(codes) == 0 || len(codes) > users.RecoveryCodeCount {
+		return fmt.Errorf("expected 1 to %d recovery codes, got %d", users.RecoveryCodeCount, len(codes))
+	}
+	for _, code := range codes {
+		if !recoveryCodeFormat.MatchString(code) {
+			return errors.New("not a recovery code")
+		}
+	}
+	return nil
+}
+
 func (a *App) saveRecoveryCodes(username string, codes []string, runtime exportDestinationRuntime, format recoveryCodesFormat) (string, error) {
 	if a.requireUser() == nil {
 		return "", errors.New("not signed in")
@@ -96,13 +114,8 @@ func (a *App) saveRecoveryCodes(username string, codes []string, runtime exportD
 	if err := users.ValidateUsername(username); err != nil {
 		return "", err
 	}
-	if len(codes) == 0 || len(codes) > users.RecoveryCodeCount {
-		return "", fmt.Errorf("expected 1 to %d recovery codes, got %d", users.RecoveryCodeCount, len(codes))
-	}
-	for _, code := range codes {
-		if !recoveryCodeFormat.MatchString(code) {
-			return "", errors.New("not a recovery code")
-		}
+	if err := a.checkShownRecoveryCodes(codes); err != nil {
+		return "", err
 	}
 	if runtime.saveFileDialog == nil {
 		return "", errors.New("save dialog is required")

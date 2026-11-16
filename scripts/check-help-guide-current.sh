@@ -5,11 +5,15 @@
 set -euo pipefail
 
 # HelpGuide is a shell; its rendered sections live in the sibling help/
-# components. Check the complete in-app guide, not only the shell, so a
-# refactor cannot make required text look absent.
+# components, and since 2026-11-14 the shared term reference and section
+# index they render live in help-glossary.ts and help-sections.ts. Check the
+# complete in-app guide, not only the shell, so a refactor cannot make
+# required text look absent.
 help_files=(
 	"frontend/src/lib/components/HelpGuide.svelte"
 	frontend/src/lib/components/help/*.svelte
+	"frontend/src/lib/components/help-glossary.ts"
+	"frontend/src/lib/components/help-sections.ts"
 )
 help_label="Help Guide components"
 

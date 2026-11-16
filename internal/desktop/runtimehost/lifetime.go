@@ -20,6 +20,9 @@ var (
 // Lifetime drains handlers before native shutdown, while response delivery can
 // still use the native event loop. It never waits for handlers on that loop.
 // All native UI operations must hold a BeginUI lease until they return.
+// Clipboard calls are the one exception (desktop/clipboard_guard.go): they are
+// brief and synchronous, and a lease held by one at quit time would make the
+// quit fail with ErrUIBusy.
 type Lifetime struct {
 	mu                         sync.Mutex
 	active                     sync.WaitGroup

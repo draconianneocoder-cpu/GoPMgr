@@ -56,6 +56,9 @@ import * as fonts$0 from "../fonts/models.js";
 import * as kernel$0 from "../kernel/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as schedaudit$0 from "../schedaudit/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as charts$1 from "../sigma/charts/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -153,8 +156,10 @@ export function AdminHandOverSuper(username: string): $CancellablePromise<$model
  * Requires the caller to be an administrator and the account's current
  * password (the one the admin set at creation) so the codes wrap the user's
  * data-encryption key — giving an admin-created account the same recovery
- * footing as a self-registered one. This adds no new password oracle: Login
- * already verifies passwords for any username at the same Argon2id cost.
+ * footing as a self-registered one. Unlike Login it is not delayed after
+ * failures: only a signed-in administrator can call it, and the password
+ * hashes it checks against are readable in system.db by anyone with the
+ * same OS account (docs/review/sec-04-triage.md, item 3).
  */
 export function AdminIssueRecoveryCodes(username: string, password: string): $CancellablePromise<string[] | null> {
     return $Call.ByName("gopmgr/internal/desktop.App.AdminIssueRecoveryCodes", username, password);
@@ -363,6 +368,26 @@ export function AttachCostEntryFile(costEntryID: string): $CancellablePromise<$m
 }
 
 /**
+ * AuditSchedule runs the PS-02 schedule-quality audit on one CPM chart of
+ * the open project and returns its findings. It reads only: nothing is
+ * saved, repaired or logged.
+ *
+ * It audits exactly the chart named by chartID, never the project's newest
+ * chart, and labels the result with that chart's ID and revision (its
+ * updated-at stamp). The audit schedules a copy of the chart's tasks the way
+ * reports do: date constraints armed against the project start date and the
+ * country work calendar, and resource demand checked against the project's
+ * capacity plan.
+ *
+ * reportingDate is the status date as YYYY-MM-DD, or empty for none.
+ * profile is "default" (or empty) or "dcma-style". ctx is the frontend
+ * call's own context, so cancelling the call stops the audit.
+ */
+export function AuditSchedule(chartID: string, reportingDate: string, profile: string): $CancellablePromise<schedaudit$0.Result> {
+    return $Call.ByName("gopmgr/internal/desktop.App.AuditSchedule", chartID, reportingDate, profile);
+}
+
+/**
  * BecomeAdmin promotes the currently signed-in user to administrator,
  * but only if no administrator account exists yet. Once any admin
  * exists this method returns an error — use AdminSetUserRole instead.
@@ -521,6 +546,16 @@ export function ComputeScheduleEVM(chartID: string, asOfDate: string): $Cancella
  */
 export function ConfirmRecoveryCodes(): $CancellablePromise<void> {
     return $Call.ByName("gopmgr/internal/desktop.App.ConfirmRecoveryCodes");
+}
+
+/**
+ * CopyRecoveryCodes puts freshly shown recovery codes on the clipboard, one
+ * per line, and clears them 60 seconds later if the clipboard still holds
+ * them, or at a normal quit before that (clipboard_guard.go). It accepts only
+ * what the Save methods accept.
+ */
+export function CopyRecoveryCodes(codes: string[] | null): $CancellablePromise<void> {
+    return $Call.ByName("gopmgr/internal/desktop.App.CopyRecoveryCodes", codes);
 }
 
 /**

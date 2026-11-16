@@ -489,6 +489,14 @@
       ]
     },
     {
+      "method": "CopyRecoveryCodes",
+      "file": "internal/desktop/app_recovery_codes_clipboard.go",
+      "line": 12,
+      "params": "codes []string",
+      "returns": "error",
+      "uses_internal_packages": []
+    },
+    {
       "method": "CreateAccount",
       "file": "internal/desktop/app_session.go",
       "line": 61,
