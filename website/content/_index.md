@@ -5,15 +5,15 @@ weight = 0
 layout = "home"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a"
-last_reviewed = "2026-11-14"
+applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, 49f0fe5d727f"
+last_reviewed = "2026-11-16"
 claim_ids = ["page.home"]
 [[params.sources]]
 label = "README.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/README.md"
 [[params.sources]]
 label = "docs/INSTALL.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/INSTALL.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/49f0fe5d727fd4eff383d2c6e3c767ea7cfa0408/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/branding.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/branding.md"
