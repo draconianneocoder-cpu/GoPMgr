@@ -40,6 +40,15 @@ delay. This replaces "Unknown-username timing is
 not equalized" above; usernames remain readable locally, so this closes a
 timing difference, not a disclosure.
 
+### Follow-up, 2026-11-16
+
+Asked whether the signed update manifest should keep offering the Windows
+installer as an automatic update before a Windows host qualifies it, the
+maintainer chose to keep it as it is: Windows updates stay in the manifest,
+whose notes point to the release page that carries the unverified-preview
+notice. The alternatives offered were leaving Windows out of the manifest
+until qualified, or labelling the update's own notes.
+
 ## Architecture
 
 | Decision | Chosen option | What it authorizes |
