@@ -5,7 +5,7 @@ weight = 0
 layout = "home"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, 49f0fe5d727f"
+applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, 49f0fe5d727f, f54b26428f70"
 last_reviewed = "2026-11-16"
 claim_ids = ["page.home"]
 [[params.sources]]
@@ -19,7 +19,7 @@ label = "docs/branding.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/branding.md"
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md"
 +++
 
 <!--
@@ -37,7 +37,7 @@ Explore critical-path scheduling, calendars and baselines. [See development capa
 
 ### Understand the cost
 
-Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#portfolio-and-dashboard).
+Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md#portfolio-and-dashboard).
 
 ### Start with the documentation
 

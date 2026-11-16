@@ -29,8 +29,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         }
       ]
     },
@@ -41,7 +41,7 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-14",
+      "last_reviewed": "2026-11-16",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -51,8 +51,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         }
       ]
     },
@@ -68,8 +68,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         },
         {
           "path": "docs/INSTALL.md",
@@ -95,8 +95,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         }
       ]
     },
@@ -112,8 +112,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         },
         {
           "path": "docs/INSTALL.md",
@@ -210,8 +210,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "46c83d0a0e91e8045f7c26d56919a8326284efaee03da2f9a44ee3933b258782",
-          "reviewed_commit": "4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8"
+          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
+          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
         }
       ]
     },

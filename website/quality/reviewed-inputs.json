@@ -28,8 +28,8 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "d4971a4571fbfb8eee5c1aca40fc8ccdf8bc82b9ac1c7dda46c153e26df5df69",
-      "size": 2174,
+      "sha256": "27b2357b5e93542689b21f7245c8f5c9f698c8677676df4dc1bc51bfb29aa098",
+      "size": 2188,
       "mode": "100644"
     },
     "content/community/_index.md": {
@@ -38,18 +38,18 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "fd0800d46412fc1d3fd697c1c2bc4428ef00e51e2b027e34b1ae9759b9558800",
-      "size": 1805,
+      "sha256": "3aed17d9b55d69abc91371d51d00438bf411ef12d9d93dd17a7569df5471efaf",
+      "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "d8a4c5b6f82c9da67faf2832d7b0fb5b8c92c2237db8ae88029df5ccf997d140",
-      "size": 2021,
+      "sha256": "25c86f45ffdb2aaa6b467bb00e8285c20c4f927b4928051b240d4a5ab320a29d",
+      "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "5bfc2c6595e5e715aa9973c9607315fe0e992b08e199a8a120344c7488a10897",
-      "size": 2853,
+      "sha256": "934231836fdcc16180477bb6948d9a2af138810bd8b14abf13c30362f6a1ab40",
+      "size": 2867,
       "mode": "100644"
     },
     "content/downloads/_index.md": {
@@ -58,8 +58,8 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "794562a4de91fac22ef0aa41c376565161ec342ae7e5f113775ead341c104d4a",
-      "size": 2471,
+      "sha256": "136da9aba769a1c74c7cca3bfa562baba302b8763117496eb9e134656cf59826",
+      "size": 2485,
       "mode": "100644"
     },
     "content/legal/_index.md": {
@@ -73,8 +73,8 @@
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "0e2c6428e784e40836984777cbb6221a3bf4e774027fefe75cd0c81f2f37fece",
-      "size": 2156,
+      "sha256": "706736f5fdd8acc5b9db91defbaf40ed3da36c8011f8e58d30c0be854c4c5c25",
+      "size": 2170,
       "mode": "100644"
     },
     "data/release-records.yaml": {
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "51643fdc7f83fd8aa251bd01a86bad5612685881f802f7cae0422d42403cc065",
+      "sha256": "f18aab9fffc8c104160108de7d0d6ad658a133e4cbf476c1f3f0c115b4309ee4",
       "size": 8426,
       "mode": "100644"
     },

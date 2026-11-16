@@ -5,15 +5,15 @@ weight = 10
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Application snapshot 88b92cf935c7; planning review af20d3861ce6; manual review 4f4ab0c7572a"
-last_reviewed = "2026-11-14"
+applies_to = "Application snapshot 88b92cf935c7; planning review af20d3861ce6; manual review 4f4ab0c7572a, f54b26428f70"
+last_reviewed = "2026-11-16"
 claim_ids = ["page.features"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/af20d3861ce6ab62787a16f61e1cc15b8a282322/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md"
 +++
 
 <!--
@@ -25,15 +25,15 @@ The application capabilities below describe the recorded application snapshot. T
 
 ## Scheduling and baselines
 
-**Development:** model task dependencies, use business calendars and capture baselines. Read the [scheduling guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#stakeholders-timeline-budget-and-cost-control). No task-count or performance figure has been verified.
+**Development:** model task dependencies, use business calendars and capture baselines. Read the [scheduling guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md#stakeholders-timeline-budget-and-cost-control). No task-count or performance figure has been verified.
 
 ## Costs and earned value
 
-**Development:** track budgets and committed costs, then review portfolio rollups with explicit coverage and currency rules. GoPMgr has no foreign-exchange conversion. [Read the portfolio contract](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#portfolio-and-dashboard).
+**Development:** track budgets and committed costs, then review portfolio rollups with explicit coverage and currency rules. GoPMgr has no foreign-exchange conversion. [Read the portfolio contract](https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md#portfolio-and-dashboard).
 
 ## Charts, documents and exports
 
-**Development:** work with project charts, documents and export formats. Exported PDFs can be archival (PDF/A) and digitally signed (PAdES). How far a signature can be trusted depends on your certificate and on the reader that validates it. [Read report and signing guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/4f4ab0c7572a9de3b7498a81caa82f5fe679b8b8/docs/user-guide.md#pdf-signing).
+**Development:** work with project charts, documents and export formats. Exported PDFs can be archival (PDF/A) and digitally signed (PAdES). How far a signature can be trusted depends on your certificate and on the reader that validates it. [Read report and signing guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md#pdf-signing).
 
 ## Local data protection
 
