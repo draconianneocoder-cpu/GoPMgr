@@ -1,0 +1,2189 @@
+{
+  "next_id": 250,
+  "naming_rule_from": 239,
+  "entries": [
+    {
+      "id": "DOC-0001",
+      "path": "docs/ARCHITECTURE.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Architecture: runtime shape, data layout, packages, frontend and release architecture."
+    },
+    {
+      "id": "DOC-0002",
+      "path": "docs/DEPENDENCIES.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Dependencies: toolchain, Go and frontend dependencies, external tools and change rules."
+    },
+    {
+      "id": "DOC-0003",
+      "path": "docs/DEVELOPER_HANDBOOK.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr Developer Handbook"
+    },
+    {
+      "id": "DOC-0004",
+      "path": "docs/ERROR_HANDLING.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Error handling: sentinel errors, wrapping, diagnostics, fail-soft and fail-hard behaviour."
+    },
+    {
+      "id": "DOC-0005",
+      "path": "docs/INSTALL.md",
+      "kind": "guide",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Installing & running GoPMgr"
+    },
+    {
+      "id": "DOC-0006",
+      "path": "docs/ROADMAP.md",
+      "kind": "roadmap",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr Roadmap"
+    },
+    {
+      "id": "DOC-0007",
+      "path": "docs/SBOM.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Software bill of materials (SBOM)"
+    },
+    {
+      "id": "DOC-0008",
+      "path": "docs/SECURITY.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Security: local accounts, encryption, secrets, document security, audit integrity and release safety."
+    },
+    {
+      "id": "DOC-0009",
+      "path": "docs/STATUS.md",
+      "kind": "status",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr current status"
+    },
+    {
+      "id": "DOC-0010",
+      "path": "docs/STYLE.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Style: repository, Go, frontend, documentation and security-sensitive coding conventions."
+    },
+    {
+      "id": "DOC-0011",
+      "path": "docs/TESTING.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Testing: local, frontend, race, PDF, PAdES and release test guidance."
+    },
+    {
+      "id": "DOC-0012",
+      "path": "docs/TEST_COVERAGE_LEDGER.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr Test Coverage Ledger"
+    },
+    {
+      "id": "DOC-0013",
+      "path": "docs/VISION.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr Vision"
+    },
+    {
+      "id": "DOC-0014",
+      "path": "docs/agent/ADR-010-architecture-preservation-agent-prompt.md",
+      "kind": "agent",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-010",
+      "summary": "Coding-agent master prompt — Execute ADR-010 without architectural degradation"
+    },
+    {
+      "id": "DOC-0015",
+      "path": "docs/agent/ADR-010-v2.2-AGENT-HANDOFF.md",
+      "kind": "agent",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-010",
+      "summary": "Coding agent — maintainer acceptance of ADR-010 v2.2"
+    },
+    {
+      "id": "DOC-0016",
+      "path": "docs/agent/adr-012-coding-agent-instructions.md",
+      "kind": "agent",
+      "status": "accepted",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-012",
+      "summary": "Coding-agent directive: ADR-012 v0.2 DataFusion feasibility without architectural compromise"
+    },
+    {
+      "id": "DOC-0017",
+      "path": "docs/agent/adr-012-owner-prompt-to-paste.md",
+      "kind": "agent",
+      "status": "accepted",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-012",
+      "summary": "GoPMgr ADR-012 v0.2 — Maintainer Prompt for a Coding Agent"
+    },
+    {
+      "id": "DOC-0018",
+      "path": "docs/beta-release-backlog.md",
+      "kind": "plan",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Beta release backlog"
+    },
+    {
+      "id": "DOC-0019",
+      "path": "docs/branding.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr branding assets"
+    },
+    {
+      "id": "DOC-0020",
+      "path": "docs/review/cornucopia-elicitation-2026-09-01.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/cornucopia-elicitation-2026-09-01.md",
+      "summary": "OWASP Cornucopia security review",
+      "previous_paths": [
+        {
+          "path": "docs/cornucopia-elicitation-2026-09-01.md",
+          "until": "PR 228"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0021",
+      "path": "docs/design/ADR-001-database-encryption-at-rest.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-001-database-encryption-at-rest.md",
+      "stated_status": "Implemented",
+      "summary": "ADR-001: Per-user database encryption at rest"
+    },
+    {
+      "id": "DOC-0022",
+      "path": "docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md",
+      "stated_status": "Implemented; the DuckDB analytics part was superseded on 2026-11-02 by a Go-native engine (see the owner decision).",
+      "summary": "ADR-002: DuckDB analytics and SQLCipher project storage"
+    },
+    {
+      "id": "DOC-0023",
+      "path": "docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md",
+      "stated_status": "Implemented",
+      "summary": "ADR-003: PDF library migration"
+    },
+    {
+      "id": "DOC-0024",
+      "path": "docs/design/ADR-004-administrator-access-to-user-data.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-004-administrator-access-to-user-data.md",
+      "stated_status": "Accepted; phases 1 and 2 built (2026-10-02); phase 3's sign-in notice built (2026-10-02); escrow rotation (decision 3) built 2026-10-07 as ADR-005 part 3a.",
+      "summary": "ADR-004: Administrator access to users' data"
+    },
+    {
+      "id": "DOC-0025",
+      "path": "docs/design/ADR-005-super-administrator-and-succession.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-005-super-administrator-and-succession.md",
+      "stated_status": "Accepted (owner decisions, 2026-10-05 and 2026-10-07).",
+      "summary": "ADR-005: Super administrator and succession"
+    },
+    {
+      "id": "DOC-0026",
+      "path": "docs/design/ADR-006-pdfa-2u-archival-format.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-006-pdfa-2u-archival-format.md",
+      "stated_status": "Implemented",
+      "summary": "ADR-006: PDF/A-2u as the archival PDF format"
+    },
+    {
+      "id": "DOC-0027",
+      "path": "docs/design/ADR-007-ibm-plex-script-coverage.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-007-ibm-plex-script-coverage.md",
+      "stated_status": "Implemented; amended by ADR-008, which adds IBM Plex Sans JP and KR to the app for a Japanese and Korean interface.",
+      "summary": "ADR-007: Which IBM Plex packages GoPMgr bundles"
+    },
+    {
+      "id": "DOC-0028",
+      "path": "docs/design/ADR-008-localization.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-008-localization.md",
+      "stated_status": "Accepted",
+      "summary": "ADR-008: Interface, Help, and document languages"
+    },
+    {
+      "id": "DOC-0029",
+      "path": "docs/design/ADR-009-yen-reporting-currency.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-009-yen-reporting-currency.md",
+      "stated_status": "Implemented (merged in #131, 2026-10-23)",
+      "summary": "ADR-009: Yen as a reporting currency"
+    },
+    {
+      "id": "DOC-0030",
+      "path": "docs/design/ADR-010-plugin-architecture.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-010-plugin-architecture.md",
+      "stated_status": "ACCEPTED — architecture only, v2.2.",
+      "governed": "ADR-010",
+      "summary": "ADR-010: Local-first interoperable worker architecture, scalable project interchange, and future extension boundaries"
+    },
+    {
+      "id": "DOC-0031",
+      "path": "docs/design/ADR-011-normalized-schedule-store.md",
+      "kind": "adr",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-011-normalized-schedule-store.md",
+      "stated_status": "Proposed. Draft 1, 2026-10-27.",
+      "governed": "ADR-010",
+      "summary": "ADR-011: Normalized schedule store, project format gate and encrypted migration"
+    },
+    {
+      "id": "DOC-0032",
+      "path": "docs/design/ADR-012-datafusion-analytics-replacement.md",
+      "kind": "adr",
+      "status": "superseded",
+      "status_evidence": "docs/design/ADR-012-datafusion-analytics-replacement.md",
+      "stated_status": "Historical architecture accepted on 2026-10-26 (acceptance record), superseded for the current analytics allocation by the 2026-11-02 Go-native retirement decision.",
+      "governed": "ADR-012",
+      "summary": "ADR-012: Replace DuckDB analytics with an Apache DataFusion/Arrow worker",
+      "superseded_by": "DOC-0136"
+    },
+    {
+      "id": "DOC-0033",
+      "path": "docs/design/ADR-013-engineering-build-assurance.md",
+      "kind": "adr",
+      "status": "accepted",
+      "status_evidence": "docs/design/ADR-013-engineering-build-assurance.md",
+      "stated_status": "accepted maintainer direction; implementation staged.",
+      "governed": "ADR-013",
+      "summary": "ADR-013: Make-centered engineering build assurance"
+    },
+    {
+      "id": "DOC-0034",
+      "path": "docs/design/ADR-014-reporting-integrity-and-lifecycle.md",
+      "kind": "adr",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-014-reporting-integrity-and-lifecycle.md",
+      "stated_status": "Proposed detailed architecture; documentation integrated 2026-11-13.",
+      "summary": "ADR-014 Reporting integrity and lifecycle documentation"
+    },
+    {
+      "id": "DOC-0035",
+      "path": "docs/design/ADR-015-secure-extension-platform.md",
+      "kind": "adr",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-015-secure-extension-platform.md",
+      "stated_status": "PROPOSED integrated design; no new implementation authorization or qualification",
+      "summary": "ADR-015: Capability-Secure, Resource-Bounded, Fault-Isolated Extension Platform"
+    },
+    {
+      "id": "DOC-0036",
+      "path": "docs/design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md",
+      "kind": "adr",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md",
+      "stated_status": "POLICY DIRECTION APPROVED BY MAINTAINER IN PRINCIPLE, 2026-10-28.",
+      "summary": "ADR-TBD — Tiered local FIDO2 hardware authentication, FIPS 140-3 administrative enforcement, and encrypted-project…"
+    },
+    {
+      "id": "DOC-0037",
+      "path": "docs/design/ADR-TBD-provider-neutral-integration-framework.md",
+      "kind": "adr",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-TBD-provider-neutral-integration-framework.md",
+      "stated_status": "APPROVED IN PRINCIPLE by maintainer on 2026-10-28; normative text remains a proposed supplemental ADR pending explicit final acceptance and dependency reconciliation.",
+      "summary": "ADR-TBD — Provider-neutral external work-management integration framework"
+    },
+    {
+      "id": "DOC-0038",
+      "path": "docs/design/CONTRACT-AND-RECOVERY-REFERENCE.md",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/CONTRACT-AND-RECOVERY-REFERENCE.md",
+      "stated_status": "Design reference. Examples and layouts below are not migration-ready SQL or generated protobuf.",
+      "summary": "Contract and recovery reference — provider-neutral framework v2.0"
+    },
+    {
+      "id": "DOC-0039",
+      "path": "docs/design/CRYPTO-AND-STORAGE-CONTRACT.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Cryptographic, storage, OS and compatibility contract (proposed)"
+    },
+    {
+      "id": "DOC-0040",
+      "path": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
+      "stated_status": "Proposed implementation contract.",
+      "summary": "Policy, authority, state machine, and recovery reference (v4)"
+    },
+    {
+      "id": "DOC-0041",
+      "path": "docs/design/ROADMAP-TIERED-SECURITY-KEYS.md",
+      "kind": "plan",
+      "status": "proposed",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second"
+    },
+    {
+      "id": "DOC-0042",
+      "path": "docs/design/ROADMAP-provider-integrations.md",
+      "kind": "plan",
+      "status": "proposed",
+      "status_evidence": "docs/design/ROADMAP-provider-integrations.md",
+      "stated_status": "framework approved in principle on 2026-10-28.",
+      "summary": "Proposed GoPMgr roadmap insertion — provider-neutral integrations"
+    },
+    {
+      "id": "DOC-0043",
+      "path": "docs/design/TEST-TIERED-SECURITY-KEYS.md",
+      "kind": "strategy",
+      "status": "proposed",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix"
+    },
+    {
+      "id": "DOC-0044",
+      "path": "docs/design/TEST-provider-integrations.md",
+      "kind": "strategy",
+      "status": "proposed",
+      "status_evidence": "docs/design/TEST-provider-integrations.md",
+      "stated_status": "framework approved in principle; this is a proposed test plan only and all 48 PI tests are NOT RUN until separately executed and evidenced.",
+      "summary": "Provider integration assurance, adversarial validation and acceptance"
+    },
+    {
+      "id": "DOC-0045",
+      "path": "docs/design/accessibility-remaining-work-plan.md",
+      "kind": "plan",
+      "status": "proposed",
+      "status_evidence": "docs/design/accessibility-remaining-work-plan.md",
+      "stated_status": "Planning document, 2026-08-24; updated 2026-09-04 — M1 (native keyboard-only pass of Tabs.svelte's two consumers) fully closed, in both the browser-tab and native-window runtimes; action-button…",
+      "summary": "Accessibility — coverage map and remaining work"
+    },
+    {
+      "id": "DOC-0046",
+      "path": "docs/design/adr-010-g1-implementation-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/design/adr-010-g1-implementation-plan.md",
+      "stated_status": "APPROVED by the maintainer on 2026-10-26, under the conditions in the P04 authorization, decisions P04-D1 to P04-D8.",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 implementation plan"
+    },
+    {
+      "id": "DOC-0047",
+      "path": "docs/design/adr-010-g1-transport-design.md",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/adr-010-g1-transport-design.md",
+      "stated_status": "the basis for G1 implementation.",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 worker connection design (transport-neutral)"
+    },
+    {
+      "id": "DOC-0048",
+      "path": "docs/design/adr-010-implementation-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/design/adr-010-implementation-plan.md",
+      "stated_status": "ACCEPTED target architecture (maintainer, 2026-10-24; decision record).",
+      "governed": "ADR-010",
+      "summary": "ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan"
+    },
+    {
+      "id": "DOC-0049",
+      "path": "docs/design/adr-010/README.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "ADR-010 reference documents"
+    },
+    {
+      "id": "DOC-0050",
+      "path": "docs/design/adr-010/v1-original-plan.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-010: Secure, Local-First Plugin Architecture for GoPMgr",
+      "frozen_sha256": "9333b8659af4b05fc27ab3d48a99eae978bc39cc3ea89e6c0ee952a64282506a"
+    },
+    {
+      "id": "DOC-0051",
+      "path": "docs/design/adr-010/v2-critical-review-addendum.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "Critical Design Review and Improvement Addendum — GoPMgr ADR-010 v2.0",
+      "frozen_sha256": "d95cfc4757405e1e2d45f68c10aed5b66b22b60f863ff345b318dea2d7cb309e"
+    },
+    {
+      "id": "DOC-0052",
+      "path": "docs/design/adr-010/v2.0-plan.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-010: Secure, Local-First Plugin Architecture for GoPMgr",
+      "frozen_sha256": "0ebc4508e7e75141e13b78be36eae0c46f09ada5b6895c6d845786da1f7fb5b8"
+    },
+    {
+      "id": "DOC-0053",
+      "path": "docs/design/adr-010/v2.1/ADR-010-plugin-architecture.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": "docs/design/adr-010/README.md",
+      "summary": "ADR-010: Interchange workers and the data platform for large schedules",
+      "frozen_sha256": "575bc75b40f324e35871b20b7645f5d8394bba6955ecbc0b887abc72ba7c3a20"
+    },
+    {
+      "id": "DOC-0054",
+      "path": "docs/design/adr-010/v2.1/adr-010-implementation-plan.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": "docs/design/adr-010/README.md",
+      "summary": "ADR-010 implementation plan (v2.1)",
+      "frozen_sha256": "2d81cdb3ced8b204820861112bbfa3beff55acc156499b4feff8682f98ea33ba"
+    },
+    {
+      "id": "DOC-0055",
+      "path": "docs/design/adr-010/v2.1/adr-010-test-strategy.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": "docs/design/adr-010/README.md",
+      "summary": "ADR-010 test strategy",
+      "frozen_sha256": "b3e080898622633922e5664855cae97af69cfaba3fff63ff7e84e76833812578"
+    },
+    {
+      "id": "DOC-0056",
+      "path": "docs/design/adr-012/README.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "ADR-012 document set"
+    },
+    {
+      "id": "DOC-0057",
+      "path": "docs/design/adr-012/v0.1/README.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "GoPMgr — ADR-012 DataFusion replacement design bundle",
+      "frozen_sha256": "4e9320710042887c998f4cf29d928c686a3d4a3e03441b7e1ad002717a961c42"
+    },
+    {
+      "id": "DOC-0058",
+      "path": "docs/design/adr-012/v0.1/docs/agent/adr-012-coding-agent-instructions.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "Coding-agent directive: ADR-012 DataFusion feasibility without architectural compromise",
+      "frozen_sha256": "71bb9aec5d983e70b0c2ac792d7a0ae0e398b009b2bc4a300b51cdabab6dbe8d"
+    },
+    {
+      "id": "DOC-0059",
+      "path": "docs/design/adr-012/v0.1/docs/design/ADR-012-datafusion-analytics-replacement.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-012: Replace DuckDB analytics with an Apache DataFusion/Arrow worker",
+      "frozen_sha256": "ad2689327e7ad526ae21a40f59dde23b69509445c5c983b341b3f20d01add758"
+    },
+    {
+      "id": "DOC-0060",
+      "path": "docs/design/adr-012/v0.1/docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-012 / DF0: DataFusion-for-DuckDB replacement feasibility spike",
+      "frozen_sha256": "ef12328653a7b63f5c3d5a86222ff94328276a6d26d7c56fb865eb8d93b8a58f"
+    },
+    {
+      "id": "DOC-0061",
+      "path": "docs/design/adr-012/v0.2-as-submitted/README.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "GoPMgr ADR-012 v0.2 — DataFusion replacement architecture and feasibility bundle",
+      "frozen_sha256": "615426a9062c3a54c412eb1d253fd3fb3519fa1a3d3b44ff6fd81110492c00fa"
+    },
+    {
+      "id": "DOC-0062",
+      "path": "docs/design/adr-012/v0.2-as-submitted/docs/agent/adr-012-coding-agent-instructions.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "Coding-agent directive: ADR-012 v0.2 DataFusion feasibility without architectural compromise",
+      "frozen_sha256": "80b1363661a744c00a68dfe43200e556929b5b495468d40003dc00350870fe3f"
+    },
+    {
+      "id": "DOC-0063",
+      "path": "docs/design/adr-012/v0.2-as-submitted/docs/agent/adr-012-owner-prompt-to-paste.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "GoPMgr ADR-012 v0.2 — Maintainer Prompt for a Coding Agent",
+      "frozen_sha256": "f736713a6d27577f1f304468e988551104369237ae82b63dc853dfbba87ea2af"
+    },
+    {
+      "id": "DOC-0064",
+      "path": "docs/design/adr-012/v0.2-as-submitted/docs/design/ADR-012-datafusion-analytics-replacement.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-012: Replace DuckDB analytics with an Apache DataFusion/Arrow worker",
+      "frozen_sha256": "b837b41a0770b41c6ec80c231bd9df5417adf5c9376df752cc7acf9698b80c48"
+    },
+    {
+      "id": "DOC-0065",
+      "path": "docs/design/adr-012/v0.2-as-submitted/docs/review/adr-012-v0.2-improvements-and-traceability.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-012 v0.2 — Critical Review, Amendment Traceability and Approval Gates",
+      "frozen_sha256": "9a7800396b1589ee309c615155c4ac1dd567a5f25be5f50963fc3b6a26dfd27a"
+    },
+    {
+      "id": "DOC-0066",
+      "path": "docs/design/adr-012/v0.2-as-submitted/docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "ADR-012 / DF0: DataFusion-for-DuckDB replacement feasibility spike — v0.2",
+      "frozen_sha256": "c8b262df163d099b4e8d41315f81c4942307f41ee422ddeeefadd81309575f09"
+    },
+    {
+      "id": "DOC-0067",
+      "path": "docs/design/adr-013/v0.3-as-submitted/approved-phased-plan.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": "docs/engineering/adr-013-baseline.md",
+      "summary": "GoPMgr ADR-013: Maintainer-Approved Phased Engineering Build and Assurance Implementation Plan",
+      "frozen_sha256": "930313e4001a35dfdd7833c8d341aa5954cc32177ff6f4fa8c4f6776671a6a12"
+    },
+    {
+      "id": "DOC-0068",
+      "path": "docs/design/cost-control-phase-2-lifecycle.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/cost-control-phase-2-lifecycle.md",
+      "stated_status": "Proposed. Implementation is blocked on the decisions in this document.",
+      "summary": "Cost Control Phase 2 lifecycle and authority contract"
+    },
+    {
+      "id": "DOC-0069",
+      "path": "docs/design/dashboard-ia-restructuring-proposal.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/dashboard-ia-restructuring-proposal.md",
+      "stated_status": "R1–R4 implemented 2026-08-17/18 (see §7 for the implementation record). frontend/src/lib/components/project/Dashboard.svelte, App.svelte, and AppHeader.svelte have all changed as a direct result of…",
+      "summary": "Dashboard information-architecture restructuring — design proposal"
+    },
+    {
+      "id": "DOC-0070",
+      "path": "docs/design/docs-reorganization-inventory.md",
+      "kind": "plan",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Documentation inventory, 2026-11-17"
+    },
+    {
+      "id": "DOC-0071",
+      "path": "docs/design/docs-reorganization-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/STATUS.md",
+      "stated_status": "Accepted. On 2026-11-17 the owner accepted every recommendation in section 7 (D1–D8).",
+      "summary": "Documentation structure: reorganization and consolidation plan"
+    },
+    {
+      "id": "DOC-0072",
+      "path": "docs/design/duckdb-analytics-engine.md",
+      "kind": "design",
+      "status": "superseded",
+      "status_evidence": "docs/design/duckdb-analytics-engine.md",
+      "stated_status": "Retired 2026-11-02. A Go-native engine replaced DuckDB; see the owner decision and the parity record.",
+      "summary": "DuckDB analytics engine",
+      "superseded_by": "DOC-0136"
+    },
+    {
+      "id": "DOC-0073",
+      "path": "docs/design/governed-presentation-only-fx.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/governed-presentation-only-fx.md",
+      "stated_status": "Proposed for product and architecture review.",
+      "summary": "Governed presentation-only FX for GoPMgr Portfolio reporting"
+    },
+    {
+      "id": "DOC-0074",
+      "path": "docs/design/portfolio-fx-governance-options.md",
+      "kind": "design",
+      "status": "superseded",
+      "status_evidence": "docs/design/portfolio-fx-governance-options.md",
+      "stated_status": "Superseded.",
+      "summary": "Superseded: governed portfolio FX options",
+      "superseded_by": "DOC-0073"
+    },
+    {
+      "id": "DOC-0075",
+      "path": "docs/design/professional-scheduling-domain-model.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/professional-scheduling-domain-model.md",
+      "stated_status": "a design proposal for the modernization plan (PS-01).",
+      "summary": "Connected project model: domains, dependencies and open ADR-011 decisions"
+    },
+    {
+      "id": "DOC-0076",
+      "path": "docs/design/professional-scheduling-modernization-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/design/professional-scheduling-modernization-plan.md",
+      "stated_status": "APPROVED strategic direction and priority order (maintainer decision, 2026-10-26).",
+      "summary": "Professional scheduling and project controls modernization plan"
+    },
+    {
+      "id": "DOC-0077",
+      "path": "docs/design/project-cost-ledger-scope.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/project-cost-ledger-scope.md",
+      "stated_status": "Current Phase 1 product boundary.",
+      "summary": "Project cost ledger scope"
+    },
+    {
+      "id": "DOC-0078",
+      "path": "docs/design/project-settings-tab-restructuring.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/project-settings-tab-restructuring.md",
+      "stated_status": "implemented 2026-08-18.",
+      "summary": "Project Settings tab restructuring"
+    },
+    {
+      "id": "DOC-0079",
+      "path": "docs/design/reporting-extension/GoPMgr_Reporting_Extension_System_Design.docx",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Reporting and extension system design, as supplied (DOCX)."
+    },
+    {
+      "id": "DOC-0080",
+      "path": "docs/design/reporting-extension/extension-requirements.json",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Extension (EXT) requirement register (proposed target requirements)."
+    },
+    {
+      "id": "DOC-0081",
+      "path": "docs/design/reporting-extension/implementation-plan.md",
+      "kind": "plan",
+      "status": "proposed",
+      "status_evidence": "docs/design/reporting-extension/implementation-plan.md",
+      "stated_status": "Integrated planning baseline, 2026-11-13, source ac20cbe711d9c03479cf937d82c5b7da991454d3.",
+      "summary": "Reporting and extension implementation sequence"
+    },
+    {
+      "id": "DOC-0082",
+      "path": "docs/design/reporting-extension/requirements.json",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Reporting requirement register (proposed target requirements)."
+    },
+    {
+      "id": "DOC-0083",
+      "path": "docs/design/reporting-extension/sources/ADR-EXT-001-GoPMgr-Secure-Extension-Platform.md",
+      "kind": "design",
+      "status": "frozen",
+      "status_evidence": "docs/design/reporting-extension/implementation-plan.md",
+      "summary": "ADR-EXT-001: Capability-Secure, Resource-Bounded, Fault-Isolated Extension Platform",
+      "frozen_sha256": "6d23b028443bf77934abdb0880e2037280a4a5a5c1bd0c6a3a4e767f2c966925"
+    },
+    {
+      "id": "DOC-0084",
+      "path": "docs/design/reporting-extension/sources/GoPMgr_Reporting_Integrity_Architecture_Plan.docx",
+      "kind": "evidence-data",
+      "status": "frozen",
+      "status_evidence": "docs/design/reporting-extension/implementation-plan.md",
+      "summary": "Reporting integrity architecture plan, preserved as received (DOCX).",
+      "frozen_sha256": "bfbbef3b98dc13588812383379122df3b480fa2a99184b8ea9d86e7160ec39af"
+    },
+    {
+      "id": "DOC-0085",
+      "path": "docs/design/resource-resilience.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/resource-resilience.md",
+      "stated_status": "Required planning and acceptance obligations for affected development; application-wide enforcement is not implemented or qualified.",
+      "summary": "Resource resilience: required development contract"
+    },
+    {
+      "id": "DOC-0086",
+      "path": "docs/design/reusable-procurement-catalog.md",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/reusable-procurement-catalog.md",
+      "stated_status": "Catalog foundation, project-ledger procurement detail, and catalog-assisted Cost Control copying delivered.",
+      "summary": "Reusable procurement catalog"
+    },
+    {
+      "id": "DOC-0087",
+      "path": "docs/design/typography-ibm-plex.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/typography-ibm-plex.md",
+      "stated_status": "Implemented.",
+      "summary": "Typography: the IBM Plex superfamily"
+    },
+    {
+      "id": "DOC-0088",
+      "path": "docs/design/wails-v3-migration-design.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/wails-v3-migration-design.md",
+      "stated_status": "the migration is merged into main (merge commit f0aef1a, a local merge the owner approved after macOS and Ubuntu 26.04 verification, instead of a cutover PR).",
+      "summary": "Wails v3 migration design"
+    },
+    {
+      "id": "DOC-0089",
+      "path": "docs/design/wbs-authenticated-account-identity.md",
+      "kind": "design",
+      "status": "accepted",
+      "status_evidence": "docs/design/wbs-authenticated-account-identity.md",
+      "stated_status": "D1–D3 policies approved by the owner on 2026-10-14; implementation design remains subject to per-slice review.",
+      "summary": "Immutable account identity for authenticated WBS operations"
+    },
+    {
+      "id": "DOC-0090",
+      "path": "docs/design/wbs-capability-parity-plan.md",
+      "kind": "plan",
+      "status": "current",
+      "status_evidence": "docs/design/wbs-capability-parity-plan.md",
+      "stated_status": "Product direction and first pure model/validation slice approved; runtime integration remains proposed.",
+      "summary": "Connected WBS capability and usability plan"
+    },
+    {
+      "id": "DOC-0091",
+      "path": "docs/design/wbs-storage-boundary.md",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "WBS transactional storage foundation"
+    },
+    {
+      "id": "DOC-0092",
+      "path": "docs/design/wbs-unified-model-contract.md",
+      "kind": "design",
+      "status": "current",
+      "status_evidence": "docs/design/wbs-unified-model-contract.md",
+      "stated_status": "Pure model and the bounded internal transactional storage foundation are approved; production activation, migration and UI remain gated.",
+      "summary": "Unified local-first WBS model contract"
+    },
+    {
+      "id": "DOC-0093",
+      "path": "docs/engineering/adr-013-actionlint.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P4: local workflow correctness"
+    },
+    {
+      "id": "DOC-0094",
+      "path": "docs/engineering/adr-013-baseline.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P0: baseline reconciliation"
+    },
+    {
+      "id": "DOC-0095",
+      "path": "docs/engineering/adr-013-checkout-guard-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/adr-013-checkout-guard-plan.md",
+      "stated_status": "owner-approved on 2026-11-05 and implemented in the common Go workflow validator.",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P6: checkout credential guard"
+    },
+    {
+      "id": "DOC-0096",
+      "path": "docs/engineering/adr-013-compiler-policy.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "ADR-013 P6-E: native compiler and deployment-target characterization"
+    },
+    {
+      "id": "DOC-0097",
+      "path": "docs/engineering/adr-013-govulncheck.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P6-C: immutable govulncheck installation"
+    },
+    {
+      "id": "DOC-0098",
+      "path": "docs/engineering/adr-013-license-check.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/engineering/adr-013-license-check.md",
+      "stated_status": "implemented under the approved P6-B contract.",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P6-B: separate licensing validation from cleanup"
+    },
+    {
+      "id": "DOC-0099",
+      "path": "docs/engineering/adr-013-native-make-environment.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "P6-E: native Make test environments"
+    },
+    {
+      "id": "DOC-0100",
+      "path": "docs/engineering/adr-013-provisioning.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P1: auxiliary-tool provisioning"
+    },
+    {
+      "id": "DOC-0101",
+      "path": "docs/engineering/adr-013-release-license-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/adr-013-release-license-plan.md",
+      "stated_status": "owner-approved on 2026-11-05; implemented and locally qualified.",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P6-D: mandatory release licensing contract"
+    },
+    {
+      "id": "DOC-0102",
+      "path": "docs/engineering/adr-013-release-native-environment.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "P6-E: standalone release and validator environments"
+    },
+    {
+      "id": "DOC-0103",
+      "path": "docs/engineering/adr-013-shellcheck-findings.json",
+      "kind": "evidence-data",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "ShellCheck findings inventory adjudicated for ADR-013 P2."
+    },
+    {
+      "id": "DOC-0104",
+      "path": "docs/engineering/adr-013-shellcheck.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P2: ShellCheck inventory and adjudication"
+    },
+    {
+      "id": "DOC-0105",
+      "path": "docs/engineering/adr-013-shfmt-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/adr-013-shfmt-plan.md",
+      "stated_status": "maintainer approved on 2026-11-05.",
+      "summary": "ADR-013 P3: approved shfmt contract"
+    },
+    {
+      "id": "DOC-0106",
+      "path": "docs/engineering/adr-013-shfmt.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P3: local shell formatting check"
+    },
+    {
+      "id": "DOC-0107",
+      "path": "docs/engineering/adr-013-zizmor-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/adr-013-zizmor-plan.md",
+      "stated_status": "maintainer approved on 2026-11-05 after independent plan review.",
+      "summary": "ADR-013 P5: approved local security policy"
+    },
+    {
+      "id": "DOC-0108",
+      "path": "docs/engineering/adr-013-zizmor.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-013",
+      "summary": "ADR-013 P5: local workflow security policy"
+    },
+    {
+      "id": "DOC-0109",
+      "path": "docs/engineering/code-health-audit-2026-11-09.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/engineering/code-health-audit-2026-11-09.md",
+      "summary": "Dead and inefficient code audit, 2026-11-09"
+    },
+    {
+      "id": "DOC-0110",
+      "path": "docs/engineering/decompression-advisory-repair.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Decompression dependency repair"
+    },
+    {
+      "id": "DOC-0111",
+      "path": "docs/engineering/engine-advisories.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Vendored engine advisories (SEC-06)"
+    },
+    {
+      "id": "DOC-0112",
+      "path": "docs/engineering/escrow-field-length.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Escrow context field-length repair"
+    },
+    {
+      "id": "DOC-0113",
+      "path": "docs/engineering/gnupg-private-staging-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/gnupg-private-staging-plan.md",
+      "stated_status": "owner approved Option 1; implemented and locally qualified.",
+      "summary": "GnuPG signature staging repair plan"
+    },
+    {
+      "id": "DOC-0114",
+      "path": "docs/engineering/gosec-adjudication.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/gosec-adjudication.md",
+      "stated_status": "owner approved native no-replace publication; implementation and local qualification are recorded below.",
+      "summary": "Gosec findings: adjudication and restore repair plan"
+    },
+    {
+      "id": "DOC-0115",
+      "path": "docs/engineering/macos26-support-policy.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "macOS 26 Tahoe minimum support policy"
+    },
+    {
+      "id": "DOC-0116",
+      "path": "docs/engineering/memory-scan-integrity-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/memory-scan-integrity-plan.md",
+      "stated_status": "Option 1 accepted by owner; implemented and locally qualified.",
+      "summary": "Memory-safety scanner integrity repair plan"
+    },
+    {
+      "id": "DOC-0117",
+      "path": "docs/engineering/verapdf-provenance.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "PDF/A validator version and failure handling"
+    },
+    {
+      "id": "DOC-0118",
+      "path": "docs/engineering/website-production-ci.md",
+      "kind": "reference",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Website production verification in CI"
+    },
+    {
+      "id": "DOC-0119",
+      "path": "docs/engineering/xcrypto-advisory-plan.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/engineering/xcrypto-advisory-plan.md",
+      "stated_status": "exact upstream pin approved on 2026-11-05; implementation locally qualified; independent final review approved.",
+      "summary": "x/crypto advisory: bounded dependency repair"
+    },
+    {
+      "id": "DOC-0120",
+      "path": "docs/interoperability/adr-010-g0-dependency-report.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/interoperability/adr-010-g0-dependency-report.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G0 dependency, native-code and license inventory"
+    },
+    {
+      "id": "DOC-0121",
+      "path": "docs/interoperability/adr-010-g1-dependency-review.md",
+      "kind": "review",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 dependency review (for approval)"
+    },
+    {
+      "id": "DOC-0122",
+      "path": "docs/interoperability/adr-012-rust-dependency-security-sbom.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/interoperability/adr-012-rust-dependency-security-sbom.md",
+      "summary": "ADR-012 Rust dependency and native-worker review input"
+    },
+    {
+      "id": "DOC-0123",
+      "path": "docs/interoperability/transport-matrix.md",
+      "kind": "review",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "ADR-010 transport matrix"
+    },
+    {
+      "id": "DOC-0124",
+      "path": "docs/next-alpha-release-plan.md",
+      "kind": "plan",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Next alpha release plan"
+    },
+    {
+      "id": "DOC-0125",
+      "path": "docs/published-release-tags.txt",
+      "kind": "release",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Published release tags, one per line; read by the release reference-truth check."
+    },
+    {
+      "id": "DOC-0126",
+      "path": "docs/release-notes/platform-notice.md",
+      "kind": "release",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Windows unverified-preview notice placed first in every GitHub release's notes."
+    },
+    {
+      "id": "DOC-0127",
+      "path": "docs/release-preflight.md",
+      "kind": "guide",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Release pre-flight checklist"
+    },
+    {
+      "id": "DOC-0128",
+      "path": "docs/releases/v1.1.0-alpha.2.md",
+      "kind": "release",
+      "status": "historical",
+      "status_evidence": "docs/releases/v1.1.0-alpha.2.md",
+      "summary": "v1.1.0-alpha.2 release evidence"
+    },
+    {
+      "id": "DOC-0129",
+      "path": "docs/review/ADR-010-G0-windows-transport-decision.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-G0-windows-transport-decision.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G0 — Maintainer decision on the Windows transport"
+    },
+    {
+      "id": "DOC-0130",
+      "path": "docs/review/ADR-010-G1-P04-authorization-decision.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-G1-P04-authorization-decision.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 / P04 — Maintainer authorization"
+    },
+    {
+      "id": "DOC-0131",
+      "path": "docs/review/ADR-010-G1-authorization-clarification-2026-10-28.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-G1-authorization-clarification-2026-10-28.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1: authorization clarification, 2026-10-28"
+    },
+    {
+      "id": "DOC-0132",
+      "path": "docs/review/ADR-010-G1-open-questions-decision.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-G1-open-questions-decision.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 — Maintainer direction on the open questions"
+    },
+    {
+      "id": "DOC-0133",
+      "path": "docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md",
+      "kind": "decision",
+      "status": "frozen",
+      "status_evidence": ".gitattributes",
+      "summary": "GoPMgr ADR-010 v2.2 — Accepted Maintainer Decision Record",
+      "frozen_sha256": "2defe22ef1e36625d8ca15b19fae73171cc8d6c01213206dfd0d169e0afac604"
+    },
+    {
+      "id": "DOC-0134",
+      "path": "docs/review/ADR-010-v2.2-integration-review.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-v2.2-integration-review.md",
+      "summary": "ADR-010 v2.2 integration review"
+    },
+    {
+      "id": "DOC-0135",
+      "path": "docs/review/ADR-010-v2.2-review-and-traceability.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-010-v2.2-review-and-traceability.md",
+      "summary": "ADR-010 v2.2 — Critical independent review, decisions and traceability"
+    },
+    {
+      "id": "DOC-0136",
+      "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
+      "summary": "ADR-012: DuckDB retirement and provider allocation"
+    },
+    {
+      "id": "DOC-0137",
+      "path": "docs/review/ADR-012-macos-containment-ACR.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-012-macos-containment-ACR.md",
+      "summary": "ADR-012 ACR: macOS containment implementation gap"
+    },
+    {
+      "id": "DOC-0138",
+      "path": "docs/review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md",
+      "summary": "ADR-012 v0.2: maintainer acceptance and DF0 authorization"
+    },
+    {
+      "id": "DOC-0139",
+      "path": "docs/review/CRITICAL-REVIEW-AND-DECISION-DELTA.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/CRITICAL-REVIEW-AND-DECISION-DELTA.md",
+      "summary": "Critical review and formal decision delta — tiered hardware authentication v4"
+    },
+    {
+      "id": "DOC-0140",
+      "path": "docs/review/CRITICAL-REVIEW-and-DECISIONS.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/CRITICAL-REVIEW-and-DECISIONS.md",
+      "summary": "Critical review and v2 decisions — 2026-10-28"
+    },
+    {
+      "id": "DOC-0141",
+      "path": "docs/review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md",
+      "summary": "Linux minimum target: Ubuntu 26.04"
+    },
+    {
+      "id": "DOC-0142",
+      "path": "docs/review/PS-04-owner-decisions-2026-10-27.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/PS-04-owner-decisions-2026-10-27.md",
+      "summary": "PS-04 owner decisions, 2026-10-27"
+    },
+    {
+      "id": "DOC-0143",
+      "path": "docs/review/PS-capability-matrix.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/PS-capability-matrix.md",
+      "summary": "Professional scheduling: requirements-to-capabilities matrix"
+    },
+    {
+      "id": "DOC-0144",
+      "path": "docs/review/PS-professional-scheduling-ACCEPTED-OWNER-DECISION.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/PS-professional-scheduling-ACCEPTED-OWNER-DECISION.md",
+      "summary": "Professional scheduling and project controls: maintainer decision"
+    },
+    {
+      "id": "DOC-0145",
+      "path": "docs/review/TPC-benchmark-exclusion-decision.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/TPC-benchmark-exclusion-decision.md",
+      "summary": "TPC-H and TPC-DS exclusion: decision, evidence, and options"
+    },
+    {
+      "id": "DOC-0146",
+      "path": "docs/review/adr-012-repository-verification.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/adr-012-repository-verification.md",
+      "summary": "ADR-012 v0.2: repository and acceptance-contract verification"
+    },
+    {
+      "id": "DOC-0147",
+      "path": "docs/review/adr-012-v0.2-improvements-and-traceability.md",
+      "kind": "review",
+      "status": "accepted",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-012",
+      "summary": "ADR-012 v0.2 — Critical Review, Amendment Traceability and Approval Gates"
+    },
+    {
+      "id": "DOC-0148",
+      "path": "docs/review/architecture-directive-2026-10-27.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/architecture-directive-2026-10-27.md",
+      "summary": "Maintainer architecture directive, 2026-10-27: addendum and baseline"
+    },
+    {
+      "id": "DOC-0149",
+      "path": "docs/review/evaluation-2026-11-10-response-plan.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/evaluation-2026-11-10-response-plan.md",
+      "summary": "Response plan for the 2026-11-10 independent evaluation"
+    },
+    {
+      "id": "DOC-0150",
+      "path": "docs/review/independent-evaluation-2026-11-10.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/independent-evaluation-2026-11-10.md",
+      "summary": "GoPMgr: Consolidated Architecture, Capability, and Outstanding-Issues Evaluation"
+    },
+    {
+      "id": "DOC-0151",
+      "path": "docs/review/owner-decisions-2026-11-14.md",
+      "kind": "decision",
+      "status": "historical",
+      "status_evidence": "docs/review/owner-decisions-2026-11-14.md",
+      "summary": "Owner decisions, 2026-11-14"
+    },
+    {
+      "id": "DOC-0152",
+      "path": "docs/review/reporting-extension-integration.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/reporting-extension-integration.md",
+      "summary": "Reporting and extension plan integration review"
+    },
+    {
+      "id": "DOC-0153",
+      "path": "docs/review/sec-04-triage.md",
+      "kind": "review",
+      "status": "historical",
+      "status_evidence": "docs/review/sec-04-triage.md",
+      "summary": "SEC-04 triage: low-severity scan items"
+    },
+    {
+      "id": "DOC-0154",
+      "path": "docs/testing/PS-02-schedule-quality-audit-spec.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/testing/PS-02-schedule-quality-audit-spec.md",
+      "stated_status": "Slice 1 was AUTHORIZED for implementation on 2026-11-11 (decision).",
+      "summary": "PS-02 schedule-quality audit: specification and slice plan"
+    },
+    {
+      "id": "DOC-0155",
+      "path": "docs/testing/account-identity-registry.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/account-identity-registry.md",
+      "summary": "Account identity registry: first implementation slice"
+    },
+    {
+      "id": "DOC-0156",
+      "path": "docs/testing/account-race-assurance.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Full account race verification"
+    },
+    {
+      "id": "DOC-0157",
+      "path": "docs/testing/account-race-oracle.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/account-race-oracle.md",
+      "summary": "Account creation write-lock oracle"
+    },
+    {
+      "id": "DOC-0158",
+      "path": "docs/testing/account-transaction-cleanup.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/account-transaction-cleanup.md",
+      "summary": "Account transaction cleanup"
+    },
+    {
+      "id": "DOC-0159",
+      "path": "docs/testing/adr-010-case-crosswalk.csv",
+      "kind": "evidence-data",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 test case crosswalk between plan versions."
+    },
+    {
+      "id": "DOC-0160",
+      "path": "docs/testing/adr-010-g0-evidence.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-010-g0-evidence.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 P01/G0 — Go↔Java gRPC local-IPC evidence"
+    },
+    {
+      "id": "DOC-0161",
+      "path": "docs/testing/adr-010-g0-windows-transport-report.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-010-g0-windows-transport-report.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G0 — Windows transport comparative report"
+    },
+    {
+      "id": "DOC-0162",
+      "path": "docs/testing/adr-010-g1-blocked.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-010-g1-blocked.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 G1 — BLOCKED tests and resource plan"
+    },
+    {
+      "id": "DOC-0163",
+      "path": "docs/testing/adr-010-s0-baseline.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-010-s0-baseline.md",
+      "governed": "ADR-010",
+      "summary": "ADR-010 P02/S0 — Source, storage and performance baseline"
+    },
+    {
+      "id": "DOC-0164",
+      "path": "docs/testing/adr-010-test-strategy.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/testing/adr-010-test-strategy.md",
+      "stated_status": "ACCEPTED test strategy (maintainer, 2026-10-24; decision record); no tests executed or claimed PASS.",
+      "governed": "ADR-010",
+      "summary": "ADR-010 v2.2 — Test strategy, quality gates and traceable acceptance matrix"
+    },
+    {
+      "id": "DOC-0165",
+      "path": "docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "kind": "plan",
+      "status": "accepted",
+      "status_evidence": "docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "stated_status": "ACCEPTED by the maintainer on 2026-10-26 (acceptance record); DF0 (DF-OWN-02) is AUTHORIZED, evidence-only.",
+      "governed": "ADR-012",
+      "summary": "ADR-012 / DF0: DataFusion-for-DuckDB replacement feasibility spike — v0.2"
+    },
+    {
+      "id": "DOC-0166",
+      "path": "docs/testing/adr-012-df0-admission.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-admission.md",
+      "summary": "DF0: pre-launch reservation admission"
+    },
+    {
+      "id": "DOC-0167",
+      "path": "docs/testing/adr-012-df0-c2.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-c2.md",
+      "summary": "DF0-C2: host-mediated Parquet reads"
+    },
+    {
+      "id": "DOC-0168",
+      "path": "docs/testing/adr-012-df0-evidence.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-evidence.md",
+      "summary": "ADR-012 DF0 evidence"
+    },
+    {
+      "id": "DOC-0169",
+      "path": "docs/testing/adr-012-df0-g-report.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-g-report.md",
+      "summary": "ADR-012 DF0-G: go/no-go report"
+    },
+    {
+      "id": "DOC-0170",
+      "path": "docs/testing/adr-012-df0-macos-limits.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-macos-limits.md",
+      "summary": "DF0: native macOS limit primitives"
+    },
+    {
+      "id": "DOC-0171",
+      "path": "docs/testing/adr-012-df0-memory-only.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-memory-only.md",
+      "summary": "DF0: memory-only filesystem policy for the sandboxed macOS worker"
+    },
+    {
+      "id": "DOC-0172",
+      "path": "docs/testing/adr-012-df0-nested-frames.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-nested-frames.md",
+      "summary": "DF0: nested view frame preparation"
+    },
+    {
+      "id": "DOC-0173",
+      "path": "docs/testing/adr-012-df0-no-spill.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-no-spill.md",
+      "summary": "DF0-D2: native macOS no-spill experiment"
+    },
+    {
+      "id": "DOC-0174",
+      "path": "docs/testing/adr-012-df0-numeric-fidelity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-numeric-fidelity.md",
+      "summary": "DF0-E2: typed tabular numeric fidelity on macOS"
+    },
+    {
+      "id": "DOC-0175",
+      "path": "docs/testing/adr-012-df0-observer-sandbox.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-observer-sandbox.md",
+      "summary": "DF0: native macOS observation and App Sandbox feasibility"
+    },
+    {
+      "id": "DOC-0176",
+      "path": "docs/testing/adr-012-df0-portfolio-performance.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-portfolio-performance.md",
+      "summary": "DF0-E: partial macOS portfolio backend characterization"
+    },
+    {
+      "id": "DOC-0177",
+      "path": "docs/testing/adr-012-df0-records/df0-a/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-a (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0178",
+      "path": "docs/testing/adr-012-df0-records/df0-admission-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-admission-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0179",
+      "path": "docs/testing/adr-012-df0-records/df0-b/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-b (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0180",
+      "path": "docs/testing/adr-012-df0-records/df0-c/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-c (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0181",
+      "path": "docs/testing/adr-012-df0-records/df0-c2-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-c2-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0182",
+      "path": "docs/testing/adr-012-df0-records/df0-d2-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-d2-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0183",
+      "path": "docs/testing/adr-012-df0-records/df0-exec-limits-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-exec-limits-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0184",
+      "path": "docs/testing/adr-012-df0-records/df0-f-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-f-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0185",
+      "path": "docs/testing/adr-012-df0-records/df0-fidelity-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-fidelity-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0186",
+      "path": "docs/testing/adr-012-df0-records/df0-limits-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-limits-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0187",
+      "path": "docs/testing/adr-012-df0-records/df0-memory-only-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-memory-only-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0188",
+      "path": "docs/testing/adr-012-df0-records/df0-native-source-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-native-source-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0189",
+      "path": "docs/testing/adr-012-df0-records/df0-nested-frames-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-nested-frames-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0190",
+      "path": "docs/testing/adr-012-df0-records/df0-observer-sandbox-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-observer-sandbox-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0191",
+      "path": "docs/testing/adr-012-df0-records/df0-performance-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-performance-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0192",
+      "path": "docs/testing/adr-012-df0-records/df0-resources-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-resources-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0193",
+      "path": "docs/testing/adr-012-df0-records/df0-sbom-macos/**",
+      "kind": "evidence-data",
+      "status": "historical",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "DF0 spike record data: df0-sbom-macos (archived spike, 2026-11)."
+    },
+    {
+      "id": "DOC-0194",
+      "path": "docs/testing/adr-012-df0-resources.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-resources.md",
+      "summary": "DF0: host-observed child resources on macOS"
+    },
+    {
+      "id": "DOC-0195",
+      "path": "docs/testing/adr-012-df0-zstd-assessment.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-df0-zstd-assessment.md",
+      "summary": "DF0 Zstd security assessment"
+    },
+    {
+      "id": "DOC-0196",
+      "path": "docs/testing/adr-012-rust-1.99.1.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/adr-012-rust-1.99.1.md",
+      "summary": "ADR-012: Rust 1.99.1 qualification"
+    },
+    {
+      "id": "DOC-0197",
+      "path": "docs/testing/app-admission-epochs.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/app-admission-epochs.md",
+      "summary": "App admission epochs and the session-held identity"
+    },
+    {
+      "id": "DOC-0198",
+      "path": "docs/testing/credential-coherence.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/credential-coherence.md",
+      "summary": "Sign-in bound to one account identity: credential slice"
+    },
+    {
+      "id": "DOC-0199",
+      "path": "docs/testing/duckdb-notices-qualification.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/duckdb-notices-qualification.md",
+      "summary": "DuckDB native notices qualification"
+    },
+    {
+      "id": "DOC-0200",
+      "path": "docs/testing/duckdb-retirement-parity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/duckdb-retirement-parity.md",
+      "summary": "DuckDB retirement parity record"
+    },
+    {
+      "id": "DOC-0201",
+      "path": "docs/testing/go-1.27.3-security.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/go-1.27.3-security.md",
+      "summary": "Go 1.27.3 security baseline"
+    },
+    {
+      "id": "DOC-0202",
+      "path": "docs/testing/id-generation-128-bit.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/id-generation-128-bit.md",
+      "summary": "Identifier generation: bounded Slice C repair"
+    },
+    {
+      "id": "DOC-0203",
+      "path": "docs/testing/macos-installer-policy.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Local macOS PKG policy"
+    },
+    {
+      "id": "DOC-0204",
+      "path": "docs/testing/macos-package-lifecycle-2026-10-17.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/macos-package-lifecycle-2026-10-17.md",
+      "summary": "macOS package lifecycle evidence, 2026-10-17"
+    },
+    {
+      "id": "DOC-0205",
+      "path": "docs/testing/native-close-macos-2026-10-12.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-close-macos-2026-10-12.md",
+      "summary": "Native editor Cmd+Q evidence, 2026-10-12"
+    },
+    {
+      "id": "DOC-0206",
+      "path": "docs/testing/native-editor-discard-failure-2026-10-16.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-editor-discard-failure-2026-10-16.md",
+      "summary": "Native editor Discard and failed-save recovery, 2026-10-16"
+    },
+    {
+      "id": "DOC-0207",
+      "path": "docs/testing/native-new-record-quit-2026-10-18.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-new-record-quit-2026-10-18.md",
+      "summary": "Native new-record quit evidence, 2026-10-18"
+    },
+    {
+      "id": "DOC-0208",
+      "path": "docs/testing/native-new-record-retry-2026-10-18.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-new-record-retry-2026-10-18.md",
+      "summary": "Native new-record failed-save/retry evidence, 2026-10-18"
+    },
+    {
+      "id": "DOC-0209",
+      "path": "docs/testing/native-sprint-recovery-2026-10-18.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-sprint-recovery-2026-10-18.md",
+      "summary": "Native new-sprint quit recovery, 2026-10-18"
+    },
+    {
+      "id": "DOC-0210",
+      "path": "docs/testing/native-sprint-update-2026-10-19.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/native-sprint-update-2026-10-19.md",
+      "summary": "Saved-sprint native update recovery, 2026-10-19"
+    },
+    {
+      "id": "DOC-0211",
+      "path": "docs/testing/ps04-own10-qualification-plan.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/testing/ps04-own10-qualification-plan.md",
+      "stated_status": "plan. The maintainer approved preparing it on 2026-10-27 (owner decisions, item 2).",
+      "summary": "PS-04 performance qualification plan (OWN-10)"
+    },
+    {
+      "id": "DOC-0212",
+      "path": "docs/testing/read-only-project-access.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/read-only-project-access.md",
+      "summary": "Read-only project access: implementation and evidence"
+    },
+    {
+      "id": "DOC-0213",
+      "path": "docs/testing/recent-work-test-plan-2026-10-23.md",
+      "kind": "strategy",
+      "status": "historical",
+      "status_evidence": "docs/testing/recent-work-test-plan-2026-10-23.md",
+      "summary": "Test plan for PRs #125 to #131"
+    },
+    {
+      "id": "DOC-0214",
+      "path": "docs/testing/release-race-package-policy.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Explicit race-test package budget"
+    },
+    {
+      "id": "DOC-0215",
+      "path": "docs/testing/reliability-2026-10-12.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/reliability-2026-10-12.md",
+      "summary": "Reliability repairs, 2026-10-12"
+    },
+    {
+      "id": "DOC-0216",
+      "path": "docs/testing/reporting-extension-assurance.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/testing/reporting-extension-assurance.md",
+      "stated_status": "Proposed verification contracts, integrated 2026-11-13.",
+      "summary": "Reporting and extension assurance strategy"
+    },
+    {
+      "id": "DOC-0217",
+      "path": "docs/testing/resource-calendar-save-atomicity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/resource-calendar-save-atomicity.md",
+      "summary": "Resource-calendar save atomicity"
+    },
+    {
+      "id": "DOC-0218",
+      "path": "docs/testing/resource-overallocation-contract.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "Resource overallocation: legacy contract and test oracle"
+    },
+    {
+      "id": "DOC-0219",
+      "path": "docs/testing/resource-resilience-assurance.md",
+      "kind": "strategy",
+      "status": "current",
+      "status_evidence": "docs/testing/resource-resilience-assurance.md",
+      "stated_status": "Test specifications, 2026-11-14.",
+      "summary": "Resource resilience acceptance contract"
+    },
+    {
+      "id": "DOC-0220",
+      "path": "docs/testing/sprint-guard-errors.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sprint-guard-errors.md",
+      "summary": "Sprint save errors in the foreground guard"
+    },
+    {
+      "id": "DOC-0221",
+      "path": "docs/testing/sprint-save-atomicity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sprint-save-atomicity.md",
+      "summary": "Sprint save atomicity"
+    },
+    {
+      "id": "DOC-0222",
+      "path": "docs/testing/sprint-save-feedback.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sprint-save-feedback.md",
+      "summary": "Sprint save feedback, 2026-10-19"
+    },
+    {
+      "id": "DOC-0223",
+      "path": "docs/testing/sprint-timestamp-boundary.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sprint-timestamp-boundary.md",
+      "summary": "Sprint timestamp boundary, 2026-10-18"
+    },
+    {
+      "id": "DOC-0224",
+      "path": "docs/testing/sqlcipher-4.20-upgrade.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sqlcipher-4.20-upgrade.md",
+      "summary": "SQLCipher 4.20.0 upgrade evidence (2026-11-10)"
+    },
+    {
+      "id": "DOC-0225",
+      "path": "docs/testing/sqlcipher-commit-cleanup.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sqlcipher-commit-cleanup.md",
+      "summary": "Failed-COMMIT cleanup evidence"
+    },
+    {
+      "id": "DOC-0226",
+      "path": "docs/testing/sqlcipher-rollback-cleanup.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sqlcipher-rollback-cleanup.md",
+      "summary": "Explicit ROLLBACK cleanup evidence"
+    },
+    {
+      "id": "DOC-0227",
+      "path": "docs/testing/sqlcipher-wal-reset.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sqlcipher-wal-reset.md",
+      "summary": "SQLCipher WAL-reset correction evidence"
+    },
+    {
+      "id": "DOC-0228",
+      "path": "docs/testing/stakeholder-guard-errors.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/stakeholder-guard-errors.md",
+      "summary": "Stakeholder errors in the exit guard"
+    },
+    {
+      "id": "DOC-0229",
+      "path": "docs/testing/stakeholder-save-atomicity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/stakeholder-save-atomicity.md",
+      "summary": "Stakeholder save atomicity"
+    },
+    {
+      "id": "DOC-0230",
+      "path": "docs/testing/tabular-import-paths.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/tabular-import-paths.md",
+      "summary": "Tabular import: selected-path verification"
+    },
+    {
+      "id": "DOC-0231",
+      "path": "docs/testing/wails-v3-migration-evidence.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/wails-v3-migration-evidence.md",
+      "summary": "Wails v3 / GTK 4 migration evidence"
+    },
+    {
+      "id": "DOC-0232",
+      "path": "docs/testing/wbs-model-validation-2026-10-13.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/wbs-model-validation-2026-10-13.md",
+      "summary": "Unified WBS model assurance"
+    },
+    {
+      "id": "DOC-0233",
+      "path": "docs/testing/wbs-ordering-2026-10-13.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/wbs-ordering-2026-10-13.md",
+      "summary": "WBS write ordering assurance"
+    },
+    {
+      "id": "DOC-0234",
+      "path": "docs/testing/wbs-storage-boundary-2026-10-14.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/wbs-storage-boundary-2026-10-14.md",
+      "summary": "WBS storage boundary evidence"
+    },
+    {
+      "id": "DOC-0235",
+      "path": "docs/testing/work-item-guard-errors.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/work-item-guard-errors.md",
+      "summary": "Work-item errors in the exit guard"
+    },
+    {
+      "id": "DOC-0236",
+      "path": "docs/testing/work-item-save-atomicity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/work-item-save-atomicity.md",
+      "summary": "Work-item save atomicity"
+    },
+    {
+      "id": "DOC-0237",
+      "path": "docs/testing/work-item-timestamp-boundary.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/work-item-timestamp-boundary.md",
+      "summary": "Work-item timestamp boundary, 2026-10-16"
+    },
+    {
+      "id": "DOC-0238",
+      "path": "docs/user-guide.md",
+      "kind": "guide",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-inventory.md",
+      "summary": "GoPMgr User Guide"
+    },
+    {
+      "id": "DOC-0239",
+      "path": "docs/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Documentation map: where to start, by reader and task."
+    },
+    {
+      "id": "DOC-0240",
+      "path": "docs/LEDGER.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Documentation ledger, generated: every document with its ID, kind and status."
+    },
+    {
+      "id": "DOC-0241",
+      "path": "docs/ledger.json",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Documentation ledger: the source of truth for every document under docs/."
+    },
+    {
+      "id": "DOC-0242",
+      "path": "docs/agent/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Agent instructions folder: what is here and how to use it."
+    },
+    {
+      "id": "DOC-0243",
+      "path": "docs/design/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Design folder: the ADR register, then designs and plans."
+    },
+    {
+      "id": "DOC-0244",
+      "path": "docs/engineering/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Engineering folder: ADR-013 build-assurance records, then other engineering records."
+    },
+    {
+      "id": "DOC-0245",
+      "path": "docs/interoperability/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Interoperability folder: dependency reviews and the transport matrix."
+    },
+    {
+      "id": "DOC-0246",
+      "path": "docs/release-notes/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Release notes folder: text that goes into a GitHub release."
+    },
+    {
+      "id": "DOC-0247",
+      "path": "docs/releases/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Releases folder: evidence for each published release."
+    },
+    {
+      "id": "DOC-0248",
+      "path": "docs/review/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Review folder: owner decisions, reviews and triage, newest first."
+    },
+    {
+      "id": "DOC-0249",
+      "path": "docs/testing/README.md",
+      "kind": "index",
+      "status": "current",
+      "status_evidence": "docs/design/docs-reorganization-plan.md",
+      "summary": "Testing folder: test strategies, evidence records, qualification records and the DF0 spike."
+    }
+  ],
+  "planned": [
+    {
+      "path": "docs/interoperability/mpxj-dependency-inventory.md",
+      "promised_by": "docs/design/adr-010-implementation-plan.md"
+    },
+    {
+      "path": "docs/interoperability/mpxj-field-mapping.md",
+      "promised_by": "docs/design/adr-010-implementation-plan.md"
+    },
+    {
+      "path": "docs/interoperability/mpxj-format-support.md",
+      "promised_by": "docs/design/adr-010-implementation-plan.md"
+    },
+    {
+      "path": "docs/design/provider-integrations-v2-plan.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/design/security-keys-v4-design.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/review/provider-integrations-v2-critical-review.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/review/security-keys-v4-critical-review.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/testing/editor-guard-errors.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/testing/editor-save-atomicity.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/testing/editor-timestamp-boundary.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/testing/sqlcipher-cleanup-corrections.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    },
+    {
+      "path": "docs/testing/wbs-foundation-evidence-2026-10.md",
+      "promised_by": "docs/design/docs-reorganization-plan.md"
+    }
+  ],
+  "recorded_dangling": [
+    {
+      "source": "docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "target": "docs/review/adr-012-df0-decision-report.md",
+      "reason": "Renamed after it was cited; the report is docs/testing/adr-012-df0-g-report.md. The source is a governed ADR-012 copy kept as received."
+    },
+    {
+      "source": "docs/testing/adr-012-datafusion-feasibility-spike.md",
+      "target": "docs/interoperability/adr-012-format-parity-matrix.md",
+      "reason": "Abandoned: the DataFusion spike ended without adoption on 2026-11-09, so the matrix was never written."
+    },
+    {
+      "source": "docs/design/docs-reorganization-inventory.md",
+      "target": "docs/inventory.json",
+      "reason": "The ledger was named docs/inventory.json when this snapshot was taken; it is docs/ledger.json."
+    }
+  ]
+}

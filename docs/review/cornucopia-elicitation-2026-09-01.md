@@ -12,7 +12,7 @@ features. Against the OWASP Cornucopia deck's 12 suits (158 cards), that
 scopes 7 suits (91 cards) as relevant — **Data Validation & Encoding,
 Authentication, Authorization, Cryptography, the general Cornucopia suit,
 DevOps, and Frontend** — via the checklist in
-[.claude/skills/cornucopia-risk-cards/](../.claude/skills/cornucopia-risk-cards/).
+[.claude/skills/cornucopia-risk-cards/](../../.claude/skills/cornucopia-risk-cards/).
 Session Management, Cloud, Automated Threats, and the LLM/Agentic AI suits
 don't map to anything in GoPMgr's current architecture and are out of
 scope; a remote backend, multi-tenant surface, or in-product AI feature
@@ -38,7 +38,7 @@ isn't asserted as verified.
 
 ## Authentication
 
-[`Login`](../internal/desktop/app_session.go) collapses "no such user" and "wrong password"
+[`Login`](../../internal/desktop/app_session.go) collapses "no such user" and "wrong password"
 into one identical `"invalid credentials"` error, closing username
 enumeration via distinguishable error messages as a checked property.
 
@@ -47,7 +47,7 @@ critical functions haven't been independently audited this review.
 
 ## Authorization
 
-[`projectPathFor`](../internal/desktop/app_projects.go) rejects any path whose parent
+[`projectPathFor`](../../internal/desktop/app_projects.go) rejects any path whose parent
 directory isn't the signed-in user's own `projects/` directory (or an
 immediate subfolder of it) — the primary access-control boundary for
 project-file access. Correction, 2026-09-22: that check is made on the path
@@ -61,7 +61,7 @@ file-path boundary haven't been independently audited this review.
 
 ## Cryptography
 
-[`internal/auth/password.go`](../internal/auth/password.go) uses
+[`internal/auth/password.go`](../../internal/auth/password.go) uses
 `golang.org/x/crypto/argon2`, not a homebrew hash, for password hashing.
 `DownloadAndInstall` (`internal/update/install.go`) re-runs `CheckLatest`
 and never accepts a URL or hash from its caller, so the Ed25519 signature
@@ -74,7 +74,7 @@ suit's cards this review.
 
 ## Cornucopia (general)
 
-[`VerifyAuditChain`](../internal/db/audit.go) recomputes every
+[`VerifyAuditChain`](../../internal/db/audit.go) recomputes every
 `event_hash` and checks sequence continuity, so project-lifecycle actions
 can't be silently altered without detection.
 

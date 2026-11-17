@@ -9,8 +9,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 design for the structure of `docs/`. They then asked that documents be
 combined where that is logical, easier to review and reasonable.
 **Baseline:** `main` at `9ab5d91` (PR 226).
-**Status:** Proposed. Nothing has moved or been merged. Each phase needs the
-owner decisions in [section 7](#7-owner-decisions) first.
+**Status:** Accepted. On 2026-11-17 the owner accepted every recommendation
+in [section 7](#7-owner-decisions) (D1–D8). P1 is implemented; P2a, P2b and P3
+follow as separate PRs.
 **Inventory:** every file under `docs/` is listed, with its kind, status,
 references and proposed action, in
 [docs-reorganization-inventory.md](docs-reorganization-inventory.md).
@@ -477,11 +478,13 @@ assigned.
 | `path` | Where the file is now |
 | `kind`, `status` | From the vocabularies below |
 | `status_evidence` | What justifies the status: a tracked file (a decision record or evidence file), a pull request number (`PR 228`), or a commit already on `main`. A change cannot name its own commit, so a change records its PR number instead. This is the rule `STATUS.md` already follows for its rows |
-| `stated_status` | The file's own status line, quoted exactly. Used for ADRs, designs, plans and test plans, so the ledger never reclassifies accepted material |
+| `stated_status` | The first sentence of the file's own status statement, quoted (with the next sentence when the first is under 25 characters; cut at 200 characters with "…"). Omitted when the file states no status. Used for ADRs, designs, plans and test plans, so the ledger never reclassifies accepted material. Folder READMEs shorten it to 60 characters |
 | `summary` | One line of at most 120 characters, starting with the subject rather than "This document". READMEs show it, so it is the copy readers scan |
 | `frozen_sha256` | Set only when `status` is `frozen` |
 | `previous_paths` | Every earlier path, with the PR that stopped using it |
-| `content_now_in` | Set only when `status` is `removed`: the ID of the document that holds the content now, or `null` if the content was dropped, which the evidence must explain |
+| `superseded_by` | Set only when `status` is `superseded`: the ID of the replacement, which must still exist |
+| `content_now_in` | Set only when `status` is `removed`: the ID of the document that holds the content now, or `none` if the content was dropped, which the evidence must explain |
+| `governed` | For governed records (constraint 2): the governing ADR, such as `ADR-012`. Like `historical` and `frozen`, it lets a reference that cannot be fixed be recorded in `recorded_dangling` |
 
 **Kinds:**
 
@@ -551,7 +554,7 @@ with the words `STATUS.md` uses.
 | `index` | Any folder |
 
 These are the folders each kind already uses. The one file outside them, a
-review in the root, moves in P2a. Frozen records are exempt.
+review in the root, moved in P1. Frozen records are exempt.
 
 **Citing a document.** Link to its path, as today. Where a citation must
 survive future moves, such as in a decision record, an evidence file or a
@@ -579,11 +582,21 @@ find=DOC-0142` prints the current path and the path history.
    file, a `PR N` reference or a commit hash in the expected form. Only the
    form is checked offline, not whether a PR or commit exists.
 3. Every `frozen` entry matches its `frozen_sha256`.
-4. Every relative link and plain-text `docs/…` path in scope resolves, or is
-   a `planned` path, or appears in `recorded_dangling`. A dangling entry is
+4. Every relative link (with its heading anchor, if any) and plain-text
+   `docs/…` path in scope resolves, or is a `planned` path, or appears in
+   `recorded_dangling`, or is excluded by `.gitignore` (local-only by policy:
+   private plans, and release evidence under `docs/release-evidence/`, whose
+   links are therefore not checked).
+   Reference-style links count as links. Plain-text paths in fenced code
+   blocks are examples and are not checked, and `LEDGER.md` is not scanned:
+   it lists removed and planned paths by design, and contract 5 checks it. A
+   `recorded_dangling` entry that no longer matches a broken reference is
+   reported, so exceptions do not outlive their reason. A dangling entry is
    allowed only when its source is frozen, governed or `historical`; current
    files must be fixed instead.
-5. `LEDGER.md` and every generated README section match the ledger.
+5. `LEDGER.md` and every generated README section match the ledger. A
+   README in `docs/` or a top-level docs folder must be an `index` entry, and
+   every `index` README must hold exactly one begin and one end marker.
 6. IDs are unique and well formed; every ID from `DOC-0001` to `next_id` − 1
    has exactly one entry.
 7. Every entry's folder suits its kind (6.3), and every file added after P1
@@ -592,8 +605,10 @@ find=DOC-0142` prints the current path and the path history.
 **History check.** `make docs-ledger-history BASE=origin/main` compares the
 ledger with the one at the merge base of `BASE` and `HEAD`:
 - no ID changes its path without the old path joining `previous_paths`;
+- no former path is dropped from `previous_paths`;
 - no entry's ID changes;
-- `next_id` never decreases.
+- `next_id` never decreases, and `naming_rule_from` never rises (raising it
+  would exempt new files from the naming rule).
 
 It needs history. If the merge base cannot be found, as in a shallow clone,
 it fails and says to fetch more history; it never passes by skipping. When
@@ -652,8 +667,8 @@ so the commits that ledger entries and history checks refer to stay in
 
 | Phase | Scope | Pinned files edited |
 | --- | --- | --- |
-| **P1** Ledger and indexes | `ledger.json` covering every file with IDs and status evidence, its REUSE annotation and the generated `LEDGER.md`; `tools/docs-ledger` and its tests; folder READMEs and `docs/README.md`; the Handbook §22.3 and Appendix F edits; opt-in Make targets; a coverage-ledger heading for the new tool | None |
-| **P2a** Unpinned consolidation | The five `testing/` merges, the FX appendix, the cornucopia move; their referrers; the merge-preservation check (5.2) | None |
+| **P1** Ledger and indexes | `ledger.json` covering every file with IDs and status evidence, its REUSE annotation and the generated `LEDGER.md`; `tools/docs-ledger` and its tests; the cornucopia move (moved forward from P2a, because the placement rule fails while the review sits in the root); folder READMEs and `docs/README.md`; the Handbook §22.3 and Appendix F edits; opt-in Make targets; a coverage-ledger heading for the new tool | None |
+| **P2a** Unpinned consolidation | The five `testing/` merges, the FX appendix; their referrers; the merge-preservation check (5.2) | None |
 | **P2b** Pinned consolidation | The security-keys and provider merges and both review renames; their referrers, including `ROADMAP.md`; the re-pin and page re-review | `docs/ROADMAP.md` |
 | **P3** Enforcement | `docs-ledger-check` joins `make verify` (D3) | None |
 

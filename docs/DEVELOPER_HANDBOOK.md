@@ -1757,12 +1757,9 @@ the result and point to the reproducing command or artifact.
 
 Architecture Decision Records live under `docs/design/` as
 `ADR-NNN-title.md`, alongside (not separated from) other subsystem design
-proposals. Current ADRs:
-
-- `docs/design/ADR-001-database-encryption-at-rest.md`
-- `docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md`
-- `docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md`
-- `docs/design/ADR-004-administrator-access-to-user-data.md` (accepted, not yet implemented)
+proposals. The [ADR register](design/README.md#adr-register) lists every
+ADR with its own status line, generated from the
+[documentation ledger](LEDGER.md).
 
 Update `ARCHITECTURE.md` or add/update an ADR when a change alters a
 durable architectural contract, including:
@@ -2314,7 +2311,10 @@ approved persistence remains distinct from proposed new schemas.
 
 # Appendix F — Related Repository Documentation
 
-Read these focused documents when working in the corresponding area:
+Start at the [documentation map](README.md), which leads to every document
+by reader and task. Every file under `docs/` has an entry in the
+[documentation ledger](LEDGER.md); `make docs-ledger-check` enforces its
+rules. Read these focused documents when working in the corresponding area:
 
 - `ARCHITECTURE.md` — runtime shape, data layout, important
     packages, frontend/release architecture.
