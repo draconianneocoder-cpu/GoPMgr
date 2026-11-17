@@ -45,7 +45,6 @@ what is implemented today.
 | DOC-0069 | [`dashboard-ia-restructuring-proposal.md`](dashboard-ia-restructuring-proposal.md) | design | accepted (R1–R4 implemented 2026-08-17/18 (see §7 for the…) | Dashboard information-architecture restructuring — design proposal |
 | DOC-0072 | [`duckdb-analytics-engine.md`](duckdb-analytics-engine.md) | design | superseded (Retired 2026-11-02. A Go-native engine replaced DuckDB; see…) | DuckDB analytics engine |
 | DOC-0073 | [`governed-presentation-only-fx.md`](governed-presentation-only-fx.md) | design | proposed (Proposed for product and architecture review.) | Governed presentation-only FX for GoPMgr Portfolio reporting |
-| DOC-0074 | [`portfolio-fx-governance-options.md`](portfolio-fx-governance-options.md) | design | superseded (Superseded.) | Superseded: governed portfolio FX options |
 | DOC-0075 | [`professional-scheduling-domain-model.md`](professional-scheduling-domain-model.md) | design | proposed (a design proposal for the modernization plan (PS-01).) | Connected project model: domains, dependencies and open ADR-011 decisions |
 | DOC-0077 | [`project-cost-ledger-scope.md`](project-cost-ledger-scope.md) | design | accepted (Current Phase 1 product boundary.) | Project cost ledger scope |
 | DOC-0078 | [`project-settings-tab-restructuring.md`](project-settings-tab-restructuring.md) | design | accepted (implemented 2026-08-18.) | Project Settings tab restructuring |

@@ -80,11 +80,11 @@ a kind and a status. The rules that keep it organized are in section 6 of the
 | Folder | Documents |
 | --- | ---: |
 | [`agent/`](agent/) | 5 |
-| [`design/`](design/) | 73 |
+| [`design/`](design/) | 72 |
 | [`engineering/`](engineering/) | 28 |
 | [`interoperability/`](interoperability/) | 5 |
 | [`release-notes/`](release-notes/) | 2 |
 | [`releases/`](releases/) | 2 |
 | [`review/`](review/) | 27 |
-| [`testing/`](testing/) | 85 |
+| [`testing/`](testing/) | 75 |
 <!-- ledger:end -->

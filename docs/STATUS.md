@@ -178,8 +178,9 @@ Owner decisions of 2026-11-17 (D1–D8, every recommendation accepted) in the
 
 | Phase | Status |
 | --- | --- |
-| P1: documentation ledger, checker, folder indexes | Implemented in PR 228: every file under `docs/` has an entry in [`ledger.json`](ledger.json) ([readable view](LEDGER.md)); `make docs-ledger-check` enforces the rules. The history check runs locally only (D8) |
-| P2a, P2b: merges and renames | Authorized; not started |
+| P1: documentation ledger, checker, folder indexes | Implemented (PR 228): every file under `docs/` has an entry in [`ledger.json`](ledger.json) ([readable view](LEDGER.md)); `make docs-ledger-check` enforces the rules. The history check runs locally only (D8) |
+| P2a: unpinned merges | Implemented in PR 229: five testing groups combined into `editor-save-atomicity.md`, `editor-guard-errors.md`, `editor-timestamp-boundary.md`, `sqlcipher-cleanup-corrections.md` and `wbs-foundation-evidence-2026-10.md`; the superseded FX options note is an appendix of `governed-presentation-only-fx.md`. Each record is kept as written: the ledger pins each section, `make docs-ledger-check` keeps checking it, and `make docs-ledger-history` compares it with its source at `9ab5d91` |
+| P2b: merges and renames that change the pinned `ROADMAP.md` | Authorized; not started |
 | P3: the check joins `make verify` | Authorized, after P2 |
 
 ## Known defects

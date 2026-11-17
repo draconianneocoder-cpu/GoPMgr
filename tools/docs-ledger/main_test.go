@@ -447,6 +447,46 @@ func TestCheckContracts(t *testing.T) {
 			want: "docs/design/reviewed-source-2.md (DOC-0007): superseded_by names the entry itself",
 		},
 		{
+			name: "a document may name its own former paths in plain text",
+			mutate: func(f *fixture) {
+				delete(f.files, "docs/design/reviewed-source-2.md")
+				e := f.entry("docs/design/reviewed-source-2.md")
+				e.Status, e.ContentNowIn, e.StatusEvidence = "removed", "DOC-0006", "PR 2"
+				f.files["docs/design/reviewed-source.md"] += "\nFormerly `docs/design/reviewed-source-2.md`.\n"
+			},
+			want: "",
+		},
+		{
+			name: "a moved document may name its old path in plain text",
+			mutate: func(f *fixture) {
+				f.files["docs/design/renamed-source.md"] = f.files["docs/design/reviewed-source.md"] + "\nFormerly `docs/design/reviewed-source.md`.\n"
+				delete(f.files, "docs/design/reviewed-source.md")
+				e := f.entry("docs/design/reviewed-source.md")
+				e.Path, e.PreviousPaths = "docs/design/renamed-source.md", []PrevPath{{Path: "docs/design/reviewed-source.md", Until: "PR 2"}}
+			},
+			want: "",
+		},
+		{
+			name: "a link to a former path still fails, even from the document that holds it",
+			mutate: func(f *fixture) {
+				delete(f.files, "docs/design/reviewed-source-2.md")
+				e := f.entry("docs/design/reviewed-source-2.md")
+				e.Status, e.ContentNowIn, e.StatusEvidence = "removed", "DOC-0006", "PR 2"
+				f.files["docs/design/reviewed-source.md"] += "\nSee [the old file](reviewed-source-2.md).\n"
+			},
+			want: `docs/design/reviewed-source.md: link "docs/design/reviewed-source-2.md" does not resolve`,
+		},
+		{
+			name: "another document naming a former path in plain text",
+			mutate: func(f *fixture) {
+				delete(f.files, "docs/design/reviewed-source-2.md")
+				e := f.entry("docs/design/reviewed-source-2.md")
+				e.Status, e.ContentNowIn, e.StatusEvidence = "removed", "DOC-0006", "PR 2"
+				f.files["docs/guide.md"] += "\nSee `docs/design/reviewed-source-2.md`.\n"
+			},
+			want: `docs/guide.md: path "docs/design/reviewed-source-2.md" does not resolve`,
+		},
+		{
 			name:  "an index README whose markers were damaged",
 			after: func(t *testing.T, root string) { replaceInFile(t, root, "docs/testing/README.md", endMarker, "") },
 			want:  "docs/testing/README.md: needs one " + beginMarker + " followed by one " + endMarker,
@@ -532,6 +572,24 @@ func TestHistory(t *testing.T) {
 			},
 			change: func(l *Ledger) { l.Entries[0].PreviousPaths = nil },
 			want:   "history: DOC-0001 dropped its former path docs/old-guide.md from previous_paths",
+		},
+		{
+			name: "a recorded section dropped: the preservation check switched off",
+			base: func(f *fixture) {
+				f.entry("docs/guide.md").Sections = []Section{{Title: "Guide", From: "docs/old-guide.md", Commit: "abc1234", Date: "undated", SHA256: "aa"}}
+			},
+			change: func(l *Ledger) { l.Entries[0].Sections = nil },
+			want:   `history: DOC-0001 dropped or changed its recorded section "Guide" (from docs/old-guide.md)`,
+		},
+		{
+			name: "a recorded section's hash changed",
+			base: func(f *fixture) {
+				f.entry("docs/guide.md").Sections = []Section{{Title: "Guide", From: "docs/old-guide.md", Commit: "abc1234", Date: "undated", SHA256: "aa"}}
+			},
+			change: func(l *Ledger) {
+				l.Entries[0].Sections = []Section{{Title: "Guide", From: "docs/old-guide.md", Commit: "abc1234", Date: "undated", SHA256: "bb"}}
+			},
+			want: `history: DOC-0001 dropped or changed its recorded section "Guide"`,
 		},
 		{
 			name:   "naming_rule_from raised, exempting new files",
@@ -664,4 +722,235 @@ func TestRunExitStatus(t *testing.T) {
 	if code := run(nil, &out, &errb); code != 1 || !strings.Contains(errb.String(), "docs/testing/extra.md: tracked under docs/ but has no ledger entry") {
 		t.Fatalf("broken tree: exit %d, stderr %s", code, errb.String())
 	}
+}
+
+// sectionFixture adds a combined file holding one merged record, and an
+// appendix in a living document, to the base fixture. The source of each
+// was committed first and then removed, as a real merge does.
+func sectionFixture(t *testing.T) (*fixture, string) {
+	t.Helper()
+	f := baseFixture()
+	root := f.materialize(t)
+	// The sources, as they were before the merge.
+	srcRun := "<!--\nSPDX-FileCopyrightText: x\n-->\n\n# Old run\n\nResult: pass. See [guide](../guide.md), [site](https://example.org/a) and [note](../design/old-note.md).\n\n## Limits\n\nNone.\n"
+	srcNote := "<!--\nSPDX-FileCopyrightText: x\n-->\n\n# Old note\n\n**Status:** Superseded.\n"
+	for p, text := range map[string]string{"docs/testing/old-run.md": srcRun, "docs/design/old-note.md": srcNote} {
+		if err := os.WriteFile(filepath.Join(root, p), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git(t, root, "add", "-A")
+	git(t, root, "commit", "-q", "-m", "sources")
+	commit := strings.TrimSpace(git(t, root, "rev-parse", "--short=7", "HEAD"))
+	git(t, root, "rm", "-q", "docs/testing/old-run.md", "docs/design/old-note.md")
+
+	// Hand-written normalized forms: heading back to level 1, Formerly line
+	// gone, headings up one level, link targets masked.
+	runNorm := "# Old run\n\nResult: pass. See [guide](<target>), [site](<target>) and [note](<target>).\n\n## Limits\n\nNone.\n"
+	noteNorm := "# Old note\n\n**Status:** Superseded.\n"
+	f.files["docs/testing/combined.md"] = "# Combined\n\nOne record.\n\n" + mergeNote + "\n\n## What this file holds\n\n" +
+		"- [Old run](#old-run): formerly `docs/testing/old-run.md`, undated, from commit `" + commit + "`.\n\n" +
+		"## Old run\n\nResult: pass. See [guide](../guide.md), [site](https://example.org/a) and [note](../design/reviewed-source.md#superseded-record-not-maintained-old-note).\n\n### Limits\n\nNone.\n"
+	f.files["docs/design/reviewed-source.md"] = "# Source\n\n## Superseded record, not maintained: Old note\n\nFormerly `docs/design/old-note.md`, undated, from commit `" + commit + "`.\n\n**Status:** Superseded.\n"
+	f.ledger.Entries = append(f.ledger.Entries,
+		Entry{ID: "DOC-0011", Path: "docs/testing/combined.md", Kind: "evidence", Status: "historical", StatusEvidence: "PR 3", Summary: "Combined",
+			Sections: []Section{{Title: "Old run", From: "docs/testing/old-run.md", Commit: commit, Date: "undated", SHA256: sha256Hex([]byte(runNorm))}}},
+		Entry{ID: "DOC-0012", Path: "docs/testing/old-run.md", Kind: "evidence", Status: "removed", StatusEvidence: "PR 3", Summary: "Old run", ContentNowIn: "DOC-0011"},
+		Entry{ID: "DOC-0013", Path: "docs/design/old-note.md", Kind: "design", Status: "removed", StatusEvidence: "PR 3", Summary: "Old note", ContentNowIn: "DOC-0006"})
+	f.entry("docs/design/reviewed-source.md").Sections = []Section{{Title: "Old note", From: "docs/design/old-note.md", Commit: commit, Date: "undated", Appendix: true, SHA256: sha256Hex([]byte(noteNorm))}}
+	f.ledger.NextID = 14
+	return f, root
+}
+
+// rewrite writes the fixture's files and ledger into root and regenerates.
+func (f *fixture) rewrite(t *testing.T, root string) {
+	t.Helper()
+	data, _ := json.MarshalIndent(f.ledger, "", "  ")
+	f.files["docs/ledger.json"] = string(data)
+	for p, text := range f.files {
+		if err := os.WriteFile(filepath.Join(root, p), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git(t, root, "add", "-A")
+	r, err := openRepo(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeGenerated(&f.ledger, r); err != nil {
+		t.Fatal(err)
+	}
+	git(t, root, "add", "-A")
+}
+
+// TestSections is the owner test for merged records (plan 5.2, contract 3b
+// and the history check's source comparison).
+func TestSections(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(f *fixture)
+		want   string // offline check
+		hist   string // history check's source comparison
+	}{
+		{name: "merged records as written pass", want: "", hist: ""},
+		{
+			name: "an anchor added to an unmoved link passes the offline hash, not the history check",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "](../guide.md)", "](../guide.md#install)", 1)
+			},
+			want: "",
+			hist: `history: section "Old run" of docs/testing/combined.md points to docs/guide.md#install where its source pointed to docs/guide.md`,
+		},
+		{
+			name: "a changed URL",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "https://example.org/a", "https://example.invalid/x", 1)
+			},
+			want: "",
+			hist: `points to https://example.invalid/x where its source pointed to https://example.org/a`,
+		},
+		{
+			name: "a moved target given the wrong section anchor",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "#superseded-record-not-maintained-old-note", "#source", 1)
+			},
+			want: "",
+			hist: `points to docs/design/reviewed-source.md#source where its source pointed to docs/design/old-note.md`,
+		},
+		{
+			name:   "an appendix recorded as a combined section",
+			mutate: func(f *fixture) { f.entry("docs/design/reviewed-source.md").Sections[0].Appendix = false },
+			want:   `docs/design/reviewed-source.md (DOC-0006): section "Old note" is recorded as appendix=false`,
+		},
+		{
+			name: "a changed word in a record: a merged record rewritten",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "Result: pass.", "Result: passed.", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): section "Old run" changed`,
+			hist: `history: section "Old run" of docs/testing/combined.md differs from docs/testing/old-run.md`,
+		},
+		{
+			name:   "an edited appendix",
+			mutate: func(f *fixture) { f.files["docs/design/reviewed-source.md"] += "Added later.\n" },
+			want:   `docs/design/reviewed-source.md (DOC-0006): section "Old note" changed`,
+			hist:   `history: section "Old note" of docs/design/reviewed-source.md differs`,
+		},
+		{
+			name: "a missing section",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "## Old run\n", "## Old runs\n", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): section "Old run" is missing`,
+		},
+		{
+			name: "an extra paragraph at the top of a combined file",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "One record.\n", "One record.\n\nMore commentary.\n", 1)
+			},
+			want: "docs/testing/combined.md (DOC-0011): the top of a combined file is its title, a one-sentence description and the fixed note",
+		},
+		{
+			name: "a what-it-holds line naming the wrong source",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "formerly `docs/testing/old-run.md`", "formerly `docs/testing/other.md`", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): line 1 of "What this file holds" must name "Old run"`,
+		},
+		{
+			name: "an appendix without its Formerly line",
+			mutate: func(f *fixture) {
+				f.files["docs/design/reviewed-source.md"] = strings.Replace(f.files["docs/design/reviewed-source.md"], "Formerly", "Previously", 1)
+			},
+			want: `docs/design/reviewed-source.md (DOC-0006): appendix "Old note" must open with its Formerly line`,
+		},
+		{
+			name: "a new section between the records: text no record covers",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "## Old run\n", "## Reviewer notes\n\nThe fix was later reverted.\n\n## Old run\n", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): after "What this file holds", the sections must be exactly the recorded ones`,
+		},
+		{
+			name:   "a trailing section after the records",
+			mutate: func(f *fixture) { f.files["docs/testing/combined.md"] += "\n## Addendum\n\nLater text.\n" },
+			want:   `docs/testing/combined.md (DOC-0011): after "What this file holds", the sections must be exactly the recorded ones`,
+		},
+		{
+			name:   "a section after an appendix",
+			mutate: func(f *fixture) { f.files["docs/design/reviewed-source.md"] += "\n## Later\n\nNew text.\n" },
+			want:   "docs/design/reviewed-source.md (DOC-0006): an appendix must be the document's last section",
+		},
+		{
+			name: "a what-it-holds entry pointing at the wrong section",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "- [Old run](#old-run)", "- [Old run](#what-this-file-holds)", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): line 1 of "What this file holds" must name "Old run"`,
+		},
+		{
+			name: "a what-it-holds date that does not match the record",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "`docs/testing/old-run.md`, undated,", "`docs/testing/old-run.md`, 2025-01-01,", 1)
+			},
+			want: `docs/testing/combined.md (DOC-0011): line 1 of "What this file holds" must name "Old run"`,
+		},
+		{
+			name: "a link redirected to another document",
+			mutate: func(f *fixture) {
+				f.files["docs/testing/combined.md"] = strings.Replace(f.files["docs/testing/combined.md"], "](../guide.md)", "](../LEDGER.md)", 1)
+			},
+			want: "",
+			hist: `history: section "Old run" of docs/testing/combined.md points to docs/LEDGER.md where its source pointed to docs/guide.md`,
+		},
+		{
+			name: "a former path named in prose outside a provenance line",
+			mutate: func(f *fixture) {
+				f.files["docs/design/reviewed-source.md"] = "# Source\n\nDetails remain in `docs/design/old-note.md`.\n" + strings.TrimPrefix(f.files["docs/design/reviewed-source.md"], "# Source\n")
+			},
+			want: `docs/design/reviewed-source.md: path "docs/design/old-note.md" does not resolve`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f, root := sectionFixture(t)
+			if tc.mutate != nil {
+				tc.mutate(f)
+			}
+			f.rewrite(t, root)
+			errs := checkRoot(t, root)
+			l, _ := loadLedger(root)
+			r, _ := openRepo(root)
+			herrs := sourceErrors(l, r, func(rev, p string) (string, error) { return gitOutput(root, "show", rev+":"+p) })
+			for _, c := range []struct {
+				label string
+				got   []string
+				want  string
+			}{{"offline", errs, tc.want}, {"history", herrs, tc.hist}} {
+				if c.want == "" {
+					// With an offline failure expected, the history result is not this case's subject.
+					historyAside := c.label == "history" && tc.want != ""
+					if len(c.got) > 0 && !historyAside {
+						t.Fatalf("%s: want a pass, got:\n%s", c.label, strings.Join(c.got, "\n"))
+					}
+					continue
+				}
+				if !strings.Contains(strings.Join(c.got, "\n"), c.want) {
+					t.Fatalf("%s: want an error containing %q, got:\n%s", c.label, c.want, strings.Join(c.got, "\n"))
+				}
+			}
+		})
+	}
+
+	t.Run("a source commit missing from history fails, never skips", func(t *testing.T) {
+		f, root := sectionFixture(t)
+		f.entry("docs/testing/combined.md").Sections[0].Commit = "0000000"
+		f.rewrite(t, root)
+		l, _ := loadLedger(root)
+		r, _ := openRepo(root)
+		herrs := sourceErrors(l, r, func(rev, p string) (string, error) { return gitOutput(root, "show", rev+":"+p) })
+		if !strings.Contains(strings.Join(herrs, "\n"), "history: cannot read docs/testing/old-run.md at 0000000") {
+			t.Fatalf("want a missing-commit failure, got %v", herrs)
+		}
+	})
 }

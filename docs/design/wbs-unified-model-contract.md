@@ -274,5 +274,5 @@ above. The revised documentation-only packet was approved for handoff; actual
 compatibility enforcement remains unresolved and gates upgrade enablement.
 The earlier documentation-only pass checked REUSE on 834/834 files and found no
 trailing whitespace or conflict markers. That historical pass ran no model or
-migration tests; [current model validation evidence](../testing/wbs-model-validation-2026-10-13.md)
+migration tests; [current model validation evidence](../testing/wbs-foundation-evidence-2026-10.md#unified-wbs-model-assurance)
 is recorded separately.

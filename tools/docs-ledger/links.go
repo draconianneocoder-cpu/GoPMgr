@@ -34,6 +34,22 @@ func checkLinks(l *Ledger, r *repo) []string {
 	for _, e := range l.Entries {
 		byPath[e.Path] = e
 	}
+	// A document may name its own former paths in plain text: the paths in
+	// its previous_paths, and those of removed entries whose content it now
+	// holds. Links to former paths, and mentions anywhere else, still fail.
+	idPath := map[string]string{}
+	for _, e := range l.Entries {
+		idPath[e.ID] = e.Path
+	}
+	former := map[[2]string]bool{}
+	for _, e := range l.Entries {
+		for _, p := range e.PreviousPaths {
+			former[[2]string{e.Path, p.Path}] = true
+		}
+		if e.Status == "removed" && idPath[e.ContentNowIn] != "" {
+			former[[2]string{idPath[e.ContentNowIn], e.Path}] = true
+		}
+	}
 	planned := map[string]bool{}
 	for _, p := range l.Planned {
 		planned[p.Path] = true
@@ -125,7 +141,8 @@ func checkLinks(l *Ledger, r *repo) []string {
 				continue
 			}
 			target := strings.TrimRight(unfenced[loc[0]:loc[1]], ".")
-			if !r.exists(target) {
+			ownFormer := former[[2]string{src, target}] && provenanceLine(unfenced, loc[0], target)
+			if !r.exists(target) && !ownFormer {
 				report(target, "path")
 			}
 		}
@@ -136,6 +153,18 @@ func checkLinks(l *Ledger, r *repo) []string {
 		}
 	}
 	return errs
+}
+
+// provenanceLine reports whether the mention at i sits on a line that
+// records where a merged record came from ("formerly `<path>`" or
+// "Formerly `<path>`"), the only place a document may name a former path.
+func provenanceLine(text string, i int, target string) bool {
+	start := strings.LastIndex(text[:i], "\n") + 1
+	end := strings.Index(text[i:], "\n")
+	if end < 0 {
+		end = len(text) - i
+	}
+	return strings.Contains(strings.ToLower(text[start:i+end]), "formerly `"+strings.ToLower(target)+"`")
 }
 
 // inURL reports whether the match at i is part of a URL or a longer path,
