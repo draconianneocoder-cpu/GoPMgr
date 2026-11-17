@@ -80,7 +80,7 @@ a kind and a status. The rules that keep it organized are in section 6 of the
 | Folder | Documents |
 | --- | ---: |
 | [`agent/`](agent/) | 5 |
-| [`design/`](design/) | 72 |
+| [`design/`](design/) | 68 |
 | [`engineering/`](engineering/) | 28 |
 | [`interoperability/`](interoperability/) | 5 |
 | [`release-notes/`](release-notes/) | 2 |

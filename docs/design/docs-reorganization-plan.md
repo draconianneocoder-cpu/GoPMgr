@@ -10,7 +10,7 @@ design for the structure of `docs/`. They then asked that documents be
 combined where that is logical, easier to review and reasonable.
 **Baseline:** `main` at `9ab5d91` (PR 226).
 **Status:** Accepted. On 2026-11-17 the owner accepted every recommendation
-in [section 7](#7-owner-decisions) (D1–D8). P1 and P2a are implemented; P2b and P3
+in [section 7](#7-owner-decisions) (D1–D8). P1, P2a and P2b are implemented; P3
 follow as separate PRs.
 **Inventory:** every file under `docs/` is listed, with its kind, status,
 references and proposed action, in
@@ -385,7 +385,7 @@ Exempt, because their own checks cover them:
 
 **Known substitutions.** These plain-text mentions need the path table:
 - `ROADMAP-provider-integrations.md:68` names
-  `docs/review/CRITICAL-REVIEW-and-DECISIONS.md`;
+  `review/CRITICAL-REVIEW-and-DECISIONS.md`;
 - `ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md` names its four companions on
   line 10, and `CRYPTO-AND-STORAGE-CONTRACT.md` again on line 86;
 - `ADR-TBD-provider-neutral-integration-framework.md:18` names three of its

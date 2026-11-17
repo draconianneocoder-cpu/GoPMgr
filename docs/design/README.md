@@ -38,8 +38,6 @@ what is implemented today.
 | DOC-0036 | [`ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md`](ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md) | adr | proposed (POLICY DIRECTION APPROVED BY MAINTAINER IN PRINCIPLE…) | ADR-TBD — Tiered local FIDO2 hardware authentication, FIPS 140-3 administrative enforcement, and encrypted-project… |
 | DOC-0037 | [`ADR-TBD-provider-neutral-integration-framework.md`](ADR-TBD-provider-neutral-integration-framework.md) | adr | proposed (APPROVED IN PRINCIPLE by maintainer on 2026-10-28…) | ADR-TBD — Provider-neutral external work-management integration framework |
 | DOC-0038 | [`CONTRACT-AND-RECOVERY-REFERENCE.md`](CONTRACT-AND-RECOVERY-REFERENCE.md) | design | current (Design reference. Examples and layouts below are not…) | Contract and recovery reference — provider-neutral framework v2.0 |
-| DOC-0039 | [`CRYPTO-AND-STORAGE-CONTRACT.md`](CRYPTO-AND-STORAGE-CONTRACT.md) | design | proposed | Cryptographic, storage, OS and compatibility contract (proposed) |
-| DOC-0040 | [`POLICY-AND-ENROLLMENT-STATE-MACHINE.md`](POLICY-AND-ENROLLMENT-STATE-MACHINE.md) | design | proposed (Proposed implementation contract.) | Policy, authority, state machine, and recovery reference (v4) |
 | DOC-0047 | [`adr-010-g1-transport-design.md`](adr-010-g1-transport-design.md) | design | current (the basis for G1 implementation.) | ADR-010 G1 worker connection design (transport-neutral) |
 | DOC-0068 | [`cost-control-phase-2-lifecycle.md`](cost-control-phase-2-lifecycle.md) | design | proposed (Proposed. Implementation is blocked on the decisions in…) | Cost Control Phase 2 lifecycle and authority contract |
 | DOC-0069 | [`dashboard-ia-restructuring-proposal.md`](dashboard-ia-restructuring-proposal.md) | design | accepted (R1–R4 implemented 2026-08-17/18 (see §7 for the…) | Dashboard information-architecture restructuring — design proposal |
@@ -50,22 +48,20 @@ what is implemented today.
 | DOC-0078 | [`project-settings-tab-restructuring.md`](project-settings-tab-restructuring.md) | design | accepted (implemented 2026-08-18.) | Project Settings tab restructuring |
 | DOC-0085 | [`resource-resilience.md`](resource-resilience.md) | design | accepted (Required planning and acceptance obligations for affected…) | Resource resilience: required development contract |
 | DOC-0086 | [`reusable-procurement-catalog.md`](reusable-procurement-catalog.md) | design | current (Catalog foundation, project-ledger procurement detail, and…) | Reusable procurement catalog |
+| DOC-0255 | [`security-keys-v4-design.md`](security-keys-v4-design.md) | design | proposed | Tiered security keys (v4): state machine, crypto and storage contract, roadmap and test plan. |
 | DOC-0087 | [`typography-ibm-plex.md`](typography-ibm-plex.md) | design | accepted (Implemented.) | Typography: the IBM Plex superfamily |
 | DOC-0088 | [`wails-v3-migration-design.md`](wails-v3-migration-design.md) | design | accepted (the migration is merged into main (merge commit f0aef1a, a…) | Wails v3 migration design |
 | DOC-0089 | [`wbs-authenticated-account-identity.md`](wbs-authenticated-account-identity.md) | design | accepted (D1–D3 policies approved by the owner on 2026-10-14…) | Immutable account identity for authenticated WBS operations |
 | DOC-0091 | [`wbs-storage-boundary.md`](wbs-storage-boundary.md) | design | current | WBS transactional storage foundation |
 | DOC-0092 | [`wbs-unified-model-contract.md`](wbs-unified-model-contract.md) | design | current (Pure model and the bounded internal transactional storage…) | Unified local-first WBS model contract |
-| DOC-0041 | [`ROADMAP-TIERED-SECURITY-KEYS.md`](ROADMAP-TIERED-SECURITY-KEYS.md) | plan | proposed | GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second |
-| DOC-0042 | [`ROADMAP-provider-integrations.md`](ROADMAP-provider-integrations.md) | plan | proposed (framework approved in principle on 2026-10-28.) | Proposed GoPMgr roadmap insertion — provider-neutral integrations |
 | DOC-0045 | [`accessibility-remaining-work-plan.md`](accessibility-remaining-work-plan.md) | plan | proposed (Planning document, 2026-08-24; updated 2026-09-04 — M1…) | Accessibility — coverage map and remaining work |
 | DOC-0046 | [`adr-010-g1-implementation-plan.md`](adr-010-g1-implementation-plan.md) | plan | accepted (APPROVED by the maintainer on 2026-10-26, under the…) | ADR-010 G1 implementation plan |
 | DOC-0048 | [`adr-010-implementation-plan.md`](adr-010-implementation-plan.md) | plan | accepted (ACCEPTED target architecture (maintainer, 2026-10-24…) | ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan |
 | DOC-0070 | [`docs-reorganization-inventory.md`](docs-reorganization-inventory.md) | plan | historical | Documentation inventory, 2026-11-17 |
 | DOC-0071 | [`docs-reorganization-plan.md`](docs-reorganization-plan.md) | plan | accepted (Accepted. On 2026-11-17 the owner accepted every…) | Documentation structure: reorganization and consolidation plan |
 | DOC-0076 | [`professional-scheduling-modernization-plan.md`](professional-scheduling-modernization-plan.md) | plan | accepted (APPROVED strategic direction and priority order (maintainer…) | Professional scheduling and project controls modernization plan |
+| DOC-0256 | [`provider-integrations-v2-plan.md`](provider-integrations-v2-plan.md) | plan | proposed | Provider-neutral integrations (v2): roadmap insertion and test plan. |
 | DOC-0090 | [`wbs-capability-parity-plan.md`](wbs-capability-parity-plan.md) | plan | current (Product direction and first pure model/validation slice…) | Connected WBS capability and usability plan |
-| DOC-0043 | [`TEST-TIERED-SECURITY-KEYS.md`](TEST-TIERED-SECURITY-KEYS.md) | strategy | proposed | Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix |
-| DOC-0044 | [`TEST-provider-integrations.md`](TEST-provider-integrations.md) | strategy | proposed (framework approved in principle; this is a proposed test…) | Provider integration assurance, adversarial validation and acceptance |
 | DOC-0243 | [`README.md`](README.md) | index | current | Design folder: the ADR register, then designs and plans. |
 
 | Folder | Documents |
