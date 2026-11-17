@@ -29,7 +29,7 @@ export CC
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests macos-installer-tests \
-        code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
+        code-map code-map-current docs-ledger docs-ledger-check docs-ledger-history brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check engine-advisories engine-advisories-check module-notices-tests package-tarball-tests \
@@ -167,6 +167,15 @@ code-map: ## Regenerate the portable first-party Go package dependency map.
 
 code-map-current: ## Fail when the checked-in package dependency map is stale.
 	@$(GO) run ./tools/code-map -check
+
+docs-ledger: ## Regenerate docs/LEDGER.md and the folder README lists from docs/ledger.json, then check. find=DOC-NNNN prints a document's paths.
+	@if [ -n "$(find)" ]; then $(GO) run ./tools/docs-ledger -find "$(find)"; else $(GO) run ./tools/docs-ledger -write; fi
+
+docs-ledger-check: ## Fail unless every file under docs/ is in the ledger and every ledger rule holds (docs/design/docs-reorganization-plan.md §6).
+	@$(GO) run ./tools/docs-ledger
+
+docs-ledger-history: ## Also compare the ledger with the one at the merge base of BASE (default origin/main); fails on shallow history.
+	@$(GO) run ./tools/docs-ledger -history "$(or $(BASE),origin/main)"
 
 brand-assets: ## Verify Bobby branding assets and the Wails native icon source.
 	@node scripts/check-brand-assets.mjs

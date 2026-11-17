@@ -580,7 +580,7 @@ That result took six live-GUI cycles to reach because the first five, all run un
   (GitHub Actions pinned by mutable tag rather than commit SHA) and closed
   the previously-open FRE4 (frontend DOM-XSS) question by confirming no
   `{@html}`/`innerHTML`/`eval` sink exists anywhere in the frontend.
-  Findings and suit-by-suit scope: `docs/cornucopia-elicitation-2026-09-01.md`.
+  Findings and suit-by-suit scope: `docs/review/cornucopia-elicitation-2026-09-01.md`.
 
 - Use `Planned`, `In progress`, `Blocked`, `Done`, or `Deferred`.
 - A completed item must link to current tests or an archived release artifact;

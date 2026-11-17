@@ -171,6 +171,17 @@ This is documentary reconciliation; no new product behavior was implemented.
 | P6 | Partly implemented: checkout guard, licensing, pinned govulncheck, native Make environments |
 | P7 to P9 | Proposed |
 
+## Documentation structure
+
+Owner decisions of 2026-11-17 (D1–D8, every recommendation accepted) in the
+[reorganization plan](design/docs-reorganization-plan.md#7-owner-decisions).
+
+| Phase | Status |
+| --- | --- |
+| P1: documentation ledger, checker, folder indexes | Implemented in PR 228: every file under `docs/` has an entry in [`ledger.json`](ledger.json) ([readable view](LEDGER.md)); `make docs-ledger-check` enforces the rules. The history check runs locally only (D8) |
+| P2a, P2b: merges and renames | Authorized; not started |
+| P3: the check joins `make verify` | Authorized, after P2 |
+
 ## Known defects
 
 | ID | Defect | Status |

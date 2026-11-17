@@ -1287,6 +1287,16 @@ used for repository orientation and checked by `make verify`.
 
 **2026-08-28 ledger refresh**: this heading previously claimed 77.9% with no code change to `main.go`/`main_test.go` since 2026-08-08, so a drop to a stable, reproducible 73.0% was investigated rather than assumed stale-in-the-safe-direction. Per-function coverage (`go tool cover -func`) shows every uncovered statement is a standard `if err != nil { return ... }` guard around OS/subprocess failures in `run`/`generate`/`listPackages` (`filepath.Abs`, `os.ReadFile`, `os.MkdirAll`, `os.WriteFile`, `go list` failing, malformed JSON) — none reachable without mocking the filesystem or `os/exec`, and none touched by any commit in this window. The 77.9% figure itself was not reproducible against the current, unchanged source; it is treated as inaccurate at the time it was written rather than as a regression, and not chased further given this package's low criticality (a maintainer-only dependency-map generator, not user-facing or security-relevant).
 
+## `tools/docs-ledger` — 91.3%
+
+Maintainer tool that keeps `docs/ledger.json`, the documentation ledger, true
+to the repository and generates `docs/LEDGER.md` and the folder README lists
+(added 2026-11-17; rules in `docs/design/docs-reorganization-plan.md` §6).
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `main_test.go` (added 2026-11-17) | 3 (`TestCheckContracts`: 50 cases; `TestHistory`: 9 table cases and 2 subtests; `TestRunExitStatus`) | Contracts 1 to 7: unlisted, missing, duplicate and doubly covered entries; empty data directories; planned paths that exist or are promised by an untracked file; kind, status, ID and evidence vocabulary; frozen hashes, missing or misplaced; `content_now_in` and `superseded_by` (missing, misplaced, naming no live document or the entry itself); folder READMEs that are not indexes; broken links, reference links, anchors (including repeated headings) and plain-text paths, bold ones included; the references the check must not follow (fenced examples, URLs, longer paths, `.gitignore`d paths, planned links); `recorded_dangling` (permitted, misused, unused); stale or damaged `LEDGER.md` and README lists; ID gaps, duplicates and `next_id`; placement; naming, including generic prefixes, date position and the allowed `README.md` and `ADR-NNN-title.md` names. History: path changes without `previous_paths`, dropped former paths, renumbering, a removed ID, `next_id` lowered, `naming_rule_from` raised or removed, failure on a shallow clone, and the bootstrap case through `run -history`, valid and invalid. `run` exit status and `-find` | real temporary git repositories, hand-written expected errors | A ledger check that misses any of these lets a document go uninventoried, a reference break silently or an exception outlive its reason. Disabling each of 56 checks one at a time, in a scratch copy and with the code still compiling, makes at least one case fail (Gate B, 2026-11-17, found 15 unproven checks in the first version; each now has a case). Not covered: `main`'s `os.Exit` wrapper and the error paths for unreadable files, failed writes and a missing git. |
+
 ## `tools/module-notices` — 71.3%
 
 Maintainer tool that writes `third_party/GO-MODULE-NOTICES.txt`, the license

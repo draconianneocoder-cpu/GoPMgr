@@ -26,7 +26,7 @@ This skill packages the subset of the OWASP Cornucopia card deck relevant
 to GoPMgr — a local-first Wails desktop app with no cloud backend, no
 public web surface, and no LLM/agent features of its own — as a
 requirement-elicitation checklist. Background and the relevance analysis
-that produced this scope live in `docs/cornucopia-elicitation-2026-09-01.md`.
+that produced this scope live in `docs/review/cornucopia-elicitation-2026-09-01.md`.
 
 Each reference file is one suit: the card text plus its ASVS (or AISVS)
 and STRIDE/CAPEC/CWE cross-references, extracted directly from OWASP's
