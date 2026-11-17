@@ -166,7 +166,8 @@ Every open project has a Project Settings view. Use it to edit:
 - Schedule reports and project interchange exports.
 - Database encryption migration for eligible plaintext project databases. The
   migration validates a private encrypted copy and preserves an independent,
-  schema-migrated plaintext `.pre-encryption.bak` until the user removes it.
+  schema-migrated plaintext `.pre-encryption.bak` until the user removes it;
+  Project Settings offers to delete it once the encrypted project is open.
   A synchronous migration failure leaves the canonical plaintext project
   readable; protect or remove that backup only after verifying the encrypted
   project opens successfully.
@@ -473,7 +474,11 @@ GoPMgr issues one-time recovery codes at account creation. Recovery codes
 can reset an account password once and, for encrypted project databases,
 also unlock the user's wrapped DEK.
 
-The codes are shown once. **Copy** puts them on the clipboard; **Save as
+The codes are shown once. **Copy** puts them on the clipboard, and GoPMgr
+clears the clipboard 60 seconds later, or when you quit, if it still holds
+those codes; anything you copied since is left alone. Clipboard history and
+syncing apps can keep their own copy, so saving or printing is safer.
+**Save as
 .txt…** writes them to a new text file you choose, named with the date;
 **Save printable PDF…** writes a one-page sheet with the codes, how to use
 them, and a box to tick off each one. Print the sheet, then delete the PDF.
