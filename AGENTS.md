@@ -83,8 +83,9 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   below. Documentation-only changes still need `git diff --check`.
 - Every file under `docs/` has an entry in `docs/ledger.json` (rules:
   `docs/design/docs-reorganization-plan.md` §6). Add, move, merge or remove a
-  document together with its entry, then run `make docs-ledger` and
-  `make docs-ledger-check`; before a PR, also `make docs-ledger-history`.
+  document together with its entry, then run `make docs-ledger`.
+  `make verify` (and so CI) runs `make docs-ledger-check`; before a PR, also
+  run `make docs-ledger-history`, which needs full history.
 - Preserve REUSE/SPDX compliance. New tracked files need SPDX metadata
   directly or a `REUSE.toml` annotation when inline metadata is not
   possible.
