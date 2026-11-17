@@ -41,13 +41,13 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-17",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "81b3c1f0ef096b77fa4258fd59a9dbccf923df46a70c0b4739719fd61ea3cba8",
-          "reviewed_commit": "af20d3861ce6ab62787a16f61e1cc15b8a282322"
+          "sha256": "73f331e35a2eda387b6416d9f848bbf7c7a603f3753f29097941488483e9b317",
+          "reviewed_commit": "ba39f39fc8c9a134b5b9d214dc7896fd7f040b4e"
         },
         {
           "path": "docs/user-guide.md",
@@ -156,13 +156,13 @@
         "page.roadmap"
       ],
       "status": "planned",
-      "last_reviewed": "2026-11-14",
+      "last_reviewed": "2026-11-17",
       "reviewer": "GoPMgr resource-resilience planning source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "81b3c1f0ef096b77fa4258fd59a9dbccf923df46a70c0b4739719fd61ea3cba8",
-          "reviewed_commit": "af20d3861ce6ab62787a16f61e1cc15b8a282322"
+          "sha256": "73f331e35a2eda387b6416d9f848bbf7c7a603f3753f29097941488483e9b317",
+          "reviewed_commit": "ba39f39fc8c9a134b5b9d214dc7896fd7f040b4e"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",

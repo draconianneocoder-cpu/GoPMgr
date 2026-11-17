@@ -15,7 +15,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Relationship:** A supplemental integration ADR to proposed ADR-010 v2.2 and reserved ADR-011 normalized persistence—not a replacement, retroactive acceptance, or permission to implement either. The current repository `docs/VISION.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, beta backlog, and applicable accepted ADRs take precedence where relevant.
 
-**Companions:** `ROADMAP-provider-integrations.md`, `TEST-provider-integrations.md`, `AGENT-architecture-preservation.md` (that file was kept out of the public tree), `CRITICAL-REVIEW-and-DECISIONS.md`, `CONTRACT-AND-RECOVERY-REFERENCE.md`. **Revision:** v2.0 critical-review strengthened; the source v1 is preserved in the prior ZIP.
+**Companions:** `provider-integrations-v2-plan.md#proposed-gopmgr-roadmap-insertion--provider-neutral-integrations`, `provider-integrations-v2-plan.md#provider-integration-assurance-adversarial-validation-and-acceptance`, `AGENT-architecture-preservation.md` (that file was kept out of the public tree), `provider-integrations-v2-critical-review.md`, `CONTRACT-AND-RECOVERY-REFERENCE.md`. **Revision:** v2.0 critical-review strengthened; the source v1 is preserved in the prior ZIP.
 
 > **Normative words:** MUST/MUST NOT become hard gates only after formal ADR acceptance; SHOULD is recommended unless evidence and maintainer approval justify deviation. Proposal text never constitutes proof of implementation or a passed test. This proposal does not authorize edits to source, approved ADRs, credentials, releases, or remote Jira data.
 

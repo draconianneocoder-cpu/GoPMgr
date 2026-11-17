@@ -5,12 +5,12 @@ weight = 10
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Application snapshot 88b92cf935c7; planning review af20d3861ce6; manual review 4f4ab0c7572a, f54b26428f70"
-last_reviewed = "2026-11-16"
+applies_to = "Application snapshot 88b92cf935c7; planning review ba39f39fc8c9; manual review 4f4ab0c7572a, f54b26428f70"
+last_reviewed = "2026-11-17"
 claim_ids = ["page.features"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/af20d3861ce6ab62787a16f61e1cc15b8a282322/docs/ROADMAP.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/ba39f39fc8c9a134b5b9d214dc7896fd7f040b4e/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/user-guide.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/f54b26428f706931f520926dbf784be661c52a7d/docs/user-guide.md"
@@ -21,7 +21,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-The application capabilities below describe the recorded application snapshot. The roadmap source was reviewed separately at planning commit `af20d3861ce6`. The published alpha may not include it, and it has not been qualified on every platform.
+The application capabilities below describe the recorded application snapshot. The roadmap source was reviewed separately at planning commit `ba39f39fc8c9`. The published alpha may not include it, and it has not been qualified on every platform.
 
 ## Scheduling and baselines
 

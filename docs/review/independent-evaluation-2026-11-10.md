@@ -278,7 +278,7 @@ GoPMgr's next quality leap is **not** a different analytics engine, a broader fe
 | **S20** | [G1 authorization clarification](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/review/ADR-010-G1-authorization-clarification-2026-10-28.md) | Approved scope vs. unimplemented production worker |
 | **S21** | [ADR-013 build assurance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/design/ADR-013-engineering-build-assurance.md) | P0–P9 phases and gaps |
 | **S22** | [Beta backlog](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/beta-release-backlog.md) | Recovery, package lifecycle and security risk items |
-| **S23** | [Tiered security-key roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/design/ROADMAP-TIERED-SECURITY-KEYS.md) | FIDO2/FIPS proposal and non-authorization |
+| **S23** | [Tiered security-key roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/design/security-keys-v4-design.md#gopmgr-a-series-roadmap-v4--user-optional-fido2-first-administrator-enforced-fips-140-3-second) | FIDO2/FIPS proposal and non-authorization |
 | **S24** | [Next alpha plan](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/next-alpha-release-plan.md) | Install/upgrade/signing/UX evidence conditions, not deadlines |
 | **S25** | [Provider-neutral integration proposal](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/design/ADR-TBD-provider-neutral-integration-framework.md) | External integrations approved only in principle |
 | **S26** | [VISION.md](https://github.com/draconianneocoder-cpu/GoPMgr/blob/main/docs/VISION.md) | Local-first priorities, primary 20–500-task audience, export portability |

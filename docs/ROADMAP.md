@@ -291,11 +291,11 @@ of unapproved product implementation.
 Approved in principle on 2026-10-28. Tests have not been run. Recorded proposal:
 
 - [ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md](design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md)
-- [POLICY-AND-ENROLLMENT-STATE-MACHINE.md](design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md)
-- [CRYPTO-AND-STORAGE-CONTRACT.md](design/CRYPTO-AND-STORAGE-CONTRACT.md)
-- [ROADMAP-TIERED-SECURITY-KEYS.md](design/ROADMAP-TIERED-SECURITY-KEYS.md)
-- [TEST-TIERED-SECURITY-KEYS.md](design/TEST-TIERED-SECURITY-KEYS.md)
-- [CRITICAL-REVIEW-AND-DECISION-DELTA.md](review/CRITICAL-REVIEW-AND-DECISION-DELTA.md)
+- [POLICY-AND-ENROLLMENT-STATE-MACHINE.md](design/security-keys-v4-design.md#policy-authority-state-machine-and-recovery-reference-v4)
+- [CRYPTO-AND-STORAGE-CONTRACT.md](design/security-keys-v4-design.md#cryptographic-storage-os-and-compatibility-contract-proposed)
+- [ROADMAP-TIERED-SECURITY-KEYS.md](design/security-keys-v4-design.md#gopmgr-a-series-roadmap-v4--user-optional-fido2-first-administrator-enforced-fips-140-3-second)
+- [TEST-TIERED-SECURITY-KEYS.md](design/security-keys-v4-design.md#tiered-fido2--fips-140-3-acceptance-and-adversarial-verification-matrix)
+- [CRITICAL-REVIEW-AND-DECISION-DELTA.md](review/security-keys-v4-critical-review.md)
 
 ### Provider-neutral integrations
 
@@ -318,9 +318,9 @@ Recorded proposal:
 
 - [ADR-TBD-provider-neutral-integration-framework.md](design/ADR-TBD-provider-neutral-integration-framework.md)
 - [CONTRACT-AND-RECOVERY-REFERENCE.md](design/CONTRACT-AND-RECOVERY-REFERENCE.md)
-- [ROADMAP-provider-integrations.md](design/ROADMAP-provider-integrations.md)
-- [TEST-provider-integrations.md](design/TEST-provider-integrations.md)
-- [CRITICAL-REVIEW-and-DECISIONS.md](review/CRITICAL-REVIEW-and-DECISIONS.md)
+- [ROADMAP-provider-integrations.md](design/provider-integrations-v2-plan.md#proposed-gopmgr-roadmap-insertion--provider-neutral-integrations)
+- [TEST-provider-integrations.md](design/provider-integrations-v2-plan.md#provider-integration-assurance-adversarial-validation-and-acceptance)
+- [CRITICAL-REVIEW-and-DECISIONS.md](review/provider-integrations-v2-critical-review.md)
 
 ### Scheduling and controls
 

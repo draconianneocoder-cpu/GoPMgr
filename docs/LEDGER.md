@@ -69,13 +69,7 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0036 | [`ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md`](design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md) | adr | proposed | ADR-TBD — Tiered local FIDO2 hardware authentication, FIPS 140-3 administrative enforcement, and encrypted-project… |
 | DOC-0037 | [`ADR-TBD-provider-neutral-integration-framework.md`](design/ADR-TBD-provider-neutral-integration-framework.md) | adr | proposed | ADR-TBD — Provider-neutral external work-management integration framework |
 | DOC-0038 | [`CONTRACT-AND-RECOVERY-REFERENCE.md`](design/CONTRACT-AND-RECOVERY-REFERENCE.md) | design | current | Contract and recovery reference — provider-neutral framework v2.0 |
-| DOC-0039 | [`CRYPTO-AND-STORAGE-CONTRACT.md`](design/CRYPTO-AND-STORAGE-CONTRACT.md) | design | proposed | Cryptographic, storage, OS and compatibility contract (proposed) |
-| DOC-0040 | [`POLICY-AND-ENROLLMENT-STATE-MACHINE.md`](design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md) | design | proposed | Policy, authority, state machine, and recovery reference (v4) |
 | DOC-0243 | [`README.md`](design/README.md) | index | current | Design folder: the ADR register, then designs and plans. |
-| DOC-0041 | [`ROADMAP-TIERED-SECURITY-KEYS.md`](design/ROADMAP-TIERED-SECURITY-KEYS.md) | plan | proposed | GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second |
-| DOC-0042 | [`ROADMAP-provider-integrations.md`](design/ROADMAP-provider-integrations.md) | plan | proposed | Proposed GoPMgr roadmap insertion — provider-neutral integrations |
-| DOC-0043 | [`TEST-TIERED-SECURITY-KEYS.md`](design/TEST-TIERED-SECURITY-KEYS.md) | strategy | proposed | Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix |
-| DOC-0044 | [`TEST-provider-integrations.md`](design/TEST-provider-integrations.md) | strategy | proposed | Provider integration assurance, adversarial validation and acceptance |
 | DOC-0045 | [`accessibility-remaining-work-plan.md`](design/accessibility-remaining-work-plan.md) | plan | proposed | Accessibility — coverage map and remaining work |
 | DOC-0046 | [`adr-010-g1-implementation-plan.md`](design/adr-010-g1-implementation-plan.md) | plan | accepted | ADR-010 G1 implementation plan |
 | DOC-0047 | [`adr-010-g1-transport-design.md`](design/adr-010-g1-transport-design.md) | design | current | ADR-010 G1 worker connection design (transport-neutral) |
@@ -90,8 +84,10 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0076 | [`professional-scheduling-modernization-plan.md`](design/professional-scheduling-modernization-plan.md) | plan | accepted | Professional scheduling and project controls modernization plan |
 | DOC-0077 | [`project-cost-ledger-scope.md`](design/project-cost-ledger-scope.md) | design | accepted | Project cost ledger scope |
 | DOC-0078 | [`project-settings-tab-restructuring.md`](design/project-settings-tab-restructuring.md) | design | accepted | Project Settings tab restructuring |
+| DOC-0256 | [`provider-integrations-v2-plan.md`](design/provider-integrations-v2-plan.md) | plan | proposed | Provider-neutral integrations (v2): roadmap insertion and test plan. |
 | DOC-0085 | [`resource-resilience.md`](design/resource-resilience.md) | design | accepted | Resource resilience: required development contract |
 | DOC-0086 | [`reusable-procurement-catalog.md`](design/reusable-procurement-catalog.md) | design | current | Reusable procurement catalog |
+| DOC-0255 | [`security-keys-v4-design.md`](design/security-keys-v4-design.md) | design | proposed | Tiered security keys (v4): state machine, crypto and storage contract, roadmap and test plan. |
 | DOC-0087 | [`typography-ibm-plex.md`](design/typography-ibm-plex.md) | design | accepted | Typography: the IBM Plex superfamily |
 | DOC-0088 | [`wails-v3-migration-design.md`](design/wails-v3-migration-design.md) | design | accepted | Wails v3 migration design |
 | DOC-0089 | [`wbs-authenticated-account-identity.md`](design/wbs-authenticated-account-identity.md) | design | accepted | Immutable account identity for authenticated WBS operations |
@@ -270,8 +266,6 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0136 | [`ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md`](review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md) | decision | historical | ADR-012: DuckDB retirement and provider allocation |
 | DOC-0137 | [`ADR-012-macos-containment-ACR.md`](review/ADR-012-macos-containment-ACR.md) | review | historical | ADR-012 ACR: macOS containment implementation gap |
 | DOC-0138 | [`ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md`](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md) | decision | historical | ADR-012 v0.2: maintainer acceptance and DF0 authorization |
-| DOC-0139 | [`CRITICAL-REVIEW-AND-DECISION-DELTA.md`](review/CRITICAL-REVIEW-AND-DECISION-DELTA.md) | review | historical | Critical review and formal decision delta — tiered hardware authentication v4 |
-| DOC-0140 | [`CRITICAL-REVIEW-and-DECISIONS.md`](review/CRITICAL-REVIEW-and-DECISIONS.md) | review | historical | Critical review and v2 decisions — 2026-10-28 |
 | DOC-0141 | [`LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md`](review/LINUX-MINIMUM-UBUNTU-26.04-OWNER-DECISION.md) | decision | historical | Linux minimum target: Ubuntu 26.04 |
 | DOC-0142 | [`PS-04-owner-decisions-2026-10-27.md`](review/PS-04-owner-decisions-2026-10-27.md) | decision | historical | PS-04 owner decisions, 2026-10-27 |
 | DOC-0143 | [`PS-capability-matrix.md`](review/PS-capability-matrix.md) | review | historical | Professional scheduling: requirements-to-capabilities matrix |
@@ -285,8 +279,10 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0149 | [`evaluation-2026-11-10-response-plan.md`](review/evaluation-2026-11-10-response-plan.md) | review | historical | Response plan for the 2026-11-10 independent evaluation |
 | DOC-0150 | [`independent-evaluation-2026-11-10.md`](review/independent-evaluation-2026-11-10.md) | review | historical | GoPMgr: Consolidated Architecture, Capability, and Outstanding-Issues Evaluation |
 | DOC-0151 | [`owner-decisions-2026-11-14.md`](review/owner-decisions-2026-11-14.md) | decision | historical | Owner decisions, 2026-11-14 |
+| DOC-0140 | [`provider-integrations-v2-critical-review.md`](review/provider-integrations-v2-critical-review.md) | review | historical | Critical review and v2 decisions — 2026-10-28 |
 | DOC-0152 | [`reporting-extension-integration.md`](review/reporting-extension-integration.md) | review | historical | Reporting and extension plan integration review |
 | DOC-0153 | [`sec-04-triage.md`](review/sec-04-triage.md) | review | historical | SEC-04 triage: low-severity scan items |
+| DOC-0139 | [`security-keys-v4-critical-review.md`](review/security-keys-v4-critical-review.md) | review | historical | Critical review and formal decision delta — tiered hardware authentication v4 |
 
 ## `docs/testing/`
 
@@ -377,6 +373,12 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 
 | ID | Former path | Content now in | Evidence |
 | --- | --- | --- | --- |
+| DOC-0039 | `docs/design/CRYPTO-AND-STORAGE-CONTRACT.md` | DOC-0255 | PR 230 |
+| DOC-0040 | `docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md` | DOC-0255 | PR 230 |
+| DOC-0041 | `docs/design/ROADMAP-TIERED-SECURITY-KEYS.md` | DOC-0255 | PR 230 |
+| DOC-0042 | `docs/design/ROADMAP-provider-integrations.md` | DOC-0256 | PR 230 |
+| DOC-0043 | `docs/design/TEST-TIERED-SECURITY-KEYS.md` | DOC-0255 | PR 230 |
+| DOC-0044 | `docs/design/TEST-provider-integrations.md` | DOC-0256 | PR 230 |
 | DOC-0074 | `docs/design/portfolio-fx-governance-options.md` | DOC-0073 | PR 229 |
 | DOC-0217 | `docs/testing/resource-calendar-save-atomicity.md` | DOC-0250 | PR 229 |
 | DOC-0220 | `docs/testing/sprint-guard-errors.md` | DOC-0251 | PR 229 |
@@ -401,7 +403,3 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | `docs/interoperability/mpxj-dependency-inventory.md` | `docs/design/adr-010-implementation-plan.md` |
 | `docs/interoperability/mpxj-field-mapping.md` | `docs/design/adr-010-implementation-plan.md` |
 | `docs/interoperability/mpxj-format-support.md` | `docs/design/adr-010-implementation-plan.md` |
-| `docs/design/provider-integrations-v2-plan.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/design/security-keys-v4-design.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/review/provider-integrations-v2-critical-review.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/review/security-keys-v4-critical-review.md` | `docs/design/docs-reorganization-plan.md` |

@@ -1,5 +1,5 @@
 {
-  "next_id": 255,
+  "next_id": 257,
   "naming_rule_from": 239,
   "entries": [
     {
@@ -343,52 +343,55 @@
       "id": "DOC-0039",
       "path": "docs/design/CRYPTO-AND-STORAGE-CONTRACT.md",
       "kind": "design",
-      "status": "proposed",
-      "status_evidence": "docs/design/docs-reorganization-inventory.md",
-      "summary": "Cryptographic, storage, OS and compatibility contract (proposed)"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "Cryptographic, storage, OS and compatibility contract (proposed)",
+      "content_now_in": "DOC-0255"
     },
     {
       "id": "DOC-0040",
       "path": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
       "kind": "design",
-      "status": "proposed",
-      "status_evidence": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
-      "stated_status": "Proposed implementation contract.",
-      "summary": "Policy, authority, state machine, and recovery reference (v4)"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "Policy, authority, state machine, and recovery reference (v4)",
+      "content_now_in": "DOC-0255"
     },
     {
       "id": "DOC-0041",
       "path": "docs/design/ROADMAP-TIERED-SECURITY-KEYS.md",
       "kind": "plan",
-      "status": "proposed",
-      "status_evidence": "docs/design/docs-reorganization-inventory.md",
-      "summary": "GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second",
+      "content_now_in": "DOC-0255"
     },
     {
       "id": "DOC-0042",
       "path": "docs/design/ROADMAP-provider-integrations.md",
       "kind": "plan",
-      "status": "proposed",
-      "status_evidence": "docs/design/ROADMAP-provider-integrations.md",
-      "stated_status": "framework approved in principle on 2026-10-28.",
-      "summary": "Proposed GoPMgr roadmap insertion — provider-neutral integrations"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "Proposed GoPMgr roadmap insertion — provider-neutral integrations",
+      "content_now_in": "DOC-0256"
     },
     {
       "id": "DOC-0043",
       "path": "docs/design/TEST-TIERED-SECURITY-KEYS.md",
       "kind": "strategy",
-      "status": "proposed",
-      "status_evidence": "docs/design/docs-reorganization-inventory.md",
-      "summary": "Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix",
+      "content_now_in": "DOC-0255"
     },
     {
       "id": "DOC-0044",
       "path": "docs/design/TEST-provider-integrations.md",
       "kind": "strategy",
-      "status": "proposed",
-      "status_evidence": "docs/design/TEST-provider-integrations.md",
-      "stated_status": "framework approved in principle; this is a proposed test plan only and all 48 PI tests are NOT RUN until separately executed and evidenced.",
-      "summary": "Provider integration assurance, adversarial validation and acceptance"
+      "status": "removed",
+      "status_evidence": "PR 230",
+      "summary": "Provider integration assurance, adversarial validation and acceptance",
+      "content_now_in": "DOC-0256"
     },
     {
       "id": "DOC-0045",
@@ -1227,19 +1230,31 @@
     },
     {
       "id": "DOC-0139",
-      "path": "docs/review/CRITICAL-REVIEW-AND-DECISION-DELTA.md",
+      "path": "docs/review/security-keys-v4-critical-review.md",
       "kind": "review",
       "status": "historical",
-      "status_evidence": "docs/review/CRITICAL-REVIEW-AND-DECISION-DELTA.md",
-      "summary": "Critical review and formal decision delta — tiered hardware authentication v4"
+      "status_evidence": "docs/review/security-keys-v4-critical-review.md",
+      "summary": "Critical review and formal decision delta — tiered hardware authentication v4",
+      "previous_paths": [
+        {
+          "path": "docs/review/CRITICAL-REVIEW-AND-DECISION-DELTA.md",
+          "until": "PR 230"
+        }
+      ]
     },
     {
       "id": "DOC-0140",
-      "path": "docs/review/CRITICAL-REVIEW-and-DECISIONS.md",
+      "path": "docs/review/provider-integrations-v2-critical-review.md",
       "kind": "review",
       "status": "historical",
-      "status_evidence": "docs/review/CRITICAL-REVIEW-and-DECISIONS.md",
-      "summary": "Critical review and v2 decisions — 2026-10-28"
+      "status_evidence": "docs/review/provider-integrations-v2-critical-review.md",
+      "summary": "Critical review and v2 decisions — 2026-10-28",
+      "previous_paths": [
+        {
+          "path": "docs/review/CRITICAL-REVIEW-and-DECISIONS.md",
+          "until": "PR 230"
+        }
+      ]
     },
     {
       "id": "DOC-0141",
@@ -2366,6 +2381,96 @@
           "sha256": "f04cc11e097594921cc417a0e2ea9e6fd27742a1ae56ed6718cd4be2c94f9654"
         }
       ]
+    },
+    {
+      "id": "DOC-0255",
+      "path": "docs/design/security-keys-v4-design.md",
+      "kind": "design",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md",
+      "summary": "Tiered security keys (v4): state machine, crypto and storage contract, roadmap and test plan.",
+      "previous_paths": [
+        {
+          "path": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
+          "until": "PR 230"
+        },
+        {
+          "path": "docs/design/CRYPTO-AND-STORAGE-CONTRACT.md",
+          "until": "PR 230"
+        },
+        {
+          "path": "docs/design/ROADMAP-TIERED-SECURITY-KEYS.md",
+          "until": "PR 230"
+        },
+        {
+          "path": "docs/design/TEST-TIERED-SECURITY-KEYS.md",
+          "until": "PR 230"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Policy, authority, state machine, and recovery reference (v4)",
+          "from": "docs/design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "0da2e030df8c40a8dfc4fa5ca68ce39cc356bcff1c2f81e740117c67317a8734"
+        },
+        {
+          "title": "Cryptographic, storage, OS and compatibility contract (proposed)",
+          "from": "docs/design/CRYPTO-AND-STORAGE-CONTRACT.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "f7a95032502671f65d5b065287962dc1fdea06226d8f2725838a9df065bd9a00"
+        },
+        {
+          "title": "GoPMgr A-series roadmap v4 — User-optional FIDO2 first; administrator-enforced FIPS 140-3 second",
+          "from": "docs/design/ROADMAP-TIERED-SECURITY-KEYS.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-28",
+          "sha256": "7ba4475240c44babf1354771e9e6f573cf291711697ad5ea990802d87ce18600"
+        },
+        {
+          "title": "Tiered FIDO2 / FIPS 140-3 acceptance and adversarial verification matrix",
+          "from": "docs/design/TEST-TIERED-SECURITY-KEYS.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "5322895cab1c89fca9cadb1916c7c48b49aa42c96a3017fb95bd5c15871bdc7e"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0256",
+      "path": "docs/design/provider-integrations-v2-plan.md",
+      "kind": "plan",
+      "status": "proposed",
+      "status_evidence": "docs/design/ADR-TBD-provider-neutral-integration-framework.md",
+      "summary": "Provider-neutral integrations (v2): roadmap insertion and test plan.",
+      "previous_paths": [
+        {
+          "path": "docs/design/ROADMAP-provider-integrations.md",
+          "until": "PR 230"
+        },
+        {
+          "path": "docs/design/TEST-provider-integrations.md",
+          "until": "PR 230"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Proposed GoPMgr roadmap insertion — provider-neutral integrations",
+          "from": "docs/design/ROADMAP-provider-integrations.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-28",
+          "sha256": "08ff221bcd913a43fb7e90ffce900132f820d1afbe542b13f7ba98cdd0ccb35c"
+        },
+        {
+          "title": "Provider integration assurance, adversarial validation and acceptance",
+          "from": "docs/design/TEST-provider-integrations.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "10aa2aff126ddadaa6798d0ac5d8bb39aedb0fd0250411322ac604dcbe986b41"
+        }
+      ]
     }
   ],
   "planned": [
@@ -2380,22 +2485,6 @@
     {
       "path": "docs/interoperability/mpxj-format-support.md",
       "promised_by": "docs/design/adr-010-implementation-plan.md"
-    },
-    {
-      "path": "docs/design/provider-integrations-v2-plan.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/design/security-keys-v4-design.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/review/provider-integrations-v2-critical-review.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/review/security-keys-v4-critical-review.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
     }
   ],
   "recorded_dangling": [
