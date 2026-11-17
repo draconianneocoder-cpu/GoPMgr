@@ -16,8 +16,7 @@ outputs:
   page: [html]
 module:
   hugoVersion:
-    extended: true
-    min: "0.169.0"
+    min: "0.170.0"
   imports:
     - path: github.com/imfing/hextra
       # Import theme components, excluding its unused stock static branding.

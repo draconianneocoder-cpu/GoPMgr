@@ -5,8 +5,8 @@ weight = 90
 layout = "wide"
 [params]
 status = "development"
-applies_to = "Development snapshot 88b92cf935c7"
-last_reviewed = "2026-11-11"
+applies_to = "Development snapshot 88b92cf935c7; website dependency review 2026-11-15"
+last_reviewed = "2026-11-15"
 claim_ids = ["page.legal"]
 [[params.sources]]
 label = "LICENSE.md"
@@ -34,5 +34,6 @@ Bobby Beaver is the GoPMgr mascot. His design is inspired by the [Go gopher crea
 
 - Hextra v0.13.0, copyright 2023 Xin: [MIT license](../licenses/Hextra.txt).
 - FlexSearch v0.8.143, copyright Thomas Wilkerling, hosted by Nextapps GmbH: [Apache-2.0 license](../licenses/FlexSearch.txt).
+- Tailwind CSS v4.3.0, copyright Tailwind Labs, Inc., is included in Hextra's [pinned compiled stylesheet](https://github.com/imfing/hextra/blob/adf732f8d97cb8e149d4aba232a449d41cd9e38c/assets/css/compiled/main.css). Its [MIT license](../licenses/Tailwind.txt) matches the [upstream notice](https://github.com/tailwindlabs/tailwindcss/blob/588bd7371f4cae96426e1387819b7fd1d99765f9/LICENSE).
 
 Fonts use local operating-system fallbacks; this site bundles no additional web fonts. Theme and search license texts accompany the public files. Source SPDX annotations and distribution notices serve separate purposes.

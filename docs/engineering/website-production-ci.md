@@ -17,8 +17,8 @@ tests, sets up the root-pinned Go without a shared cache, then runs
 `make website-ci`. No application job, required check, workflow trigger or
 application build prerequisite changes. There is no deployment job or upload.
 
-The Make target calls `website/tools/ci.sh`. It provisions Hugo Extended
-0.169.0 for Linux AMD64, runs the existing production builder, parses its JSON
+The Make target calls `website/tools/ci.sh`. It provisions Hugo
+0.170.0 for Linux AMD64, runs the existing production builder, parses its JSON
 result, and checks the exact returned report. Errors propagate; it never finds
 an artifact by directory age. The module remains isolated with `GOWORK=off`.
 
@@ -29,15 +29,20 @@ the executable before an atomic task-local installation. It never uses
 `extractall` or installs a system tool. Every cached executable is rechecked;
 a symlink, checksum mismatch or non-executable file fails closed.
 
-Linux release identity was checked against the official release API digest and
-`hugo_0.169.0_checksums.txt` before adding the pin. Download redirects are limited
-to HTTPS GitHub release hosts. The existing macOS pin is unchanged.
+The owner approved the 0.170.0 update on 2026-11-15 after publication review
+found the two Hugo advisories fixed by that release. Both platform archives
+were checked against the official release API digests and
+`hugo_0.170.0_checksums.txt` before their executable hashes were recorded.
+The macOS package signature and notarization were also verified. Downloads
+remain limited to HTTPS GitHub release hosts. Hugo 0.170.0 unifies the former
+editions and removes LibSass; the site uses CSS and needs no Sass installation.
+The configuration guard rejects the retired `extended` constraint.
 
 ## Local evidence and limits
 
 On 2026-11-12 a disposable full-history checkout on upstairsserver, native
 Ubuntu 26.04.1 x86_64, passed `make website-tests website-ci` with Python 3.14.4,
-task-local Go 1.27.4 and the approved Linux Hugo. All 33 checker/provisioning tests
+task-local Go 1.27.4 and the then-pinned Hugo Extended 0.169.0. All 33 checker/provisioning tests
 passed, then the actual production artifact passed its output checks. This is
 local Ubuntu evidence, not a hosted Actions run or native application release.
 
@@ -59,7 +64,7 @@ After owner-authorized push, PR 207 at `709a31d9fcdf1a7e53443409650fac068e7dfc04
 passed all 14 hosted checks on 2026-11-12. The website job passed in 22 seconds
 in [run 43309793356](https://github.com/draconianneocoder-cpu/GoPMgr/actions/runs/43309793356).
 This establishes the production build on that reviewed PR revision, not on a
-later local revision or on main. PR 207 is not merged. The website check is
+later local revision or on main. At that recorded checkpoint, PR 207 was not yet merged. The website check is
 not made required by this source change.
 No acceptance record is issued; generated reports still say Stage P BLOCKED.
 
@@ -109,16 +114,38 @@ were intercepted fixtures, not a live external service. This corroborates the
 [HTML refresh semantics](https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh).
 Browser fixture evidence does not establish publication acceptance or complete
 HTML validation. The public site templates, content policy and appearance are
-unchanged; screen-reader and zoom acceptance remain open.
+unchanged. That review did not establish screen-reader or zoom acceptance;
+those require artifact-bound evidence for the publication candidate.
 
-## Next publication slice
+## Local publication preparation
 
-GitHub Pages remains off. Before activating artifact deployment, resolve the
-manual accessibility checks, create artifact-bound acceptance evidence, and
-verify the protected environment exists with main-only deployment and an
-explicit reviewer/self-review policy. The future privileged deployment job
-must not check out source or rebuild. Pin the artifact to its main SHA/run,
-fail closed on missing or unsuccessful required checks (including any separate
-CodeQL gate), reject stale candidates, and retain accepted rollback artifacts.
-Update the existing `gh-pages` architecture before adopting the artifact route.
-Environment approval is not a substitute for those checks.
+The selected architecture remains an output-only `gh-pages` branch prepared
+locally from the accepted production bytes. The earlier protected-environment
+artifact-route suggestion was an unadopted alternative. It does not authorize
+new deployment jobs or replace the forward-only branch transaction.
+
+Complete the manual accessibility and consented task checks, bind all required
+evidence to the source and output inventories, then use the existing
+`website-prepare-publication` target. Prepare the initial parentless candidate
+only after recording that the remote branch is absent. Updates and rollback
+must use the observed tip as their sole parent. Retain the accepted payload and
+receipt outside the public tree. Publishing, Pages settings and production
+delivery checks require separate explicit authority; local preparation performs
+none of them. See `website/README.md` for the existing transaction contract.
+
+
+## Conditional publisher safeguards
+
+On 2026-11-15 the owner authorized implementing and testing the missing R11
+controls locally while retaining full acceptance. `website/tools/publisher.py`
+binds a private, expiring and revocable owner grant to the exact reviewed
+acceptance bytes and Git candidate. It checks the fixed repository/ref, immutable
+GitHub account/repository IDs, current push permission, raw Git inventory and
+sole-parent/initial-root rule before the exact-value lease transaction.
+
+The existing local preparation target remains local only. Neither this tool's
+implementation nor checker success authorizes invoking its explicit `publish`
+command. No live grant, remote push, Pages setting or deployment is part of this
+change. The website README defines the private grant and point-in-time revocation
+limits. Local transport fixtures substitute only the network destination at the
+process boundary; they do not establish live GitHub credential/hosting behavior.

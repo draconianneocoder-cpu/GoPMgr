@@ -444,6 +444,12 @@ SPDX-FileCopyrightText = "2023 Xin"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
+path = "website/static/licenses/Tailwind.txt"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Tailwind Labs, Inc."
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = ["website/assets/js/vendor/flexsearch.bundle.min.js", "website/static/licenses/FlexSearch.txt"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Thomas Wilkerling"
