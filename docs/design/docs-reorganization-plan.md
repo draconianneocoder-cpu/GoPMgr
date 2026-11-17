@@ -11,8 +11,8 @@ combined where that is logical, easier to review and reasonable.
 **Baseline:** `main` at `9ab5d91` (PR 226).
 **Status:** Accepted. On 2026-11-17 the owner accepted every recommendation
 in [section 7](#7-owner-decisions) (D1–D8). Every phase, P1 to P3, is
-implemented; `make verify` now runs the ledger check (D3). The history check
-stays local (D8).
+implemented; `make verify` now runs the ledger check (D3), and CI's Verify
+job also runs the history check (D8).
 **Inventory:** every file under `docs/` is listed, with its kind, status,
 references and proposed action, in
 [docs-reorganization-inventory.md](docs-reorganization-inventory.md).
@@ -640,8 +640,12 @@ the merge base has no `ledger.json` and `HEAD` adds one (P1 itself), it
 reports "bootstrap: no base ledger" and passes only if every other contract
 passes. It is
 run before opening or updating a PR, beside the coverage-ledger checks that
-`AGENTS.md` already requires. CI's Verify job checks out a single commit, so
-running it in CI needs a workflow change, which is decision D8.
+`AGENTS.md` already requires. CI's Verify job also runs it (D8): the job
+checks out full history (`fetch-depth: 0`) and compares a pull request with
+its target branch, and a push with the commit the branch pointed to before
+the push, so every pushed commit is covered. A push that names no previous
+commit, such as the first push of a branch, or that does not extend it, such
+as a force-push, fails rather than skipping.
 
 **Limit:** an edit to a frozen file passes if the same change also updates
 its hash in the ledger. Review of ledger hash changes is the guard. A second
@@ -680,7 +684,7 @@ Running the check itself as a gate is decision D3.
 | D5 | ADRs stay in `docs/design/`, one file each | Yes. Moving them is churn, and the register gives the overview |
 | D6 | The merges in section 5.1. Each group can be accepted or declined on its own | Accept all eight. Each joins records of one subject and status without changing their text |
 | D7 | Edit the pinned `ROADMAP.md` in P2b, then re-pin it and re-review its pages | Yes. Otherwise the security-keys and provider merges and both renames must be dropped |
-| D8 | Run the history check in CI. This needs `fetch-depth: 0` on the Verify job in `.github/workflows/ci.yml`, a workflow change under the ADR-013 actionlint and zizmor gates | Not yet. Run it locally before each PR first; decide after P3 whether CI should also run it |
+| D8 | Run the history check in CI. This needs `fetch-depth: 0` on the Verify job in `.github/workflows/ci.yml`, a workflow change under the ADR-013 actionlint and zizmor gates | Not yet. Run it locally before each PR first; decide after P3 whether CI should also run it. **Decided 2026-11-17, after P3:** run it in CI |
 
 ## 8. Phases
 
