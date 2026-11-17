@@ -49,6 +49,7 @@ type Entry struct {
 	PreviousPaths  []PrevPath `json:"previous_paths,omitempty"`
 	ContentNowIn   string     `json:"content_now_in,omitempty"`
 	SupersededBy   string     `json:"superseded_by,omitempty"`
+	Sections       []Section  `json:"sections,omitempty"`
 }
 
 // PrevPath is a path an entry used to have, and the PR that stopped using it.

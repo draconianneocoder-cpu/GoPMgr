@@ -74,13 +74,13 @@ everything else — most of the codebase.
 Stakeholder saves are fail-hard across both the write and project-scoped
 readback: they share one transaction, readback failure rolls back, and success
 is returned only after commit. Errors wrap the failing operation while retaining
-the original cause. See [stakeholder save evidence](testing/stakeholder-save-atomicity.md)
+the original cause. See [stakeholder save evidence](testing/editor-save-atomicity.md#stakeholder-save-atomicity)
 for rollback, retry and exact-money checks and commit-error limits.
 
 Resource-calendar saves use the same write/readback/commit contract. Their
 database writer rejects cross-project ID collisions with `ErrNoResourceCalendar`
 without updating the foreign row; ordinary saves cannot transfer ownership.
-See [calendar save evidence](testing/resource-calendar-save-atomicity.md) for
+See [calendar save evidence](testing/editor-save-atomicity.md#resource-calendar-save-atomicity) for
 JSON decoding, rollback, retry, compatibility and commit-error limits.
 
 GoPMgr distinguishes operations where a failure should degrade gracefully
@@ -156,18 +156,18 @@ The autosave coordinator catches it and the foreground Save/Discard/Cancel
 dialog displays it. Manual saves retain their inline handling. A refusal
 without a specific message keeps the coordinator's generic fallback; neither
 failure path advances the saved baseline or permits navigation. See
-[sprint guard error evidence](testing/sprint-guard-errors.md).
+[sprint guard error evidence](testing/editor-guard-errors.md#sprint-save-errors-in-the-foreground-guard).
 
 The work-item editor uses the same forwarding contract for guarded saves.
 Its callback first refuses absent or busy drafts, so a pending deletion cannot
 re-report an earlier save error. Manual saves still return a boolean and render
-their error inline. See [work-item guard evidence](testing/work-item-guard-errors.md).
+their error inline. See [work-item guard evidence](testing/editor-guard-errors.md#work-item-errors-in-the-exit-guard).
 
 Stakeholder saves use the same adapter: absent or busy drafts refuse without
 forwarding a retained message; an attempted save that returns `false` forwards
 its existing nonempty validation or backend error. Exact-money safeguards and
 manual boolean save handling are unchanged. See
-[stakeholder guard evidence](testing/stakeholder-guard-errors.md).
+[stakeholder guard evidence](testing/editor-guard-errors.md#stakeholder-errors-in-the-exit-guard).
 
 ## Testing error paths
 

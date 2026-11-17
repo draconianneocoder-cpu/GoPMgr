@@ -144,8 +144,8 @@ its connection into a permanent error state, so repair rebuilds on a fresh
 connection. Failed COMMITs attempt
 rollback. A failed driver-transaction ROLLBACK uses the same cleanup rule: connections
 whose transaction remains active are refused and evicted, while already-rolled-back
-connections stay usable. See the [COMMIT](testing/sqlcipher-commit-cleanup.md)
-and [ROLLBACK](testing/sqlcipher-rollback-cleanup.md) evidence.
+connections stay usable. See the [COMMIT](testing/sqlcipher-cleanup-corrections.md#failed-commit-cleanup-evidence)
+and [ROLLBACK](testing/sqlcipher-cleanup-corrections.md#explicit-rollback-cleanup-evidence) evidence.
 
 The account writer owns manual `BEGIN IMMEDIATE` transactions separately.
 Failed raw rollback disposes its connection before pool release and preserves

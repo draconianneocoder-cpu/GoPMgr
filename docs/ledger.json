@@ -1,5 +1,5 @@
 {
-  "next_id": 250,
+  "next_id": 255,
   "naming_rule_from": 239,
   "entries": [
     {
@@ -650,17 +650,26 @@
       "status": "proposed",
       "status_evidence": "docs/design/governed-presentation-only-fx.md",
       "stated_status": "Proposed for product and architecture review.",
-      "summary": "Governed presentation-only FX for GoPMgr Portfolio reporting"
+      "summary": "Governed presentation-only FX for GoPMgr Portfolio reporting",
+      "sections": [
+        {
+          "title": "Superseded: governed portfolio FX options",
+          "from": "docs/design/portfolio-fx-governance-options.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "appendix": true,
+          "sha256": "00711d976d97268124a6b920805a2ee6b85c9072b6b21950ab232d14b5904174"
+        }
+      ]
     },
     {
       "id": "DOC-0074",
       "path": "docs/design/portfolio-fx-governance-options.md",
       "kind": "design",
-      "status": "superseded",
-      "status_evidence": "docs/design/portfolio-fx-governance-options.md",
-      "stated_status": "Superseded.",
+      "status": "removed",
+      "status_evidence": "PR 229",
       "summary": "Superseded: governed portfolio FX options",
-      "superseded_by": "DOC-0073"
+      "content_now_in": "DOC-0073"
     },
     {
       "id": "DOC-0075",
@@ -1857,9 +1866,10 @@
       "id": "DOC-0217",
       "path": "docs/testing/resource-calendar-save-atomicity.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/resource-calendar-save-atomicity.md",
-      "summary": "Resource-calendar save atomicity"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Resource-calendar save atomicity",
+      "content_now_in": "DOC-0250"
     },
     {
       "id": "DOC-0218",
@@ -1882,17 +1892,19 @@
       "id": "DOC-0220",
       "path": "docs/testing/sprint-guard-errors.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sprint-guard-errors.md",
-      "summary": "Sprint save errors in the foreground guard"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Sprint save errors in the foreground guard",
+      "content_now_in": "DOC-0251"
     },
     {
       "id": "DOC-0221",
       "path": "docs/testing/sprint-save-atomicity.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sprint-save-atomicity.md",
-      "summary": "Sprint save atomicity"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Sprint save atomicity",
+      "content_now_in": "DOC-0250"
     },
     {
       "id": "DOC-0222",
@@ -1906,9 +1918,10 @@
       "id": "DOC-0223",
       "path": "docs/testing/sprint-timestamp-boundary.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sprint-timestamp-boundary.md",
-      "summary": "Sprint timestamp boundary, 2026-10-18"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Sprint timestamp boundary, 2026-10-18",
+      "content_now_in": "DOC-0252"
     },
     {
       "id": "DOC-0224",
@@ -1922,41 +1935,46 @@
       "id": "DOC-0225",
       "path": "docs/testing/sqlcipher-commit-cleanup.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sqlcipher-commit-cleanup.md",
-      "summary": "Failed-COMMIT cleanup evidence"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Failed-COMMIT cleanup evidence",
+      "content_now_in": "DOC-0253"
     },
     {
       "id": "DOC-0226",
       "path": "docs/testing/sqlcipher-rollback-cleanup.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sqlcipher-rollback-cleanup.md",
-      "summary": "Explicit ROLLBACK cleanup evidence"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Explicit ROLLBACK cleanup evidence",
+      "content_now_in": "DOC-0253"
     },
     {
       "id": "DOC-0227",
       "path": "docs/testing/sqlcipher-wal-reset.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/sqlcipher-wal-reset.md",
-      "summary": "SQLCipher WAL-reset correction evidence"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "SQLCipher WAL-reset correction evidence",
+      "content_now_in": "DOC-0253"
     },
     {
       "id": "DOC-0228",
       "path": "docs/testing/stakeholder-guard-errors.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/stakeholder-guard-errors.md",
-      "summary": "Stakeholder errors in the exit guard"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Stakeholder errors in the exit guard",
+      "content_now_in": "DOC-0251"
     },
     {
       "id": "DOC-0229",
       "path": "docs/testing/stakeholder-save-atomicity.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/stakeholder-save-atomicity.md",
-      "summary": "Stakeholder save atomicity"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Stakeholder save atomicity",
+      "content_now_in": "DOC-0250"
     },
     {
       "id": "DOC-0230",
@@ -1978,49 +1996,55 @@
       "id": "DOC-0232",
       "path": "docs/testing/wbs-model-validation-2026-10-13.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/wbs-model-validation-2026-10-13.md",
-      "summary": "Unified WBS model assurance"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Unified WBS model assurance",
+      "content_now_in": "DOC-0254"
     },
     {
       "id": "DOC-0233",
       "path": "docs/testing/wbs-ordering-2026-10-13.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/wbs-ordering-2026-10-13.md",
-      "summary": "WBS write ordering assurance"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "WBS write ordering assurance",
+      "content_now_in": "DOC-0254"
     },
     {
       "id": "DOC-0234",
       "path": "docs/testing/wbs-storage-boundary-2026-10-14.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/wbs-storage-boundary-2026-10-14.md",
-      "summary": "WBS storage boundary evidence"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "WBS storage boundary evidence",
+      "content_now_in": "DOC-0254"
     },
     {
       "id": "DOC-0235",
       "path": "docs/testing/work-item-guard-errors.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/work-item-guard-errors.md",
-      "summary": "Work-item errors in the exit guard"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Work-item errors in the exit guard",
+      "content_now_in": "DOC-0251"
     },
     {
       "id": "DOC-0236",
       "path": "docs/testing/work-item-save-atomicity.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/work-item-save-atomicity.md",
-      "summary": "Work-item save atomicity"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Work-item save atomicity",
+      "content_now_in": "DOC-0250"
     },
     {
       "id": "DOC-0237",
       "path": "docs/testing/work-item-timestamp-boundary.md",
       "kind": "evidence",
-      "status": "historical",
-      "status_evidence": "docs/testing/work-item-timestamp-boundary.md",
-      "summary": "Work-item timestamp boundary, 2026-10-16"
+      "status": "removed",
+      "status_evidence": "PR 229",
+      "summary": "Work-item timestamp boundary, 2026-10-16",
+      "content_now_in": "DOC-0252"
     },
     {
       "id": "DOC-0238",
@@ -2117,6 +2141,231 @@
       "status": "current",
       "status_evidence": "docs/design/docs-reorganization-plan.md",
       "summary": "Testing folder: test strategies, evidence records, qualification records and the DF0 spike."
+    },
+    {
+      "id": "DOC-0250",
+      "path": "docs/testing/editor-save-atomicity.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/editor-save-atomicity.md",
+      "summary": "Editor save atomicity: one write-and-readback transaction contract, proven for four editors.",
+      "previous_paths": [
+        {
+          "path": "docs/testing/resource-calendar-save-atomicity.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/sprint-save-atomicity.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/stakeholder-save-atomicity.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/work-item-save-atomicity.md",
+          "until": "PR 229"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Resource-calendar save atomicity",
+          "from": "docs/testing/resource-calendar-save-atomicity.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "5bed8e283f06e180aba6b3a8827e7afc9d344c2136700d2b9a0152916792d43c"
+        },
+        {
+          "title": "Sprint save atomicity",
+          "from": "docs/testing/sprint-save-atomicity.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-18",
+          "sha256": "c90d712e28c322100122bcf878d10f97e489a70c85c6875aab5846bb263b255b"
+        },
+        {
+          "title": "Stakeholder save atomicity",
+          "from": "docs/testing/stakeholder-save-atomicity.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "5d90285d37e19eb37f01f78a5642d2949d4385989e9957db7ffd824990dcac2c"
+        },
+        {
+          "title": "Work-item save atomicity",
+          "from": "docs/testing/work-item-save-atomicity.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "d026cd1ee9d4ab89cc5b4c43ccd50076bc72f1ae9498604e741e9026422fd9c3"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0251",
+      "path": "docs/testing/editor-guard-errors.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/editor-guard-errors.md",
+      "summary": "Editor errors in the exit guard: One exit-guard error contract, proven for three editors.",
+      "previous_paths": [
+        {
+          "path": "docs/testing/sprint-guard-errors.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/stakeholder-guard-errors.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/work-item-guard-errors.md",
+          "until": "PR 229"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Sprint save errors in the foreground guard",
+          "from": "docs/testing/sprint-guard-errors.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-19",
+          "sha256": "26ec2f630b8e59875aa4dd9af3109f985b9d5a41128cd193cab2804b0f7f2b7a"
+        },
+        {
+          "title": "Stakeholder errors in the exit guard",
+          "from": "docs/testing/stakeholder-guard-errors.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "7e75db9dd24f5df94f45573633731c99aa5b75cee11533097652417253d25ec8"
+        },
+        {
+          "title": "Work-item errors in the exit guard",
+          "from": "docs/testing/work-item-guard-errors.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-20",
+          "sha256": "11359e5fd7c99f265d3e2f4e2b757043c2bc9a05efc4db97b7aa8d18f8067e9d"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0252",
+      "path": "docs/testing/editor-timestamp-boundary.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/editor-timestamp-boundary.md",
+      "summary": "Editor timestamp boundary: One timestamp-boundary contract, proven for two editors.",
+      "previous_paths": [
+        {
+          "path": "docs/testing/work-item-timestamp-boundary.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/sprint-timestamp-boundary.md",
+          "until": "PR 229"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Work-item timestamp boundary, 2026-10-16",
+          "from": "docs/testing/work-item-timestamp-boundary.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-16",
+          "sha256": "f58d185de862392e124a0ab97318ba3b0bbff2534163f13ebe7e7faba8341d00"
+        },
+        {
+          "title": "Sprint timestamp boundary, 2026-10-18",
+          "from": "docs/testing/sprint-timestamp-boundary.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-18",
+          "sha256": "19bca9435ed44a794c61a168d8e98a6e1d235d0c0aed9e0d443f23f937759a5f"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0253",
+      "path": "docs/testing/sqlcipher-cleanup-corrections.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/sqlcipher-cleanup-corrections.md",
+      "summary": "SQLCipher cleanup corrections: Three corrections to SQLCipher connection cleanup after failed transactions.",
+      "previous_paths": [
+        {
+          "path": "docs/testing/sqlcipher-commit-cleanup.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/sqlcipher-rollback-cleanup.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/sqlcipher-wal-reset.md",
+          "until": "PR 229"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Failed-COMMIT cleanup evidence",
+          "from": "docs/testing/sqlcipher-commit-cleanup.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "4f1d8d142faf7c71d0450047eafbb119e6efcd86d3db94e7b5098bee29b7c1b2"
+        },
+        {
+          "title": "Explicit ROLLBACK cleanup evidence",
+          "from": "docs/testing/sqlcipher-rollback-cleanup.md",
+          "commit": "9ab5d91",
+          "date": "undated",
+          "sha256": "f28f00d966476067f2b0dcf616c1d345eaa93dfd637758fa7ee952f6de368472"
+        },
+        {
+          "title": "SQLCipher WAL-reset correction evidence",
+          "from": "docs/testing/sqlcipher-wal-reset.md",
+          "commit": "9ab5d91",
+          "date": "2026-11-10",
+          "sha256": "eb5614013bd3d32647a27f667eccec84a22636d92d5b742c44a84d8bcde53742"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0254",
+      "path": "docs/testing/wbs-foundation-evidence-2026-10.md",
+      "kind": "evidence",
+      "status": "historical",
+      "status_evidence": "docs/testing/wbs-foundation-evidence-2026-10.md",
+      "summary": "WBS foundation evidence, October 2026: model validation, write ordering and the storage boundary.",
+      "previous_paths": [
+        {
+          "path": "docs/testing/wbs-model-validation-2026-10-13.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/wbs-ordering-2026-10-13.md",
+          "until": "PR 229"
+        },
+        {
+          "path": "docs/testing/wbs-storage-boundary-2026-10-14.md",
+          "until": "PR 229"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Unified WBS model assurance",
+          "from": "docs/testing/wbs-model-validation-2026-10-13.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-13",
+          "sha256": "7b49d7ad0023a821d665936ce91903fd6f76c1575155eacebd5483bad6e4377e"
+        },
+        {
+          "title": "WBS write ordering assurance",
+          "from": "docs/testing/wbs-ordering-2026-10-13.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-13",
+          "sha256": "3e45fa423e0095895fb5d357fd13b5de9028cf6e93ae01c3cf097b2db7277d5c"
+        },
+        {
+          "title": "WBS storage boundary evidence",
+          "from": "docs/testing/wbs-storage-boundary-2026-10-14.md",
+          "commit": "9ab5d91",
+          "date": "2026-10-14",
+          "sha256": "f04cc11e097594921cc417a0e2ea9e6fd27742a1ae56ed6718cd4be2c94f9654"
+        }
+      ]
     }
   ],
   "planned": [
@@ -2146,26 +2395,6 @@
     },
     {
       "path": "docs/review/security-keys-v4-critical-review.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/testing/editor-guard-errors.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/testing/editor-save-atomicity.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/testing/editor-timestamp-boundary.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/testing/sqlcipher-cleanup-corrections.md",
-      "promised_by": "docs/design/docs-reorganization-plan.md"
-    },
-    {
-      "path": "docs/testing/wbs-foundation-evidence-2026-10.md",
       "promised_by": "docs/design/docs-reorganization-plan.md"
     }
   ],

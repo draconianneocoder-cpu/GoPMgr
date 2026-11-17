@@ -6,7 +6,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # Governed presentation-only FX for GoPMgr Portfolio reporting
 
 **Status:** Proposed for product and architecture review.
-**Supersedes:** [portfolio-fx-governance-options.md](portfolio-fx-governance-options.md).
+**Supersedes:** [portfolio-fx-governance-options.md](#superseded-record-not-maintained-superseded-governed-portfolio-fx-options).
 **Repository review basis:** main through `343982316cbfd920d0b7ddaa442d84170d1d9c53` (2026-08-21); re-checked against `bb0a8d25ead1259bcd253018d2e5d2f02540e01e` (2026-08-28) during a documentation-drift pass — the doc's claims (no `internal/fx` package, no `PortfolioFX`/`rate_numerator` references, mixed-currency refusal) still hold.
 **Implementation authority:** None. This proposes a bounded FX reporting
 capability; it does not authorize Cost Control Phase 2, a portfolio persistence
@@ -416,3 +416,18 @@ implement exact direct-rate parsing/conversion and immutable user-private
 rate-set storage, followed by adversarial review before Portfolio UI conversion
 is enabled. Do not start with portfolio tables, role tables, FX audit tables,
 or provider integration.
+
+## Superseded record, not maintained: Superseded: governed portfolio FX options
+
+Formerly `docs/design/portfolio-fx-governance-options.md`, undated, from commit `9ab5d91`.
+
+**Status:** Superseded.
+
+This exploratory options paper has been superseded by the bounded,
+presentation-only v1 **proposed contract** in
+[Governed presentation-only FX for GoPMgr Portfolio reporting](governed-presentation-only-fx.md).
+
+The replacement removes premature portfolio persistence, financial-role/RBAC,
+and anchor-rate assumptions. It preserves the existing mixed-currency refusal
+and proposes, but does not authorize, an explicit user-attested, direct-pair
+FX reporting workflow.

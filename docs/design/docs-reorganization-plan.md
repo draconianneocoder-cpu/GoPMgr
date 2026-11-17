@@ -10,7 +10,7 @@ design for the structure of `docs/`. They then asked that documents be
 combined where that is logical, easier to review and reasonable.
 **Baseline:** `main` at `9ab5d91` (PR 226).
 **Status:** Accepted. On 2026-11-17 the owner accepted every recommendation
-in [section 7](#7-owner-decisions) (D1–D8). P1 is implemented; P2a, P2b and P3
+in [section 7](#7-owner-decisions) (D1–D8). P1 and P2a are implemented; P2b and P3
 follow as separate PRs.
 **Inventory:** every file under `docs/` is listed, with its kind, status,
 references and proposed action, in
@@ -331,9 +331,11 @@ the old location and the new one, and requiring the same target.
 **A combined file** is exactly these parts, in this order:
 1. One SPDX header. All 22 sources carry the same holder and
    GFDL-1.3-or-later.
-2. A title, and a "What this file holds" list with one line per source: its
-   former path, its date and the commit it came from (`9ab5d91`). Nothing
-   else.
+2. A title, a one-sentence description of the subject, the fixed note
+   "Each section below is a record kept as written, with its headings one
+   level lower and its links updated; nothing else changed.", and a "What
+   this file holds" list with one line per source: its former path, its date
+   (or "undated") and the commit it came from (`9ab5d91`). Nothing else.
 3. One section per source, in date order (editor order within a contract).
    The section heading is the source's own title, which is unique within the
    group. Below it, the source body follows unchanged except for:
@@ -348,17 +350,31 @@ title\>", one line naming the former path, date and commit, and then the
 source body under the same rules. The receiving file's existing text must
 stay unchanged.
 
-**The preservation check (P2).** It fails unless all of these hold:
-- each combined file splits into exactly the parts above, with no other
-  text;
-- each section, with the path table applied in reverse and its headings
-  moved back up, equals `git show 9ab5d91:<former path>` without its SPDX
-  header;
-- the receiving file, minus its appendix, equals its `9ab5d91` text, apart
-  from path-table changes;
-- every other file P2 touches, including the 14 referrers and the 3 renamed
-  or moved files, differs from its `9ab5d91` text only by path-table
-  substitutions and re-basing.
+**The preservation check.** Each merged record is listed in its file's
+ledger entry (`sections`: title, former path, source commit and the SHA-256
+of its normalized form), so `tools/docs-ledger` keeps proving it stays as
+written. The normalized form puts the heading back to level 1, drops an
+appendix's Formerly line, moves the other headings up one level and masks
+link targets and `docs/` paths.
+- `make docs-ledger-check` (offline, so CI can run it) fails if a section is
+  missing, its hash changed, a combined file's top holds anything beyond the
+  parts above, a combined file has any level-2 section other than its
+  recorded ones in order, an appendix is not its document's last section, or
+  a what-it-holds or Formerly line does not match the ledger (title, former
+  path, date and commit).
+- `make docs-ledger-history` also compares each section's normalized form
+  with its source at the recorded commit, and fails, never skips, when that
+  commit is not in history. It pairs each link target and `docs/` path with
+  the source's: a URL must be unchanged; a target whose file did not move
+  keeps its anchor; a target whose file moved must point to the file that now
+  holds its content, with the same anchor, or, if it had none and was merged
+  into a section, that section's heading. It fails if a recorded
+  section is dropped from the ledger or any of its fields changes.
+- In each P2 PR, a reviewer also confirms, once, that the receiving file
+  minus its appendix and every other file P2 touches (including the
+  referrers and the renamed or moved files) differ from their previous text
+  only by path-table substitutions and re-basing. These files keep changing
+  afterwards, so the ledger does not pin them.
 
 Exempt, because their own checks cover them:
 - `ledger.json`: covered by the ledger check;
@@ -483,6 +499,7 @@ assigned.
 | `frozen_sha256` | Set only when `status` is `frozen` |
 | `previous_paths` | Every earlier path, with the PR that stopped using it |
 | `superseded_by` | Set only when `status` is `superseded`: the ID of the replacement, which must still exist |
+| `sections` | Set only on a combined file or a document with an appendix: one record per merged section (title, former path, source commit, the date the record states or `undated`, whether it is an appendix, SHA-256 of its normalized form; plan 5.2) |
 | `content_now_in` | Set only when `status` is `removed`: the ID of the document that holds the content now, or `none` if the content was dropped, which the evidence must explain |
 | `governed` | For governed records (constraint 2): the governing ADR, such as `ADR-012`. Like `historical` and `frozen`, it lets a reference that cannot be fixed be recorded in `recorded_dangling` |
 
@@ -581,10 +598,15 @@ find=DOC-0142` prints the current path and the path history.
    non-empty and at most 120 characters; every `status_evidence` is a tracked
    file, a `PR N` reference or a commit hash in the expected form. Only the
    form is checked offline, not whether a PR or commit exists.
-3. Every `frozen` entry matches its `frozen_sha256`.
+3. Every `frozen` entry matches its `frozen_sha256`, and every recorded
+   section matches its SHA-256 (5.2).
 4. Every relative link (with its heading anchor, if any) and plain-text
    `docs/…` path in scope resolves, or is a `planned` path, or appears in
-   `recorded_dangling`, or is excluded by `.gitignore` (local-only by policy:
+   `recorded_dangling`, or is one of the source file's own former paths named
+   on its provenance line ("formerly `<path>`": its `previous_paths`, or the
+   path of a removed entry whose content it now holds; elsewhere in the file,
+   and in links, former paths still fail), or is excluded by
+   `.gitignore` (local-only by policy:
    private plans, and release evidence under `docs/release-evidence/`, whose
    links are therefore not checked).
    Reference-style links count as links. Plain-text paths in fenced code
@@ -607,6 +629,7 @@ ledger with the one at the merge base of `BASE` and `HEAD`:
 - no ID changes its path without the old path joining `previous_paths`;
 - no former path is dropped from `previous_paths`;
 - no entry's ID changes;
+- every recorded section still matches its source at its commit (5.2);
 - `next_id` never decreases, and `naming_rule_from` never rises (raising it
   would exempt new files from the naming rule).
 

@@ -86,7 +86,6 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0071 | [`docs-reorganization-plan.md`](design/docs-reorganization-plan.md) | plan | accepted | Documentation structure: reorganization and consolidation plan |
 | DOC-0072 | [`duckdb-analytics-engine.md`](design/duckdb-analytics-engine.md) | design | superseded | DuckDB analytics engine |
 | DOC-0073 | [`governed-presentation-only-fx.md`](design/governed-presentation-only-fx.md) | design | proposed | Governed presentation-only FX for GoPMgr Portfolio reporting |
-| DOC-0074 | [`portfolio-fx-governance-options.md`](design/portfolio-fx-governance-options.md) | design | superseded | Superseded: governed portfolio FX options |
 | DOC-0075 | [`professional-scheduling-domain-model.md`](design/professional-scheduling-domain-model.md) | design | proposed | Connected project model: domains, dependencies and open ADR-011 decisions |
 | DOC-0076 | [`professional-scheduling-modernization-plan.md`](design/professional-scheduling-modernization-plan.md) | plan | accepted | Professional scheduling and project controls modernization plan |
 | DOC-0077 | [`project-cost-ledger-scope.md`](design/project-cost-ledger-scope.md) | design | accepted | Project cost ledger scope |
@@ -324,6 +323,9 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0198 | [`credential-coherence.md`](testing/credential-coherence.md) | evidence | historical | Sign-in bound to one account identity: credential slice |
 | DOC-0199 | [`duckdb-notices-qualification.md`](testing/duckdb-notices-qualification.md) | evidence | historical | DuckDB native notices qualification |
 | DOC-0200 | [`duckdb-retirement-parity.md`](testing/duckdb-retirement-parity.md) | evidence | historical | DuckDB retirement parity record |
+| DOC-0251 | [`editor-guard-errors.md`](testing/editor-guard-errors.md) | evidence | historical | Editor errors in the exit guard: One exit-guard error contract, proven for three editors. |
+| DOC-0250 | [`editor-save-atomicity.md`](testing/editor-save-atomicity.md) | evidence | historical | Editor save atomicity: one write-and-readback transaction contract, proven for four editors. |
+| DOC-0252 | [`editor-timestamp-boundary.md`](testing/editor-timestamp-boundary.md) | evidence | historical | Editor timestamp boundary: One timestamp-boundary contract, proven for two editors. |
 | DOC-0201 | [`go-1.27.3-security.md`](testing/go-1.27.3-security.md) | evidence | historical | Go 1.27.3 security baseline |
 | DOC-0202 | [`id-generation-128-bit.md`](testing/id-generation-128-bit.md) | evidence | historical | Identifier generation: bounded Slice C repair |
 | DOC-0203 | [`macos-installer-policy.md`](testing/macos-installer-policy.md) | strategy | current | Local macOS PKG policy |
@@ -340,27 +342,14 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0214 | [`release-race-package-policy.md`](testing/release-race-package-policy.md) | strategy | current | Explicit race-test package budget |
 | DOC-0215 | [`reliability-2026-10-12.md`](testing/reliability-2026-10-12.md) | evidence | historical | Reliability repairs, 2026-10-12 |
 | DOC-0216 | [`reporting-extension-assurance.md`](testing/reporting-extension-assurance.md) | strategy | current | Reporting and extension assurance strategy |
-| DOC-0217 | [`resource-calendar-save-atomicity.md`](testing/resource-calendar-save-atomicity.md) | evidence | historical | Resource-calendar save atomicity |
 | DOC-0218 | [`resource-overallocation-contract.md`](testing/resource-overallocation-contract.md) | strategy | current | Resource overallocation: legacy contract and test oracle |
 | DOC-0219 | [`resource-resilience-assurance.md`](testing/resource-resilience-assurance.md) | strategy | current | Resource resilience acceptance contract |
-| DOC-0220 | [`sprint-guard-errors.md`](testing/sprint-guard-errors.md) | evidence | historical | Sprint save errors in the foreground guard |
-| DOC-0221 | [`sprint-save-atomicity.md`](testing/sprint-save-atomicity.md) | evidence | historical | Sprint save atomicity |
 | DOC-0222 | [`sprint-save-feedback.md`](testing/sprint-save-feedback.md) | evidence | historical | Sprint save feedback, 2026-10-19 |
-| DOC-0223 | [`sprint-timestamp-boundary.md`](testing/sprint-timestamp-boundary.md) | evidence | historical | Sprint timestamp boundary, 2026-10-18 |
 | DOC-0224 | [`sqlcipher-4.20-upgrade.md`](testing/sqlcipher-4.20-upgrade.md) | evidence | historical | SQLCipher 4.20.0 upgrade evidence (2026-11-10) |
-| DOC-0225 | [`sqlcipher-commit-cleanup.md`](testing/sqlcipher-commit-cleanup.md) | evidence | historical | Failed-COMMIT cleanup evidence |
-| DOC-0226 | [`sqlcipher-rollback-cleanup.md`](testing/sqlcipher-rollback-cleanup.md) | evidence | historical | Explicit ROLLBACK cleanup evidence |
-| DOC-0227 | [`sqlcipher-wal-reset.md`](testing/sqlcipher-wal-reset.md) | evidence | historical | SQLCipher WAL-reset correction evidence |
-| DOC-0228 | [`stakeholder-guard-errors.md`](testing/stakeholder-guard-errors.md) | evidence | historical | Stakeholder errors in the exit guard |
-| DOC-0229 | [`stakeholder-save-atomicity.md`](testing/stakeholder-save-atomicity.md) | evidence | historical | Stakeholder save atomicity |
+| DOC-0253 | [`sqlcipher-cleanup-corrections.md`](testing/sqlcipher-cleanup-corrections.md) | evidence | historical | SQLCipher cleanup corrections: Three corrections to SQLCipher connection cleanup after failed transactions. |
 | DOC-0230 | [`tabular-import-paths.md`](testing/tabular-import-paths.md) | evidence | historical | Tabular import: selected-path verification |
 | DOC-0231 | [`wails-v3-migration-evidence.md`](testing/wails-v3-migration-evidence.md) | evidence | historical | Wails v3 / GTK 4 migration evidence |
-| DOC-0232 | [`wbs-model-validation-2026-10-13.md`](testing/wbs-model-validation-2026-10-13.md) | evidence | historical | Unified WBS model assurance |
-| DOC-0233 | [`wbs-ordering-2026-10-13.md`](testing/wbs-ordering-2026-10-13.md) | evidence | historical | WBS write ordering assurance |
-| DOC-0234 | [`wbs-storage-boundary-2026-10-14.md`](testing/wbs-storage-boundary-2026-10-14.md) | evidence | historical | WBS storage boundary evidence |
-| DOC-0235 | [`work-item-guard-errors.md`](testing/work-item-guard-errors.md) | evidence | historical | Work-item errors in the exit guard |
-| DOC-0236 | [`work-item-save-atomicity.md`](testing/work-item-save-atomicity.md) | evidence | historical | Work-item save atomicity |
-| DOC-0237 | [`work-item-timestamp-boundary.md`](testing/work-item-timestamp-boundary.md) | evidence | historical | Work-item timestamp boundary, 2026-10-16 |
+| DOC-0254 | [`wbs-foundation-evidence-2026-10.md`](testing/wbs-foundation-evidence-2026-10.md) | evidence | historical | WBS foundation evidence, October 2026: model validation, write ordering and the storage boundary. |
 
 ## `docs/testing/adr-012-df0-records/`
 
@@ -384,6 +373,27 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | DOC-0192 | [`df0-resources-macos/**`](testing/adr-012-df0-records/df0-resources-macos/) | evidence-data | historical | DF0 spike record data: df0-resources-macos (archived spike, 2026-11). |
 | DOC-0193 | [`df0-sbom-macos/**`](testing/adr-012-df0-records/df0-sbom-macos/) | evidence-data | historical | DF0 spike record data: df0-sbom-macos (archived spike, 2026-11). |
 
+## Removed documents
+
+| ID | Former path | Content now in | Evidence |
+| --- | --- | --- | --- |
+| DOC-0074 | `docs/design/portfolio-fx-governance-options.md` | DOC-0073 | PR 229 |
+| DOC-0217 | `docs/testing/resource-calendar-save-atomicity.md` | DOC-0250 | PR 229 |
+| DOC-0220 | `docs/testing/sprint-guard-errors.md` | DOC-0251 | PR 229 |
+| DOC-0221 | `docs/testing/sprint-save-atomicity.md` | DOC-0250 | PR 229 |
+| DOC-0223 | `docs/testing/sprint-timestamp-boundary.md` | DOC-0252 | PR 229 |
+| DOC-0225 | `docs/testing/sqlcipher-commit-cleanup.md` | DOC-0253 | PR 229 |
+| DOC-0226 | `docs/testing/sqlcipher-rollback-cleanup.md` | DOC-0253 | PR 229 |
+| DOC-0227 | `docs/testing/sqlcipher-wal-reset.md` | DOC-0253 | PR 229 |
+| DOC-0228 | `docs/testing/stakeholder-guard-errors.md` | DOC-0251 | PR 229 |
+| DOC-0229 | `docs/testing/stakeholder-save-atomicity.md` | DOC-0250 | PR 229 |
+| DOC-0232 | `docs/testing/wbs-model-validation-2026-10-13.md` | DOC-0254 | PR 229 |
+| DOC-0233 | `docs/testing/wbs-ordering-2026-10-13.md` | DOC-0254 | PR 229 |
+| DOC-0234 | `docs/testing/wbs-storage-boundary-2026-10-14.md` | DOC-0254 | PR 229 |
+| DOC-0235 | `docs/testing/work-item-guard-errors.md` | DOC-0251 | PR 229 |
+| DOC-0236 | `docs/testing/work-item-save-atomicity.md` | DOC-0250 | PR 229 |
+| DOC-0237 | `docs/testing/work-item-timestamp-boundary.md` | DOC-0252 | PR 229 |
+
 ## Planned documents
 
 | Path | Promised by |
@@ -395,8 +405,3 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | `docs/design/security-keys-v4-design.md` | `docs/design/docs-reorganization-plan.md` |
 | `docs/review/provider-integrations-v2-critical-review.md` | `docs/design/docs-reorganization-plan.md` |
 | `docs/review/security-keys-v4-critical-review.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/testing/editor-guard-errors.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/testing/editor-save-atomicity.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/testing/editor-timestamp-boundary.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/testing/sqlcipher-cleanup-corrections.md` | `docs/design/docs-reorganization-plan.md` |
-| `docs/testing/wbs-foundation-evidence-2026-10.md` | `docs/design/docs-reorganization-plan.md` |

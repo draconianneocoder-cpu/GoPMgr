@@ -40,8 +40,8 @@ with `-test`: every candidate is reached only from tests.
 `internal/wbs` and `internal/db/wbs_store.go` (19 of the 25 `deadcode`
 results) are the owner-approved, isolated WBS model and storage foundation.
 They are deliberately not wired to a production caller yet; see
-[WBS model validation](../testing/wbs-model-validation-2026-10-13.md) and
-[WBS storage boundary](../testing/wbs-storage-boundary-2026-10-14.md).
+[WBS model validation](../testing/wbs-foundation-evidence-2026-10.md#unified-wbs-model-assurance) and
+[WBS storage boundary](../testing/wbs-foundation-evidence-2026-10.md#wbs-storage-boundary-evidence).
 `fonts.newManagerWithBundledFS` is a documented test seam.
 
 ### Frontend

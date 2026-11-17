@@ -9,7 +9,7 @@ Four saved-record cases passed in the production macOS app: Cmd+Q Discard
 and a real blocked-write failure followed by explicit retry, separately in
 `StakeholderManager` and Backlog's `WorkItemEditor`. No production change was
 needed. This extends the [October 12 checks](native-close-macos-2026-10-12.md)
-and [timestamp-boundary repair](work-item-timestamp-boundary.md); it does not
+and [timestamp-boundary repair](editor-timestamp-boundary.md#work-item-timestamp-boundary-2026-10-16); it does not
 close the entire editor-data-loss or release-readiness backlog.
 
 ## Build and isolation

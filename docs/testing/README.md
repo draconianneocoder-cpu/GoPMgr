@@ -52,6 +52,9 @@ protects.
 | DOC-0198 | [`credential-coherence.md`](credential-coherence.md) | evidence | historical | Sign-in bound to one account identity: credential slice |
 | DOC-0199 | [`duckdb-notices-qualification.md`](duckdb-notices-qualification.md) | evidence | historical | DuckDB native notices qualification |
 | DOC-0200 | [`duckdb-retirement-parity.md`](duckdb-retirement-parity.md) | evidence | historical | DuckDB retirement parity record |
+| DOC-0251 | [`editor-guard-errors.md`](editor-guard-errors.md) | evidence | historical | Editor errors in the exit guard: One exit-guard error contract, proven for three editors. |
+| DOC-0250 | [`editor-save-atomicity.md`](editor-save-atomicity.md) | evidence | historical | Editor save atomicity: one write-and-readback transaction contract, proven for four editors. |
+| DOC-0252 | [`editor-timestamp-boundary.md`](editor-timestamp-boundary.md) | evidence | historical | Editor timestamp boundary: One timestamp-boundary contract, proven for two editors. |
 | DOC-0201 | [`go-1.27.3-security.md`](go-1.27.3-security.md) | evidence | historical | Go 1.27.3 security baseline |
 | DOC-0202 | [`id-generation-128-bit.md`](id-generation-128-bit.md) | evidence | historical | Identifier generation: bounded Slice C repair |
 | DOC-0204 | [`macos-package-lifecycle-2026-10-17.md`](macos-package-lifecycle-2026-10-17.md) | evidence | historical | macOS package lifecycle evidence, 2026-10-17 |
@@ -63,25 +66,12 @@ protects.
 | DOC-0210 | [`native-sprint-update-2026-10-19.md`](native-sprint-update-2026-10-19.md) | evidence | historical | Saved-sprint native update recovery, 2026-10-19 |
 | DOC-0212 | [`read-only-project-access.md`](read-only-project-access.md) | evidence | historical | Read-only project access: implementation and evidence |
 | DOC-0215 | [`reliability-2026-10-12.md`](reliability-2026-10-12.md) | evidence | historical | Reliability repairs, 2026-10-12 |
-| DOC-0217 | [`resource-calendar-save-atomicity.md`](resource-calendar-save-atomicity.md) | evidence | historical | Resource-calendar save atomicity |
-| DOC-0220 | [`sprint-guard-errors.md`](sprint-guard-errors.md) | evidence | historical | Sprint save errors in the foreground guard |
-| DOC-0221 | [`sprint-save-atomicity.md`](sprint-save-atomicity.md) | evidence | historical | Sprint save atomicity |
 | DOC-0222 | [`sprint-save-feedback.md`](sprint-save-feedback.md) | evidence | historical | Sprint save feedback, 2026-10-19 |
-| DOC-0223 | [`sprint-timestamp-boundary.md`](sprint-timestamp-boundary.md) | evidence | historical | Sprint timestamp boundary, 2026-10-18 |
 | DOC-0224 | [`sqlcipher-4.20-upgrade.md`](sqlcipher-4.20-upgrade.md) | evidence | historical | SQLCipher 4.20.0 upgrade evidence (2026-11-10) |
-| DOC-0225 | [`sqlcipher-commit-cleanup.md`](sqlcipher-commit-cleanup.md) | evidence | historical | Failed-COMMIT cleanup evidence |
-| DOC-0226 | [`sqlcipher-rollback-cleanup.md`](sqlcipher-rollback-cleanup.md) | evidence | historical | Explicit ROLLBACK cleanup evidence |
-| DOC-0227 | [`sqlcipher-wal-reset.md`](sqlcipher-wal-reset.md) | evidence | historical | SQLCipher WAL-reset correction evidence |
-| DOC-0228 | [`stakeholder-guard-errors.md`](stakeholder-guard-errors.md) | evidence | historical | Stakeholder errors in the exit guard |
-| DOC-0229 | [`stakeholder-save-atomicity.md`](stakeholder-save-atomicity.md) | evidence | historical | Stakeholder save atomicity |
+| DOC-0253 | [`sqlcipher-cleanup-corrections.md`](sqlcipher-cleanup-corrections.md) | evidence | historical | SQLCipher cleanup corrections: Three corrections to SQLCipher connection cleanup after failed transactions. |
 | DOC-0230 | [`tabular-import-paths.md`](tabular-import-paths.md) | evidence | historical | Tabular import: selected-path verification |
 | DOC-0231 | [`wails-v3-migration-evidence.md`](wails-v3-migration-evidence.md) | evidence | historical | Wails v3 / GTK 4 migration evidence |
-| DOC-0232 | [`wbs-model-validation-2026-10-13.md`](wbs-model-validation-2026-10-13.md) | evidence | historical | Unified WBS model assurance |
-| DOC-0233 | [`wbs-ordering-2026-10-13.md`](wbs-ordering-2026-10-13.md) | evidence | historical | WBS write ordering assurance |
-| DOC-0234 | [`wbs-storage-boundary-2026-10-14.md`](wbs-storage-boundary-2026-10-14.md) | evidence | historical | WBS storage boundary evidence |
-| DOC-0235 | [`work-item-guard-errors.md`](work-item-guard-errors.md) | evidence | historical | Work-item errors in the exit guard |
-| DOC-0236 | [`work-item-save-atomicity.md`](work-item-save-atomicity.md) | evidence | historical | Work-item save atomicity |
-| DOC-0237 | [`work-item-timestamp-boundary.md`](work-item-timestamp-boundary.md) | evidence | historical | Work-item timestamp boundary, 2026-10-16 |
+| DOC-0254 | [`wbs-foundation-evidence-2026-10.md`](wbs-foundation-evidence-2026-10.md) | evidence | historical | WBS foundation evidence, October 2026: model validation, write ordering and the storage boundary. |
 | DOC-0159 | [`adr-010-case-crosswalk.csv`](adr-010-case-crosswalk.csv) | evidence-data | current | ADR-010 test case crosswalk between plan versions. |
 | DOC-0249 | [`README.md`](README.md) | index | current | Testing folder: test strategies, evidence records, qualification records and the DF0 spike. |
 

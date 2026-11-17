@@ -36,6 +36,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	write := fs.Bool("write", false, "regenerate docs/LEDGER.md and the folder README lists")
 	history := fs.String("history", "", "also compare with the ledger at the merge base of this ref and HEAD")
 	find := fs.String("find", "", "print the current and former paths of a document ID")
+	sectionHash := fs.String("section-hash", "", "print the sha256 to record for the section titled -title in this file")
+	title := fs.String("title", "", "with -section-hash: the section's title")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -58,6 +60,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "docs-ledger: %v\n", err)
 		return 2
 	}
+	if *sectionHash != "" {
+		b, err := r.read(*sectionHash)
+		sec, appendix, ok := findSection(string(b), *title)
+		if err != nil || !ok {
+			_, _ = fmt.Fprintf(stderr, "docs-ledger: no section %q in %s\n", *title, *sectionHash)
+			return 1
+		}
+		_, _ = fmt.Fprintln(stdout, sha256Hex([]byte(normalizeRecord(sec, *title, appendix))))
+		return 0
+	}
 	if *write {
 		if err := writeGenerated(l, r); err != nil {
 			_, _ = fmt.Fprintf(stderr, "docs-ledger: %v\n", err)
@@ -67,6 +79,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	errs := check(l, r)
 	if *history != "" {
 		herrs, note := checkHistory(root, *history, l)
+		herrs = append(herrs, sourceErrors(l, r, func(rev, p string) (string, error) {
+			return gitOutput(root, "show", rev+":"+p)
+		})...)
 		errs = append(errs, herrs...)
 		if note != "" {
 			_, _ = fmt.Fprintln(stdout, "docs-ledger: "+note)
@@ -88,6 +103,7 @@ func check(l *Ledger, r *repo) []string {
 	errs := validate(l, r)
 	errs = append(errs, checkLinks(l, r)...)
 	errs = append(errs, checkGenerated(l, r)...)
+	errs = append(errs, checkSections(l, r)...)
 	return errs
 }
 
@@ -253,6 +269,15 @@ func compareHistory(prev, cur *Ledger) []string {
 			}
 			if !kept {
 				errs = append(errs, fmt.Sprintf("history: %s dropped its former path %s from previous_paths", p.ID, old.Path))
+			}
+		}
+		for _, ps := range p.Sections {
+			kept := false
+			for _, cs := range c.Sections {
+				kept = kept || cs == ps
+			}
+			if !kept {
+				errs = append(errs, fmt.Sprintf("history: %s dropped or changed its recorded section %q (from %s); merged records stay recorded as written", p.ID, ps.Title, ps.From))
 			}
 		}
 		if c.Path != p.Path {
