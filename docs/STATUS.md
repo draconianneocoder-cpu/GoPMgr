@@ -181,7 +181,7 @@ Owner decisions of 2026-11-17 (D1–D8, every recommendation accepted) in the
 | P1: documentation ledger, checker, folder indexes | Implemented (PR 228): every file under `docs/` has an entry in [`ledger.json`](ledger.json) ([readable view](LEDGER.md)); `make docs-ledger-check` enforces the rules. The history check runs locally only (D8) |
 | P2a: unpinned merges | Implemented in PR 229: five testing groups combined into `editor-save-atomicity.md`, `editor-guard-errors.md`, `editor-timestamp-boundary.md`, `sqlcipher-cleanup-corrections.md` and `wbs-foundation-evidence-2026-10.md`; the superseded FX options note is an appendix of `governed-presentation-only-fx.md`. Each record is kept as written: the ledger pins each section, `make docs-ledger-check` keeps checking it, and `make docs-ledger-history` compares it with its source at `9ab5d91` |
 | P2b: merges and renames that change the pinned `ROADMAP.md` | Implemented in PR 230: the security-keys (v4) proposal fragments combined into `security-keys-v4-design.md` and the provider-integrations (v2) roadmap and test plan into `provider-integrations-v2-plan.md`, records kept as written and pinned in the ledger; the two critical reviews renamed `security-keys-v4-critical-review.md` and `provider-integrations-v2-critical-review.md`, unchanged; `ROADMAP.md` re-pinned and its `/roadmap/` and `/features/` pages re-reviewed |
-| P3: the check joins `make verify` | Authorized, after P2 |
+| P3: the check joins `make verify` | Implemented in PR 231: `make verify`, which CI's Verify job runs, now runs `make docs-ledger-check`, so a document without a ledger entry, a broken link or a rewritten merged record fails the build. `make docs-ledger-history` still runs locally only (D8) |
 
 ## Known defects
 

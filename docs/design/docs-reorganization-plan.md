@@ -10,8 +10,9 @@ design for the structure of `docs/`. They then asked that documents be
 combined where that is logical, easier to review and reasonable.
 **Baseline:** `main` at `9ab5d91` (PR 226).
 **Status:** Accepted. On 2026-11-17 the owner accepted every recommendation
-in [section 7](#7-owner-decisions) (D1–D8). P1, P2a and P2b are implemented; P3
-follow as separate PRs.
+in [section 7](#7-owner-decisions) (D1–D8). Every phase, P1 to P3, is
+implemented; `make verify` now runs the ledger check (D3). The history check
+stays local (D8).
 **Inventory:** every file under `docs/` is listed, with its kind, status,
 references and proposed action, in
 [docs-reorganization-inventory.md](docs-reorganization-inventory.md).
