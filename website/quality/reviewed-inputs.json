@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "136da9aba769a1c74c7cca3bfa562baba302b8763117496eb9e134656cf59826",
+      "sha256": "4c93178b0b7763608166ddce4b6343b8b09a241409f7df5352a2bf2a848ca2b6",
       "size": 2485,
       "mode": "100644"
     },
@@ -68,7 +68,7 @@
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "4b02c1b09a0c19d896f4c6f6cec47cc198088de165028f94c6623d1b9ba55ed9",
+      "sha256": "f0d59d0c1c5ff7854f1d9ab1adab15e028497c2347ffa473ebc352b054705580",
       "size": 2615,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "8e04ded8859d3a077b1d24d5d3b782b69a7fdb7a5ea7e98b7dc540e4f993bd0e",
+      "sha256": "db62b250a25f458c7d47264b81dca9fc21b80a2848c1913cf6b636f407378560",
       "size": 8426,
       "mode": "100644"
     },
