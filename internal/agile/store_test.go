@@ -695,6 +695,27 @@ func TestSaveDeployment_SuccessfulRoundTrips(t *testing.T) {
 	}
 }
 
+// An explicit ID updates its deployment in place; the guard against
+// generated-ID collisions must leave this path unchanged.
+func TestSaveDeployment_ExplicitIDUpdatesInPlace(t *testing.T) {
+	_, store, _ := newAgileTestStore(t)
+	ts := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	first, err := store.SaveDeployment(Deployment{Version: "1.0.0", TS: ts})
+	if err != nil {
+		t.Fatalf("SaveDeployment: %v", err)
+	}
+	if _, err := store.SaveDeployment(Deployment{ID: first.ID, Version: "1.0.1", TS: ts, Successful: true, Notes: "hotfix"}); err != nil {
+		t.Fatalf("update by explicit ID: %v", err)
+	}
+	all, err := store.ListDeployments(time.Time{})
+	if err != nil {
+		t.Fatalf("ListDeployments: %v", err)
+	}
+	if len(all) != 1 || all[0].ID != first.ID || all[0].Version != "1.0.1" || !all[0].Successful || all[0].Notes != "hotfix" {
+		t.Fatalf("deployments = %+v, want the one deployment updated to 1.0.1", all)
+	}
+}
+
 func TestListDeployments_AllVsWindowed(t *testing.T) {
 	_, store, _ := newAgileTestStore(t)
 	older := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

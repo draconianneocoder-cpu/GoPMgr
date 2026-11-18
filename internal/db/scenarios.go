@@ -60,7 +60,10 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 	if s.Name == "" {
 		return Scenario{}, errors.New("scenario: name is required")
 	}
-	if s.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := s.ID == ""
+	if generated {
 		id, err := newID("scn")
 		if err != nil {
 			return Scenario{}, fmt.Errorf("generate scenario id: %w", err)
@@ -89,6 +92,10 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 		isCreate = true
 		err = nil
 	} else if err != nil {
+		return Scenario{}, err
+	}
+	if generated && !isCreate {
+		err = ErrGeneratedIDCollision
 		return Scenario{}, err
 	}
 

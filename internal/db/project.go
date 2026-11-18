@@ -123,7 +123,10 @@ func (db *Database) GetProject() (Project, error) {
 // UpsertProject inserts or updates the project row. If p.ID is empty,
 // a new project is created and its ID returned via the result.
 func (db *Database) UpsertProject(p Project) (Project, error) {
-	if p.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := p.ID == ""
+	if generated {
 		id, err := newID("prj")
 		if err != nil {
 			return Project{}, fmt.Errorf("generate project id: %w", err)
@@ -158,6 +161,10 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if err == ErrNoProject {
 		isCreate = true
 	} else if err != nil {
+		return Project{}, err
+	}
+	if generated && !isCreate {
+		err = ErrGeneratedIDCollision
 		return Project{}, err
 	}
 	if !isCreate && before.CurrencyCode != p.CurrencyCode {

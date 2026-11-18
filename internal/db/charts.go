@@ -50,7 +50,10 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if protectedWBSPayload(c.Kind, c.Data) {
 		return Chart{}, ErrWBSProtected
 	}
-	if c.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := c.ID == ""
+	if generated {
 		id, err := newID("chart")
 		if err != nil {
 			return Chart{}, fmt.Errorf("generate chart id: %w", err)
@@ -76,6 +79,10 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if err == ErrNoChart {
 		isCreate = true
 	} else if err != nil {
+		return Chart{}, err
+	}
+	if generated && !isCreate {
+		err = ErrGeneratedIDCollision
 		return Chart{}, err
 	}
 	if !isCreate {

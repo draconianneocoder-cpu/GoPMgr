@@ -35,7 +35,10 @@ var ErrNoResourceCalendar = errors.New("db: resource calendar not found")
 // changing its project. The write and project-scoped readback are atomic;
 // success follows commit.
 func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, error) {
-	if c.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := c.ID == ""
+	if generated {
 		id, err := newID("rcal")
 		if err != nil {
 			return ResourceCalendar{}, fmt.Errorf("generate resource calendar id: %w", err)
@@ -72,6 +75,11 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 		return ResourceCalendar{}, fmt.Errorf("begin resource calendar save: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if generated {
+		if err := refuseTakenIDTx(tx, `SELECT COUNT(*) FROM resource_calendars WHERE id = ?`, c.ID); err != nil {
+			return ResourceCalendar{}, err
+		}
+	}
 	_, err = tx.Exec(`
 		INSERT INTO resource_calendars (
 			id, project_id, resource, name, default_capacity,

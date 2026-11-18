@@ -61,7 +61,10 @@ var ErrNoStakeholder = errors.New("db: stakeholder not found")
 // defaults to "team"; empty ID gets a fresh one.
 // The write and project-scoped readback are atomic; success follows commit.
 func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
-	if s.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := s.ID == ""
+	if generated {
 		id, err := newID("stk")
 		if err != nil {
 			return Stakeholder{}, fmt.Errorf("generate stakeholder id: %w", err)
@@ -89,6 +92,11 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 		return Stakeholder{}, fmt.Errorf("begin stakeholder save: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if generated {
+		if err := refuseTakenIDTx(tx, `SELECT COUNT(*) FROM stakeholders WHERE id = ?`, s.ID); err != nil {
+			return Stakeholder{}, err
+		}
+	}
 	_, err = tx.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,
 			email, phone, category, hourly_rate, hourly_rate_minor_units,
