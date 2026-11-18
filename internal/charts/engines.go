@@ -37,7 +37,7 @@ var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implem
 // LayoutWithSchedulePlan is Layout plus schedule context for the CPM
 // and Gantt kinds: when projectStart is non-zero, every node additionally
 // carries StartDate/FinishDate (real dates, non-working days skipped via
-// isWorkday), date-bearing node constraints (SNET/FNLT/MFO) are armed and
+// isWorkday), date-bearing node constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) are armed and
 // honoured by the CPM passes with violations flagged, and resources are
 // checked against plan (named calendars and per-day capacity overrides).
 // All other kinds — and a zero projectStart — fall through to plain

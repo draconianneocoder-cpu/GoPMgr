@@ -329,6 +329,14 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
     id: "gantt-chart"
   },
   {
+    term: "Hard Constraint",
+    def: "A scheduling constraint that limits how late a task may run: start no later than (SNLT), finish no later than (FNLT), must start on (MSO) or must finish on (MFO). It hides what a delay does to that date; the schedule audit counts these under SQ-08. Start or finish no earlier than (SNET, FNET) are soft.",
+    id: "hard-constraint",
+    see: [
+      "scheduling-constraint"
+    ]
+  },
+  {
     term: "Issue",
     def: "A problem or condition that has occurred and needs handling. A risk is an uncertain event; a change request proposes an alteration to the plan.",
     id: "issue",
@@ -593,6 +601,26 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
     see: [
       "critical-path",
       "cost-performance-index-cpi"
+    ]
+  },
+  {
+    term: "Scheduling Constraint",
+    def: "A rule tying a CPM task to a date or its late dates: ASAP, ALAP, SNET, SNLT, FNET, FNLT, MSO or MFO. Links always win: a constraint the links cannot meet is flagged as violated, not forced.",
+    id: "scheduling-constraint",
+    aliases: [
+      "ASAP",
+      "ALAP",
+      "SNET",
+      "SNLT",
+      "FNET",
+      "FNLT",
+      "MSO",
+      "MFO"
+    ],
+    see: [
+      "hard-constraint",
+      "float-slack",
+      "critical-path"
     ]
   },
   {

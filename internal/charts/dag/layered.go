@@ -76,8 +76,9 @@ type LayeredNode struct {
 	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 
 	// CPM scheduling constraint (input): ASAP (default), ALAP, SNET,
-	// FNLT, MFO; SNET/FNLT/MFO carry ConstraintDate (YYYY-MM-DD) and
-	// only take effect when the schedule is calendar-anchored.
+	// SNLT, MSO, FNET, FNLT, MFO; all but ASAP and ALAP carry
+	// ConstraintDate (YYYY-MM-DD) and only take effect when the schedule
+	// is calendar-anchored.
 	// ConstraintViolated is computed by the kernel.
 	Constraint         string `json:"constraint,omitempty"`
 	ConstraintDate     string `json:"constraint_date,omitempty"`

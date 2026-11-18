@@ -60,7 +60,36 @@ const (
 	// pulling the task later if links allow and flagging a violation
 	// if links force it past the date.
 	MustFinishOn ConstraintType = "MFO"
+	// MustStartOn pins the start to the constraint day exactly: early
+	// and late start both. Links still win: a task whose links force a
+	// later start keeps that start and is flagged, as Primavera P6's
+	// "Start On" does. Microsoft Project's default "honor constraint
+	// dates" instead holds MSO, MFO, SNLT and FNLT against the logic.
+	MustStartOn ConstraintType = "MSO"
+	// StartNoLaterThan caps the late start at the constraint day; an
+	// early start after it flags a violation.
+	StartNoLaterThan ConstraintType = "SNLT"
+	// FinishNoEarlierThan keeps EF at or after the constraint day. It
+	// only delays, so it is never violated.
+	FinishNoEarlierThan ConstraintType = "FNET"
 )
+
+// IsDateConstraint reports whether a constraint type carries a date that
+// ApplyConstraintDates must convert before it takes effect.
+func IsDateConstraint(c ConstraintType) bool {
+	switch c {
+	case StartNoEarlierThan, StartNoLaterThan, MustStartOn,
+		FinishNoEarlierThan, FinishNoLaterThan, MustFinishOn:
+		return true
+	}
+	return false
+}
+
+// isFinishConstraint reports whether a date constraint limits the
+// finish (compared with the exclusive EF) rather than the start (ES).
+func isFinishConstraint(c ConstraintType) bool {
+	return c == FinishNoEarlierThan || c == FinishNoLaterThan || c == MustFinishOn
+}
 
 // WorkSegment is one half-open run of planned work, expressed as offsets
 // relative to a task's scheduled start. Resource leveling persists these
@@ -81,7 +110,7 @@ type WorkSegment struct {
 // (FS/SS/FF/SF with lag). Both are honoured; if the same predecessor
 // appears in both, the typed Link wins.
 //
-// Date-bearing constraints (SNET/FNLT/MFO) carry their date in
+// Date-bearing constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) carry their date in
 // ConstraintDate (kernel.DateLayout). Because CPM runs in abstract
 // working-day offsets, the date only takes effect after
 // ApplyConstraintDates converts it to ConstraintDay against a project
@@ -110,8 +139,9 @@ type Task struct {
 	ConstraintArmed bool    `json:"constraint_armed,omitempty"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
-	// make the constraint unsatisfiable (MFO pushed past its date, or
-	// FNLT finishing late).
+	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
+	// or needed before, its pinned date; an SNLT task starting late; an
+	// FNLT task finishing late.
 	ConstraintViolated bool `json:"constraint_violated,omitempty"`
 
 	// Progress tracking (reporting-only; never reschedules the plan).
@@ -224,8 +254,8 @@ func effectiveLinks(t *Task) []Link {
 //  4. Float = LS − ES. Tasks with Float <= 0 lie on the critical path
 //     (negative float means a constraint squeezed the schedule).
 //
-// Constraints: armed SNET/MFO act in the forward pass, MFO/FNLT in
-// the backward pass, and ALAP in a post-pass that moves the task to
+// Constraints: armed SNET, FNET, MSO and MFO act in the forward pass;
+// MSO, MFO, SNLT and FNLT in the backward pass; and ALAP in a post-pass that moves the task to
 // its late dates. Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
 //
@@ -331,6 +361,17 @@ func (plan *cpmPlan) run() {
 					// Links force a finish past the pinned date.
 					t.ConstraintViolated = true
 				}
+			case MustStartOn:
+				if t.ConstraintDay >= es {
+					es = t.ConstraintDay
+				} else {
+					// Links force a start past the pinned date.
+					t.ConstraintViolated = true
+				}
+			case FinishNoEarlierThan:
+				if target := t.ConstraintDay - t.Duration; target > es {
+					es = target
+				}
 			}
 		}
 
@@ -389,6 +430,21 @@ func (plan *cpmPlan) run() {
 					t.LF = t.ConstraintDay
 				}
 				if t.EF > t.ConstraintDay+1e-9 {
+					t.ConstraintViolated = true
+				}
+			case MustStartOn:
+				pinned := t.ConstraintDay + t.Duration
+				if t.LF < pinned-1e-9 {
+					// A successor needs this task finished before its
+					// pinned start allows.
+					t.ConstraintViolated = true
+				}
+				t.LF = pinned
+			case StartNoLaterThan:
+				if capped := t.ConstraintDay + t.Duration; capped < t.LF {
+					t.LF = capped
+				}
+				if t.ES > t.ConstraintDay+1e-9 {
 					t.ConstraintViolated = true
 				}
 			}

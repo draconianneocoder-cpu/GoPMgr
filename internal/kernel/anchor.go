@@ -143,23 +143,26 @@ func calendarDate(t time.Time) time.Time {
 }
 
 // ApplyConstraintDates arms each task's date-bearing constraint
-// (SNET/FNLT/MFO) by converting ConstraintDate into a working-day
-// offset (ConstraintDay) against the project start and work calendar.
-// Tasks with no constraint, an ALAP constraint, or an unparseable
-// date are left unarmed. Call it BEFORE CalculateCPM; without it,
-// date constraints are ignored (un-anchored schedules).
+// (SNET, SNLT, MSO, FNET, FNLT, MFO; see IsDateConstraint) by
+// converting ConstraintDate into a working-day offset (ConstraintDay)
+// against the project start and work calendar. Tasks with no
+// constraint, ASAP, ALAP, or an unparseable date are left unarmed.
+// Call it BEFORE CalculateCPM; without it, date constraints are
+// ignored (un-anchored schedules).
 //
-// Offset convention: a START constraint (SNET) compares against ES,
-// which IS a day index. A FINISH constraint (FNLT/MFO) compares
-// against EF, which is exclusive — a task finishing ON day index d
-// has EF = d+1 (AnchorSchedule's finishOffset is ceil(EF)-1) — so
-// finish constraints store day+1.
+// Offset convention: a START constraint (SNET, SNLT, MSO) compares
+// against ES, which IS a day index. A FINISH constraint (FNET, FNLT,
+// MFO) compares against EF, which is exclusive — a task finishing ON
+// day index d has EF = d+1 (AnchorSchedule's finishOffset is
+// ceil(EF)-1) — so finish constraints store day+1. This holds for
+// zero-duration milestones too: a milestone sits on the boundary after
+// the work before it (a task ending Wednesday puts its successor
+// milestone at the start of Thursday, index 3), so a finish date D means
+// "by the end of D" and the milestone meets it at index D+1.
 func ApplyConstraintDates(tasks map[string]*Task, projectStart time.Time, isWorkday WorkdayFunc) {
 	for _, t := range tasks {
 		t.ConstraintArmed = false
-		switch t.Constraint {
-		case StartNoEarlierThan, FinishNoLaterThan, MustFinishOn:
-		default:
+		if !IsDateConstraint(t.Constraint) {
 			continue
 		}
 		date, err := time.Parse(DateLayout, t.ConstraintDate)
@@ -170,7 +173,7 @@ func ApplyConstraintDates(tasks map[string]*Task, projectStart time.Time, isWork
 		if !ok {
 			continue
 		}
-		if t.Constraint == FinishNoLaterThan || t.Constraint == MustFinishOn {
+		if isFinishConstraint(t.Constraint) {
 			day++
 		}
 		t.ConstraintDay = day

@@ -176,3 +176,56 @@ describe('CPMEditor "Remove assignment" button (variant="remove")', () => {
     expect(queryByRole('button', { name: 'Remove assignment' })).toBeNull();
   });
 });
+
+// KRN-01 (2026-11-18): the editor offers all eight constraint types, shows
+// the date field for the six dated ones, and reads a lower-case stored
+// value ("mso" from hand-edited data) without rewriting it.
+describe('CPMEditor scheduling constraints', () => {
+  it('shows a stored lower-case MSO as Must start on, keeps the stored value, and shows the date only for dated types', async () => {
+    const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'mso', constraint_date: '2026-06-04' };
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'cpm', title: 'C', data: JSON.stringify({ nodes: [node], edges: [] }) })),
+      LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [{ id: 'n1', title: 'Pour', depth: 0, x: 0, y: 0, width: 120, height: 40 }], edges: [], width: 200, height: 80 } } })),
+    });
+    const { getByRole, getByLabelText, queryByLabelText } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Pour' }));
+
+    const select = (await waitFor(() => getByLabelText('Constraint'))) as HTMLSelectElement;
+    expect(select.selectedOptions[0].textContent).toBe('Must start on');
+    expect(Array.from(select.options, (o) => o.textContent)).toEqual([
+      'ASAP (default)', 'As late as possible', 'Start no earlier than', 'Start no later than',
+      'Finish no earlier than', 'Finish no later than', 'Must start on', 'Must finish on',
+    ]);
+    expect(queryByLabelText('Constraint date')).not.toBeNull();
+    await new Promise((r) => setTimeout(r, 400)); // let any re-layout save run
+    expect(app.SaveChart).toHaveBeenCalled();
+    for (const [chart] of app.SaveChart.mock.calls) {
+      expect(String((chart as { data: string }).data)).toContain('"constraint":"mso"');
+    }
+
+    await fireEvent.change(select, { target: { value: 'FNET' } });
+    await fireEvent.change(select, { target: { value: 'SNLT' } });
+    expect(queryByLabelText('Constraint date')).not.toBeNull();
+    await fireEvent.change(select, { target: { value: 'ALAP' } });
+    await waitFor(() => expect(queryByLabelText('Constraint date')).toBeNull());
+  });
+
+  it('opens a task stored as "ASAP" without rewriting it', async () => {
+    const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'ASAP' };
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'cpm', title: 'C', data: JSON.stringify({ nodes: [node], edges: [] }) })),
+      LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [{ id: 'n1', title: 'Pour', depth: 0, x: 0, y: 0, width: 120, height: 40 }], edges: [], width: 200, height: 80 } } })),
+    });
+    const { getByRole, getByLabelText } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Pour' }));
+    const select = (await waitFor(() => getByLabelText('Constraint'))) as HTMLSelectElement;
+    expect(select.selectedOptions[0].textContent).toBe('ASAP (default)');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(app.SaveChart).toHaveBeenCalled();
+    for (const [chart] of app.SaveChart.mock.calls) {
+      expect(String((chart as { data: string }).data)).toContain('"constraint":"ASAP"');
+    }
+  });
+});

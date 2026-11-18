@@ -408,19 +408,44 @@ func TestUnappliedConstraintDateIsReported(t *testing.T) {
 	}
 }
 
-// KRN-01: the kernel arms only SNET, FNLT and MFO and honours ALAP, so any
-// other stored type (MSO here, from hand-edited or restored chart data) is
-// scheduled as ASAP without notice. SQ-09 must say so. ALAP and ASAP are
-// supported and must not be reported.
+// KRN-01 (2026-11-18): MSO and SNLT are hard constraints (SQ-08), FNET is
+// soft; a missed SNLT is violated (SQ-09). A takes Monday 2026-01-05, so
+// its successors can start Tuesday: E's MSO Thursday holds, F's SNLT
+// Monday cannot, G's FNET Friday only delays G.
+func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
+	e, f, g := tk("E", 1, "A"), tk("F", 2, "A"), tk("G", 1, "A")
+	e.Constraint, e.ConstraintDate = kernel.MustStartOn, "2026-01-08"
+	f.Constraint, f.ConstraintDate = kernel.StartNoLaterThan, "2026-01-05"
+	g.Constraint, g.ConstraintDate = kernel.FinishNoEarlierThan, "2026-01-09"
+	r := run(t, base(tk("A", 1), e, f, g))
+	wantSubjects(t, r, HardConstraint, "E", "F")
+	wantSubjects(t, r, ConstraintViolated, "F")
+	for _, finding := range ofRule(r, HardConstraint) {
+		switch finding.TaskID {
+		case "E":
+			if !strings.Contains(finding.Observed, "MSO 2026-01-08") || !strings.Contains(finding.Observed, "met by the current logic") {
+				t.Fatalf("SQ-08 for E = %q, want MSO 2026-01-08 met", finding.Observed)
+			}
+		case "F":
+			if !strings.Contains(finding.Observed, "SNLT 2026-01-05") || !strings.Contains(finding.Observed, "binds") {
+				t.Fatalf("SQ-08 for F = %q, want SNLT 2026-01-05 binding", finding.Observed)
+			}
+		}
+	}
+}
+
+// A stored type the kernel does not know (from hand-edited or restored
+// chart data) is scheduled as ASAP without notice. SQ-09 must say so. ALAP
+// and ASAP are supported and must not be reported.
 func TestUnsupportedConstraintTypeIsReported(t *testing.T) {
 	b := tk("B", 1, "A")
-	b.Constraint, b.ConstraintDate = "MSO", "2026-01-07"
+	b.Constraint, b.ConstraintDate = "XYZ", "2026-01-07"
 	late, soon := tk("C", 1, "A"), tk("D", 1, "A")
 	late.Constraint, soon.Constraint = kernel.AsLateAsPossible, kernel.AsSoonAsPossible
 	r := run(t, base(tk("A", 1), b, late, soon))
 	wantSubjects(t, r, ConstraintViolated, "B")
 	f := ofRule(r, ConstraintViolated)[0]
-	if !strings.Contains(f.Observed, "MSO") || !strings.Contains(f.Explanation, "as soon as possible") {
+	if !strings.Contains(f.Observed, "XYZ") || !strings.Contains(f.Explanation, "as soon as possible") {
 		t.Fatalf("SQ-09 should name the unsupported type and its effect: %+v", f)
 	}
 	if f.Severity != SeverityError {

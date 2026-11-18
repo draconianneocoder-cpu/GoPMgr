@@ -72,7 +72,7 @@ its values.
 | SQ-05 | Lead (negative lag) | `Lag < 0` | warning | 0 % of links |
 | SQ-06 | Long lag | `Lag >` profile limit in working days | info | lags ≤ 5 % of links |
 | SQ-07 | Non-FS relationships | The share of links that are not FS, reported | info | FS ≥ 90 % |
-| SQ-08 | Hard constraint | `MFO` or `FNLT`; which constraints bind is reported from `ConstraintViolated` | warning | ≤ 5 % |
+| SQ-08 | Hard constraint | `MSO`, `MFO`, `SNLT` or `FNLT` (since 2026-11-18; before, `MFO` or `FNLT` only); which constraints bind is reported from `ConstraintViolated` | warning | ≤ 5 % |
 | SQ-09 | Constraint violated | `ConstraintViolated` after CPM | error | 0 |
 | SQ-10 | High total float | `Float >` profile limit (working days) | info | > 44 days, ≤ 5 % |
 | SQ-11 | Negative float | `Float < 0` | error | 0 |
@@ -150,7 +150,7 @@ Percentage metrics are reported with numerator and denominator.
 | SQA-025 | Cancellation stops the audit within a bounded time |
 | SQA-026 | Labels: no output text claims DCMA certification |
 | SQA-027 | A schedule with a second, disconnected chain (A→B→C plus D→E), with A and E designated as anchors, reports D under SQ-01 and C under SQ-02, although CPM gives D ES 0. With no anchors designated, it reports A and D, then C and E |
-| SQA-028 | A violated SNET, FNLT or MFO date is reported by SQ-09, and float in SQ-10 and SQ-11 reflects the armed constraints; without a project start date those rules read "not evaluated" |
+| SQA-028 | A violated date constraint (SNLT, FNLT, MSO or MFO; SNET and FNET only delay) is reported by SQ-09, and float in SQ-10 and SQ-11 reflects the armed constraints; without a project start date those rules read "not evaluated" |
 | SQA-029 | Auditing an older chart of a project with several CPM charts audits that chart, and the findings carry its ID and revision |
 
 ## 7. PR breakdown (each needs authorization)
@@ -249,9 +249,11 @@ what §3 left open:
   chart's own baselines.
 - **Arguments.** Profile keys are `default` (or empty) and `dcma-style`; a
   display name is refused. The reporting date must be `YYYY-MM-DD` or empty.
-- **Unsupported constraint types (KRN-01).** The kernel arms only SNET, FNLT
-  and MFO and honours ALAP; any other stored type is scheduled as ASAP, which
-  matches the chart mapper. SQ-09 now reports such a type as an error.
+- **Unsupported constraint types (KRN-01).** Since 2026-11-18 the kernel
+  arms all six date constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) and honours
+  ALAP; only an unknown type is scheduled as ASAP, and SQ-09 reports it as an
+  error. SQ-08 counts MSO and SNLT as hard as well, so the DCMA-style share of
+  hard constraints can rise for charts that use them.
 - **Known limit: anchors.** Charts have no way to designate start and finish
   tasks, so every audit runs without anchors and SQ-01 and SQ-02 report a
   schedule's open start and end. Designating them needs a chart-model change.
