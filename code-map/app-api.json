@@ -354,7 +354,7 @@
     {
       "method": "CheckOpenProject",
       "file": "internal/desktop/app_documents.go",
-      "line": 599,
+      "line": 559,
       "params": "",
       "returns": "OpenProjectCheck, error",
       "uses_internal_packages": []
@@ -653,7 +653,7 @@
     {
       "method": "DismissOpenProjectCheck",
       "file": "internal/desktop/app_documents.go",
-      "line": 631,
+      "line": 591,
       "params": "",
       "returns": "",
       "uses_internal_packages": []
@@ -724,7 +724,7 @@
     {
       "method": "ExportCombinedReport",
       "file": "internal/desktop/app_documents.go",
-      "line": 327,
+      "line": 312,
       "params": "reportTitle string, subtitle string, sections []documents.ReportSection",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -734,7 +734,7 @@
     {
       "method": "ExportCombinedReportGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 516,
+      "line": 479,
       "params": "reportTitle string, subtitle string, sections []documents.ReportSection, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -745,7 +745,7 @@
     {
       "method": "ExportCombinedReportSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 373,
+      "line": 358,
       "params": "reportTitle string, subtitle string, sections []documents.ReportSection, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -753,7 +753,7 @@
     {
       "method": "ExportCombinedReportWithOptions",
       "file": "internal/desktop/app_documents.go",
-      "line": 335,
+      "line": 320,
       "params": "reportTitle string, subtitle string, sections []documents.ReportSection, options CombinedReportOptions",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -773,7 +773,7 @@
     {
       "method": "ExportDocumentDOCX",
       "file": "internal/desktop/app_documents.go",
-      "line": 762,
+      "line": 722,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -784,7 +784,7 @@
     {
       "method": "ExportDocumentODT",
       "file": "internal/desktop/app_documents.go",
-      "line": 771,
+      "line": 731,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -795,7 +795,7 @@
     {
       "method": "ExportDocumentPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 1225,
+      "line": 1185,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -805,7 +805,7 @@
     {
       "method": "ExportDocumentPDFGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 1298,
+      "line": 1258,
       "params": "id string, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -817,7 +817,7 @@
     {
       "method": "ExportDocumentPDFSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 1341,
+      "line": 1301,
       "params": "id string, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -848,7 +848,7 @@
     {
       "method": "ExportScheduleReportCSV",
       "file": "internal/desktop/app_documents.go",
-      "line": 798,
+      "line": 758,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -858,7 +858,7 @@
     {
       "method": "ExportScheduleReportDOCX",
       "file": "internal/desktop/app_documents.go",
-      "line": 780,
+      "line": 740,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -868,7 +868,7 @@
     {
       "method": "ExportScheduleReportHTML",
       "file": "internal/desktop/app_documents.go",
-      "line": 804,
+      "line": 764,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -878,7 +878,7 @@
     {
       "method": "ExportScheduleReportMSPDI",
       "file": "internal/desktop/app_documents.go",
-      "line": 811,
+      "line": 771,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -888,7 +888,7 @@
     {
       "method": "ExportScheduleReportODT",
       "file": "internal/desktop/app_documents.go",
-      "line": 786,
+      "line": 746,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -898,7 +898,7 @@
     {
       "method": "ExportScheduleReportPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 792,
+      "line": 752,
       "params": "",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -1494,7 +1494,7 @@
     {
       "method": "RepairAndSwap",
       "file": "internal/desktop/app_documents.go",
-      "line": 652,
+      "line": 612,
       "params": "",
       "returns": "db.RepairResult, error",
       "uses_internal_packages": [

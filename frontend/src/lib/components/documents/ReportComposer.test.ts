@@ -46,17 +46,17 @@ describe('ReportComposer migrated header "&larr; Dashboard" button', () => {
 });
 
 describe('ReportComposer schedule audits', () => {
-  it('exports an audit section with no document ID and keeps it out of signed exports', async () => {
+  it('exports an audit section with no document ID, and allows signing it', async () => {
     app.ListCharts = vi.fn(async () => [{ id: 'chart-1', title: 'Master schedule', kind: 'cpm' }]);
     app.ListDocuments = vi.fn(async () => [{ id: 'doc-1', title: 'Charter', kind: 'charter_word', version: 1, status: 'draft' }]);
     app.ExportCombinedReportWithOptions = vi.fn(async () => '/tmp/report.pdf');
-    const { getByRole, findByRole, getByLabelText, getByText } = render(ReportComposer);
+    const { getByRole, findByRole, getByLabelText } = render(ReportComposer);
 
     await fireEvent.click(await findByRole('button', { name: 'Add a schedule audit of Master schedule' }));
     await fireEvent.change(getByLabelText('Thresholds'), { target: { value: 'dcma-style' } });
     await fireEvent.input(getByLabelText('Status date'), { target: { value: '2026-06-15' } });
-    expect((getByRole('button', { name: 'Signature Options' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(getByText('Signed reports cannot include a schedule audit yet. Export this report as an unsigned PDF, or remove the audit to sign it.')).toBeTruthy();
+    // Signed exports include schedule audits since 2026-11-18.
+    expect((getByRole('button', { name: 'Signature Options' }) as HTMLButtonElement).disabled).toBe(false);
 
     await fireEvent.click(getByRole('button', { name: 'Export PDF' }));
     await waitFor(() => expect(app.ExportCombinedReportWithOptions).toHaveBeenCalled());

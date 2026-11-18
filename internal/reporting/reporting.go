@@ -88,6 +88,13 @@ type ExportRequest struct {
 	// It must be a new file; the caller is responsible for paired-artifact
 	// collision policy before Export runs.
 	OutputPath string
+	// AddSignatureBlock draws the signature box a PAdES signature fills.
+	AddSignatureBlock bool
+	// Finalize, when set, is the last change to the PDF: it receives the
+	// rendered bytes, after PDF/A has been applied, and returns the bytes
+	// that are written (a PAdES signature). Its error stops the export
+	// before anything is written.
+	Finalize func([]byte) ([]byte, error)
 }
 
 type provenanceArtifact struct {
@@ -317,9 +324,16 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		Profile:        preflight.Profile,
 		Mode:           preflight.Mode,
 		QualityIssues:  preflight.Issues,
+		// The box a PAdES signature fills, when the caller signs.
+		AddSignatureBlock: request.AddSignatureBlock,
 	}, sections)
 	if err != nil {
 		return "", err
+	}
+	if request.Finalize != nil {
+		if bytes, err = request.Finalize(bytes); err != nil {
+			return "", err
+		}
 	}
 
 	if err := os.MkdirAll(request.ExportsDir, 0o700); err != nil {

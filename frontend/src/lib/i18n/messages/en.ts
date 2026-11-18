@@ -531,7 +531,6 @@ export const en = {
   'composer.audit.title': 'Schedule audit: {title}',
   'composer.audit.kind': 'Schedule audit, computed at export',
   'composer.audit.add': 'Add a schedule audit of {title}',
-  'composer.audit.signedNote': 'Signed reports cannot include a schedule audit yet. Export this report as an unsigned PDF, or remove the audit to sign it.',
   'help.cpm.audit.step': 'Check schedule quality.',
   'help.cpm.audit.body':
     'In the CPM editor aside, choose thresholds and a status date, then Run audit. GoPMgr saves your latest edits, then checks the stored schedule for missing logic, cycles, leads and lags, violated constraints, negative or high float, and progress errors. It changes nothing. Rules that could not run are listed first; Show task selects a finding’s task on the chart.',
@@ -540,7 +539,7 @@ export const en = {
     'Select a task and choose a Constraint: ASAP, ALAP, start or finish no earlier than (SNET, FNET), start or finish no later than (SNLT, FNLT), or must start or finish on (MSO, MFO). Links always win: a constraint they cannot meet is flagged as violated, not forced. Prefer links and soft constraints; the user guide section Scheduling Constraints explains each type with examples.',
   'help.composer.audit.step': 'Add schedule audits.',
   'help.composer.audit.body':
-    'Under Schedule audits, add the quality audit of a CPM chart and choose its thresholds and status date. The audit runs when you export, so the PDF shows the schedule as stored then, and the manifest records the chart revision and inputs it read. Certified reports and signed exports cannot include a schedule audit yet.',
+    'Under Schedule audits, add the quality audit of a CPM chart and choose its thresholds and status date. The audit runs when you export, so the PDF shows the schedule as stored then, and the manifest records the chart revision and inputs it read. Signed exports can include one; certified reports cannot.',
   'projectPicker.restore.done':
     'Backup restored. Signing is switched off in a restored project. Set it up again in Project Settings if you need it.',
   'projectSettings.backup.includeCert': 'Include my signing certificate file in this backup',
