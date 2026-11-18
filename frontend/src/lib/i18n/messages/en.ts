@@ -253,6 +253,7 @@ export const en = {
   'gantt.bar.critical': 'critical path',
   'gantt.bar.overallocated': 'resource overallocated',
   'gantt.bar.constraintViolated': 'constraint violated',
+  'gantt.bar.constraintUnapplied': 'constraint not applied',
   'gantt.bar.dates': '{start} to {finish}',
 
   // Resource-leveling results, shared by the Gantt and CPM editors.
@@ -386,7 +387,14 @@ export const en = {
   'cpm.constraint.date': 'Constraint date',
   'cpm.constraint.hint': 'Links always win: a constraint the links cannot meet is flagged, not forced. See Scheduling constraints in the user guide.',
   'cpm.constraint.violated':
-    'Constraint violated: precedence links make this constraint unsatisfiable. Links win; adjust the constraint date, the durations, or the links.',
+    'Constraint violated: the links, or a date on a non-working day or before the project start, keep this constraint from being met. Links win; adjust the constraint date, the durations, or the links.',
+  'cpm.constraint.unapplied.invalid_date':
+    'Constraint not applied: the constraint date is missing or is not a valid date. Until you correct it, the task is scheduled as if it had no constraint.',
+  'cpm.constraint.unapplied.out_of_range':
+    'Constraint not applied: the constraint date is too far from the project start. Until you correct it, the task is scheduled as if it had no constraint.',
+  'cpm.constraint.unapplied.no_start':
+    'Constraint not applied: the project has no start date, so constraint dates cannot be placed. Set a start date in Project Settings.',
+  'cpm.constraint.unapplied.marker': 'Constraint not applied',
   'cpm.startDate': 'Start date',
   'cpm.finishDate': 'Finish date',
   'cpm.es': 'Earliest start (ES)',

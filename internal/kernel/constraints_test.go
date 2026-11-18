@@ -215,6 +215,50 @@ func TestApplyConstraintDatesBadDateStaysUnarmed(t *testing.T) {
 	approx(t, "A.ES", tasks["A"].ES, 0)
 }
 
+// KRN-01 b: a date constraint that is not applied says why, so the editor
+// can show it; one that is applied, or carries no date, says nothing.
+func TestApplyConstraintDatesSaysWhyAConstraintIsNotApplied(t *testing.T) {
+	tasks := map[string]*Task{
+		"bad":    {ID: "bad", Duration: 1, Constraint: MustFinishOn, ConstraintDate: "not-a-date"},
+		"empty":  {ID: "empty", Duration: 1, Constraint: StartNoEarlierThan},
+		"far":    {ID: "far", Duration: 1, Constraint: StartNoEarlierThan, ConstraintDate: "9999-12-31"},
+		"farOld": {ID: "farOld", Duration: 1, Constraint: StartNoLaterThan, ConstraintDate: "1500-01-01"},
+		"ok":     {ID: "ok", Duration: 1, Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-04"},
+		"alap":   {ID: "alap", Duration: 1, Constraint: AsLateAsPossible},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	want := map[string]ConstraintIssue{
+		"bad": ConstraintInvalidDate, "empty": ConstraintInvalidDate,
+		"far": ConstraintOutOfRange, "farOld": ConstraintOutOfRange,
+		"ok": "", "alap": "",
+	}
+	for id, w := range want {
+		if got := tasks[id].ConstraintUnapplied; got != w {
+			t.Errorf("%s: unapplied %q, want %q", id, got, w)
+		}
+	}
+
+	// Corrected and applied again, the reason is cleared.
+	tasks["bad"].ConstraintDate = "2026-06-04"
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	if b := tasks["bad"]; !b.ConstraintArmed || b.ConstraintUnapplied != "" {
+		t.Errorf("corrected date: armed %v unapplied %q, want armed and no reason", b.ConstraintArmed, b.ConstraintUnapplied)
+	}
+
+	// Without a project start, every dated constraint is marked, and an
+	// earlier arming is withdrawn.
+	MarkConstraintsUnapplied(tasks, ConstraintNoStart)
+	for id, task := range tasks {
+		w := ConstraintNoStart
+		if id == "alap" {
+			w = ""
+		}
+		if task.ConstraintUnapplied != w || task.ConstraintArmed {
+			t.Errorf("no start, %s: armed %v unapplied %q, want unarmed %q", id, task.ConstraintArmed, task.ConstraintUnapplied, w)
+		}
+	}
+}
+
 // ----- KRN-01: MSO, SNLT and FNET (2026-11-18) -----
 // Day indices on the weekday calendar from Monday 2026-06-01:
 // Mon 0, Tue 1, Wed 2, Thu 3, Fri 4. Every expected value below is

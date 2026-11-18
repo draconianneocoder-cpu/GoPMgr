@@ -19,10 +19,12 @@ import (
 // and the kernel.Task shape (used by the scheduler).
 //
 // LayoutCPM mutates the input document in place. Date-bearing
-// constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) are ignored on this un-anchored path;
-// use LayoutCPMScheduledWithPlan when a project start date is available.
+// constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) are ignored on this
+// un-anchored path and marked unapplied (no_start); use
+// LayoutCPMScheduledWithPlan when a project start date is available.
 func LayoutCPM(doc LayeredDocument) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
+	kernel.MarkConstraintsUnapplied(tasks, kernel.ConstraintNoStart)
 	if err := scheduleCPM(tasks); err != nil {
 		return Layout{}, err
 	}
@@ -119,6 +121,7 @@ func copyCPMResults(doc LayeredDocument, tasks map[string]*kernel.Task) {
 		doc.Nodes[i].StartDate = t.StartDate
 		doc.Nodes[i].FinishDate = t.FinishDate
 		doc.Nodes[i].ConstraintViolated = t.ConstraintViolated
+		doc.Nodes[i].ConstraintUnapplied = string(t.ConstraintUnapplied)
 		doc.Nodes[i].Overallocated = t.Overallocated
 	}
 }

@@ -59,6 +59,9 @@ func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
 			Constraint: "FNET", ConstraintDate: "2026-06-05"},
 		{ID: "F", Label: "F", Duration: 2,
 			Constraint: "SNLT", ConstraintDate: "2026-06-01"},
+		// KRN-01 b: a date the kernel cannot read is reported, not hidden.
+		{ID: "G", Label: "G", Duration: 1,
+			Constraint: "FNLT", ConstraintDate: "2026-13-40"},
 	}
 	doc := LayeredDocument{
 		Nodes: nodes,
@@ -98,6 +101,14 @@ func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
 	// F: after A it cannot start by Monday (SNLT): flagged.
 	if !nodes[5].ConstraintViolated {
 		t.Error("F's missed SNLT must set ConstraintViolated")
+	}
+	// G: the invalid date leaves the constraint out of force, and the node
+	// says why; applied constraints carry no reason.
+	if nodes[6].ConstraintUnapplied != "invalid_date" {
+		t.Errorf("G.ConstraintUnapplied = %q, want invalid_date", nodes[6].ConstraintUnapplied)
+	}
+	if nodes[1].ConstraintUnapplied != "" {
+		t.Errorf("B.ConstraintUnapplied = %q, want none", nodes[1].ConstraintUnapplied)
 	}
 }
 
@@ -155,6 +166,7 @@ func TestLayoutCPM_PlainPathIgnoresDateConstraints(t *testing.T) {
 	nodes := []LayeredNode{
 		{ID: "A", Label: "A", Duration: 1,
 			Constraint: "SNET", ConstraintDate: "2026-06-04"},
+		{ID: "B", Label: "B", Duration: 1, Constraint: "ALAP"},
 	}
 	doc := LayeredDocument{Nodes: nodes}
 	if _, err := LayoutCPM(doc); err != nil {
@@ -162,5 +174,19 @@ func TestLayoutCPM_PlainPathIgnoresDateConstraints(t *testing.T) {
 	}
 	if nodes[0].ES != 0 {
 		t.Errorf("un-anchored LayoutCPM must ignore SNET; ES = %v", nodes[0].ES)
+	}
+	// Without a project start the dated constraint is marked as not
+	// applied for that reason; ALAP needs no date and is not marked.
+	if nodes[0].ConstraintUnapplied != "no_start" || nodes[1].ConstraintUnapplied != "" {
+		t.Errorf("unapplied = %q, %q; want no_start, none", nodes[0].ConstraintUnapplied, nodes[1].ConstraintUnapplied)
+	}
+
+	// The Gantt view carries the same reason on its row.
+	gantt, err := LayoutGantt(LayeredDocument{Nodes: []LayeredNode{{ID: "A", Label: "A", Duration: 1, Constraint: "MSO", ConstraintDate: "2026-06-04"}}})
+	if err != nil {
+		t.Fatalf("LayoutGantt: %v", err)
+	}
+	if got := gantt.Rows[0].ConstraintUnapplied; got != "no_start" {
+		t.Errorf("Gantt row unapplied = %q, want no_start", got)
 	}
 }

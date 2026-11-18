@@ -193,7 +193,8 @@ func supported(c kernel.ConstraintType) bool {
 
 // SQ-08 and SQ-09. A date constraint is in force only once
 // kernel.ApplyConstraintDates has converted its date; one it could not
-// convert is ignored by the scheduler without notice, so SQ-09 reports it.
+// convert is ignored by the scheduler (the editor shows why), and SQ-09
+// reports it.
 // So is a constraint type the scheduler does not support (KRN-01).
 func (a *auditor) checkConstraints() error {
 	reason := a.datedReason()

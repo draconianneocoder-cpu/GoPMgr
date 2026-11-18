@@ -91,6 +91,34 @@ func isFinishConstraint(c ConstraintType) bool {
 	return c == FinishNoEarlierThan || c == FinishNoLaterThan || c == MustFinishOn
 }
 
+// ConstraintIssue is why a date constraint was not applied.
+type ConstraintIssue string
+
+const (
+	// ConstraintInvalidDate: the constraint date is missing or is not a
+	// YYYY-MM-DD date.
+	ConstraintInvalidDate ConstraintIssue = "invalid_date"
+	// ConstraintOutOfRange: the date lies too far from the project start
+	// for the calendar walk (about 270 years of working days or more).
+	ConstraintOutOfRange ConstraintIssue = "out_of_range"
+	// ConstraintNoStart: the project has no start date, so no date can be
+	// placed. Set by MarkConstraintsUnapplied.
+	ConstraintNoStart ConstraintIssue = "no_start"
+)
+
+// MarkConstraintsUnapplied records reason on every task with a date
+// constraint. Callers that schedule without a project start, and so never
+// call ApplyConstraintDates, use it with ConstraintNoStart.
+func MarkConstraintsUnapplied(tasks map[string]*Task, reason ConstraintIssue) {
+	for _, t := range tasks {
+		t.ConstraintArmed = false
+		t.ConstraintUnapplied = ""
+		if IsDateConstraint(t.Constraint) {
+			t.ConstraintUnapplied = reason
+		}
+	}
+}
+
 // lateConstraintDay is the offset a latest limit compares with: the last
 // working day on or before the constraint date (see ConstraintLateShift).
 func lateConstraintDay(t *Task) float64 {
@@ -154,6 +182,11 @@ type Task struct {
 	// means both readings agree, so a task armed directly keeps that
 	// meaning. Set by ApplyConstraintDates.
 	ConstraintLateShift float64 `json:"constraint_late_shift,omitempty"`
+
+	// ConstraintUnapplied says why a date constraint is not in force, so
+	// the editor can show it instead of scheduling the task as if it had
+	// none without notice (KRN-01 b). Empty when armed or not dated.
+	ConstraintUnapplied ConstraintIssue `json:"constraint_unapplied,omitempty"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,

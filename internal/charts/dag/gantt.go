@@ -26,6 +26,9 @@ type GanttRow struct {
 	FinishDate         string  `json:"finish_date,omitempty"`
 	Overallocated      bool    `json:"overallocated,omitempty"`
 	ConstraintViolated bool    `json:"constraint_violated,omitempty"`
+	// ConstraintUnapplied says why a date constraint is not in force
+	// (kernel.ConstraintIssue); empty when it is, or there is none.
+	ConstraintUnapplied string `json:"constraint_unapplied,omitempty"`
 	// WorkSegments, when present, are the ABSOLUTE working-day runs of a
 	// split task (offsets on the same axis as ES/EF). The renderer draws a
 	// bar piece per segment instead of a single ES..EF bar.
@@ -49,9 +52,11 @@ type GanttLayout struct {
 
 // LayoutGantt computes a Gantt layout from the shared layered/CPM
 // document shape: full CPM (typed links, lag), overallocation flags,
-// rows sorted by (ES, ID). Un-anchored: day offsets only.
+// rows sorted by (ES, ID). Un-anchored: day offsets only, and date
+// constraints are marked unapplied (no_start).
 func LayoutGantt(doc LayeredDocument) (GanttLayout, error) {
 	tasks := cpmTasksFromDoc(doc)
+	kernel.MarkConstraintsUnapplied(tasks, kernel.ConstraintNoStart)
 	if err := scheduleCPM(tasks); err != nil {
 		return GanttLayout{}, err
 	}
@@ -94,19 +99,20 @@ func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
 	layout := GanttLayout{Anchored: anchored}
 	for _, n := range doc.Nodes {
 		layout.Rows = append(layout.Rows, GanttRow{
-			ID:                 n.ID,
-			Label:              n.Label,
-			ES:                 n.ES,
-			EF:                 n.EF,
-			Float:              n.Float,
-			IsCritical:         n.IsCritical,
-			Milestone:          n.Milestone || n.Duration == 0,
-			PercentComplete:    n.PercentComplete,
-			StartDate:          n.StartDate,
-			FinishDate:         n.FinishDate,
-			Overallocated:      n.Overallocated,
-			ConstraintViolated: n.ConstraintViolated,
-			WorkSegments:       absoluteWorkSegments(n),
+			ID:                  n.ID,
+			Label:               n.Label,
+			ES:                  n.ES,
+			EF:                  n.EF,
+			Float:               n.Float,
+			IsCritical:          n.IsCritical,
+			Milestone:           n.Milestone || n.Duration == 0,
+			PercentComplete:     n.PercentComplete,
+			StartDate:           n.StartDate,
+			FinishDate:          n.FinishDate,
+			Overallocated:       n.Overallocated,
+			ConstraintViolated:  n.ConstraintViolated,
+			ConstraintUnapplied: n.ConstraintUnapplied,
+			WorkSegments:        absoluteWorkSegments(n),
 		})
 		rowEnd := n.EF
 		for _, s := range n.WorkSegments {

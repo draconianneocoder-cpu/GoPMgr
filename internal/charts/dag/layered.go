@@ -79,10 +79,14 @@ type LayeredNode struct {
 	// SNLT, MSO, FNET, FNLT, MFO; all but ASAP and ALAP carry
 	// ConstraintDate (YYYY-MM-DD) and only take effect when the schedule
 	// is calendar-anchored.
-	// ConstraintViolated is computed by the kernel.
-	Constraint         string `json:"constraint,omitempty"`
-	ConstraintDate     string `json:"constraint_date,omitempty"`
-	ConstraintViolated bool   `json:"constraint_violated,omitempty"`
+	// ConstraintViolated and ConstraintUnapplied are computed by the
+	// kernel; ConstraintUnapplied says why a date constraint is not in
+	// force (kernel.ConstraintIssue: invalid_date, out_of_range, or
+	// no_start on an un-anchored layout).
+	Constraint          string `json:"constraint,omitempty"`
+	ConstraintDate      string `json:"constraint_date,omitempty"`
+	ConstraintViolated  bool   `json:"constraint_violated,omitempty"`
+	ConstraintUnapplied string `json:"constraint_unapplied,omitempty"`
 
 	// Progress tracking (input, reporting-only): 0..100 percent
 	// complete and an explicit milestone marker, plus observed

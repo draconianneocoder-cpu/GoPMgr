@@ -23,6 +23,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // IsDateConstraint). ASAP and ALAP need none.
   const DATED_CONSTRAINTS = new Set(['SNET', 'SNLT', 'MSO', 'FNET', 'FNLT', 'MFO']);
 
+  // unappliedMessage explains a date constraint the scheduler could not
+  // apply (the kernel's ConstraintIssue). An unknown reason from newer data
+  // still says the constraint is not applied rather than nothing.
+  function unappliedMessage(reason: string | undefined): string {
+    switch (reason) {
+      case 'invalid_date':
+        return t('cpm.constraint.unapplied.invalid_date');
+      case 'out_of_range':
+        return t('cpm.constraint.unapplied.out_of_range');
+      case 'no_start':
+        return t('cpm.constraint.unapplied.no_start');
+      default:
+        return reason ? t('cpm.constraint.unapplied.marker') : '';
+    }
+  }
+
   // constraintKey reads a stored constraint as the editor shows it: upper
   // case, with "" and ASAP meaning the default. It only reads: a chart's
   // stored value (which may be lower case from hand-edited data) is
@@ -504,6 +520,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
         font-weight="bold"
         fill="#f59e0b"
       >!</text>
+    {:else if data.constraint_unapplied}
+      <!-- Dotted outline + marker: a date constraint is not in force. -->
+      <rect
+        width={n.width as number}
+        height={n.height as number}
+        rx="6"
+        fill="none"
+        stroke="#94a3b8"
+        stroke-width="1.5"
+        stroke-dasharray="1 3"
+      />
+      <text
+        x={(n.width as number) - 12}
+        y="16"
+        font-size="12"
+        font-weight="bold"
+        fill="#94a3b8"
+      ><title>{t('cpm.constraint.unapplied.marker')}</title>?</text>
     {/if}
     {#if data.milestone}
       <text
@@ -785,6 +819,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if node.constraint_violated}
       <p class="mt-2 p-2 bg-amber-950 border border-amber-600 rounded text-xs text-amber-300">
         {t('cpm.constraint.violated')}
+      </p>
+    {:else if node.constraint_unapplied}
+      <p role="status" class="mt-2 p-2 bg-slate-900 border border-slate-500 rounded text-xs text-slate-200">
+        {unappliedMessage(node.constraint_unapplied)}
       </p>
     {/if}
     <div class="mt-3 p-2 bg-slate-950 rounded text-xs space-y-1">

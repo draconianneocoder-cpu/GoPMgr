@@ -147,7 +147,8 @@ func calendarDate(t time.Time) time.Time {
 // (SNET, SNLT, MSO, FNET, FNLT, MFO; see IsDateConstraint) by
 // converting ConstraintDate into working-day offsets against the project
 // start and work calendar. Tasks with no constraint, ASAP, ALAP, or a
-// date that cannot be converted are left unarmed. Every call first resets
+// date that cannot be converted are left unarmed; for the last,
+// ConstraintUnapplied says why. Every call first resets
 // the fields it sets. Call it BEFORE CalculateCPM; without it, date
 // constraints are ignored (un-anchored schedules).
 //
@@ -175,19 +176,23 @@ func ApplyConstraintDates(tasks map[string]*Task, projectStart time.Time, isWork
 		t.ConstraintArmed = false
 		t.ConstraintDay = 0
 		t.ConstraintLateShift = 0
+		t.ConstraintUnapplied = ""
 		if !IsDateConstraint(t.Constraint) {
 			continue
 		}
 		date, err := time.Parse(DateLayout, t.ConstraintDate)
 		if err != nil {
+			t.ConstraintUnapplied = ConstraintInvalidDate
 			continue
 		}
 		day, ok := DayOffset(projectStart, date, isWorkday)
 		if !ok {
+			t.ConstraintUnapplied = ConstraintOutOfRange
 			continue
 		}
 		late, ok := latestWorkdayOffset(projectStart, date, isWorkday)
 		if !ok {
+			t.ConstraintUnapplied = ConstraintOutOfRange
 			continue
 		}
 		if isFinishConstraint(t.Constraint) {
