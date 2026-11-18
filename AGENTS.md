@@ -104,8 +104,13 @@ Do not infer new runtime, hosted-CI or release authority from this direction.
   results; never weaken assertions or add tests merely to match a percentage.
   Record the commands, source revision and platform; if the required coverage
   baseline cannot be verified, report the blocker before submitting the PR.
+- Pull request titles and bodies do not address the owner by personal name.
 - Be concise in public documentation. Summarize long generated output
   and point to the command or artifact that reproduces it.
+
+| Rule | What enforces it |
+| --- | --- |
+| Pull request titles and bodies do not address the owner by personal name. | `scripts/check-pr-text.sh` reads that name from this file's SPDX copyright line. `make verify` runs the script's self-test. The Verify job runs the script on the pull request title and body. |
 
 ## Testing rules (anti-slop)
 

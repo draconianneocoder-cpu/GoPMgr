@@ -99,6 +99,28 @@ describe('CPMEditor schedule audit saving', () => {
     expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterManualSave);
   });
 
+  it('does not save a chart again when layout has only added derived fields', async () => {
+    const app = installApp();
+    app.LayoutChart.mockImplementation(async () => {
+      const saved = app.SaveChart.mock.calls.at(-1)?.[0] as { data?: string } | undefined;
+      const parsed = JSON.parse(saved?.data || '{"nodes":[],"edges":[]}');
+      for (const node of parsed.nodes ?? []) node.es = 1;
+      return { body: { layout: { nodes: [], edges: [], width: 0, height: 0 }, doc: parsed } };
+    });
+    const { getByRole } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await settle(50);
+
+    const layoutsBeforeAdd = app.LayoutChart.mock.calls.length;
+    await fireEvent.click(getByRole('button', { name: '+ Node' }));
+    await waitFor(() => expect(app.LayoutChart.mock.calls.length).toBe(layoutsBeforeAdd + 2), { timeout: 2000 });
+    const savesAfterLayout = app.SaveChart.mock.calls.length;
+
+    await fireEvent.click(getByRole('button', { name: 'Run audit' }));
+    await waitFor(() => expect(app.AuditSchedule).toHaveBeenCalledTimes(1));
+    expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterLayout);
+  });
+
   it('drops one chart’s findings when the editor switches to another chart', async () => {
     const app = installApp();
     app.AuditSchedule.mockResolvedValue({ ...emptyResult, rules: [{ rule: 'SQ-15', evaluated: false, reason: 'no status date' }] });

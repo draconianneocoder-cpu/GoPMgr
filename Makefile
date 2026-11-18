@@ -31,7 +31,7 @@ export CC
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests macos-installer-tests \
         code-map code-map-current docs-ledger docs-ledger-check docs-ledger-history brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
-        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
+        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests pr-text-tests \
         module-notices module-notices-check sbom-check engine-advisories engine-advisories-check module-notices-tests package-tarball-tests \
         frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests native-go-env-tests release-native-env-tests \
         tools-bootstrap tools-install tools-check tools-tests tools-qualify \
@@ -159,7 +159,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(NATIVE_ENV) "$(GO)" -- $(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: memory-scan-tests release-native-env-tests native-go-env-tests wails-build-tests config-check docs-ledger-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + documentation ledger + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: memory-scan-tests release-native-env-tests native-go-env-tests wails-build-tests config-check docs-ledger-check license-check-tests installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check sbom-check module-notices-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests pr-text-tests ## Fast pre-commit gate: config + documentation ledger + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, documentation ledger, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -191,6 +191,9 @@ coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LE
 no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_at/updated_at TEXT column instead of its _unixnano sort-key sibling.
 	@bash scripts/check-no-text-timestamp-ordering_test.sh
 	@bash scripts/check-no-text-timestamp-ordering.sh
+
+pr-text-tests: ## Fail if pull request text can contain the copyright personal name from AGENTS.md.
+	@bash scripts/check-pr-text_test.sh
 
 no-raw-import-in-tests: ## Fail if a frontend *.test.ts/*.spec.ts file imports another file via Vite's ?raw query, which silently shadows that file's coverage.all statement count to a false 0/0.
 	@bash scripts/check-no-raw-import-in-tests_test.sh

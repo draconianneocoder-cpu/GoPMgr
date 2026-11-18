@@ -93,6 +93,15 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 		if protected {
 			return Chart{}, ErrWBSProtected
 		}
+		// Same stored content is not a new revision. updated_at is that revision.
+		if before.ProjectID == c.ProjectID &&
+			before.Kind == c.Kind &&
+			before.Title == c.Title &&
+			before.Data == c.Data &&
+			before.Config == c.Config &&
+			before.TemplateID == c.TemplateID {
+			return before, nil
+		}
 	}
 
 	_, err = tx.Exec(`

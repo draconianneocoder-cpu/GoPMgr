@@ -5,10 +5,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 
 // autosave.register sets up a timer; stub it so the mounted editor doesn't
-// leave a live interval running through the test.
-vi.mock('../../autosave.svelte', () => ({
-  autosave: { register: () => () => {} },
-}));
+// leave a live interval running through the test. Layout saves through
+// saveRegisteredIfDirty.
+const autosaveMock = vi.hoisted(() => {
+  let persist: () => Promise<boolean> = async () => true;
+  return {
+    register: (_snapshot: () => string, save: () => Promise<boolean>) => {
+      persist = save;
+      return () => {};
+    },
+    saveRegisteredIfDirty: () => persist(),
+    saveRegisteredNow: () => persist(),
+    lastError: '',
+  };
+});
+vi.mock('../../autosave.svelte', () => ({ autosave: autosaveMock }));
 
 import NetworkEditor from './NetworkEditor.svelte';
 import { session } from '../../session.svelte';
