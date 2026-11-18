@@ -5,7 +5,8 @@
 # Validation is local-only; editing this file does not authorize hosted runs.
 #
 # Successor to the retired GitLab pipeline:
-#   verify   -> `make verify` (config + Wails pin + code-map + Go tests + frontend checks): pre-merge gate.
+#   verify   -> `make verify` (config + docs ledger + Wails pin + code-map + Go tests + frontend checks)
+#               and `make docs-ledger-history` against the merge base: pre-merge gate.
 #   build    -> `GOOS=linux GOARCH=amd64 bash scripts/wails-build.sh` smoke build + artifact (GitLab "build" stage).
 #   lint     -> golangci-lint + `npm run lint`, blocking.
 #   security -> `make memory-scan` (go vet + safety scans), non-blocking (GitLab placeholder stage).
@@ -81,6 +82,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # Full history: `make docs-ledger-history` compares the documentation
+          # ledger with the one at the merge base (owner decision D8).
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
@@ -123,6 +127,28 @@ jobs:
 
       - name: Pre-merge gate (make verify)
         run: make verify
+
+      - name: Documentation ledger history (make docs-ledger-history)
+        # IDs stay permanent, former paths stay recorded and merged records stay
+        # as written (docs/design/docs-reorganization-plan.md §6.4). A pull
+        # request is compared with its target branch, a push with the commit the
+        # branch pointed to before it, so every pushed commit is covered. The
+        # check fails, never skips, when that commit or the merge base is missing.
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            base="origin/${GITHUB_BASE_REF}"
+          elif [ -z "${BEFORE:-}" ] || [ -z "${BEFORE//0/}" ]; then
+            echo "::error::This push names no previous commit, so the ledger history cannot be compared."
+            exit 1
+          elif ! git merge-base --is-ancestor "$BEFORE" HEAD; then
+            echo "::error::This push does not extend $BEFORE (a force-push?), so the ledger history cannot be compared."
+            exit 1
+          else
+            base="$BEFORE"
+          fi
+          make docs-ledger-history BASE="$base"
 
   assurance:
     name: Assurance checks (REUSE + coverage ledger)
