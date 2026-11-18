@@ -25,6 +25,7 @@ export interface GanttRow {
   finish_date?: string;
   overallocated?: boolean;
   constraint_violated?: boolean;
+  constraint_unapplied?: string;
   work_segments?: GanttSegment[];
 }
 

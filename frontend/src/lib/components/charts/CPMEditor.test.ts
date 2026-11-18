@@ -228,4 +228,26 @@ describe('CPMEditor scheduling constraints', () => {
       expect(String((chart as { data: string }).data)).toContain('"constraint":"ASAP"');
     }
   });
+
+  // KRN-01 b: a date constraint the scheduler could not apply is shown with
+  // its reason (from the backend's annotated document), not left silent.
+  it('says why a constraint is not applied', async () => {
+    const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'SNLT' };
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'cpm', title: 'C', data: JSON.stringify({ nodes: [node], edges: [] }) })),
+      LayoutChart: vi.fn(async () => ({
+        body: {
+          layout: { nodes: [{ id: 'n1', title: 'Pour', depth: 0, x: 0, y: 0, width: 120, height: 40 }], edges: [], width: 200, height: 80 },
+          doc: { nodes: [{ ...node, constraint_unapplied: 'invalid_date' }], edges: [] },
+        },
+      })),
+    });
+    const { getByRole, findByText } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Pour' }));
+    const note = await findByText(
+      'Constraint not applied: the constraint date is missing or is not a valid date. Until you correct it, the task is scheduled as if it had no constraint.',
+    );
+    expect(note.getAttribute('role')).toBe('status');
+  });
 });

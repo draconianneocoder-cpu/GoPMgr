@@ -205,9 +205,13 @@ func occupiedDays(t *Task) []int {
 	return out
 }
 
-// taskSpan is the inclusive integer day range a task occupies, using
-// the same convention as AnchorSchedule (start = round(ES), last day
-// = ceil(EF)-1; zero-duration tasks occupy no days). A task whose dates
+// taskSpan is the inclusive integer day range a task occupies for
+// resource demand (start = round(ES), last day = ceil(EF)-1;
+// zero-duration tasks occupy no days). This rounding is the OR-01
+// contract (OR-01-S4: a half-day start rounds up). AnchorSchedule shows a
+// part-day start on the day it falls in instead (floor), so for a task
+// whose ES has a fraction of .5 or more the shown start day and the first
+// day its demand is counted on differ by one. A task whose dates
 // are not finite offsets within maxAllocationDays, which CalculateCPM
 // never produces, is reported as occupying no days, because callers size
 // slices from the span.
@@ -534,11 +538,11 @@ func (m *overallocationMembers) sorted() []int {
 //   - Date constraints: the forward effects of SNET, FNET, MSO and MFO
 //     are preserved via the initial CalculateCPM pass (the levelled
 //     start never moves earlier than the constrained ES). Levelling does
-//     not re-evaluate violations, so it can move an MSO, SNLT, FNLT or
-//     MFO task past its date without setting ConstraintViolated. The
-//     desktop persists levelled delays only as SNET and never overrides
-//     any other constraint, so a levelled delay of such a task is not
-//     kept: the next schedule run returns it to its constrained dates.
+//     not avoid latest limits while it places tasks, but afterwards it
+//     sets ConstraintViolated on any SNLT, FNLT, MSO or MFO task its
+//     dates now break. An earlier run's LevelStart is disarmed first.
+//     The desktop persists each levelled delay as the task's LevelStart,
+//     never as a constraint.
 //
 // Beyond the capacity plan it accepts LevelingOptions carrying a
 // per-schedule Horizon (zero uses DefaultLevelingHorizon) and Strategy
@@ -565,6 +569,11 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	strategy := opts.Strategy
 	if strategy == "" {
 		strategy = LeastTotalFloat
+	}
+	// Levelling recomputes the levelled starts from the logic and the
+	// user's constraints, so an earlier run's must not hold tasks back.
+	for _, t := range tasks {
+		t.LevelStartArmed, t.LevelStartDay = false, 0
 	}
 	if err := ScheduleCPM(tasks); err != nil {
 		return LevelingResult{}, err
@@ -802,6 +811,26 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			t.EF = t.ES + t.Duration
 		}
 		levelled[id] = true
+	}
+
+	// Re-check the latest limits against the levelled dates: a delay can
+	// push a task past an SNLT, FNLT, MSO or MFO date. Flags set by the
+	// precedence pass are kept.
+	for _, t := range tasks {
+		if !t.ConstraintArmed {
+			continue
+		}
+		late := lateConstraintDay(t)
+		switch t.Constraint {
+		case StartNoLaterThan, MustStartOn:
+			if t.ES > late+1e-9 {
+				t.ConstraintViolated = true
+			}
+		case FinishNoLaterThan, MustFinishOn:
+			if t.EF > late+1e-9 {
+				t.ConstraintViolated = true
+			}
+		}
 	}
 
 	res := LevelingResult{}

@@ -306,21 +306,6 @@ func reportService(d *db.Database) reporting.Service {
 	}
 }
 
-// errSignedScheduleAudit refuses a signed report that includes a schedule
-// audit. A signature attests content, and an audit section is live content
-// computed at export; signed reports also have no provenance manifest for it
-// on the PAdES path. Export such a report unsigned.
-var errSignedScheduleAudit = errors.New("signed reports cannot include a schedule audit yet; export the report unsigned")
-
-func refuseScheduleAuditSections(sections []documents.ReportSection) error {
-	for _, section := range sections {
-		if section.ScheduleAudit != nil {
-			return errSignedScheduleAudit
-		}
-	}
-	return nil
-}
-
 // ExportCombinedReport assembles a draft report using the project-derived
 // profile. New callers can choose a profile and report mode explicitly with
 // ExportCombinedReportWithOptions.
@@ -399,103 +384,78 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 	if len(sections) == 0 {
 		return "", errors.New("report has no sections")
 	}
-	if err := refuseScheduleAuditSections(sections); err != nil {
-		return "", err
-	}
-
 	proj, err := d.GetProject()
 	if err != nil {
 		return "", err
 	}
 	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+	fail := func(stage string, err error) {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("%s: %v", stage, err), "")
+	}
 	stamp := time.Now().UTC().Format("20060102-150405")
 	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp), ".pdf", "Export signed combined report")
 	if err != nil {
 		return "", err
 	}
-	if err := ensureExportDestinationsAvailable(outPath); err != nil {
+	if err := ensureExportDestinationsAvailable(outPath, outPath+".manifest.json"); err != nil {
 		return "", err
 	}
 	timestampConfig, err := runtime.timestamp(d)
 	if err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("timestamp settings: %v", err), "")
+		fail("timestamp settings", err)
 		return "", fmt.Errorf("timestamp settings: %w", err)
 	}
-
-	// Resolve sections + charts (same logic as unsigned version)
-	resolved := make([]documents.ResolvedSection, 0, len(sections))
-	chartIDs := make(map[string]struct{})
-	for _, s := range sections {
-		doc, err := documentForProject(d, proj.ID, s.DocumentID)
-		if err != nil {
-			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("section %s: %v", s.DocumentID, err), "")
-			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
-		}
-		if s.Title == "" {
-			s.Title = doc.Title
-		}
-		resolved = append(resolved, documents.ResolvedSection{
-			Section: s,
-			Kind:    documents.Kind(doc.Kind),
-			Content: doc.Content,
-			Version: doc.Version,
-			Status:  doc.Status,
-		})
-		for _, id := range reporting.ChartReferences(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
-			chartIDs[id] = struct{}{}
-		}
-	}
-
-	resolvedCharts := make(map[string]documents.ResolvedChart, len(chartIDs))
-	for id := range chartIDs {
-		c, err := chartForProject(d, proj.ID, id)
-		if err != nil {
-			continue
-		}
-		resolvedCharts[id] = documents.ResolvedChart{Kind: c.Kind, Title: c.Title, Data: c.Data}
-	}
-
-	resolvedEVM, err := resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC())
-	if err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("resolve EVM: %v", err), "")
-		return "", fmt.Errorf("resolve report EVM: %w", err)
-	}
-
-	bytes, err := documents.BuildCombinedReport(documents.ReportSpec{
-		ReportTitle:       reportTitle,
-		Subtitle:          subtitle,
-		Author:            u.DisplayName,
-		ProjectName:       proj.Name,
-		Currency:          proj.CurrencyCode,
-		Sections:          sections,
-		ResolvedCharts:    resolvedCharts,
-		ResolvedEVM:       resolvedEVM,
-		AddSignatureBlock: true,
-	}, resolved)
-	if err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
-		return "", err
-	}
-
-	// The timestamp-aware signing pipeline is the final PDF mutation. Keeping
-	// the TSA request inside InjectPAdESSignature's callback ensures the token
-	// binds the exact CMS signature that covers the declared PDF ByteRange.
 	signer, err := runtime.signer(certPath, certPassword)
 	if err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
+		fail("load certificate", err)
 		return "", fmt.Errorf("load certificate: %w", err)
 	}
 
-	signedBytes, padesResult, err := signing.ApplyPAdES(a.signingContext(), bytes, signer, timestampConfig)
+	// The report service renders the report exactly as an unsigned export
+	// does (preflight, schedule-audit sections, PDF/A) and writes the
+	// provenance manifest. The timestamp-aware PAdES signature is its
+	// Finalize step, the final PDF mutation; keeping the TSA request inside
+	// InjectPAdESSignature's callback binds the token to the exact CMS
+	// signature that covers the declared PDF ByteRange.
+	// stage names the step an Export error came from in the audit log.
+	var padesResult signing.PAdESResult
+	stage := "build report"
+	_, err = reportService(d).Export(reporting.ExportRequest{
+		ReportTitle:       reportTitle,
+		Subtitle:          subtitle,
+		Sections:          sections,
+		Options:           reporting.Options{Mode: documents.ReportModeDraft},
+		Author:            u.DisplayName,
+		ExportsDir:        filepath.Dir(outPath),
+		FileStem:          sanitizeFilename(reportTitle),
+		OutputPath:        outPath,
+		AddSignatureBlock: true,
+		Finalize: func(rendered []byte) ([]byte, error) {
+			stage = "pades embedding"
+			out, result, err := signing.ApplyPAdES(a.signingContext(), rendered, signer, timestampConfig)
+			if err != nil {
+				return nil, fmt.Errorf("pades embedding: %w", err)
+			}
+			padesResult, stage = result, "write signed report"
+			return out, nil
+		},
+	})
 	if err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("pades embedding: %v", err), "")
-		return "", fmt.Errorf("pades embedding: %w", err)
-	}
-
-	if err := writeNewPrivateExport(outPath, signedBytes); err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
+		switch {
+		case stage == "pades embedding":
+			// err already names the stage.
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, err.Error(), "")
+		case stage == "write signed report" && pathExists(outPath):
+			// The signed PDF was written but a later step (its manifest)
+			// failed. The PDF stays, as an unsigned export's does; the log
+			// names it, and err says which step failed.
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, err.Error(), exportArtifactName(outPath))
+		default:
+			fail(stage, err)
+		}
 		return "", err
 	}
+
 	signatureStatus, details := padesAuditOutcome(padesResult)
 	logCombinedReportSignatureEventWithStatus(
 		d,
@@ -511,6 +471,12 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 	return outPath, nil
 }
 
+// pathExists reports whether something is stored at path.
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 // ExportCombinedReportGnuPG writes an unsigned combined PDF plus a detached
 // ASCII-armored GnuPG signature sidecar.
 func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections []documents.ReportSection, keyID string) (GnuPGExportResult, error) {
@@ -518,9 +484,6 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 	u := a.requireUser()
 	if d == nil || u == nil {
 		return GnuPGExportResult{}, errors.New("no project open")
-	}
-	if err := refuseScheduleAuditSections(sections); err != nil {
-		return GnuPGExportResult{}, err
 	}
 	proj, err := d.GetProject()
 	if err != nil {
@@ -1092,6 +1055,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			DurationEstimate       kernel.DurationEstimate `json:"duration_estimate"`
 			Constraint             string                  `json:"constraint"`
 			ConstraintDate         string                  `json:"constraint_date"`
+			LevelStart             string                  `json:"level_start"`
 			PercentComplete        float64                 `json:"percent_complete"`
 			Milestone              bool                    `json:"milestone"`
 			ActualStart            string                  `json:"actual_start"`
@@ -1128,6 +1092,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			DurationEstimate:       n.DurationEstimate,
 			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
 			ConstraintDate:         n.ConstraintDate,
+			LevelStart:             n.LevelStart,
 			PercentComplete:        n.PercentComplete,
 			Milestone:              n.Milestone,
 			ActualStart:            n.ActualStart,

@@ -31,7 +31,8 @@ const maxNonWorkdayRun = 366
 //
 // Semantics per task:
 //
-//   - StartDate  = working day at offset round(ES)
+//   - StartDate  = working day at offset floor(ES), the day the task
+//     starts in (see startOffset)
 //   - FinishDate = working day at offset ceil(EF)-1 (the last day the
 //     task occupies), clamped to be no earlier than StartDate
 //   - zero-duration tasks (milestones) start and finish the same day
@@ -144,46 +145,128 @@ func calendarDate(t time.Time) time.Time {
 
 // ApplyConstraintDates arms each task's date-bearing constraint
 // (SNET, SNLT, MSO, FNET, FNLT, MFO; see IsDateConstraint) by
-// converting ConstraintDate into a working-day offset (ConstraintDay)
-// against the project start and work calendar. Tasks with no
-// constraint, ASAP, ALAP, or an unparseable date are left unarmed.
-// Call it BEFORE CalculateCPM; without it, date constraints are
-// ignored (un-anchored schedules).
+// converting ConstraintDate into working-day offsets against the project
+// start and work calendar, and arms each task's LevelStart the same way
+// (the next working day on or after it; an unreadable one is ignored,
+// since levelling rewrites it). Tasks with no constraint, ASAP, ALAP, or a
+// date that cannot be converted are left unarmed; for the last,
+// ConstraintUnapplied says why. Every call first resets
+// the fields it sets. Call it BEFORE CalculateCPM; without it, date
+// constraints are ignored (un-anchored schedules).
+//
+// Two readings of the date: ConstraintDay is the first working day on or
+// after it (DayOffset), which an earliest limit uses; the last working
+// day on or before it is ConstraintLateShift working days earlier, and a
+// latest limit uses that. They differ only for a non-working day or a
+// date before the project's first working day, which then has a negative
+// latest index: an SNLT on a Saturday means "by Friday", and an MSO on a
+// Saturday cannot be met. A date whose latest reading cannot be
+// converted either is left unarmed.
 //
 // Offset convention: a START constraint (SNET, SNLT, MSO) compares
 // against ES, which IS a day index. A FINISH constraint (FNET, FNLT,
 // MFO) compares against EF, which is exclusive — a task finishing ON
 // day index d has EF = d+1 (AnchorSchedule's finishOffset is
-// ceil(EF)-1) — so finish constraints store day+1. This holds for
-// zero-duration milestones too: a milestone sits on the boundary after
-// the work before it (a task ending Wednesday puts its successor
-// milestone at the start of Thursday, index 3), so a finish date D means
-// "by the end of D" and the milestone meets it at index D+1.
+// ceil(EF)-1) — so finish constraints store day+1; the shift is the same
+// for both readings. This holds for zero-duration milestones too: a
+// milestone sits on the boundary after the work before it (a task ending
+// Wednesday puts its successor milestone at the start of Thursday, index
+// 3), so a finish date D means "by the end of D" and the milestone meets
+// it at index D+1.
 func ApplyConstraintDates(tasks map[string]*Task, projectStart time.Time, isWorkday WorkdayFunc) {
 	for _, t := range tasks {
 		t.ConstraintArmed = false
+		t.ConstraintDay = 0
+		t.ConstraintLateShift = 0
+		t.ConstraintUnapplied = ""
+		t.LevelStartArmed, t.LevelStartDay = false, 0
+		if t.LevelStart != "" {
+			if date, err := time.Parse(DateLayout, t.LevelStart); err == nil {
+				if day, ok := DayOffset(projectStart, date, isWorkday); ok {
+					t.LevelStartDay, t.LevelStartArmed = day, true
+				}
+			}
+		}
 		if !IsDateConstraint(t.Constraint) {
 			continue
 		}
 		date, err := time.Parse(DateLayout, t.ConstraintDate)
 		if err != nil {
+			t.ConstraintUnapplied = ConstraintInvalidDate
 			continue
 		}
 		day, ok := DayOffset(projectStart, date, isWorkday)
 		if !ok {
+			t.ConstraintUnapplied = ConstraintOutOfRange
+			continue
+		}
+		late, ok := latestWorkdayOffset(projectStart, date, isWorkday)
+		if !ok {
+			t.ConstraintUnapplied = ConstraintOutOfRange
 			continue
 		}
 		if isFinishConstraint(t.Constraint) {
 			day++
+			late++
 		}
 		t.ConstraintDay = day
+		t.ConstraintLateShift = day - late
 		t.ConstraintArmed = true
 	}
 }
 
-// startOffset is the working-day index a task begins on.
+// latestWorkdayOffset is the working-day index of the last working day on
+// or before date (each read as a calendar date, as DayOffset does).
+// Index 0 is the first working day on or after projectStart; working days
+// before it count back from -1. It walks at most 100000 working days in
+// either direction and then returns false.
+func latestWorkdayOffset(projectStart, date time.Time, isWorkday WorkdayFunc) (float64, bool) {
+	if isWorkday == nil {
+		isWorkday = func(time.Time) bool { return true }
+	}
+	date = calendarDate(date)
+	first := calendarDate(projectStart)
+	run := 0
+	for !isWorkday(first) && run < maxNonWorkdayRun {
+		first = first.AddDate(0, 0, 1)
+		run++
+	}
+
+	if !date.Before(first) {
+		// The last working day on or before date is no earlier than
+		// first, which is itself a working day (or the defensive cap's
+		// stand-in), so DayOffset gives its index.
+		d := date
+		run = 0
+		for d.After(first) && !isWorkday(d) && run < maxNonWorkdayRun {
+			d = d.AddDate(0, 0, -1)
+			run++
+		}
+		return DayOffset(projectStart, d, isWorkday)
+	}
+
+	d := first
+	for index := -1; index >= -100000; index-- {
+		d = d.AddDate(0, 0, -1)
+		run = 0
+		for !isWorkday(d) && run < maxNonWorkdayRun {
+			d = d.AddDate(0, 0, -1)
+			run++
+		}
+		if !d.After(date) {
+			return float64(index), true
+		}
+	}
+	return 0, false
+}
+
+// startOffset is the working-day index a task begins on: the day its
+// start falls in, so a task starting part-way through day d (ES = d+0.5)
+// is shown on d. The epsilon absorbs floating-point noise from summed
+// fractional durations (2.9999999999 is day 3). Resource-day attribution
+// (taskSpan) keeps its own rounding, which the OR-01 contract fixes.
 func startOffset(t *Task) int {
-	s := int(math.Round(t.ES))
+	s := int(math.Floor(t.ES + 1e-9))
 	if s < 0 {
 		return 0
 	}
@@ -191,10 +274,12 @@ func startOffset(t *Task) int {
 }
 
 // finishOffset is the working-day index of the last day a task
-// occupies. A zero-duration milestone finishes the day it starts.
+// occupies: the day its exclusive finish EF falls in, less one when EF
+// lies on a day boundary. A zero-duration milestone finishes the day it
+// starts.
 func finishOffset(t *Task) int {
 	s := startOffset(t)
-	f := int(math.Ceil(t.EF)) - 1
+	f := int(math.Ceil(t.EF-1e-9)) - 1
 	if f < s {
 		return s
 	}

@@ -6,10 +6,12 @@ package desktop
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -105,35 +107,85 @@ func TestCombinedReportRecordsTheScheduleAuditItRan(t *testing.T) {
 	}
 }
 
-// Both signed entry points refuse a schedule-audit section before they pick
-// a destination, sign or write anything.
-func TestSignedReportsRefuseAScheduleAudit(t *testing.T) {
-	app, chartID := openAuditReportProject(t)
-	sections := []documents.ReportSection{{ScheduleAudit: &documents.ScheduleAuditSection{ChartID: chartID, Profile: "default"}}}
-	exports := filepath.Join(app.CurrentUser().DataDir, "exports")
-
-	for name, export := range map[string]func() error{
-		"PAdES": func() error {
-			_, err := app.exportCombinedReportSignedWithRuntime("Signed", "", sections, "test-signer.p12", "test-password",
-				newAppPAdESTestRuntime(t, rfc3161.TrustVerified, time.Now().UTC().Truncate(time.Second)))
-			return err
-		},
-		"GnuPG": func() error {
-			_, err := app.ExportCombinedReportGnuPG("Signed", "", sections, "0123456789ABCDEF")
-			return err
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := export(); !errors.Is(err, errSignedScheduleAudit) {
-				t.Fatalf("error = %v, want errSignedScheduleAudit", err)
-			}
-			entries, err := os.ReadDir(exports)
-			if err != nil && !os.IsNotExist(err) {
-				t.Fatal(err)
-			}
-			if len(entries) != 0 {
-				t.Fatalf("exports written after refusal: %v", entries)
-			}
-		})
+// Both signed entry points include a schedule-audit section as an unsigned
+// export does: the report service resolves the audit and records it in the
+// provenance manifest. On the PAdES path the signature stays the final PDF
+// mutation, so its ByteRange reaches the last byte of the file.
+func TestSignedReportsIncludeAScheduleAudit(t *testing.T) {
+	auditedChart := func(t *testing.T, pdfPath, chartID string) {
+		t.Helper()
+		raw, err := os.ReadFile(pdfPath + ".manifest.json")
+		if err != nil {
+			t.Fatalf("read manifest: %v", err)
+		}
+		var manifest struct {
+			Audits []struct {
+				ChartID string `json:"chart_id"`
+			} `json:"audits"`
+		}
+		if err := json.Unmarshal(raw, &manifest); err != nil {
+			t.Fatalf("decode manifest: %v", err)
+		}
+		if len(manifest.Audits) != 1 || manifest.Audits[0].ChartID != chartID {
+			t.Fatalf("manifest audits = %s, want the audit of %s", raw, chartID)
+		}
 	}
+
+	t.Run("PAdES", func(t *testing.T) {
+		app, chartID := openAuditReportProject(t)
+		sections := []documents.ReportSection{{ScheduleAudit: &documents.ScheduleAuditSection{ChartID: chartID, ReportingDate: "2026-06-10", Profile: "default"}}}
+		project, err := app.GetProjectMeta()
+		if err != nil {
+			t.Fatalf("GetProjectMeta: %v", err)
+		}
+		path, err := app.exportCombinedReportSignedWithRuntime("Signed", "", sections, "test-signer.p12", "test-password",
+			newAppPAdESTestRuntime(t, rfc3161.TrustVerified, time.Now().UTC().Truncate(time.Second)))
+		if err != nil {
+			t.Fatalf("signed export with an audit: %v", err)
+		}
+		assertAppPAdESTPDF(t, path)
+		auditedChart(t, path, chartID)
+
+		pdf, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ranges := regexp.MustCompile(`/ByteRange \[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]`).FindAllSubmatch(pdf, -1)
+		if len(ranges) == 0 {
+			t.Fatal("no ByteRange in the signed PDF")
+		}
+		last := ranges[len(ranges)-1]
+		offset, _ := strconv.Atoi(string(last[3]))
+		length, _ := strconv.Atoi(string(last[4]))
+		if offset+length != len(pdf) {
+			t.Fatalf("signature covers bytes up to %d of %d: the PDF changed after signing", offset+length, len(pdf))
+		}
+		reportID := combinedReportCheckpointID(project.ID, "Signed", "", sections)
+		if status, _ := combinedReportSignatureEvent(t, app, project.ID, reportID); status != "pades_t_verified" {
+			t.Fatalf("signature status = %q, want pades_t_verified", status)
+		}
+	})
+
+	t.Run("GnuPG", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Unix executable fixture")
+		}
+		app, chartID := openAuditReportProject(t)
+		sections := []documents.ReportSection{{ScheduleAudit: &documents.ScheduleAuditSection{ChartID: chartID, Profile: "default"}}}
+		// A stand-in gpg writes a fixed signature to its --output path.
+		fixture := t.TempDir()
+		script := "#!/bin/sh\nset -eu\nout=\nfor arg do\n if [ \"${previous:-}\" = --output ]; then out=$arg; fi\n previous=$arg\ndone\nprintf 'fixture signature' > \"$out\"\n"
+		if err := os.WriteFile(filepath.Join(fixture, "gpg"), []byte(script), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", fixture+string(os.PathListSeparator)+os.Getenv("PATH"))
+		result, err := app.ExportCombinedReportGnuPG("Signed", "", sections, "fixture-key")
+		if err != nil {
+			t.Fatalf("GnuPG export with an audit: %v", err)
+		}
+		auditedChart(t, result.PDFPath, chartID)
+		if sig, err := os.ReadFile(result.SignaturePath); err != nil || string(sig) != "fixture signature" {
+			t.Fatalf("signature file = %q, %v", sig, err)
+		}
+	})
 }

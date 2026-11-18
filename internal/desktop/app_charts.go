@@ -467,10 +467,10 @@ func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, wo
 }
 
 // LevelResult is the outcome of LevelChartResources: how many tasks were
-// pinned to a levelled SNET start, plus any tasks whose demand could not be
-// fit within resource capacity. Unplaceable tasks are returned by ID and by
-// human-readable label so the UI can warn that the schedule stays
-// overallocated for them.
+// given a levelled start (node level_start), plus any tasks whose demand
+// could not be fit within resource capacity. Unplaceable tasks are
+// returned by ID and by human-readable label so the UI can warn that the
+// schedule stays overallocated for them.
 type LevelResult struct {
 	Pinned          int      `json:"pinned"`
 	UnplacedTaskIDs []string `json:"unplaced_task_ids,omitempty"`
@@ -478,6 +478,11 @@ type LevelResult struct {
 	// SplitLabels names tasks that allowSplitting placed on non-contiguous
 	// days (persisted as node WorkSegments and rendered as split Gantt bars).
 	SplitLabels []string `json:"split_labels,omitempty"`
+	// ConstraintViolationTaskIDs and ConstraintViolationLabels name the
+	// tasks whose SNLT, FNLT, MSO or MFO date levelling broke: violated
+	// after levelling and not before.
+	ConstraintViolationTaskIDs []string `json:"constraint_violation_task_ids,omitempty"`
+	ConstraintViolationLabels  []string `json:"constraint_violation_labels,omitempty"`
 }
 
 // relativeWorkSegments collapses a split task's absolute working-day offsets
@@ -523,11 +528,13 @@ func levelingStrategyFor(s string) kernel.LevelingStrategy {
 
 // LevelChartResources runs the kernel's serial resource-levelling
 // pass on a CPM chart and PERSISTS the result: every task that
-// levelling delayed beyond its precedence-earliest start gets a SNET
-// constraint at its levelled start date. Nodes with a user-set
-// constraint other than SNET are never touched (links and user intent
-// win); previously levelled SNET pins are recomputed. Requires a
-// project start date to express levelled offsets as dates.
+// levelling starts on a later day than the logic and its constraints
+// alone would gets that date as its levelled start (node level_start);
+// every other task's levelled start is cleared. Levelling ignores the
+// previous run's levelled starts and never changes a constraint (owner
+// decision 2026-11-18). ALAP tasks get none: the ALAP pass moves them to
+// their late dates regardless. Requires a project start date to express
+// levelled offsets as dates.
 //
 // Returns a LevelResult with the number of tasks pinned and any tasks
 // whose demand could not be fit within capacity (still overallocated).
@@ -567,13 +574,17 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 
 	cal := calendar.For(proj.CountryCode)
 
-	// Baseline pass: precedence-only ES per task.
+	// Baseline pass: the logic and the user's constraints, without any
+	// earlier levelled start, anchored for the date comparison below.
 	plain, err := cpmChartDataToKernelTasks(c.Data)
 	if err != nil {
 		return LevelResult{}, err
 	}
 	if len(plain) == 0 {
 		return LevelResult{}, errors.New("chart has no tasks")
+	}
+	for _, t := range plain {
+		t.LevelStart = ""
 	}
 	kernel.ApplyConstraintDates(plain, start, cal.IsWorkday)
 	if err := kernel.ScheduleCPM(plain); err != nil {
@@ -582,6 +593,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		}
 		return LevelResult{}, scheduleTooLongErr(err)
 	}
+	kernel.AnchorSchedule(plain, start, cal.IsWorkday)
 
 	// Levelling pass on a fresh copy.
 	levelled, err := cpmChartDataToKernelTasks(c.Data)
@@ -609,6 +621,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
 
 	pinned := 0
+	var violated []string
 	for i := range doc.Nodes {
 		n := &doc.Nodes[i]
 		lt, lok := levelled[n.ID]
@@ -617,22 +630,22 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 			continue
 		}
 		// Persist (or clear) the split working-day runs regardless of the
-		// start-pin logic below, so the Gantt can draw split bars.
+		// levelled start below, so the Gantt can draw split bars.
 		n.WorkSegments = relativeWorkSegments(lt.WorkDays)
-		existing := strings.ToUpper(strings.TrimSpace(n.Constraint))
-		if existing != "" && existing != string(kernel.StartNoEarlierThan) {
-			continue // never override a user-set non-SNET constraint
+		if lt.ConstraintViolated && !pt.ConstraintViolated {
+			violated = append(violated, n.ID)
 		}
-		if lt.ES > pt.ES+1e-9 {
-			n.Constraint = string(kernel.StartNoEarlierThan)
-			n.ConstraintDate = lt.StartDate
+		n.LevelStart = ""
+		if lt.Constraint == kernel.AsLateAsPossible {
+			continue
+		}
+		// Dates in DateLayout compare in calendar order as strings.
+		if lt.StartDate > pt.StartDate {
+			n.LevelStart = lt.StartDate
 			pinned++
-		} else if existing == string(kernel.StartNoEarlierThan) && n.ConstraintDate != "" {
-			// A previous levelling pin that's no longer needed.
-			n.Constraint = ""
-			n.ConstraintDate = ""
 		}
 	}
+	sort.Strings(violated)
 
 	blob, err := json.Marshal(doc)
 	if err != nil {
@@ -668,6 +681,10 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		out.UnplacedLabels = labelsFor(levelOutcome.UnplacedTaskIDs)
 	}
 	out.SplitLabels = labelsFor(levelOutcome.SplitTaskIDs)
+	if len(violated) > 0 {
+		out.ConstraintViolationTaskIDs = violated
+		out.ConstraintViolationLabels = labelsFor(violated)
+	}
 	return out, nil
 }
 
@@ -690,9 +707,9 @@ type SplitLevelingPreview struct {
 
 // PreviewSplitLeveling reports what activity splitting would do to a CPM
 // chart's schedule without changing anything on disk. It is the read-only
-// counterpart to LevelChartResources: because a split (interrupted) task
-// can't be expressed as the single SNET start pin the chart model persists,
-// splitting is surfaced as guidance rather than applied.
+// counterpart to LevelChartResources: the CPM editor applies levelled
+// starts only, so splitting is surfaced there as guidance; the Gantt view
+// applies it through LevelChartResources with allowSplitting.
 func (a *App) PreviewSplitLeveling(chartID string) (SplitLevelingPreview, error) {
 	d := a.requireDB()
 	if d == nil {
@@ -1051,6 +1068,8 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 			Milestone:       t.Milestone,
 			PercentComplete: t.PercentComplete,
 			Assignments:     t.Assignments,
+			Constraint:      string(t.Constraint),
+			ConstraintDate:  t.ConstraintDate,
 		})
 		for _, l := range t.Links {
 			doc.Edges = append(doc.Edges, dag.LayeredEdge{

@@ -14,6 +14,7 @@ export interface LevelResult {
   pinned: number;
   unplaced_labels?: string[] | null;
   split_labels?: string[] | null;
+  constraint_violation_labels?: string[] | null;
 }
 
 export interface SplitLevelingPreview {
@@ -30,7 +31,8 @@ export function summarizeLabels(labels: string[], max = 3): string {
 }
 
 // CPM "Level resources": a transient success flash plus a persistent
-// overallocation warning (with tooltip) for tasks that could not be placed.
+// warning (with tooltip) for tasks that could not be placed and for tasks
+// whose constraint date levelling broke.
 export interface LevelResourcesMessages {
   flash: string;
   warn: string;
@@ -47,13 +49,18 @@ export function levelResourcesMessages(res: LevelResult): LevelResourcesMessages
   } else {
     flash = t('leveling.alreadyLevel');
   }
-  let warn = '';
-  let warnTitle = '';
+  const warns: string[] = [];
+  const titles: string[] = [];
   if (unplaced.length > 0) {
-    warn = t('leveling.stillOverallocated', { count: unplaced.length, labels: summarizeLabels(unplaced) });
-    warnTitle = t('leveling.stillOverallocated.hint', { labels: formatList(unplaced) });
+    warns.push(t('leveling.stillOverallocated', { count: unplaced.length, labels: summarizeLabels(unplaced) }));
+    titles.push(t('leveling.stillOverallocated.hint', { labels: formatList(unplaced) }));
   }
-  return { flash, warn, warnTitle };
+  const broken = res.constraint_violation_labels ?? [];
+  if (broken.length > 0) {
+    warns.push(t('leveling.constraintsBroken', { count: broken.length, labels: summarizeLabels(broken) }));
+    titles.push(t('leveling.constraintsBroken.hint', { labels: formatList(broken) }));
+  }
+  return { flash, warn: warns.join('. '), warnTitle: titles.join(' ') };
 }
 
 // Read-only split-leveling preview: message plus a tooltip title. Shared by

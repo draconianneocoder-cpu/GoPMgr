@@ -439,14 +439,19 @@ calendar. Each one is a test of the scheduler.
 ### Dates, calendars and milestones
 
 - **Calendar.** Constraint dates count working days on the project's country
-  calendar, from the project start date. A date on a non-working day takes
-  effect from the next working day.
-- **Known limit: lenient "no later than" dates.** That rule is lenient for
-  SNLT, FNLT, MSO and MFO. An SNLT on a Saturday accepts a Monday start, and a
-  date before the project start counts as the start date, so it is met.
-  Put these dates on working days within the project.
+  calendar, from the project start date.
+- **Non-working days and dates before the start.** An earliest limit reads
+  such a date as the next working day, and a latest limit as the previous
+  one. SNET or FNET on a Saturday takes effect from Monday; SNLT or FNLT on a
+  Saturday means "by Friday"; an SNLT or FNLT dated before the project start
+  cannot be met by a task with work, because no work happens before the
+  start (a milestone at the start meets an FNLT on the working day before). MSO and MFO need
+  the task to start or finish on the date itself, so on a non-working day or
+  before the start they can never be met: the task is placed on the next
+  working day and flagged as violated, and the audit says the calendar is
+  the cause. Put must dates on working days within the project.
 - **No start date.** Without a project start date, date constraints are not
-  applied. The audit says so.
+  applied. The task panel says so, and so does the audit.
 - **Milestones.** A milestone (zero duration) sits on the boundary after the
   work before it. After a task that ends on Wednesday, the milestone is
   scheduled at the start of Thursday, and the chart shows it on Thursday. A
@@ -455,29 +460,48 @@ calendar. Each one is a test of the scheduler.
   milestone held by a finish constraint (MFO or FNET Wednesday) appears on the
   next working day, Thursday; a milestone held by a start constraint (MSO
   Wednesday) appears on Wednesday.
-- **Known limit: durations under one day.** A task with a duration between 0
-  and 1 day, which PERT estimates can produce, may still show on the day after
-  a finish constraint date.
-- **A date that cannot be applied.** If the constraint date is not a valid
-  date, GoPMgr does not apply the constraint. The editor does not warn you.
-  The schedule audit reports it under SQ-09: run the audit after editing
-  constraints by hand or restoring a backup.
+- **Durations under one day.** A task with a duration between 0 and 1 day,
+  which PERT estimates can produce, is shown on the day its work starts, so
+  two half-day tasks in a row both show on Monday. Resource demand counts a
+  task that starts in the second half of a day on the next day, so the
+  overallocation badge and histogram can place such a task one day after its
+  bar.
+- **A date that cannot be applied.** If the constraint date is missing or
+  not a valid date, or lies too far from the project start, GoPMgr does not
+  apply the constraint. The node shows a grey **?** marker, the task panel
+  says "Constraint not applied" and why, and the schedule audit reports it
+  under SQ-09.
 - **Lower-case values.** A constraint stored in lower case, for example from
   hand-edited data, is read the same way. The editor shows it under its usual
   name, and opening the task does not change the stored value.
 
 ### Constraints, levelling and imports
 
-- **Levelling.** Levelling resources records each delay it adds as an SNET
-  constraint, and it owns SNET dates: it rewrites an SNET when it delays the
-  task, and removes one that is no longer needed. It never replaces any other
-  constraint. A levelled delay of a task with another constraint is not kept:
-  the next schedule run puts the task back at its constrained dates. Levelling does not re-check constraints,
-  so it can move an MSO, SNLT, FNLT or MFO task past its date without
-  flagging it. Run the schedule again, or the audit, after levelling.
-- **Monte Carlo.** The risk simulation does not apply date constraints.
-- **Imports.** MSPDI import does not carry constraints. Re-enter them after
-  importing.
+- **Levelling.** Levelling resources keeps each delay it adds as the task's
+  **levelled start**, shown in the task panel. It never writes, changes or
+  removes a constraint. Each run recalculates every levelled start from the
+  links and constraints, so a delay that is no longer needed is cleared. A
+  levelled start delays the task like SNET but is never violated itself. If
+  a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
+  flagged, levelling names it, and the audit names levelling as the cause.
+  Select **Clear** next to a levelled start to schedule that task from its
+  links and constraint alone until you level again. Editing a task does not
+  clear its levelled start: level again after changing durations or links.
+  ALAP tasks get no levelled start.
+- **Whole days.** Levelling places tasks on whole working days, so it can move
+  a chain of part-day tasks onto separate days.
+- **Charts levelled before 18 November 2026.** Earlier versions stored
+  levelling delays as SNET constraints. Those SNETs look like any other and
+  are kept. Remove the ones levelling added, then level again.
+- **Monte Carlo.** The risk simulation applies neither date constraints nor
+  levelled starts.
+- **Imports and exports.** MSPDI import brings each task's constraint type and
+  date when **Constraints** is selected (the default). A constraint of an
+  unknown type, or a dated one without a usable date, is left out and counted
+  in the import receipt. Microsoft Project by default holds a task to its
+  constraint date even against its links; GoPMgr keeps the links and flags the
+  constraint instead, so imported dates can differ. Export writes each
+  constraint and its date, but not levelled starts.
 
 ### Choosing a constraint
 
@@ -493,8 +517,11 @@ calendar. Each one is a test of the scheduler.
 
 Earlier versions scheduled an MSO, SNLT or FNET task as ASAP. A chart that
 holds one of these types now schedules by it, so its dates, float, critical
-path and SQ-08 counts can change. Saved baselines are not changed, so
-variances against them can change too. No conversion is needed.
+path and SQ-08 counts can change. Later the same day, constraints dated on
+non-working days or before the project start became strict, as described
+above, and tasks shorter than a day began to show on the day their work
+starts. Saved baselines are not changed, so variances against them can change
+too. No conversion is needed.
 
 ## Documents and Combined Reports
 
@@ -526,9 +553,8 @@ A combined report can also include a **schedule audit** of any CPM chart:
 add it under **Schedule audits** and choose its thresholds and status date.
 The audit runs when you export, so the PDF shows the findings for the chart as
 stored at that moment, and the manifest records the chart revision, the inputs
-the audit read and a digest of its result. Certified reports and signed
-(PAdES or GnuPG) exports cannot include a schedule audit yet; export the
-report unsigned instead.
+the audit read and a digest of its result. Signed (PAdES or GnuPG) exports
+can include a schedule audit; certified reports cannot.
 
 Before export, select a project-controls, construction, software-delivery, or
 custom report profile and run **Preflight**. The built-in profiles provide
@@ -574,7 +600,7 @@ serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.
 
 Before selecting a file, choose whether to import dependencies, percent
-complete, and resource assignments. GoPMgr always preserves task identities,
+complete, resource assignments, and constraints (see Scheduling Constraints). GoPMgr always preserves task identities,
 names, durations, milestones, and the project start date it supports; its
 stored mapping receipt records selected fields, intentional transformations,
 and skipped summary or null rows. This makes the MSPDI round-trip boundary
@@ -996,6 +1022,7 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | Keyboard Shortcuts and Accessibility | [Topic](#keyboard-shortcuts-and-accessibility) |
 | Launchpad | [Definition](#user-term-launchpad) |
 | Lead Time | [Definition](#user-term-lead-time) |
+| Levelled Start | [Definition](#user-term-levelled-start) |
 | Logs and Startup Diagnostics | [Topic](#logs-and-startup-diagnostics) |
 | LS / LF | [Definition](#user-term-ls-lf) |
 | MFO | [Definition](#user-term-scheduling-constraint) |
@@ -1136,6 +1163,7 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-key-result-kr"></a>**Key Result (KR)** | OKRs: measurable, time-bound outcome tracking progress toward an Objective. Graded 0.0–1.0 at period close. | — |
 | <a id="user-term-launchpad"></a>**Launchpad** | GoPMgr's project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts. | — |
 | <a id="user-term-lead-time"></a>**Lead Time** | Total time from request to delivery. Includes queue time + cycle time. | [Cycle Time](#user-term-cycle-time) |
+| <a id="user-term-levelled-start"></a>**Levelled Start** | The start date resource levelling gave a CPM task. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged. | [Resource Leveling](#user-term-resource-leveling), [Scheduling Constraint](#user-term-scheduling-constraint) |
 | <a id="user-term-ls-lf"></a>**LS / LF** | Latest Start / Latest Finish. Calculated during the backward pass through a CPM network. | — |
 | <a id="user-term-milestone"></a>**Milestone** | A significant zero-duration schedule event. A Definition of Done is a completion-quality standard; a throughput target is a delivery-rate goal, not a milestone. | — |
 | <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
@@ -1160,7 +1188,7 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-raci-matrix"></a>**RACI Matrix** | Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task. | — |
 | <a id="user-term-recovery-codes"></a>**Recovery Codes** | One-time account codes for password reset; valid wrapped codes can also unlock the DEK. Codes may need reissuing after encryption migration. Lost credentials are not always recoverable, and these are not administrator-key recovery codes. | [DEK](#user-term-dek), [Administrator-Key Recovery Code](#user-term-administrator-key-recovery-code) |
 | <a id="user-term-resource-capacity"></a>**Resource Capacity** | The available working time or quantity for a resource over a period and calendar. Assignment demand may exceed capacity; capacity is not the amount of work already completed. | — |
-| <a id="user-term-resource-leveling"></a>**Resource Leveling** | Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings. | [CPM](#user-term-cpm), [Resource Capacity](#user-term-resource-capacity) |
+| <a id="user-term-resource-leveling"></a>**Resource Leveling** | Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings. Each delay is kept as the task's levelled start; constraints are never changed. | [CPM](#user-term-cpm), [Resource Capacity](#user-term-resource-capacity) |
 | <a id="user-term-retrospective"></a>**Retrospective** | Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons. | — |
 | <a id="user-term-risk"></a>**Risk** | An uncertain event or condition that may affect objectives. Once a problem occurs it is handled as an issue; documenting a risk does not by itself implement a response. | [Issue](#user-term-issue), [Risk Register](#user-term-risk-register) |
 | <a id="user-term-risk-register"></a>**Risk Register** | Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan. | [Issue Log](#user-term-issue-log) |

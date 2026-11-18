@@ -219,7 +219,7 @@ financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
 stream, the current slice is PS-02 slice 1, a read-only audit authorized on
 2026-11-11. Its rules package, read-only App method, findings panel and report section
-are in place. KRN-01's unsupported constraint types (MSO, SNLT, FNET) are scheduled since 2026-11-18; its unapplied-date case remains open. KRN-02 was fixed in PR #213
+are in place. KRN-01 was fixed on 2026-11-18: all constraint types are scheduled, and an unapplied date is shown in the editor. KRN-02 was fixed in PR #213
 (`22b7df1`). Further scheduling changes require separate authorization. The order
 of that and the security work ahead of it
 is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
@@ -264,7 +264,7 @@ Follow the [shared dependency sequence](design/reporting-extension/implementatio
 
 | Path | Sequence and boundary |
 | --- | --- |
-| PS-09 / RILD-0–1 | Establish definitions, independent fixtures, source lineage and truthful findings; KRN-01's unapplied-date case still constrains affected claims; retain the KRN-02 calendar-date regressions fixed in PR #213. Existing PS-02 rules/App method are implemented; the findings UI remains open. |
+| PS-09 / RILD-0–1 | Establish definitions, independent fixtures, source lineage and truthful findings; retain the KRN-01 regressions (fixed 2026-11-18) and the KRN-02 calendar-date regressions fixed in PR #213. Existing PS-02 rules/App method are implemented; the findings UI remains open. |
 | RILD-2a / RILD-4 | Consistent read-only snapshots and typed report IR, then core reports on qualified existing domains; no Wasm or marketplace prerequisite. |
 | RILD-2b / RILD-3 / dependent RILD-5 | Immutable issue/approval/recovery and connected domain expansion require applicable format/audit/retention/financial/authority decisions and ADR-011 gates. No silent data-model or imported-fact change. |
 | RILD-6–7 | Catalog, user workflows and accessibility accompany each family; per-format/platform/workload qualification precedes corresponding release claims. |

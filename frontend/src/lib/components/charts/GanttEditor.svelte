@@ -263,6 +263,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (r.is_critical) parts.push(t('gantt.bar.critical'));
     if (r.overallocated) parts.push(t('gantt.bar.overallocated'));
     if (r.constraint_violated) parts.push(t('gantt.bar.constraintViolated'));
+    if (r.constraint_unapplied) parts.push(t('gantt.bar.constraintUnapplied'));
     if (r.start_date && r.finish_date) parts.push(t('gantt.bar.dates', { start: r.start_date, finish: r.finish_date }));
     return t('common.sentence', { text: formatList(parts) });
   }

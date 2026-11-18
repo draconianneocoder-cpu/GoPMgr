@@ -245,8 +245,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let remainingAudits = $derived(
     cpmCharts.filter((c) => !included.find((x) => x.id === `audit:${c.id}`)),
   );
-  // Signed exports refuse schedule audits (the backend enforces it).
-  let includesAudit = $derived(included.some((d) => d.audit));
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -266,8 +264,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </button>
     <button
       onclick={exportSignedReport}
-      disabled={exporting || showSignModal || included.length === 0 || includesAudit}
-      aria-describedby={includesAudit ? 'composer-signed-audit-note' : undefined}
+      disabled={exporting || showSignModal || included.length === 0}
       class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       title="Choose PAdES, GnuPG, or no digital signature"
     >
@@ -278,9 +275,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <main class="p-6 space-y-6">
     {#if status}
       <p class="text-xs text-cyan-400">{status}</p>
-    {/if}
-    {#if includesAudit}
-      <p id="composer-signed-audit-note" class="text-xs text-amber-300">{t('composer.audit.signedNote')}</p>
     {/if}
 
     <section class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">

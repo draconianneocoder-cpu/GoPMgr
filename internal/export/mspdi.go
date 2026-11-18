@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"gopmgr/internal/kernel"
@@ -24,15 +25,20 @@ type mspdiProject struct {
 }
 
 type mspdiTask struct {
-	UID             string      `xml:"UID"`
-	ID              string      `xml:"ID"`
-	Name            string      `xml:"Name"`
-	Start           string      `xml:"Start"`
-	Finish          string      `xml:"Finish"`
-	Duration        string      `xml:"Duration"`
-	Milestone       string      `xml:"Milestone"`
-	PercentComplete int         `xml:"PercentComplete"`
-	Predecessors    []mspdiLink `xml:"PredecessorLink,omitempty"`
+	UID             string `xml:"UID"`
+	ID              string `xml:"ID"`
+	Name            string `xml:"Name"`
+	Start           string `xml:"Start"`
+	Finish          string `xml:"Finish"`
+	Duration        string `xml:"Duration"`
+	Milestone       string `xml:"Milestone"`
+	PercentComplete int    `xml:"PercentComplete"`
+	// ConstraintType and ConstraintDate follow PercentComplete and come
+	// before PredecessorLink, in the schema's element order. Both are
+	// left out for ASAP and for a constraint that cannot be written.
+	ConstraintType *int        `xml:"ConstraintType,omitempty"`
+	ConstraintDate string      `xml:"ConstraintDate,omitempty"`
+	Predecessors   []mspdiLink `xml:"PredecessorLink,omitempty"`
 }
 
 type mspdiLink struct {
@@ -124,6 +130,7 @@ func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
 			Milestone:       boolFlag(t.Milestone || t.Duration == 0),
 			PercentComplete: int(t.PercentComplete + 0.5),
 		}
+		task.ConstraintType, task.ConstraintDate = mspdiConstraintFor(t)
 		// Typed links (legacy Precedents become FS+0 via the same
 		// merge the scheduler uses).
 		for _, l := range kernel.EffectiveLinks(t) {
@@ -219,4 +226,32 @@ func itoa(n int) string {
 		buf[i] = '-'
 	}
 	return string(buf[i:])
+}
+
+// mspdiConstraintFor is a task's constraint in MSPDI terms: the type code,
+// and for a dated type its date at the start (08:00) or end (17:00) of the
+// working day it limits. ASAP, an unknown type, and a dated type without a
+// valid date write nothing.
+func mspdiConstraintFor(t *kernel.Task) (*int, string) {
+	c := kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(string(t.Constraint))))
+	if c == kernel.AsLateAsPossible {
+		code := 1
+		return &code, ""
+	}
+	if !kernel.IsDateConstraint(c) {
+		return nil, ""
+	}
+	if _, err := time.Parse(kernel.DateLayout, t.ConstraintDate); err != nil {
+		return nil, ""
+	}
+	for code, known := range mspdiConstraintTypes {
+		if known == c {
+			clock := "T08:00:00"
+			if c == kernel.FinishNoEarlierThan || c == kernel.FinishNoLaterThan || c == kernel.MustFinishOn {
+				clock = "T17:00:00"
+			}
+			return &code, t.ConstraintDate + clock
+		}
+	}
+	return nil, ""
 }

@@ -44,6 +44,8 @@ not routed directly.
     constraint?: string;
     constraint_date?: string;
     constraint_violated?: boolean;
+    constraint_unapplied?: string;
+    level_start?: string;
     percent_complete?: number;
     milestone?: boolean;
     actual_start?: string;

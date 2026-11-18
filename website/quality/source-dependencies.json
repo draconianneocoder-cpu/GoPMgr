@@ -29,8 +29,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         }
       ]
     },
@@ -46,13 +46,13 @@
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "06d57cd4e01ef8630ed092405481f3e84fc86a3effc1fcefdcf8d0257969ae76",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "27e229f4895517ed94a0e10a2be4d5c19130ffcb09d40fdaecd7c0c09fb32318",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         }
       ]
     },
@@ -68,8 +68,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         },
         {
           "path": "docs/INSTALL.md",
@@ -95,8 +95,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         }
       ]
     },
@@ -112,8 +112,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         },
         {
           "path": "docs/INSTALL.md",
@@ -161,8 +161,8 @@
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "06d57cd4e01ef8630ed092405481f3e84fc86a3effc1fcefdcf8d0257969ae76",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "27e229f4895517ed94a0e10a2be4d5c19130ffcb09d40fdaecd7c0c09fb32318",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
@@ -210,8 +210,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "412afe91981ca4adebca8ad8aad8695d125accd4ad4a16c4b1fa294e65534d0d",
-          "reviewed_commit": "98490968479afb2e76c327496baffe753e999e93"
+          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
+          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
         }
       ]
     },

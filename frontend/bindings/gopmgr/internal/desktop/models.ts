@@ -378,10 +378,10 @@ export interface LaunchpadResult {
 
 /**
  * LevelResult is the outcome of LevelChartResources: how many tasks were
- * pinned to a levelled SNET start, plus any tasks whose demand could not be
- * fit within resource capacity. Unplaceable tasks are returned by ID and by
- * human-readable label so the UI can warn that the schedule stays
- * overallocated for them.
+ * given a levelled start (node level_start), plus any tasks whose demand
+ * could not be fit within resource capacity. Unplaceable tasks are
+ * returned by ID and by human-readable label so the UI can warn that the
+ * schedule stays overallocated for them.
  */
 export interface LevelResult {
     "pinned": number;
@@ -393,6 +393,14 @@ export interface LevelResult {
      * days (persisted as node WorkSegments and rendered as split Gantt bars).
      */
     "split_labels"?: string[] | null;
+
+    /**
+     * ConstraintViolationTaskIDs and ConstraintViolationLabels name the
+     * tasks whose SNLT, FNLT, MSO or MFO date levelling broke: violated
+     * after levelling and not before.
+     */
+    "constraint_violation_task_ids"?: string[] | null;
+    "constraint_violation_labels"?: string[] | null;
 }
 
 /**

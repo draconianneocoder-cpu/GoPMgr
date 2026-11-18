@@ -56,6 +56,9 @@ records do not authorize a tag, push, hosted run or publication.
 | Change | Statement |
 | --- | --- |
 | Scheduling constraints (KRN-01, 2026-11-18) | MSO, SNLT and FNET constraints are now scheduled; earlier versions scheduled such tasks as ASAP. Charts holding them can show different dates, float, critical path and audit counts. Saved baselines are unchanged, so variances against them can change. No conversion is needed. |
+| Constraint dates, part-day tasks and levelling (2026-11-18) | A "no later than" date on a non-working day now means the previous working day, and one before the project start cannot be met; an MSO or MFO on such a date is flagged as violated. Tasks shorter than a day show on the day their work starts. Levelling keeps delays as each task's levelled start and no longer writes SNET constraints; SNETs written by earlier levelling remain until removed. The editor says when a constraint is not applied. |
+| MSPDI constraints (2026-11-18) | MSPDI import (with the new Constraints option, on by default) and export now carry task constraints. |
+| Signed reports (2026-11-18) | PAdES and GnuPG signed reports can include a schedule audit. PAdES signed reports now run report preflight and write the provenance manifest, as unsigned exports do. |
 
 ## Candidate entry gate
 

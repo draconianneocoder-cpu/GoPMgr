@@ -120,3 +120,35 @@ func TestAnchorSchedulePathologicalCalendarTerminates(t *testing.T) {
 func TestAnchorScheduleEmptyMapIsNoop(t *testing.T) {
 	AnchorSchedule(nil, time.Now(), weekdaysOnly) // must not panic
 }
+
+// A task that starts part-way through a day is shown on that day. A
+// (0.5 day) then B (0.4 day): B runs 0.5 to 0.9, inside Monday 06-01, so
+// it is shown Monday to Monday and meets FNLT Monday (finish index 1,
+// EF 0.9). Rounding the start used to show it on Tuesday.
+func TestAnchorScheduleShowsAPartDayStartOnItsDay(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 0.5},
+		"B": {ID: "B", Duration: 0.4, Precedents: []string{"A"}, Constraint: FinishNoLaterThan, ConstraintDate: "2026-06-01"},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	AnchorSchedule(tasks, conStart, weekdaysOnly)
+	if b := tasks["B"]; b.StartDate != "2026-06-01" || b.FinishDate != "2026-06-01" || b.ConstraintViolated {
+		t.Fatalf("B = %s..%s violated %v, want 2026-06-01..2026-06-01 not violated", b.StartDate, b.FinishDate, b.ConstraintViolated)
+	}
+
+	// Floating-point noise from summed fractions does not move a day:
+	// ES 2.9999999999 is day 3 (Thu 06-04); EF 3.0000000001 ends on day 2
+	// (Wed 06-03).
+	noisy := map[string]*Task{
+		"X": {ID: "X", ES: 2.9999999999, EF: 3.9999999999, Duration: 1},
+		"Y": {ID: "Y", ES: 2, EF: 3.0000000001, Duration: 1},
+	}
+	AnchorSchedule(noisy, conStart, weekdaysOnly)
+	if x := noisy["X"]; x.StartDate != "2026-06-04" || x.FinishDate != "2026-06-04" {
+		t.Errorf("X = %s..%s, want 2026-06-04..2026-06-04", x.StartDate, x.FinishDate)
+	}
+	if y := noisy["Y"]; y.StartDate != "2026-06-03" || y.FinishDate != "2026-06-03" {
+		t.Errorf("Y = %s..%s, want 2026-06-03..2026-06-03", y.StartDate, y.FinishDate)
+	}
+}

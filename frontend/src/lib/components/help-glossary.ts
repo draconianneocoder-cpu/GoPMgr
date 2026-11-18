@@ -387,6 +387,19 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
     ]
   },
   {
+    term: "Levelled Start",
+    def: "The start date resource levelling gave a CPM task. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged.",
+    id: "levelled-start",
+    aliases: [
+      "Leveled Start",
+      "level_start"
+    ],
+    see: [
+      "resource-leveling",
+      "scheduling-constraint"
+    ]
+  },
+  {
     term: "LS / LF",
     def: "Latest Start / Latest Finish. Calculated during the backward pass through a CPM network.",
     id: "ls-lf"
@@ -547,7 +560,7 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
   },
   {
     term: "Resource Leveling",
-    def: "Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings.",
+    def: "Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings. Each delay is kept as the task's levelled start; constraints are never changed.",
     id: "resource-leveling",
     see: [
       "cpm",

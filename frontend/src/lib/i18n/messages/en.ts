@@ -253,14 +253,21 @@ export const en = {
   'gantt.bar.critical': 'critical path',
   'gantt.bar.overallocated': 'resource overallocated',
   'gantt.bar.constraintViolated': 'constraint violated',
+  'gantt.bar.constraintUnapplied': 'constraint not applied',
   'gantt.bar.dates': '{start} to {finish}',
 
   // Resource-leveling results, shared by the Gantt and CPM editors.
   'leveling.moreLabels': '{labels} +{count} more',
   'leveling.pinned': {
-    one: 'Levelled: {count} task pinned (SNET)',
-    other: 'Levelled: {count} tasks pinned (SNET)',
+    one: 'Levelled: {count} task delayed',
+    other: 'Levelled: {count} tasks delayed',
   },
+  'leveling.constraintsBroken': {
+    one: 'Levelling moved {count} task past its constraint date: {labels}',
+    other: 'Levelling moved {count} tasks past their constraint dates: {labels}',
+  },
+  'leveling.constraintsBroken.hint':
+    'Levelling does not avoid constraint dates while it places tasks. Add capacity, change the constraint, or clear the levelled start of: {labels}.',
   'leveling.noneShifted': 'No tasks could be shifted into free capacity',
   'leveling.alreadyLevel': 'Already level: nothing moved',
   'leveling.stillOverallocated': {
@@ -333,7 +340,16 @@ export const en = {
   'cpm.level.protectCritical.hint':
     'Protect the critical path: critical tasks win resource contention ahead of floating tasks.',
   'cpm.level': 'Level',
-  'cpm.level.hint': 'Delay contended tasks until resources fit capacity; delays persist as SNET constraints',
+  'cpm.level.hint':
+    "Delay contended tasks until resources fit capacity. Each delay is kept as the task's levelled start; constraints are never changed.",
+  'dashboard.import.constraints': 'Constraints',
+  'dashboard.import.constraints.hint':
+    'Import each task\'s constraint and date. GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date.',
+  'cpm.levelStart': 'Levelled start',
+  'cpm.levelStart.hint':
+    'Resource levelling delayed this task to this date. Level again to recompute it, or clear it to schedule the task from its links and constraint alone.',
+  'cpm.levelStart.clear': 'Clear',
+  'cpm.levelStart.clear.label': 'Clear the levelled start of {label}',
   'cpm.previewSplitting.hint':
     'Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved.',
   'cpm.histogram': 'Histogram',
@@ -386,7 +402,14 @@ export const en = {
   'cpm.constraint.date': 'Constraint date',
   'cpm.constraint.hint': 'Links always win: a constraint the links cannot meet is flagged, not forced. See Scheduling constraints in the user guide.',
   'cpm.constraint.violated':
-    'Constraint violated: precedence links make this constraint unsatisfiable. Links win; adjust the constraint date, the durations, or the links.',
+    'Constraint violated: the links, a levelled start, or a date on a non-working day or before the project start keep this constraint from being met. Links win; adjust the constraint date, the durations, or the links, or clear the levelled start.',
+  'cpm.constraint.unapplied.invalid_date':
+    'Constraint not applied: the constraint date is missing or is not a valid date. Until you correct it, the task is scheduled as if it had no constraint.',
+  'cpm.constraint.unapplied.out_of_range':
+    'Constraint not applied: the constraint date is too far from the project start. Until you correct it, the task is scheduled as if it had no constraint.',
+  'cpm.constraint.unapplied.no_start':
+    'Constraint not applied: the project has no start date, so constraint dates cannot be placed. Set a start date in Project Settings.',
+  'cpm.constraint.unapplied.marker': 'Constraint not applied',
   'cpm.startDate': 'Start date',
   'cpm.finishDate': 'Finish date',
   'cpm.es': 'Earliest start (ES)',
@@ -399,7 +422,7 @@ export const en = {
   'cpm.startVsBaseline': 'Start vs baseline',
   'cpm.finishVsBaseline': 'Finish vs baseline',
   'cpm.help':
-    "ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node with Float = 0 lies on the critical path and is highlighted red. Real start/finish dates appear once the project has a start date (Project Settings); non-working days are skipped using the project country's calendar. Incoming-link labels set the dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS. Date constraints (SNET/FNLT/MFO) also need the project start date; ALAP works without one. Links always win over constraints; impossible constraints flag the node amber instead. Resource assignments default to capacity 1.0 per resource; tasks whose resources are over capacity get an orange edge strip.",
+    "ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node with Float = 0 lies on the critical path and is highlighted red. Real start/finish dates appear once the project has a start date (Project Settings); non-working days are skipped using the project country's calendar. Incoming-link labels set the dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS. Date constraints (SNET, SNLT, FNET, FNLT, MSO, MFO) also need the project start date; ALAP works without one. Links always win over constraints; impossible constraints flag the node amber instead. Resource assignments default to capacity 1.0 per resource; tasks whose resources are over capacity get an orange edge strip.",
   'cpm.evm.title': 'Earned value',
   'cpm.evm.statusDate': 'Status date (blank = today)',
   'cpm.evm.compute': 'Compute',
@@ -508,7 +531,6 @@ export const en = {
   'composer.audit.title': 'Schedule audit: {title}',
   'composer.audit.kind': 'Schedule audit, computed at export',
   'composer.audit.add': 'Add a schedule audit of {title}',
-  'composer.audit.signedNote': 'Signed reports cannot include a schedule audit yet. Export this report as an unsigned PDF, or remove the audit to sign it.',
   'help.cpm.audit.step': 'Check schedule quality.',
   'help.cpm.audit.body':
     'In the CPM editor aside, choose thresholds and a status date, then Run audit. GoPMgr saves your latest edits, then checks the stored schedule for missing logic, cycles, leads and lags, violated constraints, negative or high float, and progress errors. It changes nothing. Rules that could not run are listed first; Show task selects a finding’s task on the chart.',
@@ -517,7 +539,7 @@ export const en = {
     'Select a task and choose a Constraint: ASAP, ALAP, start or finish no earlier than (SNET, FNET), start or finish no later than (SNLT, FNLT), or must start or finish on (MSO, MFO). Links always win: a constraint they cannot meet is flagged as violated, not forced. Prefer links and soft constraints; the user guide section Scheduling Constraints explains each type with examples.',
   'help.composer.audit.step': 'Add schedule audits.',
   'help.composer.audit.body':
-    'Under Schedule audits, add the quality audit of a CPM chart and choose its thresholds and status date. The audit runs when you export, so the PDF shows the schedule as stored then, and the manifest records the chart revision and inputs it read. Certified reports and signed exports cannot include a schedule audit yet.',
+    'Under Schedule audits, add the quality audit of a CPM chart and choose its thresholds and status date. The audit runs when you export, so the PDF shows the schedule as stored then, and the manifest records the chart revision and inputs it read. Signed exports can include one; certified reports cannot.',
   'projectPicker.restore.done':
     'Backup restored. Signing is switched off in a restored project. Set it up again in Project Settings if you need it.',
   'projectSettings.backup.includeCert': 'Include my signing certificate file in this backup',

@@ -496,6 +496,7 @@ describe('Dashboard MSPDI import', () => {
         include_dependencies: true,
         include_progress: true,
         include_assignments: true,
+        include_constraints: true,
       }),
     );
     expect(session.view).toBe('cpm');

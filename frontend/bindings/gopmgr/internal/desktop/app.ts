@@ -1113,11 +1113,13 @@ export function LayoutChart(id: string): $CancellablePromise<charts$0.LayoutResu
 /**
  * LevelChartResources runs the kernel's serial resource-levelling
  * pass on a CPM chart and PERSISTS the result: every task that
- * levelling delayed beyond its precedence-earliest start gets a SNET
- * constraint at its levelled start date. Nodes with a user-set
- * constraint other than SNET are never touched (links and user intent
- * win); previously levelled SNET pins are recomputed. Requires a
- * project start date to express levelled offsets as dates.
+ * levelling starts on a later day than the logic and its constraints
+ * alone would gets that date as its levelled start (node level_start);
+ * every other task's levelled start is cleared. Levelling ignores the
+ * previous run's levelled starts and never changes a constraint (owner
+ * decision 2026-11-18). ALAP tasks get none: the ALAP pass moves them to
+ * their late dates regardless. Requires a project start date to express
+ * levelled offsets as dates.
  *
  * Returns a LevelResult with the number of tasks pinned and any tasks
  * whose demand could not be fit within capacity (still overallocated).
@@ -1418,9 +1420,9 @@ export function PrepareRecoveryCodes(currentPassword: string): $CancellablePromi
 /**
  * PreviewSplitLeveling reports what activity splitting would do to a CPM
  * chart's schedule without changing anything on disk. It is the read-only
- * counterpart to LevelChartResources: because a split (interrupted) task
- * can't be expressed as the single SNET start pin the chart model persists,
- * splitting is surfaced as guidance rather than applied.
+ * counterpart to LevelChartResources: the CPM editor applies levelled
+ * starts only, so splitting is surfaced there as guidance; the Gantt view
+ * applies it through LevelChartResources with allowSplitting.
  */
 export function PreviewSplitLeveling(chartID: string): $CancellablePromise<$models.SplitLevelingPreview> {
     return $Call.ByName("gopmgr/internal/desktop.App.PreviewSplitLeveling", chartID);

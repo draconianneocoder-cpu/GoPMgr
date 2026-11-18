@@ -9,4 +9,10 @@ export interface MSPDIImportOptions {
     "include_dependencies": boolean;
     "include_progress": boolean;
     "include_assignments": boolean;
+
+    /**
+     * IncludeConstraints imports task constraint types and dates. Callers
+     * that predate it leave it false, which keeps their earlier result.
+     */
+    "include_constraints": boolean;
 }

@@ -417,9 +417,20 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 	e.Constraint, e.ConstraintDate = kernel.MustStartOn, "2026-01-08"
 	f.Constraint, f.ConstraintDate = kernel.StartNoLaterThan, "2026-01-05"
 	g.Constraint, g.ConstraintDate = kernel.FinishNoEarlierThan, "2026-01-09"
-	r := run(t, base(tk("A", 1), e, f, g))
-	wantSubjects(t, r, HardConstraint, "E", "F")
-	wantSubjects(t, r, ConstraintViolated, "F")
+	// The project starts Monday 01-05 (index 0); Saturday 01-10 is not a
+	// working day. H, alone, must start on that Saturday: it cannot, and
+	// the calendar is the cause. I follows the 6-day J, so its links give
+	// Tuesday 01-13 (6): it misses SNLT Saturday (latest Friday, 4)
+	// because of the logic, which would miss Monday (5) too.
+	// K has no links; levelling gave it Wednesday 01-07 (2), past its SNLT
+	// Monday 01-05 (0): levelling is the cause.
+	h, j, i, k := tk("H", 1), tk("J", 6), tk("I", 1, "J"), tk("K", 1)
+	h.Constraint, h.ConstraintDate = kernel.MustStartOn, "2026-01-10"
+	i.Constraint, i.ConstraintDate = kernel.StartNoLaterThan, "2026-01-10"
+	k.Constraint, k.ConstraintDate, k.LevelStart = kernel.StartNoLaterThan, "2026-01-05", "2026-01-07"
+	r := run(t, base(tk("A", 1), e, f, g, h, j, i, k))
+	wantSubjects(t, r, HardConstraint, "E", "F", "H", "I", "K")
+	wantSubjects(t, r, ConstraintViolated, "F", "H", "I", "K")
 	for _, finding := range ofRule(r, HardConstraint) {
 		switch finding.TaskID {
 		case "E":
@@ -427,8 +438,25 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 				t.Fatalf("SQ-08 for E = %q, want MSO 2026-01-08 met", finding.Observed)
 			}
 		case "F":
-			if !strings.Contains(finding.Observed, "SNLT 2026-01-05") || !strings.Contains(finding.Observed, "binds") {
+			if !strings.Contains(finding.Observed, "SNLT 2026-01-05") || !strings.Contains(finding.Observed, "binds: the date cannot be met") {
 				t.Fatalf("SQ-08 for F = %q, want SNLT 2026-01-05 binding", finding.Observed)
+			}
+		}
+	}
+	const calendar = "non-working day or before the project's first working day"
+	for _, finding := range ofRule(r, ConstraintViolated) {
+		switch finding.TaskID {
+		case "H":
+			if !strings.Contains(finding.Explanation, calendar) || !strings.Contains(finding.Explanation, "cannot start on it") || finding.Advice != "Move the date to a working day within the project." {
+				t.Fatalf("SQ-09 for H should blame the calendar: %+v", finding)
+			}
+		case "F", "I":
+			if strings.Contains(finding.Explanation, calendar) || !strings.Contains(finding.Explanation, "the links push the task past its date") {
+				t.Fatalf("SQ-09 for %s should blame the logic: %+v", finding.TaskID, finding)
+			}
+		case "K":
+			if finding.Explanation != "Resource levelling delayed this task to 2026-01-07, past its constraint date." {
+				t.Fatalf("SQ-09 for K should blame levelling: %+v", finding)
 			}
 		}
 	}

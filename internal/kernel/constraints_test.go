@@ -215,6 +215,50 @@ func TestApplyConstraintDatesBadDateStaysUnarmed(t *testing.T) {
 	approx(t, "A.ES", tasks["A"].ES, 0)
 }
 
+// KRN-01 b: a date constraint that is not applied says why, so the editor
+// can show it; one that is applied, or carries no date, says nothing.
+func TestApplyConstraintDatesSaysWhyAConstraintIsNotApplied(t *testing.T) {
+	tasks := map[string]*Task{
+		"bad":    {ID: "bad", Duration: 1, Constraint: MustFinishOn, ConstraintDate: "not-a-date"},
+		"empty":  {ID: "empty", Duration: 1, Constraint: StartNoEarlierThan},
+		"far":    {ID: "far", Duration: 1, Constraint: StartNoEarlierThan, ConstraintDate: "9999-12-31"},
+		"farOld": {ID: "farOld", Duration: 1, Constraint: StartNoLaterThan, ConstraintDate: "1500-01-01"},
+		"ok":     {ID: "ok", Duration: 1, Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-04"},
+		"alap":   {ID: "alap", Duration: 1, Constraint: AsLateAsPossible},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	want := map[string]ConstraintIssue{
+		"bad": ConstraintInvalidDate, "empty": ConstraintInvalidDate,
+		"far": ConstraintOutOfRange, "farOld": ConstraintOutOfRange,
+		"ok": "", "alap": "",
+	}
+	for id, w := range want {
+		if got := tasks[id].ConstraintUnapplied; got != w {
+			t.Errorf("%s: unapplied %q, want %q", id, got, w)
+		}
+	}
+
+	// Corrected and applied again, the reason is cleared.
+	tasks["bad"].ConstraintDate = "2026-06-04"
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	if b := tasks["bad"]; !b.ConstraintArmed || b.ConstraintUnapplied != "" {
+		t.Errorf("corrected date: armed %v unapplied %q, want armed and no reason", b.ConstraintArmed, b.ConstraintUnapplied)
+	}
+
+	// Without a project start, every dated constraint is marked, and an
+	// earlier arming is withdrawn.
+	MarkConstraintsUnapplied(tasks, ConstraintNoStart)
+	for id, task := range tasks {
+		w := ConstraintNoStart
+		if id == "alap" {
+			w = ""
+		}
+		if task.ConstraintUnapplied != w || task.ConstraintArmed {
+			t.Errorf("no start, %s: armed %v unapplied %q, want unarmed %q", id, task.ConstraintArmed, task.ConstraintUnapplied, w)
+		}
+	}
+}
+
 // ----- KRN-01: MSO, SNLT and FNET (2026-11-18) -----
 // Day indices on the weekday calendar from Monday 2026-06-01:
 // Mon 0, Tue 1, Wed 2, Thu 3, Fri 4. Every expected value below is
@@ -239,9 +283,161 @@ func TestApplyConstraintDatesArmsEveryDateConstraint(t *testing.T) {
 	for _, c := range cases {
 		tasks := map[string]*Task{"A": {ID: "A", Duration: c.duration, Constraint: c.c, ConstraintDate: "2026-06-04"}}
 		ApplyConstraintDates(tasks, conStart, weekdaysOnly)
-		if a := tasks["A"]; !a.ConstraintArmed || a.ConstraintDay != c.want {
-			t.Errorf("%s (duration %v): armed %v day %v, want armed day %v", c.c, c.duration, a.ConstraintArmed, a.ConstraintDay, c.want)
+		// Thursday is a working day, so both readings agree: no shift.
+		if a := tasks["A"]; !a.ConstraintArmed || a.ConstraintDay != c.want || a.ConstraintLateShift != 0 {
+			t.Errorf("%s (duration %v): armed %v day %v shift %v, want armed day %v shift 0", c.c, c.duration, a.ConstraintArmed, a.ConstraintDay, a.ConstraintLateShift, c.want)
 		}
+	}
+}
+
+// ----- Dates on non-working days and before the project start -----
+// (owner decision 2026-11-18, "flag as violated"). On the weekday
+// calendar from Monday 2026-06-01: Fri 06-05 is 4, Sat 06-06 and Sun
+// 06-07 are not working days, Mon 06-08 is 5; before the start, Fri
+// 05-29 is -1 and Thu 05-28 is -2. An earliest limit reads a date as the
+// next working day, a latest limit as the previous one.
+
+func TestLatestWorkdayOffset(t *testing.T) {
+	saturdayStart := time.Date(2026, 5, 30, 0, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name  string
+		start time.Time
+		date  time.Time
+		want  float64
+		ok    bool
+	}{
+		{"working day", conStart, time.Date(2026, 6, 4, 0, 0, 0, 0, time.UTC), 3, true},
+		{"the start itself", conStart, conStart, 0, true},
+		{"Saturday reads as Friday", conStart, time.Date(2026, 6, 6, 0, 0, 0, 0, time.UTC), 4, true},
+		{"Sunday reads as Friday", conStart, time.Date(2026, 6, 7, 0, 0, 0, 0, time.UTC), 4, true},
+		{"Sunday before the start", conStart, time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC), -1, true},
+		{"Friday before the start", conStart, time.Date(2026, 5, 29, 0, 0, 0, 0, time.UTC), -1, true},
+		{"Thursday before the start", conStart, time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC), -2, true},
+		{"Saturday start, first Monday", saturdayStart, conStart, 0, true},
+		{"Saturday start, the start itself", saturdayStart, saturdayStart, -1, true},
+		{"beyond the walk limit", conStart, time.Date(1500, 1, 1, 0, 0, 0, 0, time.UTC), 0, false},
+	}
+	for _, c := range cases {
+		got, ok := latestWorkdayOffset(c.start, c.date, weekdaysOnly)
+		if ok != c.ok || (ok && got != c.want) {
+			t.Errorf("%s: got %v, %v; want %v, %v", c.name, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestApplyConstraintDatesReadsAWeekendDateBothWays(t *testing.T) {
+	// Saturday 06-06: the next working day is Mon 5, the previous Fri 4,
+	// so every type is armed with a shift of 1; finish types add 1 to both.
+	cases := []struct {
+		c    ConstraintType
+		want float64
+	}{
+		{StartNoEarlierThan, 5}, {StartNoLaterThan, 5}, {MustStartOn, 5},
+		{FinishNoEarlierThan, 6}, {FinishNoLaterThan, 6}, {MustFinishOn, 6},
+	}
+	for _, c := range cases {
+		tasks := map[string]*Task{"A": {ID: "A", Duration: 1, Constraint: c.c, ConstraintDate: "2026-06-06"}}
+		ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+		if a := tasks["A"]; !a.ConstraintArmed || a.ConstraintDay != c.want || a.ConstraintLateShift != 1 {
+			t.Errorf("%s: armed %v day %v shift %v, want armed day %v shift 1", c.c, a.ConstraintArmed, a.ConstraintDay, a.ConstraintLateShift, c.want)
+		}
+	}
+	// A date so far back that the latest reading cannot be walked is left
+	// unarmed, like any other date that cannot be converted.
+	tasks := map[string]*Task{"A": {ID: "A", Duration: 1, Constraint: StartNoLaterThan, ConstraintDate: "1500-01-01"}}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	if tasks["A"].ConstraintArmed {
+		t.Error("a date beyond the walk limit must stay unarmed")
+	}
+}
+
+func TestSNLTOnASaturdayMeansFriday(t *testing.T) {
+	// A (5 days) runs Mon-Fri, so B can start Mon 06-08 (5) at the
+	// earliest. SNLT Sat 06-06 means "by Friday" (4): violated. Project
+	// finish 6; B's LF is capped at 4+1 = 5, LS 4, float -1; A's LF is
+	// B's LS 4, LS -1, float -1.
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 5},
+		"B": {ID: "B", Duration: 1, Precedents: []string{"A"}, Constraint: StartNoLaterThan, ConstraintDate: "2026-06-06"},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "B.ES", tasks["B"].ES, 5)
+	approx(t, "B.LF", tasks["B"].LF, 5)
+	approx(t, "B.Float", tasks["B"].Float, -1)
+	approx(t, "A.Float", tasks["A"].Float, -1)
+	if !tasks["B"].ConstraintViolated {
+		t.Error("a Monday start does not meet SNLT Saturday")
+	}
+
+	// A of 4 days lets B start Friday (4): met. Project finish 5, B's LF
+	// min(5, 4+1) = 5, LS 4, float 0.
+	tasks["A"].Duration = 4
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "B.ES (A 4 days)", tasks["B"].ES, 4)
+	approx(t, "B.Float (A 4 days)", tasks["B"].Float, 0)
+	if tasks["B"].ConstraintViolated {
+		t.Error("a Friday start meets SNLT Saturday")
+	}
+}
+
+func TestFNLTBeforeTheProjectStartIsViolated(t *testing.T) {
+	// FNLT Fri 05-29, the working day before the start: latest finish
+	// index -1+1 = 0. The task runs ES 0, EF 1: violated; project finish
+	// 1, LF min(1, 0) = 0, LS -1, float -1.
+	tasks := map[string]*Task{
+		"C": {ID: "C", Duration: 1, Constraint: FinishNoLaterThan, ConstraintDate: "2026-05-29"},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "C.ES", tasks["C"].ES, 0)
+	approx(t, "C.LF", tasks["C"].LF, 0)
+	approx(t, "C.Float", tasks["C"].Float, -1)
+	if !tasks["C"].ConstraintViolated {
+		t.Error("a finish on the first project day does not meet a date before it")
+	}
+}
+
+func TestMustDatesThatAreNotWorkingDaysCannotBeMet(t *testing.T) {
+	// Each task is alone (1 day, no links).
+	//  - MSO Sat 06-06: early 5, late 4. ES pulled to 5 (Monday), 5 > 4
+	//    violated; EF 6 = project finish; LF pinned 4+1 = 5, LS 4, float -1.
+	//  - MFO Sun 06-07: early finish 5+1 = 6, late finish 4+1 = 5. ES
+	//    6-1 = 5, EF 6 > 5 violated; LF 5, LS 4, float -1.
+	//  - MSO Thu 05-28, before the start: early 0, late -2. ES 0 > -2
+	//    violated; LF -2+1 = -1, LS -2, float -2.
+	cases := []struct {
+		name      string
+		c         ConstraintType
+		date      string
+		es, lf, f float64
+	}{
+		{"MSO Saturday", MustStartOn, "2026-06-06", 5, 5, -1},
+		{"MFO Sunday", MustFinishOn, "2026-06-07", 5, 5, -1},
+		{"MSO before the start", MustStartOn, "2026-05-28", 0, -1, -2},
+	}
+	for _, c := range cases {
+		tasks := map[string]*Task{"A": {ID: "A", Duration: 1, Constraint: c.c, ConstraintDate: c.date}}
+		ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+		mustCPM(t, tasks)
+		a := tasks["A"]
+		approx(t, c.name+" ES", a.ES, c.es)
+		approx(t, c.name+" LF", a.LF, c.lf)
+		approx(t, c.name+" Float", a.Float, c.f)
+		if !a.ConstraintViolated {
+			t.Errorf("%s: must be violated", c.name)
+		}
+	}
+
+	// The earliest side is unchanged: SNET Saturday starts the task on
+	// Monday (5) and is never violated.
+	tasks := map[string]*Task{"A": {ID: "A", Duration: 1, Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-06"}}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "SNET Saturday ES", tasks["A"].ES, 5)
+	if tasks["A"].ConstraintViolated {
+		t.Error("SNET is never violated")
 	}
 }
 
@@ -412,5 +608,28 @@ func TestMilestoneFinishConstraintsMeanTheEndOfTheDay(t *testing.T) {
 	}
 	if !tasks["LATE"].ConstraintViolated {
 		t.Error("a milestone after work ending Thursday misses FNLT Wednesday and must be flagged")
+	}
+}
+
+// A levelled start (written by resource levelling, not a constraint)
+// delays a task like a start floor once armed, and a latest limit it
+// breaks is flagged on the next schedule. A (1 day) with levelled start
+// Wed 06-03 starts at 2; B with MSO Tue 06-02 (1) and levelled start Thu
+// 06-04: the levelled start sets ES 3 before MSO is checked, and 3 > 1,
+// so MSO is violated.
+// An unreadable levelled start is ignored.
+func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 1, LevelStart: "2026-06-03"},
+		"B": {ID: "B", Duration: 1, LevelStart: "2026-06-04", Constraint: MustStartOn, ConstraintDate: "2026-06-02"},
+		"C": {ID: "C", Duration: 1, LevelStart: "junk"},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "A.ES", tasks["A"].ES, 2)
+	approx(t, "B.ES", tasks["B"].ES, 3)
+	approx(t, "C.ES", tasks["C"].ES, 0)
+	if !tasks["B"].ConstraintViolated || tasks["A"].ConstraintViolated {
+		t.Errorf("violated: A %v B %v, want only B", tasks["A"].ConstraintViolated, tasks["B"].ConstraintViolated)
 	}
 }

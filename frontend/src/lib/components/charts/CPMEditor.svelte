@@ -23,6 +23,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // IsDateConstraint). ASAP and ALAP need none.
   const DATED_CONSTRAINTS = new Set(['SNET', 'SNLT', 'MSO', 'FNET', 'FNLT', 'MFO']);
 
+  // unappliedMessage explains a date constraint the scheduler could not
+  // apply (the kernel's ConstraintIssue). An unknown reason from newer data
+  // still says the constraint is not applied rather than nothing.
+  function unappliedMessage(reason: string | undefined): string {
+    switch (reason) {
+      case 'invalid_date':
+        return t('cpm.constraint.unapplied.invalid_date');
+      case 'out_of_range':
+        return t('cpm.constraint.unapplied.out_of_range');
+      case 'no_start':
+        return t('cpm.constraint.unapplied.no_start');
+      default:
+        return reason ? t('cpm.constraint.unapplied.marker') : '';
+    }
+  }
+
   // constraintKey reads a stored constraint as the editor shows it: upper
   // case, with "" and ASAP meaning the default. It only reads: a chart's
   // stored value (which may be lower case from hand-edited data) is
@@ -35,7 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // setConstraint writes a choice the user made. The select also writes
   // its current value when it mounts; a write that changes nothing the
   // editor shows is ignored, so opening a task never rewrites "ASAP",
-  // "asap" or "" (levelling treats an explicit ASAP differently from none).
+  // "asap" or "" (a chart's stored data changes only when the user acts).
   function setConstraint(node: { constraint?: string }, value: string | undefined) {
     if (value === constraintKey(node.constraint)) return;
     node.constraint = value;
@@ -330,7 +346,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         false // CPM editor applies pins only; splitting is applied from the Gantt view
       );
       // Reload the shell's doc from the DB so the editor shows the
-      // new SNET pins and a later save can't clobber them.
+      // new levelled starts and a later save can't clobber them.
       await shellRef?.reloadFromDB();
       // Success flash plus a persistent warning for tasks whose demand
       // exceeds capacity (still overallocated; badges also show it).
@@ -345,10 +361,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // clearLevelStart removes the start levelling gave a task, saves, and
+  // reloads, so the task is scheduled from its links and constraint again
+  // straight away (levelling recomputes it on its next run).
+  async function clearLevelStart(node: { level_start?: string }) {
+    if (resourceBusy) return;
+    resourceBusy = true;
+    try {
+      node.level_start = undefined;
+      if (await shellRef?.save()) await shellRef?.reloadFromDB();
+    } finally {
+      resourceBusy = false;
+    }
+  }
+
   // previewSplitting reports (read-only) whether interrupting tasks across
   // non-contiguous days would resolve overallocation, without changing the
   // saved schedule. Splitting isn't persisted: a split task can't be stored
-  // as the single SNET start pin the chart model uses.
+  // as the single levelled start the CPM editor applies.
   async function previewSplitting() {
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
@@ -504,6 +534,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
         font-weight="bold"
         fill="#f59e0b"
       >!</text>
+    {:else if data.constraint_unapplied}
+      <!-- Dotted outline + marker: a date constraint is not in force. -->
+      <rect
+        width={n.width as number}
+        height={n.height as number}
+        rx="6"
+        fill="none"
+        stroke="#94a3b8"
+        stroke-width="1.5"
+        stroke-dasharray="1 3"
+      />
+      <text
+        x={(n.width as number) - 12}
+        y="16"
+        font-size="12"
+        font-weight="bold"
+        fill="#94a3b8"
+      ><title>{t('cpm.constraint.unapplied.marker')}</title>?</text>
     {/if}
     {#if data.milestone}
       <text
@@ -786,6 +834,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="mt-2 p-2 bg-amber-950 border border-amber-600 rounded text-xs text-amber-300">
         {t('cpm.constraint.violated')}
       </p>
+    {:else if node.constraint_unapplied}
+      <p role="status" class="mt-2 p-2 bg-slate-900 border border-slate-500 rounded text-xs text-slate-200">
+        {unappliedMessage(node.constraint_unapplied)}
+      </p>
+    {/if}
+    {#if node.level_start}
+      <div class="mt-2 flex items-center justify-between gap-2 text-xs" title={t('cpm.levelStart.hint')}>
+        <span class="text-slate-500">{t('cpm.levelStart')}</span>
+        <span class="font-mono text-cyan-300">{node.level_start}</span>
+        <Button
+          variant="secondary"
+          size="compact"
+          disabled={resourceBusy}
+          aria-label={t('cpm.levelStart.clear.label', { label: node.label || node.id })}
+          onclick={() => clearLevelStart(node)}
+        >{t('cpm.levelStart.clear')}</Button>
+      </div>
     {/if}
     <div class="mt-3 p-2 bg-slate-950 rounded text-xs space-y-1">
       {#if node.start_date}
