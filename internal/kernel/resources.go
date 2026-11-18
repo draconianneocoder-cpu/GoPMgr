@@ -205,9 +205,13 @@ func occupiedDays(t *Task) []int {
 	return out
 }
 
-// taskSpan is the inclusive integer day range a task occupies, using
-// the same convention as AnchorSchedule (start = round(ES), last day
-// = ceil(EF)-1; zero-duration tasks occupy no days). A task whose dates
+// taskSpan is the inclusive integer day range a task occupies for
+// resource demand (start = round(ES), last day = ceil(EF)-1;
+// zero-duration tasks occupy no days). This rounding is the OR-01
+// contract (OR-01-S4: a half-day start rounds up). AnchorSchedule shows a
+// part-day start on the day it falls in instead (floor), so for a task
+// whose ES has a fraction of .5 or more the shown start day and the first
+// day its demand is counted on differ by one. A task whose dates
 // are not finite offsets within maxAllocationDays, which CalculateCPM
 // never produces, is reported as occupying no days, because callers size
 // slices from the span.

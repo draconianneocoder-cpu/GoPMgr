@@ -229,7 +229,7 @@ func (a *auditor) checkConstraints() error {
 			case a.cpmErr != nil:
 				binding = "binding not evaluated: " + a.cpmReason()
 			case c.ConstraintViolated:
-				binding = "binds: the logic and this date conflict"
+				binding = "binds: the date cannot be met (SQ-09)"
 			default:
 				binding = "met by the current logic"
 			}
@@ -248,9 +248,8 @@ func (a *auditor) checkConstraints() error {
 				"Correct the constraint date.")
 		case c.ConstraintViolated:
 			broken++
-			a.add(ConstraintViolated, SeverityError, id, nil, label+" cannot be met", "",
-				"The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
-				"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date.")
+			explanation, advice := violationText(t.Constraint, c)
+			a.add(ConstraintViolated, SeverityError, id, nil, label+" cannot be met", "", explanation, advice)
 		}
 	}
 	a.ran(HardConstraint, "")
@@ -530,4 +529,29 @@ func (a *auditor) checkContext() error {
 	}
 	a.ran(ReportingContext, "")
 	return nil
+}
+
+// violationText explains why a violated date constraint cannot be met.
+// When the task reaches the date as read forward to the next working day
+// but the date itself is a non-working day or lies before the project's
+// first working day, the calendar is the cause, not the logic: a latest
+// date there means the working day before it, and a must date can never
+// be met.
+func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, string) {
+	reached := c.ES
+	if constraint == kernel.FinishNoLaterThan || constraint == kernel.MustFinishOn {
+		reached = c.EF
+	}
+	if c.ConstraintLateShift > 0 && reached <= c.ConstraintDay+1e-9 {
+		explanation := "The date falls on a non-working day or before the project's first working day. A latest date there means the working day before it, which the task misses."
+		switch constraint {
+		case kernel.MustStartOn:
+			explanation = "The date falls on a non-working day or before the project's first working day, so the task cannot start on it."
+		case kernel.MustFinishOn:
+			explanation = "The date falls on a non-working day or before the project's first working day, so the task cannot finish on it."
+		}
+		return explanation, "Move the date to a working day within the project."
+	}
+	return "The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
+		"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date."
 }

@@ -91,6 +91,12 @@ func isFinishConstraint(c ConstraintType) bool {
 	return c == FinishNoEarlierThan || c == FinishNoLaterThan || c == MustFinishOn
 }
 
+// lateConstraintDay is the offset a latest limit compares with: the last
+// working day on or before the constraint date (see ConstraintLateShift).
+func lateConstraintDay(t *Task) float64 {
+	return t.ConstraintDay - t.ConstraintLateShift
+}
+
 // WorkSegment is one half-open run of planned work, expressed as offsets
 // relative to a task's scheduled start. Resource leveling persists these
 // segments when a task is interrupted; EVM uses them to avoid accruing
@@ -137,6 +143,17 @@ type Task struct {
 	// conversion succeeded and the constraint is in force.
 	ConstraintDay   float64 `json:"constraint_day,omitempty"`
 	ConstraintArmed bool    `json:"constraint_armed,omitempty"`
+
+	// ConstraintLateShift is how many working days the constraint's latest
+	// limit lies before ConstraintDay. ConstraintDay reads the date as the
+	// first working day on or after it, which is right for an earliest
+	// limit (SNET, FNET, and the early side of MSO and MFO). A latest
+	// limit (SNLT, FNLT, and the late side of MSO and MFO) reads it as the
+	// last working day on or before it, which is earlier when the date is a
+	// non-working day or lies before the project's first working day. Zero
+	// means both readings agree, so a task armed directly keeps that
+	// meaning. Set by ApplyConstraintDates.
+	ConstraintLateShift float64 `json:"constraint_late_shift,omitempty"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
@@ -258,6 +275,9 @@ func effectiveLinks(t *Task) []Link {
 // MSO, MFO, SNLT and FNLT in the backward pass; and ALAP in a post-pass that moves the task to
 // its late dates. Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
+// Earliest limits use ConstraintDay and latest limits ConstraintDay minus
+// ConstraintLateShift, so an MSO or MFO dated on a non-working day, or
+// before the project's first working day, can never be met and is flagged.
 //
 // CalculateCPM returns false, leaving no CPM results on any task, if the
 // graph contains a cycle or the schedule is longer than MaxScheduleDays.
@@ -354,18 +374,21 @@ func (plan *cpmPlan) run() {
 					es = t.ConstraintDay
 				}
 			case MustFinishOn:
-				target := t.ConstraintDay - t.Duration
-				if target >= es {
+				if target := t.ConstraintDay - t.Duration; target >= es {
 					es = target
-				} else {
-					// Links force a finish past the pinned date.
+				}
+				// Links force a finish past the date, or the date is not
+				// a working day, so no finish can fall on it.
+				if es+t.Duration > lateConstraintDay(t)+1e-9 {
 					t.ConstraintViolated = true
 				}
 			case MustStartOn:
 				if t.ConstraintDay >= es {
 					es = t.ConstraintDay
-				} else {
-					// Links force a start past the pinned date.
+				}
+				// Links force a start past the date, or the date is not a
+				// working day, so no start can fall on it.
+				if es > lateConstraintDay(t)+1e-9 {
 					t.ConstraintViolated = true
 				}
 			case FinishNoEarlierThan:
@@ -417,23 +440,24 @@ func (plan *cpmPlan) run() {
 
 		// Backward-acting constraints.
 		if t.ConstraintArmed {
+			late := lateConstraintDay(t)
 			switch t.Constraint {
 			case MustFinishOn:
-				if t.LF < t.ConstraintDay-1e-9 {
+				if t.LF < late-1e-9 {
 					// A successor needs this task finished before its
 					// pinned date.
 					t.ConstraintViolated = true
 				}
-				t.LF = t.ConstraintDay
+				t.LF = late
 			case FinishNoLaterThan:
-				if t.ConstraintDay < t.LF {
-					t.LF = t.ConstraintDay
+				if late < t.LF {
+					t.LF = late
 				}
-				if t.EF > t.ConstraintDay+1e-9 {
+				if t.EF > late+1e-9 {
 					t.ConstraintViolated = true
 				}
 			case MustStartOn:
-				pinned := t.ConstraintDay + t.Duration
+				pinned := late + t.Duration
 				if t.LF < pinned-1e-9 {
 					// A successor needs this task finished before its
 					// pinned start allows.
@@ -441,10 +465,10 @@ func (plan *cpmPlan) run() {
 				}
 				t.LF = pinned
 			case StartNoLaterThan:
-				if capped := t.ConstraintDay + t.Duration; capped < t.LF {
+				if capped := late + t.Duration; capped < t.LF {
 					t.LF = capped
 				}
-				if t.ES > t.ConstraintDay+1e-9 {
+				if t.ES > late+1e-9 {
 					t.ConstraintViolated = true
 				}
 			}
