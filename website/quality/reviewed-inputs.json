@@ -28,7 +28,7 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "69bbf843d1b3a1cb3e4f4c5e8db6426024e558a0dafe43a54923a9892ada3367",
+      "sha256": "2ea77dc1248d22cf0436fe067d7a55da11af35f145433a383727239e77f156ce",
       "size": 2188,
       "mode": "100644"
     },
@@ -38,17 +38,17 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "8e4bcbcdc7ca6e86fb3f63c541a92793d0f0b4c14f8c05938a85f79e8e58a32e",
+      "sha256": "cdc536b24cb8168694ea04a7816aab7bed47e9c4979c628af2e55c38615cd1a1",
       "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "46a827d4022c30f428120559c9bb8a3ceb5288651957f368d4be692d6766581b",
+      "sha256": "3cba23225771e701c007df279f71b2630ab765ddd304ef668da9cf9a2a9b80b7",
       "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "f4ed477eed10bce5e396142e8eb8bd6c2484a15d64ab662807097988ea950021",
+      "sha256": "3e5a38e4ac3d9e7f2756043872251ae5b2fee3a2faed65ef66912a59def35554",
       "size": 2867,
       "mode": "100644"
     },
@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "9e2143d8b4daa43bc1773358903cad386758f722ddd99c1429dd5ce74f480cf3",
+      "sha256": "de206680fa1db8bd85da4a95c254089c7aca3a6a9f9d528229b2fc36f962d7e7",
       "size": 2485,
       "mode": "100644"
     },
@@ -68,12 +68,12 @@
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "d7b44f25a82e9202216f4b4a2128fd8f19123d1881e8a361d85bb264847b3d51",
+      "sha256": "76f1a86a8b8d5691323a1c4f9b2ab95a91091983291a60abfb047276cfbdcbf7",
       "size": 2615,
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "55299fb8e021d3752bf1338ec8e2d00f69fc45883272b465ee75717d3af173a2",
+      "sha256": "de2eca40ad1d082c82528d6e779da6d66c38c0c30be8e7e9b8cff2e1ba093f30",
       "size": 2170,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "f98affd80a376d7570dd74e18445f9b3c7dd3f1ddfb93ae13ace78432ce9158d",
+      "sha256": "00d008d9ddbc77c9af139ed54ec89946095468964a0238551b75cf3c8ec0e5ce",
       "size": 8426,
       "mode": "100644"
     },
