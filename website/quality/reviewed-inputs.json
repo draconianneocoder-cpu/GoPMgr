@@ -28,7 +28,7 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "27b2357b5e93542689b21f7245c8f5c9f698c8677676df4dc1bc51bfb29aa098",
+      "sha256": "be891d014c808b22dfb9f04ffbb788e07377f085f9c1beda9332a35351bde4d7",
       "size": 2188,
       "mode": "100644"
     },
@@ -38,17 +38,17 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "3aed17d9b55d69abc91371d51d00438bf411ef12d9d93dd17a7569df5471efaf",
+      "sha256": "64f31eb5f4ef430b307031f5dca848926eb1caa5f2bf33f13b8dc5646bf7287e",
       "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "25c86f45ffdb2aaa6b467bb00e8285c20c4f927b4928051b240d4a5ab320a29d",
+      "sha256": "a30da972731a32a87e0417841b14cc194e90ae4c348d5ae12053d5ac331a13c2",
       "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "934231836fdcc16180477bb6948d9a2af138810bd8b14abf13c30362f6a1ab40",
+      "sha256": "ccda71fa3d0f334f0ff394aba1fb049c21f94b2d96e934349ddd3481ab3c6bbe",
       "size": 2867,
       "mode": "100644"
     },
@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "4c93178b0b7763608166ddce4b6343b8b09a241409f7df5352a2bf2a848ca2b6",
+      "sha256": "02ed3f4afc4abb22368068167b75fe204835d77efd5a664fe4750d7b5ceda6f8",
       "size": 2485,
       "mode": "100644"
     },
@@ -68,12 +68,12 @@
       "mode": "100644"
     },
     "content/roadmap/_index.md": {
-      "sha256": "f0d59d0c1c5ff7854f1d9ab1adab15e028497c2347ffa473ebc352b054705580",
+      "sha256": "4f22b7ff78c36c7ac418d88b063b63f723540dd49b85db5f22986f2ca7bd0927",
       "size": 2615,
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "706736f5fdd8acc5b9db91defbaf40ed3da36c8011f8e58d30c0be854c4c5c25",
+      "sha256": "d33d8ce7ffaec6176bf13655dd262506ecfff7df781d385b747a2bb845bc9a2f",
       "size": 2170,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "db62b250a25f458c7d47264b81dca9fc21b80a2848c1913cf6b636f407378560",
+      "sha256": "2ee78eab759fdc3f86a876ceabe4e9b6af234293ba1e9e5511b553bfd84a939f",
       "size": 8426,
       "mode": "100644"
     },
@@ -258,5 +258,5 @@
       "mode": "100644"
     }
   },
-  "reviewed_at": "2026-11-16"
+  "reviewed_at": "2026-11-18"
 }

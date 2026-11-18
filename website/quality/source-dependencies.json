@@ -9,7 +9,7 @@
         "page.home"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -29,8 +29,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         }
       ]
     },
@@ -41,18 +41,18 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-17",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "73f331e35a2eda387b6416d9f848bbf7c7a603f3753f29097941488483e9b317",
-          "reviewed_commit": "ba39f39fc8c9a134b5b9d214dc7896fd7f040b4e"
+          "sha256": "106186d20a00059628913ef6212a7392e5546ab2ccf98c34548a51ed10384aa1",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         }
       ]
     },
@@ -63,13 +63,13 @@
         "page.docs"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         },
         {
           "path": "docs/INSTALL.md",
@@ -85,7 +85,7 @@
         "page.docs.getting-started"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -95,8 +95,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         }
       ]
     },
@@ -107,13 +107,13 @@
         "page.docs.getting-started.first-project"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         },
         {
           "path": "docs/INSTALL.md",
@@ -156,13 +156,13 @@
         "page.roadmap"
       ],
       "status": "planned",
-      "last_reviewed": "2026-11-17",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr resource-resilience planning source review",
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "73f331e35a2eda387b6416d9f848bbf7c7a603f3753f29097941488483e9b317",
-          "reviewed_commit": "ba39f39fc8c9a134b5b9d214dc7896fd7f040b4e"
+          "sha256": "106186d20a00059628913ef6212a7392e5546ab2ccf98c34548a51ed10384aa1",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",
@@ -200,7 +200,7 @@
         "page.security"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-16",
+      "last_reviewed": "2026-11-18",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -210,8 +210,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "522dd20ed77653f03eab251b7314a397fedf356fc8532da665323a0fe84cf954",
-          "reviewed_commit": "f54b26428f706931f520926dbf784be661c52a7d"
+          "sha256": "2e3140ec66e058f907dabd8eb8d4e2d89729ed294505084d6118301e80c89432",
+          "reviewed_commit": "66ffb646c6eb5f736a87f23a246d14e734669db3"
         }
       ]
     },
