@@ -7,6 +7,7 @@ import type * as Kernel from '../../bindings/gopmgr/internal/kernel/models';
 import type * as Fonts from '../../bindings/gopmgr/internal/fonts/models';
 import type * as DB from '../../bindings/gopmgr/internal/db/models';
 import type * as Sigma from '../../bindings/gopmgr/internal/sigma/domain/models';
+import type * as Schedaudit from '../../bindings/gopmgr/internal/schedaudit/models';
 import { WorkItemType, Priority, SprintStatus, type WorkItem, type Sprint } from '../../bindings/gopmgr/internal/agile/models';
 import { StakeholderCategory } from '../../bindings/gopmgr/internal/db/models';
 import { ReportMode } from '../../bindings/gopmgr/internal/documents/models';
@@ -82,6 +83,10 @@ export function normaliseReportProfile(value: Documents.ReportProfile): ReportPr
 
 export function normaliseReportPreflight(value: Documents.ReportPreflight): ReportPreflight {
   return { ...value, profile: normaliseReportProfile(value.profile), issues: value.issues ?? [] };
+}
+
+export function normaliseAuditResult(value: Schedaudit.Result): ScheduleAuditResult {
+  return { ...value, findings: value.findings ?? [], metrics: value.metrics ?? [], rules: value.rules ?? [] };
 }
 
 export function normaliseCharter(value: Sigma.Charter): SigmaCharter {

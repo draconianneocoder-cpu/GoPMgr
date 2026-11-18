@@ -150,4 +150,86 @@ describe('autosave persistence contract', () => {
     expect(autosave.lastError).toContain('Changes were made while saving');
     unregister();
   });
+
+  describe('saveRegisteredIfDirty', () => {
+    it('writes nothing when the editor has no unsaved changes', async () => {
+      const save = vi.fn(async () => true);
+      const snapshot = () => 'stored';
+      const unregister = autosave.register(snapshot, save, false);
+      try {
+        expect(await autosave.saveRegisteredIfDirty(snapshot)).toBe(true);
+        expect(save).not.toHaveBeenCalled();
+      } finally {
+        unregister();
+      }
+    });
+
+    it('saves once when the editor has unsaved changes', async () => {
+      let value = 'stored';
+      const save = vi.fn(async () => true);
+      const snapshot = () => value;
+      const unregister = autosave.register(snapshot, save, false);
+      try {
+        value = 'edited';
+        expect(await autosave.saveRegisteredIfDirty(snapshot)).toBe(true);
+        expect(await autosave.saveRegisteredIfDirty(snapshot)).toBe(true);
+        expect(save).toHaveBeenCalledTimes(1);
+      } finally {
+        unregister();
+      }
+    });
+
+    it('waits for a save in flight instead of reporting a failure', async () => {
+      let value = 'stored';
+      let finish!: () => void;
+      const save = vi.fn(() => new Promise<boolean>((resolve) => { finish = () => resolve(true); }));
+      const snapshot = () => value;
+      const unregister = autosave.register(snapshot, save, false);
+      try {
+        value = 'edited';
+        const inFlight = autosave.saveRegistered(snapshot);
+        const waiting = autosave.saveRegisteredIfDirty(snapshot);
+        finish();
+        expect(await inFlight).toBe(true);
+        // The in-flight save recorded the edit, so nothing is left to save.
+        expect(await waiting).toBe(true);
+        expect(save).toHaveBeenCalledTimes(1);
+      } finally {
+        unregister();
+      }
+    });
+
+    it('saves again after a save in flight when an edit arrived meanwhile', async () => {
+      let value = 'stored';
+      const finishes: (() => void)[] = [];
+      const save = vi.fn(() => new Promise<boolean>((resolve) => { finishes.push(() => resolve(true)); }));
+      const snapshot = () => value;
+      const unregister = autosave.register(snapshot, save, false);
+      try {
+        value = 'first edit';
+        const inFlight = autosave.saveRegistered(snapshot);
+        value = 'second edit';
+        const waiting = autosave.saveRegisteredIfDirty(snapshot);
+        finishes[0]();
+        await inFlight;
+        await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+        finishes[1]();
+        expect(await waiting).toBe(true);
+      } finally {
+        unregister();
+      }
+    });
+
+    it('reports a failed save', async () => {
+      let value = 'stored';
+      const snapshot = () => value;
+      const unregister = autosave.register(snapshot, async () => false, false);
+      try {
+        value = 'edited';
+        expect(await autosave.saveRegisteredIfDirty(snapshot)).toBe(false);
+      } finally {
+        unregister();
+      }
+    });
+  });
 });

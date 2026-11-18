@@ -362,6 +362,16 @@ spread. After a simulation runs, use **Export PDF/A** to save a Monte Carlo
 risk report with the confidence summary, S-curve, tornado drivers, and narrative
 summary. Tasks without estimates use their fixed CPM duration.
 
+The CPM editor aside also has a **Schedule quality** panel. Choose the
+thresholds (GoPMgr default or DCMA-style, which is guidance, not a DCMA
+assessment) and a status date, then choose **Run audit**. GoPMgr first saves
+edits it has not saved yet, then checks the stored schedule for missing logic,
+cycles, leads and long lags, hard and violated constraints, negative or high
+float, invalid actual dates and missing progress. The audit changes nothing.
+Rules that could not run are listed, with the reason, before the findings, so
+an empty list never hides an unchecked rule. **Show task** selects a finding's
+task on the chart.
+
 ## Documents and Combined Reports
 
 GoPMgr supports 25 document kinds across the project lifecycle, including
@@ -387,6 +397,14 @@ PDF. From the Dashboard, choose **Build combined report**, add
 documents, order sections, optionally add section introductions, then
 export the report. Chart references inside included documents render as
 dedicated vector chart pages.
+
+A combined report can also include a **schedule audit** of any CPM chart:
+add it under **Schedule audits** and choose its thresholds and status date.
+The audit runs when you export, so the PDF shows the findings for the chart as
+stored at that moment, and the manifest records the chart revision, the inputs
+the audit read and a digest of its result. Certified reports and signed
+(PAdES or GnuPG) exports cannot include a schedule audit yet; export the
+report unsigned instead.
 
 Before export, select a project-controls, construction, software-delivery, or
 custom report profile and run **Preflight**. The built-in profiles provide
@@ -891,8 +909,10 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | Risk Register | [Definition](#user-term-risk-register) |
 | Saved Change | [Definition](#user-term-saved-change) |
 | Scenario | [Definition](#user-term-scenario) |
+| Schedule Audit in Combined Reports | [Topic](#documents-and-combined-reports) |
 | Schedule Import and Export | [Topic](#schedule-import-and-export) |
 | Schedule Performance Index (SPI) | [Definition](#user-term-schedule-performance-index-spi) |
+| Schedule Quality Audit | [Topic](#charts) |
 | Scrum | [Definition](#user-term-scrum) |
 | Scrumban | [Definition](#user-term-scrumban) |
 | Sigma Level | [Definition](#user-term-sigma-level) |

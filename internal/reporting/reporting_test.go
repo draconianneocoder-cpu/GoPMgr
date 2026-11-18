@@ -142,7 +142,7 @@ func TestServiceRejectsForeignProjectRecordsInSameFile(t *testing.T) {
 	if len(preflight.Issues) != 1 || preflight.Issues[0].Code != "document_missing" {
 		t.Fatalf("Preflight issues = %+v, want one document_missing issue", preflight.Issues)
 	}
-	if _, _, _, err := service.resolveSections(project.ID, sections); !errors.Is(err, db.ErrNoDocument) {
+	if _, _, _, _, err := service.resolveSections(project.ID, sections, nil); !errors.Is(err, db.ErrNoDocument) {
 		t.Fatalf("resolveSections(foreign) error = %v, want db.ErrNoDocument", err)
 	}
 	resolved, manifest := service.resolveCharts(project.ID, map[string]struct{}{foreignChart.ID: {}})

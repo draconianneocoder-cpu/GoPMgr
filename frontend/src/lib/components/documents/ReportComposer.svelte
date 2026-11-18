@@ -19,11 +19,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
   import Button from '../Button.svelte';
+  import { t } from '../../i18n/i18n.svelte';
+  import { localDateString } from '../../local-date';
+
+  // A report section: a saved document (keyed by its ID) or a schedule
+  // audit of one CPM chart (keyed "audit:<chart ID>"), which the report runs
+  // when it is exported.
+  interface ComposerItem {
+    id: string;
+    title: string;
+    kind: string;
+    audit?: ScheduleAuditSection;
+  }
 
   let reportTitle = $state('Project Report');
   let subtitle = $state('');
   let available = $state<DocumentRecord[]>([]);
-  let included = $state<DocumentRecord[]>([]);
+  let included = $state<ComposerItem[]>([]);
+  let cpmCharts = $state<ChartRecord[]>([]);
   let descriptions = $state<Record<string, string>>({});
   let status = $state('');
   let exporting = $state(false);
@@ -45,11 +58,28 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       status = `Could not load documents: ${err}`;
     }
+    try {
+      cpmCharts = (await desktopApi.ListCharts('cpm')) ?? [];
+    } catch {
+      // Schedule audits are optional sections; documents stay usable.
+      cpmCharts = [];
+    }
   });
 
   function include(d: DocumentRecord) {
     if (included.find((x) => x.id === d.id)) return;
-    included = [...included, d];
+    included = [...included, { id: d.id, title: d.title, kind: d.kind }];
+  }
+
+  function includeAudit(c: ChartRecord) {
+    const id = `audit:${c.id}`;
+    if (included.find((x) => x.id === id)) return;
+    included = [...included, {
+      id,
+      title: t('composer.audit.title', { title: c.title }),
+      kind: t('composer.audit.kind'),
+      audit: { chart_id: c.id, reporting_date: localDateString(), profile: 'default' },
+    }];
   }
 
   function exclude(id: string) {
@@ -87,11 +117,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function buildSections(): ReportSection[] {
-    return included.map((d) => ({
-      document_id: d.id,
-      title: d.title,
-      description: descriptions[d.id] ?? '',
-    }));
+    return included.map((d) => d.audit
+      ? {
+          document_id: '',
+          title: d.title,
+          description: descriptions[d.id] ?? '',
+          schedule_audit: { ...d.audit },
+        }
+      : {
+          document_id: d.id,
+          title: d.title,
+          description: descriptions[d.id] ?? '',
+        });
   }
 
   function reportOptions() {
@@ -205,6 +242,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let remaining = $derived(
     available.filter((d) => !included.find((x) => x.id === d.id)),
   );
+  let remainingAudits = $derived(
+    cpmCharts.filter((c) => !included.find((x) => x.id === `audit:${c.id}`)),
+  );
+  // Signed exports refuse schedule audits (the backend enforces it).
+  let includesAudit = $derived(included.some((d) => d.audit));
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -224,7 +266,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </button>
     <button
       onclick={exportSignedReport}
-      disabled={exporting || showSignModal || included.length === 0}
+      disabled={exporting || showSignModal || included.length === 0 || includesAudit}
+      aria-describedby={includesAudit ? 'composer-signed-audit-note' : undefined}
       class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       title="Choose PAdES, GnuPG, or no digital signature"
     >
@@ -235,6 +278,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <main class="p-6 space-y-6">
     {#if status}
       <p class="text-xs text-cyan-400">{status}</p>
+    {/if}
+    {#if includesAudit}
+      <p id="composer-signed-audit-note" class="text-xs text-amber-300">{t('composer.audit.signedNote')}</p>
     {/if}
 
     <section class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
@@ -322,6 +368,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
       </section>
 
+      <section>
+        <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">
+          {t('composer.audits.title', { count: remainingAudits.length })}
+        </h2>
+        <p class="text-xs text-slate-500 mb-2">{t('composer.audits.help')}</p>
+        {#if remainingAudits.length === 0}
+          <p class="text-xs text-slate-500">{t('composer.audits.empty')}</p>
+        {:else}
+          <ul class="space-y-2">
+            {#each remainingAudits as c (c.id)}
+              <li class="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded">
+                <div class="font-bold text-slate-50 text-sm">{t('composer.audit.title', { title: c.title })}</div>
+                <button
+                  onclick={() => includeAudit(c)}
+                  aria-label={t('composer.audit.add', { title: c.title })}
+                  class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
+                >
+                  {t('composer.add')}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+
       <!-- Included with drag-and-drop ordering -->
       <section>
         <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">
@@ -348,6 +419,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       {d.title}
                     </div>
                     <div class="text-xs text-slate-500 mb-2">{d.kind}</div>
+                    {#if d.audit}
+                      <div class="grid grid-cols-2 gap-2 mb-2">
+                        <label class="text-xs text-slate-500">
+                          {t('audit.profile')}
+                          <select bind:value={d.audit.profile} class="w-full mt-1 bg-slate-950 border border-slate-800 p-1 text-xs rounded">
+                            <option value="default">{t('audit.profile.default')}</option>
+                            <option value="dcma-style">{t('audit.profile.dcma')}</option>
+                          </select>
+                        </label>
+                        <label class="text-xs text-slate-500">
+                          {t('audit.statusDate')}
+                          <input type="date" bind:value={d.audit.reporting_date} title={t('audit.statusDate.hint')} class="w-full mt-1 bg-slate-950 border border-slate-800 p-1 text-xs rounded" />
+                        </label>
+                      </div>
+                    {/if}
                     <input
                       placeholder="Section intro (optional, one line)"
                       value={descriptions[d.id] ?? ''}

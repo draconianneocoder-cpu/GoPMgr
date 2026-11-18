@@ -61,6 +61,38 @@ func AllRules() []RuleID {
 	}
 }
 
+// ruleNames are the rule names in the specification's rule table (§3).
+var ruleNames = map[RuleID]string{
+	MissingPredecessor: "Missing predecessor",
+	MissingSuccessor:   "Missing successor",
+	DanglingReference:  "Dangling reference",
+	DependencyCycle:    "Dependency cycle",
+	Lead:               "Lead (negative lag)",
+	LongLag:            "Long lag",
+	NonFinishToStart:   "Non-FS relationships",
+	HardConstraint:     "Hard constraint",
+	ConstraintViolated: "Constraint violated",
+	HighFloat:          "High total float",
+	NegativeFloat:      "Negative float",
+	LongDuration:       "Long duration",
+	MilestoneWithout:   "Milestone without logic",
+	InvalidActuals:     "Invalid actuals",
+	MissingProgress:    "Missing progress evidence",
+	Overallocation:     "Overallocation",
+	UnresourcedTask:    "Unresourced task",
+	ReportingContext:   "Reporting context",
+}
+
+// RuleName returns a rule's English name from the specification, or the ID
+// itself for an unknown rule. Exported reports, which are in English, use it;
+// the interface takes its names from the message catalog.
+func RuleName(rule RuleID) string {
+	if name, ok := ruleNames[rule]; ok {
+		return name
+	}
+	return string(rule)
+}
+
 // Severity orders findings: errors first, then warnings, then information.
 type Severity string
 

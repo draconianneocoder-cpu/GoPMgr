@@ -20,6 +20,8 @@ interface Entry {
   // next interval's save for the same editor (overlapping whole-doc writes
   // could land out of order and persist the older snapshot last).
   saving?: boolean;
+  // The save in flight, so a caller can wait for it instead of failing.
+  inflight?: Promise<boolean>;
 }
 
 let intervalSeconds = $state(0); // 0 = auto-save off
@@ -36,8 +38,17 @@ function safeSnapshot(fn: () => string): string {
   }
 }
 
-async function saveEntry(e: Entry): Promise<boolean> {
-  if (e.saving) return false;
+function saveEntry(e: Entry): Promise<boolean> {
+  if (e.saving) return Promise.resolve(false);
+  const run = runSave(e);
+  e.inflight = run;
+  void run.finally(() => {
+    if (e.inflight === run) e.inflight = undefined;
+  });
+  return run;
+}
+
+async function runSave(e: Entry): Promise<boolean> {
   e.saving = true;
   const savedSnapshot = safeSnapshot(e.snapshot);
   try {
@@ -56,6 +67,18 @@ async function saveEntry(e: Entry): Promise<boolean> {
   } finally {
     e.saving = false;
   }
+}
+
+// saveAfterInflight saves the editor registered with snapshot once any save
+// in flight has finished; with onlyIfDirty it skips an editor whose content
+// matches its last recorded save.
+async function saveAfterInflight(snapshot: () => string, onlyIfDirty: boolean): Promise<boolean> {
+  const matches = [...entries].filter((e) => e.snapshot === snapshot);
+  if (matches.length !== 1) return false;
+  const e = matches[0];
+  while (e.inflight) await e.inflight;
+  if (onlyIfDirty && safeSnapshot(e.snapshot) === e.last) return true;
+  return saveEntry(e);
 }
 
 function tick(): void {
@@ -89,6 +112,23 @@ export const autosave = {
   },
   hasDirty(): boolean {
     return [...entries].some((e) => e.saving || safeSnapshot(e.snapshot) !== e.last);
+  },
+  /**
+   * Save one registered editor only when it has changes its last save did
+   * not record. A save already in flight is waited for, then the snapshot is
+   * checked again, so a timed save in progress is never reported as a
+   * failure. Returns true when nothing needed saving.
+   */
+  async saveRegisteredIfDirty(snapshot: () => string): Promise<boolean> {
+    return saveAfterInflight(snapshot, true);
+  },
+  /**
+   * Save one registered editor now, as a manual save does: wait for a save
+   * already in flight, then save and record the result, so a later
+   * saveRegisteredIfDirty knows the chart is saved.
+   */
+  async saveRegisteredNow(snapshot: () => string): Promise<boolean> {
+    return saveAfterInflight(snapshot, false);
   },
   /** Save one registered editor through the same gate and baseline as timed saves. */
   async saveRegistered(snapshot: () => string): Promise<boolean> {

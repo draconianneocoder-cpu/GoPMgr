@@ -53,7 +53,7 @@ archive. Status fields can be authored rather than calculated; burndown accepts
 arrays rather than a complete work-event history. Preserve these useful capabilities
 and label their evidence correctly. Do not fabricate historical events.
 
-PS-02 rules and `App.AuditSchedule` are implemented; the findings panel remains open.
+PS-02 rules, `App.AuditSchedule`, the findings panel and the combined-report audit section are implemented ([PS-02 §11](../testing/PS-02-schedule-quality-audit-spec.md#11-ps-02c-as-implemented-2026-11-18)).
 At the original review baseline, KRN-01 and KRN-02 affected dependent schedule,
 EVM, baseline and resource claims. Main now includes the KRN-02 calendar-date fix
 from PR #213 (`22b7df1`); retain its regression cases. KRN-01 remains open. Further

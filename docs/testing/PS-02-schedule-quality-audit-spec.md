@@ -8,8 +8,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Status:** Slice 1 was AUTHORIZED for implementation on 2026-11-11
 ([decision](../review/evaluation-2026-11-10-response-plan.md)). Later slices
 remain proposed. Part PS-02a, the rules package `internal/schedaudit`, is
-implemented (§9), and so is PS-02b, the App method (§10). PS-02c is not
-started, so users cannot run the audit yet.
+implemented (§9), PS-02b, the App method (§10), and PS-02c, the findings
+panel with its report section (§11).
 **Plan:** [modernization plan](../design/professional-scheduling-modernization-plan.md) §3, §6.
 
 ## 1. Scope of slice 1
@@ -260,4 +260,130 @@ what §3 left open:
   itself checks it as in §9. Only an already-cancelled call is tested at the
   App level.
 - **Not done.** SQA-024, the 50,000-task measurement on the S0 hardware
-  profile, needs DEC-HARDWARE. PS-02c, the findings panel, is not started.
+  profile, needs DEC-HARDWARE. PS-02c is in §11.
+
+## 11. PS-02c as implemented (2026-11-18)
+
+On 2026-11-18 the owner chose how §7's "export of the findings into the
+existing report composer" works: a combined report includes a schedule audit
+as an **inline section** that the report runs when it is exported, rather
+than a saved document of a new kind.
+
+**The panel.** "Schedule quality", in the CPM editor's side panel
+(`frontend/src/lib/components/charts/ScheduleAuditPanel.svelte`):
+
+- Controls: the thresholds (GoPMgr default or DCMA-style), the status date
+  (today's local date by default; empty means none) and **Run audit**.
+- Before auditing, the panel saves only the edits auto-save has not recorded
+  (`saveIfDirty` in the editor shell). It waits for a save already in
+  progress; if the save fails, it does not audit, because the findings would
+  describe an older revision. An unchanged chart is not rewritten, so its
+  revision stays: manual saves (Ctrl/Cmd+S, Save) go through auto-save too,
+  which records them. Known limit: the shell's layout refresh saves without
+  updating auto-save's record, so the first audit after a structural edit can
+  save the same content once more.
+- It audits the chart the editor holds and saves (the router can reuse the
+  editor after the session's chart changes), and a chart switch starts a fresh
+  panel, so one chart's findings never stay beside another. A new run clears
+  the previous result first, so a failed run shows no stale findings.
+- Results:
+  - **Summary:** a polite status message ("Audit finished: 2 errors, 1
+    warning, 1 note.").
+  - **Not checked:** every rule that did not run, with its reason, shown
+    before the findings. No findings with a skipped rule never reads as a
+    clean schedule.
+  - **Findings:** each with its severity written as text, the rule ID and
+    name, the task or link, observed value and threshold, explanation and
+    advice. **Show task** selects the task on the chart and announces it; a
+    finding whose task is gone says so instead.
+  - **Metrics:** in a collapsed section.
+  - **Revision:** the audited revision, with a reminder to run again after
+    editing.
+- Every string is in the message catalog (`audit.*`).
+
+**The report section.** `documents.ReportSection` gains an optional
+`schedule_audit` {`chart_id`, `reporting_date`, `profile`}. A section names
+exactly one source, a document or an audit; anything else is the error issue
+`section_source_invalid`. The field is omitted when empty, so a document
+section encodes exactly as before, and checkpoint IDs and audit-log entries
+of earlier reports are unchanged.
+
+- **Composer:** lists one schedule audit per CPM chart. An included audit
+  has its own thresholds and status date.
+- **Audit runs once per export:** `reporting.Service` runs each audit section
+  once per export, through `ResolveAudit`, with the same inputs as
+  `App.AuditSchedule`. That one result supplies the preflight issues, the
+  printed section and the manifest. The frontend never supplies findings.
+- **Failure:** an audit that cannot run is the error issue
+  `schedule_audit_unavailable`, and the export writes no file.
+- **Not evaluated:** a rule that was not evaluated is the warning
+  `schedule_audit_rules_not_evaluated`.
+- **Certified mode:** an audit section is the error
+  `schedule_audit_not_certifiable`, because it is live, unapproved content
+  (ADR-014 binds approval to a frozen snapshot).
+- **Findings and readiness:** findings are content and never change
+  readiness.
+- **The PDF section (`documents.AuditSummaryLines`, `renderAuditSection`):**
+  - thresholds, source chart and revision, status date, engine version, and
+    the scope note ("DCMA-style … certifies nothing"), in the panel's words;
+  - the rules not evaluated and the counts;
+  - the metrics, then every finding. None is dropped.
+- **Provenance:** the manifest's additive `audits` key (format
+  `gopmgr-report-provenance/v1` unchanged; existing keys keep their meaning)
+  records, per audit section:
+  - section index, chart ID, title and revision;
+  - `chart_sha256` (data + "\n" + config), project start, country,
+    `capacity_sha256` and baseline IDs;
+  - profile, status date, engine version and `app_version`, since the engine
+    version does not cover kernel or calendar changes;
+  - counts, rules not evaluated, and `result_sha256` (sha256 of
+    encoding/json's encoding of the result).
+
+**Signed reports.** The PAdES and GnuPG exports refuse a report with a
+schedule audit before doing anything ("Signed reports cannot include a
+schedule audit yet; export the report unsigned"), and the composer disables
+signing while one is included. A signature attests content, and the PAdES path
+builds reports outside `reporting.Service`, with no preflight or manifest.
+Follow-up: build signed reports through the service, then lift the refusal.
+
+**Limits.**
+
+- **Read consistency:** the project, chart, baselines and capacity plan are
+  separate reads, not one transaction (an ADR-014 RILD-ARCH03 gap). The
+  manifest records what each read returned.
+- **Cancellation:** `App.AuditSchedule` honours a cancelled call (§10), but
+  the panel offers no Cancel control. An audit inside a report export runs
+  with no cancellable context (MEM-07 gap): the export APIs take none.
+- **Anchors:** none yet (§10).
+- **Large audits:** the panel lists every finding, so a large audit makes a
+  long panel. Grouping or filtering by severity is a usability follow-up;
+  findings are never cut.
+
+**Resource evidence (indicative only).**
+
+- **Run:** on 2026-11-18, a 50,000-task chain with no resources, giving
+  50,003 findings: audit 0.32 s, PDF section 1.16 s, a 3.6 MB PDF, peak
+  resident memory about 167 MB, almost all of it the audit.
+- **Host:** a Linux container with 4 vCPUs and 16 GB, running a temporary
+  test that was not kept.
+- **Not established:** this is not SQA-024 (the S0 hardware profile,
+  DEC-HARDWARE) and sets no budget. MEM-T01–12 for this slice are not run;
+  no memory admission or cap is added, and findings are never truncated
+  (MEM-12).
+
+**Tests.**
+
+| Test | Contract |
+| --- | --- |
+| `TestCombinedReportRecordsTheScheduleAuditItRan` | Encrypted project, real audit; the manifest names the chart, its stored revision, digest, start date and app version. Hand-computed: 3 errors |
+| `TestSignedReportsRefuseAScheduleAudit` | PAdES and GnuPG refuse an audit section and write nothing |
+| `TestExportRunsEachAuditOnceAndRecordsThatRun` | A fake returns a different audit on each call; the issues and the manifest come from the single first run |
+| `TestExportWritesNothingWhenAnAuditCannotRun`, `TestReportSectionNeedsExactlyOneSource`, `TestCertifiedReportRefusesAScheduleAudit` | Preflight issues and refusals |
+| `TestDocumentSectionEncodingIsUnchanged` | A document section's JSON, as an exact literal |
+| `TestAuditSummaryNeverReadsAsCleanWhenRulesWereSkipped`, `TestAuditFindingAndMetricLinesAsPrinted` | The PDF summary, finding and metric lines, as exact text |
+| `autosave.test.ts`, `saveRegisteredIfDirty` cases | No write when unchanged; waits for a save in progress; reports failure |
+| `CPMEditor.audit.test.ts` | The editor's real shell and auto-save: no write when unchanged or just saved by hand, an unrecorded rename saved before the audit, findings dropped on a chart switch |
+| `ScheduleAuditPanel.test.ts` | No audit after a failed save; text severities; announcements; not-checked rules; no stale result after a failed re-run; every rule named |
+| `ReportComposer.test.ts` | The audit section's payload; signing disabled |
+
+Each test was seen to fail with its defect seeded.

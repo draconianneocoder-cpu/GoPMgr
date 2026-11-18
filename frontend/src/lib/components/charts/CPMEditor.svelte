@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import LayeredEditorShell from './_layered_editor_shell.svelte';
   import Button from '../Button.svelte';
   import BaselineList from './BaselineList.svelte';
+  import ScheduleAuditPanel from './ScheduleAuditPanel.svelte';
   import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
   import { formatNumber, t } from '../../i18n/i18n.svelte';
 
@@ -284,7 +285,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     delete node.duration_estimate;
   }
 
-  let shellRef = $state<{ reloadFromDB: () => Promise<void>; save: () => Promise<boolean> } | null>(null);
+  let shellRef = $state<{
+    reloadFromDB: () => Promise<void>;
+    save: () => Promise<boolean>;
+    saveIfDirty: () => Promise<boolean>;
+    selectNode: (id: string) => boolean;
+    hasNode: (id: string) => boolean;
+    loadedChartId: () => string | null;
+  } | null>(null);
 
   async function levelResources() {
     if (!session.editingId || resourceBusy) return;
@@ -1053,5 +1061,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </p>
       {/if}
     </div>
+
+    {#if session.editingId}
+      <!-- Keyed: a chart switch starts a fresh panel, so findings of one
+           chart never stay beside another. -->
+      {#key session.editingId}
+      <div class="border-t border-slate-800 mt-4 pt-4">
+        <ScheduleAuditPanel
+          currentChartId={() => shellRef?.loadedChartId() ?? null}
+          saveIfDirty={() => shellRef?.saveIfDirty() ?? Promise.resolve(false)}
+          selectTask={(id) => shellRef?.selectNode(id) ?? false}
+          taskExists={(id) => shellRef?.hasNode(id) ?? false}
+        />
+      </div>
+      {/key}
+    {/if}
   {/snippet}
 </LayeredEditorShell>

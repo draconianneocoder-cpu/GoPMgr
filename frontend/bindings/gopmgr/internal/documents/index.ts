@@ -14,5 +14,6 @@ export type {
     ReportIssue,
     ReportPreflight,
     ReportProfile,
-    ReportSection
+    ReportSection,
+    ScheduleAuditSection
 } from "./models.js";

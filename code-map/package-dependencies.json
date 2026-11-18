@@ -325,7 +325,8 @@
         "gopmgr/internal/kernel",
         "gopmgr/internal/money",
         "gopmgr/internal/pdfdoc",
-        "gopmgr/internal/pdfmeta"
+        "gopmgr/internal/pdfmeta",
+        "gopmgr/internal/schedaudit"
       ],
       "notable_external_deps": []
     },
@@ -453,7 +454,8 @@
         "gopmgr/internal/db",
         "gopmgr/internal/documents",
         "gopmgr/internal/exportfs",
-        "gopmgr/internal/kernel"
+        "gopmgr/internal/kernel",
+        "gopmgr/internal/schedaudit"
       ],
       "notable_external_deps": []
     },
@@ -473,7 +475,9 @@
     "gopmgr/internal/schedaudit": {
       "dir": "internal/schedaudit",
       "imported_by_internal": [
-        "gopmgr/internal/desktop"
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/documents",
+        "gopmgr/internal/reporting"
       ],
       "imports_internal": [
         "gopmgr/internal/kernel"

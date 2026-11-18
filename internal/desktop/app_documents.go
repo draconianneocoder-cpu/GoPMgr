@@ -28,6 +28,7 @@ import (
 	"gopmgr/internal/rfc3161"
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/signing"
+	"gopmgr/internal/update"
 	"gopmgr/internal/users"
 )
 
@@ -264,7 +265,7 @@ func (a *App) PreflightCombinedReport(sections []documents.ReportSection, option
 	if d == nil {
 		return documents.ReportPreflight{}, errors.New("no project open")
 	}
-	return reporting.Service{Database: d}.Preflight(sections, reporting.Options{
+	return reportService(d).Preflight(sections, reporting.Options{
 		ProfileID: options.ProfileID,
 		Mode:      options.Mode,
 	})
@@ -291,6 +292,33 @@ func (a *App) DeleteDocument(id string) error {
 	}
 	_ = d.LogAction(actor, "delete_document", id, "")
 	return d.DeleteDocument(id)
+}
+
+// reportService is the combined-report service for the open project: linked
+// charts get their earned value, and schedule-audit sections run the PS-02
+// audit with the same inputs as AuditSchedule.
+func reportService(d *db.Database) reporting.Service {
+	return reporting.Service{
+		Database:     d,
+		ResolveEVM:   resolvedEVMForCharts,
+		ResolveAudit: reportAuditResolver(d),
+		AppVersion:   update.CurrentVersion,
+	}
+}
+
+// errSignedScheduleAudit refuses a signed report that includes a schedule
+// audit. A signature attests content, and an audit section is live content
+// computed at export; signed reports also have no provenance manifest for it
+// on the PAdES path. Export such a report unsigned.
+var errSignedScheduleAudit = errors.New("signed reports cannot include a schedule audit yet; export the report unsigned")
+
+func refuseScheduleAuditSections(sections []documents.ReportSection) error {
+	for _, section := range sections {
+		if section.ScheduleAudit != nil {
+			return errSignedScheduleAudit
+		}
+	}
+	return nil
 }
 
 // ExportCombinedReport assembles a draft report using the project-derived
@@ -323,7 +351,7 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 }
 
 func (a *App) exportCombinedReportToPath(d *db.Database, u *users.Account, reportTitle, subtitle string, sections []documents.ReportSection, options CombinedReportOptions, outputPath string) (string, error) {
-	return reporting.Service{Database: d, ResolveEVM: resolvedEVMForCharts}.Export(reporting.ExportRequest{
+	return reportService(d).Export(reporting.ExportRequest{
 		ReportTitle: reportTitle,
 		Subtitle:    subtitle,
 		Sections:    sections,
@@ -370,6 +398,9 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 	}
 	if len(sections) == 0 {
 		return "", errors.New("report has no sections")
+	}
+	if err := refuseScheduleAuditSections(sections); err != nil {
+		return "", err
 	}
 
 	proj, err := d.GetProject()
@@ -487,6 +518,9 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 	u := a.requireUser()
 	if d == nil || u == nil {
 		return GnuPGExportResult{}, errors.New("no project open")
+	}
+	if err := refuseScheduleAuditSections(sections); err != nil {
+		return GnuPGExportResult{}, err
 	}
 	proj, err := d.GetProject()
 	if err != nil {

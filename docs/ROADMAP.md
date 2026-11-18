@@ -204,7 +204,7 @@ Approved priority order, with today's status from the
 | --- | --- | --- |
 | PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open; MR-0 resource profile and MEM acceptance required before affected slices |
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
-| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11; rules and read-only `App.AuditSchedule` implemented, findings panel open: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-02 Schedule-quality audit | High, early parallel | Slice 1 authorized 2026-11-11 and implemented: rules, read-only `App.AuditSchedule`, the findings panel and the combined-report section: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
 | PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
@@ -218,8 +218,8 @@ Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
 release or signing policy each need separate approval. Within the scheduling
 stream, the current slice is PS-02 slice 1, a read-only audit authorized on
-2026-11-11. Its rules package and read-only App method are in place; the findings
-panel remains open. KRN-01 remains open; KRN-02 was fixed in PR #213
+2026-11-11. Its rules package, read-only App method, findings panel and report section
+are in place. KRN-01 remains open; KRN-02 was fixed in PR #213
 (`22b7df1`). Further scheduling changes require separate authorization. The order
 of that and the security work ahead of it
 is in the [response plan](review/evaluation-2026-11-10-response-plan.md) to
