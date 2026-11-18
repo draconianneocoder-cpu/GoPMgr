@@ -444,7 +444,8 @@ calendar. Each one is a test of the scheduler.
   such a date as the next working day, and a latest limit as the previous
   one. SNET or FNET on a Saturday takes effect from Monday; SNLT or FNLT on a
   Saturday means "by Friday"; an SNLT or FNLT dated before the project start
-  cannot be met, because no work happens before the start. MSO and MFO need
+  cannot be met by a task with work, because no work happens before the
+  start (a milestone at the start meets an FNLT on the working day before). MSO and MFO need
   the task to start or finish on the date itself, so on a non-working day or
   before the start they can never be met: the task is placed on the next
   working day and flagged as violated, and the audit says the calendar is
