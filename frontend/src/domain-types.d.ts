@@ -107,6 +107,34 @@ declare global {
     document_id: string;
     title: string;
     description: string;
+    // A section names a saved document or a schedule audit, never both.
+    schedule_audit?: ScheduleAuditSection;
+  }
+
+  // A PS-02 schedule audit for a combined report: the report runs it on the
+  // stored chart when it is exported, so it carries no findings.
+  interface ScheduleAuditSection {
+    chart_id: string;
+    reporting_date: string; // YYYY-MM-DD, or '' for none
+    profile: ScheduleAuditProfileKey;
+  }
+
+  type ScheduleAuditProfileKey = 'default' | 'dcma-style';
+
+  type ScheduleAuditFinding = import('../bindings/gopmgr/internal/schedaudit/models').Finding;
+  type ScheduleAuditMetric = import('../bindings/gopmgr/internal/schedaudit/models').Metric;
+  type ScheduleAuditRuleStatus = import('../bindings/gopmgr/internal/schedaudit/models').RuleStatus;
+
+  // The audit result with its lists always present: Go sends an empty list
+  // as null.
+  interface ScheduleAuditResult {
+    profile: string;
+    source: { chart_id: string; revision: string };
+    engine_version: string;
+    reporting_date?: string;
+    findings: ScheduleAuditFinding[];
+    metrics: ScheduleAuditMetric[];
+    rules: ScheduleAuditRuleStatus[];
   }
 
   type ReportMode = `${import('../bindings/gopmgr/internal/documents/models').ReportMode}`;

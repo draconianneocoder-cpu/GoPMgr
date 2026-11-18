@@ -188,6 +188,12 @@ export interface ReportProfile {
 /**
  * ReportSection is one entry in a combined report. The caller passes
  * these in the order they should appear in the final PDF.
+ *
+ * A section has exactly one source: a saved project document (DocumentID)
+ * or a schedule audit (ScheduleAudit), which the report runs when it is
+ * exported. ScheduleAudit is omitted from the JSON when nil, so a document
+ * section encodes exactly as it did before the field existed; signed-report
+ * checkpoint IDs and audit-log entries hash that encoding.
  */
 export interface ReportSection {
     "document_id": string;
@@ -201,4 +207,17 @@ export interface ReportSection {
      * optional one-line intro under the heading
      */
     "description": string;
+    "schedule_audit"?: ScheduleAuditSection | null;
+}
+
+/**
+ * ScheduleAuditSection names a PS-02 schedule audit to run and include: the
+ * CPM chart, the reporting date (YYYY-MM-DD, or empty for none) and the
+ * profile key ("default" or "dcma-style"). It carries no findings: the
+ * report computes them from the stored chart when it is exported.
+ */
+export interface ScheduleAuditSection {
+    "chart_id": string;
+    "reporting_date": string;
+    "profile": string;
 }

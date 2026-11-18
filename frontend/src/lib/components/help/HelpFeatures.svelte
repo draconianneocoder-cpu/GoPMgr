@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import type { SectionId } from '../help-sections';
+  import { t } from '../../i18n/i18n.svelte';
   // 23 in-page cross-reference links were hand-copied `<button class="text-
   // cyan-400 underline hover:text-cyan-300">` — the app's cleanest, lowest-
   // risk migration candidate: one exact class string, zero variant
@@ -446,6 +447,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
               <li><span class="font-medium text-slate-100">Set the report title and subtitle</span> — these appear on the cover page of the exported PDF.</li>
               <li><span class="font-medium text-slate-100">Pick documents.</span> All documents in the project are listed. Click a document to add it to the report.</li>
+              <li><span class="font-medium text-slate-100">{t('help.composer.audit.step')}</span> {t('help.composer.audit.body')}</li>
               <li><span class="font-medium text-slate-100">Reorder sections.</span> Drag documents up or down in the included list, or use the arrow buttons, to set the desired output order.</li>
               <li><span class="font-medium text-slate-100">Export.</span> Click Export PDF to generate the composite document. Each included document becomes a section in the output, and Status Reports with a linked CPM schedule include Earned Value when cost and progress data are available.</li>
               <li><span class="font-medium text-slate-100">Sign &amp; Export.</span> Optionally apply a PAdES digital signature to the entire composite PDF.</li>

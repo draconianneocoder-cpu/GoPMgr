@@ -5,6 +5,8 @@ package desktop
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -12,7 +14,10 @@ import (
 
 	"gopmgr/internal/calendar"
 	"gopmgr/internal/charts"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/reporting"
 	"gopmgr/internal/schedaudit"
 )
 
@@ -44,32 +49,52 @@ func (a *App) AuditSchedule(ctx context.Context, chartID, reportingDate, profile
 	if d == nil {
 		return schedaudit.Result{}, errors.New("no project open")
 	}
+	r, err := runChartAudit(ctx, d, chartID, reportingDate, profile)
+	if err != nil {
+		return schedaudit.Result{}, err
+	}
+	return r.Result, nil
+}
+
+// reportAuditResolver runs the schedule-audit sections of a combined report
+// against the open project, with the same inputs as AuditSchedule.
+func reportAuditResolver(d *db.Database) reporting.AuditResolver {
+	return func(ctx context.Context, section documents.ScheduleAuditSection) (reporting.AuditResolution, error) {
+		return runChartAudit(ctx, d, section.ChartID, section.ReportingDate, section.Profile)
+	}
+}
+
+// runChartAudit is AuditSchedule's body. Besides the result it returns the
+// inputs it read, so a report can record what its findings were computed
+// from. The project, chart, baselines and capacity plan are separate reads,
+// not one transaction.
+func runChartAudit(ctx context.Context, d *db.Database, chartID, reportingDate, profile string) (reporting.AuditResolution, error) {
 	newProfile, ok := auditProfiles[profile]
 	if !ok {
-		return schedaudit.Result{}, fmt.Errorf("unknown audit profile %q: use \"default\" or \"dcma-style\"", profile)
+		return reporting.AuditResolution{}, fmt.Errorf("unknown audit profile %q: use \"default\" or \"dcma-style\"", profile)
 	}
 	if reportingDate != "" {
 		if _, err := time.Parse(kernel.DateLayout, reportingDate); err != nil {
-			return schedaudit.Result{}, fmt.Errorf("reporting date %q is not a YYYY-MM-DD date", reportingDate)
+			return reporting.AuditResolution{}, fmt.Errorf("reporting date %q is not a YYYY-MM-DD date", reportingDate)
 		}
 	}
 	proj, err := d.GetProject()
 	if err != nil {
-		return schedaudit.Result{}, err
+		return reporting.AuditResolution{}, err
 	}
 	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
-		return schedaudit.Result{}, err
+		return reporting.AuditResolution{}, err
 	}
 	if c.Kind != string(charts.KindCPM) {
-		return schedaudit.Result{}, fmt.Errorf("the schedule audit needs a CPM chart, got %q", c.Kind)
+		return reporting.AuditResolution{}, fmt.Errorf("the schedule audit needs a CPM chart, got %q", c.Kind)
 	}
 	byID, err := cpmChartDataToKernelTasks(c.Data)
 	if err != nil {
-		return schedaudit.Result{}, err
+		return reporting.AuditResolution{}, err
 	}
 	if len(byID) == 0 {
-		return schedaudit.Result{}, errors.New("chart has no tasks")
+		return reporting.AuditResolution{}, errors.New("chart has no tasks")
 	}
 	tasks := make([]kernel.Task, 0, len(byID))
 	for _, t := range byID {
@@ -79,22 +104,40 @@ func (a *App) AuditSchedule(ctx context.Context, chartID, reportingDate, profile
 
 	baselines, err := d.ListBaselines(c.ID)
 	if err != nil {
-		return schedaudit.Result{}, err
+		return reporting.AuditResolution{}, err
+	}
+	start := auditProjectStart(proj.StartDate)
+	capacity := resourceCapacityPlan(d, proj.ID)
+	capacityJSON, err := json.Marshal(capacity)
+	if err != nil {
+		return reporting.AuditResolution{}, fmt.Errorf("encode capacity plan: %w", err)
 	}
 	result, err := schedaudit.Audit(ctx, schedaudit.Input{
 		Tasks:             tasks,
-		ProjectStart:      auditProjectStart(proj.StartDate),
+		ProjectStart:      start,
 		IsWorkday:         calendar.For(proj.CountryCode).IsWorkday,
 		ReportingDate:     reportingDate,
 		BaselineAvailable: len(baselines) > 0,
-		Capacity:          resourceCapacityPlan(d, proj.ID),
+		Capacity:          capacity,
 		Source:            schedaudit.Source{ChartID: c.ID, Revision: c.UpdatedAt},
 		Profile:           newProfile(),
 	})
 	if err != nil {
-		return schedaudit.Result{}, fmt.Errorf("audit schedule: %w", err)
+		return reporting.AuditResolution{}, fmt.Errorf("audit schedule: %w", err)
 	}
-	return result, nil
+	baselineIDs := make([]string, 0, len(baselines))
+	for _, b := range baselines {
+		baselineIDs = append(baselineIDs, b.ID)
+	}
+	return reporting.AuditResolution{
+		Result:         result,
+		ChartTitle:     c.Title,
+		ChartSHA256:    fmt.Sprintf("%x", sha256.Sum256([]byte(c.Data+"\n"+c.Config))),
+		ProjectStart:   start,
+		CountryCode:    proj.CountryCode,
+		CapacitySHA256: fmt.Sprintf("%x", sha256.Sum256(capacityJSON)),
+		BaselineIDs:    baselineIDs,
+	}, nil
 }
 
 // auditProjectStart gives the audit the project's start as the calendar

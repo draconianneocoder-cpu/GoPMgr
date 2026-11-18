@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { render, waitFor, fireEvent } from '@testing-library/svelte';
 
 import ReportComposer from './ReportComposer.svelte';
 
@@ -42,5 +42,30 @@ describe('ReportComposer migrated header "&larr; Dashboard" button', () => {
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
     );
+  });
+});
+
+describe('ReportComposer schedule audits', () => {
+  it('exports an audit section with no document ID and keeps it out of signed exports', async () => {
+    app.ListCharts = vi.fn(async () => [{ id: 'chart-1', title: 'Master schedule', kind: 'cpm' }]);
+    app.ListDocuments = vi.fn(async () => [{ id: 'doc-1', title: 'Charter', kind: 'charter_word', version: 1, status: 'draft' }]);
+    app.ExportCombinedReportWithOptions = vi.fn(async () => '/tmp/report.pdf');
+    const { getByRole, findByRole, getByLabelText, getByText } = render(ReportComposer);
+
+    await fireEvent.click(await findByRole('button', { name: 'Add a schedule audit of Master schedule' }));
+    await fireEvent.change(getByLabelText('Thresholds'), { target: { value: 'dcma-style' } });
+    await fireEvent.input(getByLabelText('Status date'), { target: { value: '2026-06-15' } });
+    expect((getByRole('button', { name: 'Signature Options' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(getByText('Signed reports cannot include a schedule audit yet. Export this report as an unsigned PDF, or remove the audit to sign it.')).toBeTruthy();
+
+    await fireEvent.click(getByRole('button', { name: 'Export PDF' }));
+    await waitFor(() => expect(app.ExportCombinedReportWithOptions).toHaveBeenCalled());
+    const sections = app.ExportCombinedReportWithOptions.mock.calls[0][2];
+    expect(sections).toEqual([{
+      document_id: '',
+      title: 'Schedule audit: Master schedule',
+      description: '',
+      schedule_audit: { chart_id: 'chart-1', reporting_date: '2026-06-15', profile: 'dcma-style' },
+    }]);
   });
 });

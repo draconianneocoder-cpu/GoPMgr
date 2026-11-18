@@ -148,6 +148,9 @@ not routed directly.
   }
 
   let stopAutosave: (() => void) | null = null;
+  // The editor's working content as auto-save compares it. One named
+  // function, so saveIfDirty addresses this editor's auto-save entry.
+  const snapshotDoc = () => JSON.stringify(doc);
 
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
@@ -155,10 +158,7 @@ not routed directly.
     if (loadError) return; // failed load: no editor to auto-save
     // Register after load so the baseline snapshot is the saved doc and
     // auto-save only fires on real edits.
-    stopAutosave = autosave.register(
-      () => JSON.stringify(doc),
-      () => save(),
-    );
+    stopAutosave = autosave.register(snapshotDoc, () => writeChart());
   });
 
   // reloadFromDB lets kind-specific toolbars (e.g. CPM's Level
@@ -259,7 +259,18 @@ not routed directly.
     });
   }
 
-  export async function save() {
+  // save is the manual save (Ctrl/Cmd+S, the Save button and editor
+  // actions). Once registered it goes through auto-save, which waits for a
+  // save in flight and records what was saved, so saveIfDirty does not
+  // rewrite a chart the user has just saved.
+  export async function save(): Promise<boolean> {
+    if (!chart) return false;
+    if (stopAutosave) return autosave.saveRegisteredNow(snapshotDoc);
+    return writeChart();
+  }
+
+  // writeChart writes the editor's content to the stored chart.
+  async function writeChart(): Promise<boolean> {
     if (!chart) return false;
     saving = true;
     status = '';
@@ -278,6 +289,42 @@ not routed directly.
     } finally {
       saving = false;
     }
+  }
+
+  // saveIfDirty saves only edits auto-save has not recorded yet, waiting for
+  // a save already in flight. A read-only check such as the schedule audit
+  // calls it first, so it reads the chart as shown without rewriting an
+  // unchanged chart (which would change its revision). True when the stored
+  // chart now holds the editor's content.
+  export async function saveIfDirty(): Promise<boolean> {
+    if (!chart) return false;
+    if (!stopAutosave) return writeChart();
+    return autosave.saveRegisteredIfDirty(snapshotDoc);
+  }
+
+  // loadedChartId is the ID of the chart this editor holds and saves. The
+  // router can reuse the editor after session.editingId changes, so callers
+  // that act on the stored chart use this ID rather than the session's.
+  export function loadedChartId(): string | null {
+    return chart?.id ?? null;
+  }
+
+  // hasNode reports whether the chart has a node with this ID.
+  export function hasNode(id: string): boolean {
+    return doc.nodes.some((n) => n.id === id);
+  }
+
+  // selectNode selects an existing node, as a click on it would, and returns
+  // false when the chart has no node with that ID.
+  export function selectNode(id: string): boolean {
+    if (!hasNode(id)) return false;
+    if (pendingEdge) {
+      // Leave connect mode rather than linking to the selected task.
+      pendingEdge = null;
+      status = '';
+    }
+    selectedId = id;
+    return true;
   }
 
   let selectedNode = $derived(

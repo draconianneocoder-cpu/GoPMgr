@@ -13,14 +13,32 @@ import (
 	"gopmgr/internal/kernel"
 	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
+	"gopmgr/internal/schedaudit"
 )
 
 // ReportSection is one entry in a combined report. The caller passes
 // these in the order they should appear in the final PDF.
+//
+// A section has exactly one source: a saved project document (DocumentID)
+// or a schedule audit (ScheduleAudit), which the report runs when it is
+// exported. ScheduleAudit is omitted from the JSON when nil, so a document
+// section encodes exactly as it did before the field existed; signed-report
+// checkpoint IDs and audit-log entries hash that encoding.
 type ReportSection struct {
-	DocumentID  string `json:"document_id"`
-	Title       string `json:"title"`       // display title; falls back to the doc's own title
-	Description string `json:"description"` // optional one-line intro under the heading
+	DocumentID    string                `json:"document_id"`
+	Title         string                `json:"title"`       // display title; falls back to the doc's own title
+	Description   string                `json:"description"` // optional one-line intro under the heading
+	ScheduleAudit *ScheduleAuditSection `json:"schedule_audit,omitempty"`
+}
+
+// ScheduleAuditSection names a PS-02 schedule audit to run and include: the
+// CPM chart, the reporting date (YYYY-MM-DD, or empty for none) and the
+// profile key ("default" or "dcma-style"). It carries no findings: the
+// report computes them from the stored chart when it is exported.
+type ScheduleAuditSection struct {
+	ChartID       string `json:"chart_id"`
+	ReportingDate string `json:"reporting_date"`
+	Profile       string `json:"profile"`
 }
 
 // ReportSpec is the input for BuildCombinedReport.
@@ -68,6 +86,9 @@ type ResolvedSection struct {
 	Content string // raw JSON content
 	Version int
 	Status  string
+	// Audit is set for a schedule-audit section and replaces the document
+	// fields above: the section prints this result.
+	Audit *schedaudit.Result
 }
 
 // BuildCombinedReport produces a single PDF that consists of:
@@ -196,6 +217,10 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		// no embed-PDF support), we replay the generic field-walking
 		// directly here, with reduced heading sizes so it nests
 		// visually inside the report's outer structure.
+		if s.Audit != nil {
+			renderAuditSection(pdf, *s.Audit)
+			continue
+		}
 		chartRefs, err := renderSectionBody(pdf, s, spec.Currency)
 		if err != nil {
 			return nil, fmt.Errorf("render section %s: %w", s.Section.DocumentID, err)
