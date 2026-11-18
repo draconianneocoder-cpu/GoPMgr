@@ -111,11 +111,11 @@ authorized for implementation.
 
 | ID | Item | Status |
 | --- | --- | --- |
-| ARC-01 | Normalized schedule storage | Proposed. Schedules live in chart JSON. Blocked by DEC-FORMAT |
-| ARC-02 | New file format and older-writer protection | Proposed. Blocked by DEC-FORMAT |
-| ARC-03 | Compact audit bridge | Proposed. Blocked by DEC-AUDIT (ADR-011 DEC-04) |
-| ARC-04 | Typed, revision-checked commands | Proposed. Needs ARC-02 and ARC-03 |
-| ARC-05 | 50,000 editable activities end to end | Open. Needs ARC-01 to ARC-04 and DEC-HARDWARE |
+| ARC-01 | Normalized schedule storage | Design for ratification is [ADR-011 Amendment 2](design/ADR-011-normalized-schedule-store.md). Schedules still live in chart JSON. No schema is activated until DEC-FORMAT is ratified and a slice is approved |
+| ARC-02 | New file format and older-writer protection | Same amendment, including the 2026-10-27 layered protection. Awaiting ratification. No format change |
+| ARC-03 | Compact audit bridge | Design written in that amendment under DEC-AUDIT. Implementation needs a separate approval |
+| ARC-04 | Typed, revision-checked commands | Contract is ADR-011 §6 plus Amendment 2. Needs a ratified ARC-02 and an approved ARC-03 implementation. Not started |
+| ARC-05 | 50,000 editable activities end to end | Open. Needs ARC-01 to ARC-04 and DEC-HARDWARE. Amendment 2 sets no numeric budget |
 | ARC-06 | One authority linking schedule, WBS, assignments, cost, baselines | Proposed |
 | ARC-07 | Import lineage and custom fields in normalized data | Proposed |
 | ARC-08 | Paged or streamed large results | Proposed |
@@ -128,13 +128,13 @@ Priorities are in [ROADMAP.md](ROADMAP.md); detail is in the
 | Package | Status |
 | --- | --- |
 | PS-00 Verified baseline | Partial. Hardware profiles, fixtures and budgets undecided (DEC-HARDWARE); MR-0 resource contract and per-slice MEM evidence required |
-| PS-01 Normalized connected model | Proposed (ARC-01) |
+| PS-01 Normalized connected model | Design for ratification is ADR-011 Amendment 2 (ARC-01). Implementation waits for ratification. Schedules still live in chart JSON |
 | PS-02 Schedule-quality audit | **Slice 1 authorized 2026-11-11.** Part a, the 18 rules in `internal/schedaudit`, and part b, the read-only `App.AuditSchedule` method, implemented 2026-11-13. Part c, the findings panel in the CPM editor and the schedule-audit section of combined reports, implemented 2026-11-18 ([§11](testing/PS-02-schedule-quality-audit-spec.md#11-ps-02c-as-implemented-2026-11-18)). Signed reports refuse an audit section until they are built through the reporting service. SQA-024 (the 50,000-task measurement on the S0 hardware profile) is not done: it needs DEC-HARDWARE. Known limit: charts have no way to designate start and finish tasks, so SQ-01 and SQ-02 report every schedule's open start and end. Later slices proposed |
 | PS-03 File inspection and interoperability | Partial: MSPDI quick import and export, including task constraints since 2026-11-18. Worker slices need DEC-INTEROP |
-| PS-04 Large-schedule storage, audit, Gantt | Blocked (ARC-01 to ARC-05). Overallocation rescan fixed by RES-A-1 |
-| PS-05 Connected scheduling workspace | Proposed |
-| PS-06 Task and Resource Usage | Proposed. The kernel computes usage; no views |
-| PS-07 Resource and financial planning | Partial |
+| PS-04 Large-schedule storage, audit, Gantt | Design gate is ADR-011 Amendment 2. Implementation waits for ratification and for ARC-01 through ARC-05. Overallocation rescan fixed by RES-A-1. This design does not specify Gantt rendering |
+| PS-05 Connected scheduling workspace | May rely on Amendment 2 for one active generation, one generation revision, and a chart that is a projection after activation. Not started |
+| PS-06 Task and Resource Usage | May rely on the sparse timephased segments in Amendment 2. The kernel computes usage. No views |
+| PS-07 Resource and financial planning | Partial. May rely on Amendment 2 for cost-owned rates, a schedule reference, and the rule that a forecast is not an actual. Rate-table columns are not specified |
 | PS-08 Advanced scheduling | Partial: all 8 constraint types (MSO, SNLT and FNET since 2026-11-18); Monday-to-Friday country calendars only |
 | PS-09 Analysis, comparison, reporting | Partial. Go-native analytics; **no DataFusion stage** |
 | PS-10 Advanced local-first capabilities | Proposed |
@@ -200,8 +200,8 @@ authorizes only the slice named; the last column says which are implemented.
 | Decision | Chosen | Authorizes |
 | --- | --- | --- |
 | DEC-ADVISORY-SCAN | Release gate, review at most 90 days old | `make engine-advisories` in `check-release`: implemented |
-| DEC-AUDIT | Approve the bridge design | ARC-03 design only; implementation needs approval |
-| DEC-FORMAT | Finish the design, then ratify | ADR-011 open items completed for ratification; no format change |
+| DEC-AUDIT | Approve the bridge design | Design written in ADR-011 Amendment 2. Implementation needs approval |
+| DEC-FORMAT | Finish the design, then ratify | Amendment 2 is the specification. Not ratified. No format change |
 | DEC-HARDWARE | Two profiles: mid-range laptop minimum, Apple Silicon reference | PS-00 fixtures and measurement; budgets after measuring |
 | DEC-INTEROP | G1 only | MPXJ worker supervisor and bridge, inactive behind a flag |
 | DEC-WINDOWS | Unsupported preview | Windows artifacts labelled unverified; no support claims: implemented |
@@ -213,11 +213,12 @@ budgets, and approval of G2, G3 and the audit bridge's implementation.
 
 ## Proposed additions not yet taken up
 
-From the evaluation: NEW-02 operation and provenance envelope, NEW-04
-power-loss laboratory, NEW-05 opt-in diagnostic bundle, NEW-08 export
-fidelity corpus, NEW-09 SQLite feature policy for the new format, NEW-10
-mutation drills as a programme. NEW-01 (hostile-file corpus) starts with
-response plan step A3.
+NEW-02, the operation and provenance envelope, and NEW-09, the SQLite
+feature boundary, are specified in ADR-011 Amendment 2 for ratification.
+They are not implemented. NEW-04 (power-loss laboratory), NEW-05
+(diagnostic bundle), NEW-08 (export fidelity corpus) and NEW-10
+(mutation drills as a programme) stay proposed. NEW-01 (hostile-file
+corpus) starts with response plan step A3.
 
 ## Documents known to be dated
 
@@ -227,6 +228,7 @@ Read these as records of their date, not as current status.
 | --- | --- |
 | [PS capability matrix](review/PS-capability-matrix.md) (2026-10-26) | Predates the engine upgrade, Wails v3 and Go-native analytics |
 | [ADR-010 S0 baseline](testing/adr-010-s0-baseline.md) (2026-10-25) | Synthetic Linux probe; its 61-second Gantt layout predates RES-A-1 |
-| ADR-011, sections written before its 2026-10-27 amendment | Forbids SQLite features because the engine was 3.33; the engine is now 3.54.1. Feature use still needs the new-format decision |
+| ADR-011, Draft 1 and Amendment 1, before Amendment 2 (2026-11-18) | Those sections stay as written. Amendment 2 is the design for ratification. The earlier sections discuss SQLite 3.33. The engine is now 3.54.1. Amendment 2 still excludes STRICT, RETURNING, JSON1, FTS5 and DROP COLUMN |
+| [Connected project model](design/professional-scheduling-domain-model.md), open-decision table | Those rows are the questions as they stood before Amendment 2 |
 | ADR-010, status lines written before the 2026-10-28 G1 clarification | Later decisions authorize bounded G1 work |
 | [beta-release-backlog.md](beta-release-backlog.md) | A running log; a later row can supersede an earlier one |

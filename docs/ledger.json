@@ -269,7 +269,7 @@
       "kind": "adr",
       "status": "proposed",
       "status_evidence": "docs/design/ADR-011-normalized-schedule-store.md",
-      "stated_status": "Proposed. Draft 1, 2026-10-27.",
+      "stated_status": "Design complete for ratification.",
       "governed": "ADR-010",
       "summary": "ADR-011: Normalized schedule store, project format gate and encrypted migration"
     },
