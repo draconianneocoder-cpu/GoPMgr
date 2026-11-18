@@ -422,12 +422,15 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 	// the calendar is the cause. I follows the 6-day J, so its links give
 	// Tuesday 01-13 (6): it misses SNLT Saturday (latest Friday, 4)
 	// because of the logic, which would miss Monday (5) too.
-	h, j, i := tk("H", 1), tk("J", 6), tk("I", 1, "J")
+	// K has no links; levelling gave it Wednesday 01-07 (2), past its SNLT
+	// Monday 01-05 (0): levelling is the cause.
+	h, j, i, k := tk("H", 1), tk("J", 6), tk("I", 1, "J"), tk("K", 1)
 	h.Constraint, h.ConstraintDate = kernel.MustStartOn, "2026-01-10"
 	i.Constraint, i.ConstraintDate = kernel.StartNoLaterThan, "2026-01-10"
-	r := run(t, base(tk("A", 1), e, f, g, h, j, i))
-	wantSubjects(t, r, HardConstraint, "E", "F", "H", "I")
-	wantSubjects(t, r, ConstraintViolated, "F", "H", "I")
+	k.Constraint, k.ConstraintDate, k.LevelStart = kernel.StartNoLaterThan, "2026-01-05", "2026-01-07"
+	r := run(t, base(tk("A", 1), e, f, g, h, j, i, k))
+	wantSubjects(t, r, HardConstraint, "E", "F", "H", "I", "K")
+	wantSubjects(t, r, ConstraintViolated, "F", "H", "I", "K")
 	for _, finding := range ofRule(r, HardConstraint) {
 		switch finding.TaskID {
 		case "E":
@@ -450,6 +453,10 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 		case "F", "I":
 			if strings.Contains(finding.Explanation, calendar) || !strings.Contains(finding.Explanation, "the links push the task past its date") {
 				t.Fatalf("SQ-09 for %s should blame the logic: %+v", finding.TaskID, finding)
+			}
+		case "K":
+			if finding.Explanation != "Resource levelling delayed this task to 2026-01-07, past its constraint date." {
+				t.Fatalf("SQ-09 for K should blame levelling: %+v", finding)
 			}
 		}
 	}

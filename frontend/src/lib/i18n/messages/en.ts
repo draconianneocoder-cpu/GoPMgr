@@ -402,7 +402,7 @@ export const en = {
   'cpm.constraint.date': 'Constraint date',
   'cpm.constraint.hint': 'Links always win: a constraint the links cannot meet is flagged, not forced. See Scheduling constraints in the user guide.',
   'cpm.constraint.violated':
-    'Constraint violated: the links, or a date on a non-working day or before the project start, keep this constraint from being met. Links win; adjust the constraint date, the durations, or the links.',
+    'Constraint violated: the links, a levelled start, or a date on a non-working day or before the project start keep this constraint from being met. Links win; adjust the constraint date, the durations, or the links, or clear the levelled start.',
   'cpm.constraint.unapplied.invalid_date':
     'Constraint not applied: the constraint date is missing or is not a valid date. Until you correct it, the task is scheduled as if it had no constraint.',
   'cpm.constraint.unapplied.out_of_range':

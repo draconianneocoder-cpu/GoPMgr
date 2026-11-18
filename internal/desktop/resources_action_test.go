@@ -6,6 +6,7 @@ package desktop
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -146,18 +147,20 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 // starts Monday 2026-06-01 (index 0). Late starts from the plain pass:
 // LP (6 days, no resource) sets the project finish 6; V (MSO Fri 05-29,
 // before the start) is already violated, LF pinned -1+1 = 0, LS -1;
-// S (SNLT Mon) LS 0; E (explicit ASAP), H (hand-set SNET Mon), M (MSO
-// Mon 06-08, index 5) and Q (ALAP) LS 5. LTF places by (LS, ID): V Mon
-// (0); LP needs no resource; S Tue (1), breaking its SNLT; E Wed (2); H
-// Thu (3); M stays on its MSO day (5); Q wants day 5, finds alice busy and
-// moves to 6, but ALAP tasks get no levelled start. Violated after and
-// not before: S only.
+// F (FNLT Mon, latest finish index 1) LF 1, LS 0; S (SNLT Mon) LS 0;
+// E (explicit ASAP), H (hand-set SNET Mon), M (MSO Mon 06-08, index 5)
+// and Q (ALAP) LS 5. LTF places by (LS, ID): V Mon (0); F Tue (1),
+// finishing at index 2, past its FNLT; LP needs no resource; S Wed (2),
+// breaking its SNLT; E Thu (3); H Fri (4); M stays on its MSO day (5); Q
+// wants day 5, finds alice busy and moves to 6, but ALAP tasks get no
+// levelled start. Violated after and not before: F and S.
 func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
 	app, d, _ := newResourceTestApp(t)
 	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Constrained", Data: `{
 		"nodes": [
 			{"id":"LP","label":"LP","duration":6},
 			{"id":"S","label":"Survey","duration":1,"constraint":"SNLT","constraint_date":"2026-06-01","assignments":[{"resource":"alice"}]},
+			{"id":"F","label":"Fit-out","duration":1,"constraint":"FNLT","constraint_date":"2026-06-01","assignments":[{"resource":"alice"}]},
 			{"id":"V","label":"V","duration":1,"constraint":"MSO","constraint_date":"2026-05-29","assignments":[{"resource":"alice"}]},
 			{"id":"E","label":"E","duration":1,"constraint":"ASAP","assignments":[{"resource":"alice"}]},
 			{"id":"M","label":"M","duration":1,"constraint":"MSO","constraint_date":"2026-06-08","assignments":[{"resource":"alice"}]},
@@ -176,11 +179,12 @@ func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
 	got := storedLevelling(t, d, c.ID)
 	want := map[string]levelledNode{
 		"LP": {},
-		"S":  {Constraint: "SNLT", ConstraintDate: "2026-06-01", LevelStart: "2026-06-02"},
+		"F":  {Constraint: "FNLT", ConstraintDate: "2026-06-01", LevelStart: "2026-06-02"},
+		"S":  {Constraint: "SNLT", ConstraintDate: "2026-06-01", LevelStart: "2026-06-03"},
 		"V":  {Constraint: "MSO", ConstraintDate: "2026-05-29"},
-		"E":  {Constraint: "ASAP", LevelStart: "2026-06-03"},
+		"E":  {Constraint: "ASAP", LevelStart: "2026-06-04"},
 		"M":  {Constraint: "MSO", ConstraintDate: "2026-06-08"},
-		"H":  {Constraint: "SNET", ConstraintDate: "2026-06-01", LevelStart: "2026-06-04"},
+		"H":  {Constraint: "SNET", ConstraintDate: "2026-06-01", LevelStart: "2026-06-05"},
 		"Q":  {Constraint: "ALAP"},
 	}
 	for id, w := range want {
@@ -188,12 +192,12 @@ func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
 			t.Errorf("%s = %+v, want %+v", id, got[id], w)
 		}
 	}
-	if res.Pinned != 3 {
-		t.Errorf("pinned = %d, want 3 (S, E, H)", res.Pinned)
+	if res.Pinned != 4 {
+		t.Errorf("pinned = %d, want 4 (F, S, E, H)", res.Pinned)
 	}
-	if len(res.ConstraintViolationTaskIDs) != 1 || res.ConstraintViolationTaskIDs[0] != "S" ||
-		len(res.ConstraintViolationLabels) != 1 || res.ConstraintViolationLabels[0] != "Survey" {
-		t.Errorf("violations = %v %v, want [S] [Survey] (V was violated before levelling)", res.ConstraintViolationTaskIDs, res.ConstraintViolationLabels)
+	if !reflect.DeepEqual(res.ConstraintViolationTaskIDs, []string{"F", "S"}) ||
+		!reflect.DeepEqual(res.ConstraintViolationLabels, []string{"Fit-out", "Survey"}) {
+		t.Errorf("violations = %v %v, want [F S] [Fit-out Survey] (V was violated before levelling)", res.ConstraintViolationTaskIDs, res.ConstraintViolationLabels)
 	}
 }
 

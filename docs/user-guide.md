@@ -482,9 +482,11 @@ calendar. Each one is a test of the scheduler.
   links and constraints, so a delay that is no longer needed is cleared. A
   levelled start delays the task like SNET but is never violated itself. If
   a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
-  flagged and levelling names it. Select **Clear** next to a levelled start to
-  schedule that task from its links and constraint alone until you level
-  again. ALAP tasks get no levelled start.
+  flagged, levelling names it, and the audit names levelling as the cause.
+  Select **Clear** next to a levelled start to schedule that task from its
+  links and constraint alone until you level again. Editing a task does not
+  clear its levelled start: level again after changing durations or links.
+  ALAP tasks get no levelled start.
 - **Whole days.** Levelling places tasks on whole working days, so it can move
   a chain of part-day tasks onto separate days.
 - **Charts levelled before 18 November 2026.** Earlier versions stored

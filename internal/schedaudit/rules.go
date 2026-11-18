@@ -537,7 +537,8 @@ func (a *auditor) checkContext() error {
 // but the date itself is a non-working day or lies before the project's
 // first working day, the calendar is the cause, not the logic: a latest
 // date there means the working day before it, and a must date can never
-// be met.
+// be met. When the task sits on the start resource levelling gave it,
+// levelling is the cause.
 func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, string) {
 	reached := c.ES
 	if constraint == kernel.FinishNoLaterThan || constraint == kernel.MustFinishOn {
@@ -552,6 +553,12 @@ func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, st
 			explanation = "The date falls on a non-working day or before the project's first working day, so the task cannot finish on it."
 		}
 		return explanation, "Move the date to a working day within the project."
+	}
+	if c.LevelStartArmed && c.ES <= c.LevelStartDay+1e-9 {
+		// The task sits on its levelled start, so levelling, not the
+		// links, holds it past the date.
+		return "Resource levelling delayed this task to " + c.LevelStart + ", past its constraint date.",
+			"Clear the levelled start or level again to see whether the date can be met; add capacity, or move the date."
 	}
 	return "The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
 		"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date."

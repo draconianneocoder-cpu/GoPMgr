@@ -614,8 +614,9 @@ func TestMilestoneFinishConstraintsMeanTheEndOfTheDay(t *testing.T) {
 // A levelled start (written by resource levelling, not a constraint)
 // delays a task like a start floor once armed, and a latest limit it
 // breaks is flagged on the next schedule. A (1 day) with levelled start
-// Wed 06-03 starts at 2; B with MSO Tue 06-02 and levelled start Thu
-// 06-04 is pulled to 1 by MSO, held to 3 by the levelled start: violated.
+// Wed 06-03 starts at 2; B with MSO Tue 06-02 (1) and levelled start Thu
+// 06-04: the levelled start sets ES 3 before MSO is checked, and 3 > 1,
+// so MSO is violated.
 // An unreadable levelled start is ignored.
 func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
 	tasks := map[string]*Task{

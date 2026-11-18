@@ -417,8 +417,9 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 	// Finalize step, the final PDF mutation; keeping the TSA request inside
 	// InjectPAdESSignature's callback binds the token to the exact CMS
 	// signature that covers the declared PDF ByteRange.
+	// stage names the step an Export error came from in the audit log.
 	var padesResult signing.PAdESResult
-	signed := false
+	stage := "build report"
 	_, err = reportService(d).Export(reporting.ExportRequest{
 		ReportTitle:       reportTitle,
 		Subtitle:          subtitle,
@@ -430,25 +431,27 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		OutputPath:        outPath,
 		AddSignatureBlock: true,
 		Finalize: func(rendered []byte) ([]byte, error) {
+			stage = "pades embedding"
 			out, result, err := signing.ApplyPAdES(a.signingContext(), rendered, signer, timestampConfig)
 			if err != nil {
 				return nil, fmt.Errorf("pades embedding: %w", err)
 			}
-			padesResult, signed = result, true
+			padesResult, stage = result, "write signed report"
 			return out, nil
 		},
 	})
 	if err != nil {
 		switch {
-		case !signed:
-			// Rendering or signing failed; nothing was written.
-			fail("build report", err)
-		case pathExists(outPath):
-			// The signed PDF was written but its manifest was not. The PDF
-			// stays, as an unsigned export's does; report the failure.
-			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write report provenance: %v", err), exportArtifactName(outPath))
+		case stage == "pades embedding":
+			// err already names the stage.
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, err.Error(), "")
+		case stage == "write signed report" && pathExists(outPath):
+			// The signed PDF was written but a later step (its manifest)
+			// failed. The PDF stays, as an unsigned export's does; the log
+			// names it, and err says which step failed.
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, err.Error(), exportArtifactName(outPath))
 		default:
-			fail("write signed report", err)
+			fail(stage, err)
 		}
 		return "", err
 	}
