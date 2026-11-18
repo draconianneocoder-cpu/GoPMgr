@@ -99,7 +99,7 @@ describe('CPMEditor schedule audit saving', () => {
     expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterManualSave);
   });
 
-  it('does not save a chart again when layout has only added derived fields', async () => {
+  it('stores a new task without layout dates, and an audit does not write the chart', async () => {
     const app = installApp();
     app.LayoutChart.mockImplementation(async () => {
       const saved = app.SaveChart.mock.calls.at(-1)?.[0] as { data?: string } | undefined;
@@ -111,14 +111,25 @@ describe('CPMEditor schedule audit saving', () => {
     await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
     await settle(50);
 
-    const layoutsBeforeAdd = app.LayoutChart.mock.calls.length;
     await fireEvent.click(getByRole('button', { name: '+ Node' }));
-    await waitFor(() => expect(app.LayoutChart.mock.calls.length).toBe(layoutsBeforeAdd + 2), { timeout: 2000 });
-    const savesAfterLayout = app.SaveChart.mock.calls.length;
+    await waitFor(() => {
+      const stored = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+      expect(stored.some((data) => data.includes('New activity'))).toBe(true);
+    });
+    await settle(400);
+    const stored = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+    expect(stored.every((data) => !data.includes('"es"'))).toBe(true);
+    const savesAfterEdit = app.SaveChart.mock.calls.length;
 
     await fireEvent.click(getByRole('button', { name: 'Run audit' }));
     await waitFor(() => expect(app.AuditSchedule).toHaveBeenCalledTimes(1));
-    expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterLayout);
+    await settle(400);
+    expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterEdit);
+    for (const [chart] of app.SaveChart.mock.calls) {
+      const data = String((chart as { data: string }).data);
+      expect(data).not.toContain('"es"');
+      expect(JSON.parse(data).nodes.some((node: { label?: string }) => node.label === 'New activity')).toBe(true);
+    }
   });
 
   it('drops one chart’s findings when the editor switches to another chart', async () => {

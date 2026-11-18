@@ -158,6 +158,25 @@ func TestSaveChartDoesNotReviseAnUnchangedChart(t *testing.T) {
 		t.Fatalf("verification = %+v, want valid with %d events", report, chainBefore.CheckedEvents)
 	}
 
+	renamed, err := d.SaveChart(Chart{
+		ID:         original.ID,
+		ProjectID:  original.ProjectID,
+		Kind:       original.Kind,
+		Title:      "Plan renamed",
+		Data:       original.Data,
+		Config:     original.Config,
+		TemplateID: original.TemplateID,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart rename: %v", err)
+	}
+	if renamed.Title != "Plan renamed" || renamed.UpdatedAt == original.UpdatedAt {
+		t.Fatalf("renamed chart = %+v, want a new revision titled Plan renamed", renamed)
+	}
+	if got := chartAuditEventCount(t, d, project.ID); got != eventsBefore+1 {
+		t.Fatalf("chart audit events after rename = %d, want %d", got, eventsBefore+1)
+	}
+
 	storedEmpty, err := d.SaveChart(Chart{ProjectID: project.ID, Kind: "cpm", Title: "Empty"})
 	if err != nil {
 		t.Fatalf("SaveChart empty: %v", err)

@@ -4,18 +4,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 
-// autosave.register sets up a timer; stub it so the mounted editor doesn't
-// leave a live interval running through the test. Layout saves through
-// saveRegisteredIfDirty.
+// The real auto-save module starts a timer. This stub saves a dirty
+// document and leaves an unchanged document unsaved.
 const autosaveMock = vi.hoisted(() => {
   let persist: () => Promise<boolean> = async () => true;
+  let read: () => string = () => '';
+  let last = '';
   return {
-    register: (_snapshot: () => string, save: () => Promise<boolean>) => {
+    register: (snapshot: () => string, save: () => Promise<boolean>) => {
+      read = snapshot;
       persist = save;
+      last = snapshot();
       return () => {};
     },
-    saveRegisteredIfDirty: () => persist(),
-    saveRegisteredNow: () => persist(),
+    saveRegisteredIfDirty: async () => {
+      if (read() === last) return true;
+      const ok = await persist();
+      if (ok) last = read();
+      return ok;
+    },
+    saveRegisteredNow: async () => {
+      const ok = await persist();
+      if (ok) last = read();
+      return ok;
+    },
     lastError: '',
   };
 });
