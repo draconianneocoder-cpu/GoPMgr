@@ -428,7 +428,7 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 79.4%
+## `internal/db` — 79.5%
 
 Candidate additions: `readonly_legacy_test.go` has six file-backed tests for
 required project columns, additive defaults, legacy timestamp ordering,
