@@ -18,6 +18,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
   import { formatNumber, t } from '../../i18n/i18n.svelte';
 
+  // ----- Scheduling constraints -----
+  // The six constraint types that carry a date (the kernel's
+  // IsDateConstraint). ASAP and ALAP need none.
+  const DATED_CONSTRAINTS = new Set(['SNET', 'SNLT', 'MSO', 'FNET', 'FNLT', 'MFO']);
+
+  // constraintKey reads a stored constraint as the editor shows it: upper
+  // case, with "" and ASAP meaning the default. It only reads: a chart's
+  // stored value (which may be lower case from hand-edited data) is
+  // rewritten only when the user picks a constraint.
+  function constraintKey(stored: string | undefined): string | undefined {
+    const key = stored?.trim().toUpperCase();
+    return key && key !== 'ASAP' ? key : undefined;
+  }
+
+  // setConstraint writes a choice the user made. The select also writes
+  // its current value when it mounts; a write that changes nothing the
+  // editor shows is ignored, so opening a task never rewrites "ASAP",
+  // "asap" or "" (levelling treats an explicit ASAP differently from none).
+  function setConstraint(node: { constraint?: string }, value: string | undefined) {
+    if (value === constraintKey(node.constraint)) return;
+    node.constraint = value;
+  }
+
   function fmt(n: unknown, digits = 1): string {
     return typeof n === 'number' ? n.toFixed(digits) : '—';
   }
@@ -735,17 +758,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <label class="block mt-3">
       <span class="text-xs text-slate-500 uppercase">{t('cpm.constraint')}</span>
       <select
-        bind:value={node.constraint}
+        bind:value={() => constraintKey(node.constraint), (v) => setConstraint(node, v)}
+        title={t('cpm.constraint.hint')}
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       >
         <option value={undefined}>{t('cpm.constraint.asap')}</option>
         <option value="ALAP">{t('cpm.constraint.alap')}</option>
         <option value="SNET">{t('cpm.constraint.snet')}</option>
+        <option value="SNLT">{t('cpm.constraint.snlt')}</option>
+        <option value="FNET">{t('cpm.constraint.fnet')}</option>
         <option value="FNLT">{t('cpm.constraint.fnlt')}</option>
+        <option value="MSO">{t('cpm.constraint.mso')}</option>
         <option value="MFO">{t('cpm.constraint.mfo')}</option>
       </select>
     </label>
-    {#if node.constraint === 'SNET' || node.constraint === 'FNLT' || node.constraint === 'MFO'}
+    {#if DATED_CONSTRAINTS.has(constraintKey(node.constraint) ?? '')}
       <label class="block mt-2">
         <span class="text-xs text-slate-500 uppercase">{t('cpm.constraint.date')}</span>
         <input

@@ -51,6 +51,12 @@ document.
 Target matrix, residual-risk acceptance and release operator remain open. These
 records do not authorize a tag, push, hosted run or publication.
 
+### Behaviour changes the release notes must state
+
+| Change | Statement |
+| --- | --- |
+| Scheduling constraints (KRN-01, 2026-11-18) | MSO, SNLT and FNET constraints are now scheduled; earlier versions scheduled such tasks as ASAP. Charts holding them can show different dates, float, critical path and audit counts. Saved baselines are unchanged, so variances against them can change. No conversion is needed. |
+
 ## Candidate entry gate
 
 Run from the exact clean commit proposed for the tag:

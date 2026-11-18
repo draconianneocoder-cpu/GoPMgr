@@ -171,7 +171,18 @@ func (a *auditor) checkLinkTypes() error {
 }
 
 func dated(c kernel.ConstraintType) bool {
-	return c == kernel.StartNoEarlierThan || c == kernel.FinishNoLaterThan || c == kernel.MustFinishOn
+	return kernel.IsDateConstraint(c)
+}
+
+// hardConstraint reports the DCMA-style hard constraints: those that
+// limit how late a task may be (MSO, MFO, SNLT, FNLT). SNET and FNET only
+// delay a task and are soft.
+func hardConstraint(c kernel.ConstraintType) bool {
+	switch c {
+	case kernel.MustStartOn, kernel.MustFinishOn, kernel.StartNoLaterThan, kernel.FinishNoLaterThan:
+		return true
+	}
+	return false
 }
 
 // supported reports whether the kernel acts on a constraint type: it arms
@@ -197,7 +208,7 @@ func (a *auditor) checkConstraints() error {
 				broken++
 				a.add(ConstraintViolated, SeverityError, id, nil,
 					fmt.Sprintf("constraint type %s is not supported", t.Constraint), "",
-					"The scheduler supports ASAP, ALAP, SNET, FNLT and MFO only, so it ignores this constraint and schedules the task as soon as possible.",
+					"The scheduler supports ASAP, ALAP, SNET, SNLT, FNET, FNLT, MSO and MFO only, so it ignores this constraint and schedules the task as soon as possible.",
 					"Replace it with a supported constraint, or remove it.")
 			}
 			continue
@@ -207,7 +218,7 @@ func (a *auditor) checkConstraints() error {
 		}
 		label := fmt.Sprintf("%s %s", t.Constraint, t.ConstraintDate)
 		unapplied := a.startOK && !c.ConstraintArmed
-		if t.Constraint == kernel.MustFinishOn || t.Constraint == kernel.FinishNoLaterThan {
+		if hardConstraint(t.Constraint) {
 			hard++
 			var binding string
 			switch {
@@ -218,13 +229,13 @@ func (a *auditor) checkConstraints() error {
 			case a.cpmErr != nil:
 				binding = "binding not evaluated: " + a.cpmReason()
 			case c.ConstraintViolated:
-				binding = "binds: the logic pushes the task past it"
+				binding = "binds: the logic and this date conflict"
 			default:
 				binding = "met by the current logic"
 			}
 			a.add(HardConstraint, SeverityWarning, id, nil, label+"; "+binding, "",
 				"A hard constraint fixes a date whatever the logic says, so the schedule cannot show what a delay does to it.",
-				"Prefer start-no-earlier-than, or track the date as a deadline instead of constraining the task.")
+				"Prefer a soft constraint (start no earlier than, finish no earlier than), or track the date as a deadline instead of constraining the task.")
 		}
 		if reason != "" {
 			continue
@@ -238,8 +249,8 @@ func (a *auditor) checkConstraints() error {
 		case c.ConstraintViolated:
 			broken++
 			a.add(ConstraintViolated, SeverityError, id, nil, label+" cannot be met", "",
-				"The logic places this task past its constraint date, so the date cannot be met.",
-				"Shorten or re-sequence the work before it, or move the date.")
+				"The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
+				"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date.")
 		}
 	}
 	a.ran(HardConstraint, "")

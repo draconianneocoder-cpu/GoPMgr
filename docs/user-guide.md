@@ -22,6 +22,7 @@ Troubleshooting & FAQ and a keyboard-shortcuts reference.
 - [Stakeholders, Timeline, Budget, and Cost Control](#stakeholders-timeline-budget-and-cost-control)
 - [Kanban, Sprints, and DORA](#kanban-sprints-and-dora)
 - [Charts](#charts)
+- [Scheduling Constraints](#scheduling-constraints)
 - [Documents and Combined Reports](#documents-and-combined-reports)
 - [Schedule Import and Export](#schedule-import-and-export)
 - [PDF Signing](#pdf-signing)
@@ -371,6 +372,129 @@ float, invalid actual dates and missing progress. The audit changes nothing.
 Rules that could not run are listed, with the reason, before the findings, so
 an empty list never hides an unchecked rule. **Show task** selects a finding's
 task on the chart.
+
+## Scheduling Constraints
+
+A constraint ties a CPM task to a date, or to its late dates. Set it in the
+CPM editor: select the task, choose a **Constraint**, and, for the six types
+that carry one, a **Constraint date**.
+
+### The rule that governs every constraint: links win
+
+GoPMgr schedules from the links first. A constraint can delay a task or limit
+how late it may run, but it never moves a task earlier than its links allow,
+and it never breaks a link. When the links and a constraint cannot both hold,
+the task keeps the dates its links give it and the constraint is marked
+**violated**. The editor then shows "Constraint violated". The task usually
+gets negative float, and the schedule audit reports it under SQ-09.
+
+This is how Primavera P6 treats its "Start On" and "Finish On" constraints.
+Microsoft Project's default, "honor constraint dates", does the opposite for
+its four inflexible constraints (must start on, must finish on, start no
+later than, finish no later than): it holds the task to the date even when
+that breaks the logic. A schedule moved between the two can therefore show
+different dates for these tasks.
+
+### The eight types
+
+| Constraint | Date limits | Effect on the early dates | Effect on the late dates | Violated when | DCMA-style |
+| --- | --- | --- | --- | --- | --- |
+| **ASAP** (as soon as possible) | none | the task starts as soon as its links allow | none | never | none |
+| **ALAP** (as late as possible) | none | the task is moved to its late dates, using up its own float | none | never | soft |
+| **SNET** (start no earlier than) | start | the start is delayed to the date if the links allow an earlier one | none | never | soft |
+| **SNLT** (start no later than) | start | none | the late start is capped at the date | the links make the task start after the date | hard |
+| **FNET** (finish no earlier than) | finish | the finish is delayed to the date if the links allow an earlier one | none | never | soft |
+| **FNLT** (finish no later than) | finish | none | the late finish is capped at the date | the links make the task finish after the date | hard |
+| **MSO** (must start on) | start | the start is pulled to the date | the late start is pinned to the date | the links make the task start after the date, or a later task needs it to finish sooner | hard |
+| **MFO** (must finish on) | finish | the finish is pulled to the date | the late finish is pinned to the date | the links make the task finish after the date, or a later task needs it to finish sooner | hard |
+
+**Hard and soft.** Soft constraints only delay a task. Hard constraints fix
+how late a task may run, so the schedule can no longer show what a delay does
+to that date. The schedule audit counts the hard ones under SQ-08, and its
+DCMA-style thresholds expect them on at most 5 % of tasks.
+
+### Worked examples
+
+These examples use a project starting Monday 1 June 2026 on a Monday-to-Friday
+calendar. Each one is a test of the scheduler.
+
+- **SNET.** Task B (2 days) follows A (1 day), so the links allow Tuesday 2 June.
+  SNET Thursday 4 June delays B to start on Thursday. It is not violated.
+- **SNLT.** B (2 days) follows A (1 day), and a separate 8-day task sets the
+  project finish. B starts Tuesday. SNLT Thursday caps B's late start at
+  Thursday, so B has 2 days of float instead of 5. If A took 4 days instead, B
+  could not start until Friday. That would miss an SNLT Tuesday: B is violated,
+  and both tasks show −3 days of float.
+- **FNET.** A 2-day task with FNET Friday 5 June runs Thursday to Friday. A
+  task whose links already make it finish later is not moved.
+- **FNLT.** B (3 days) after A (3 days) cannot finish by FNLT Thursday 4 June.
+  B is violated, and the squeezed late dates make the chain critical with
+  negative float.
+- **MSO.** B (2 days) after A (1 day) with MSO Thursday 4 June starts on
+  Thursday and finishes on Friday. If A took 4 days, B could not start on
+  Tuesday 2 June (an MSO Tuesday): B keeps the start its links give it, is
+  violated, and shows −3 days of float.
+- **MFO.** A 2-day task with MFO Wednesday 3 June runs Tuesday to Wednesday.
+
+### Dates, calendars and milestones
+
+- **Calendar.** Constraint dates count working days on the project's country
+  calendar, from the project start date. A date on a non-working day takes
+  effect from the next working day.
+- **Known limit: lenient "no later than" dates.** That rule is lenient for
+  SNLT, FNLT, MSO and MFO. An SNLT on a Saturday accepts a Monday start, and a
+  date before the project start counts as the start date, so it is met.
+  Put these dates on working days within the project.
+- **No start date.** Without a project start date, date constraints are not
+  applied. The audit says so.
+- **Milestones.** A milestone (zero duration) sits on the boundary after the
+  work before it. After a task that ends on Wednesday, the milestone is
+  scheduled at the start of Thursday, and the chart shows it on Thursday. A
+  finish constraint means "by the end of that day", so an MFO or FNLT
+  Wednesday milestone after such a task is met. For the same reason a
+  milestone held by a finish constraint (MFO or FNET Wednesday) appears on the
+  next working day, Thursday; a milestone held by a start constraint (MSO
+  Wednesday) appears on Wednesday.
+- **Known limit: durations under one day.** A task with a duration between 0
+  and 1 day, which PERT estimates can produce, may still show on the day after
+  a finish constraint date.
+- **A date that cannot be applied.** If the constraint date is not a valid
+  date, GoPMgr does not apply the constraint. The editor does not warn you.
+  The schedule audit reports it under SQ-09: run the audit after editing
+  constraints by hand or restoring a backup.
+- **Lower-case values.** A constraint stored in lower case, for example from
+  hand-edited data, is read the same way. The editor shows it under its usual
+  name, and opening the task does not change the stored value.
+
+### Constraints, levelling and imports
+
+- **Levelling.** Levelling resources records each delay it adds as an SNET
+  constraint, and it owns SNET dates: it rewrites an SNET when it delays the
+  task, and removes one that is no longer needed. It never replaces any other
+  constraint. A levelled delay of a task with another constraint is not kept:
+  the next schedule run puts the task back at its constrained dates. Levelling does not re-check constraints,
+  so it can move an MSO, SNLT, FNLT or MFO task past its date without
+  flagging it. Run the schedule again, or the audit, after levelling.
+- **Monte Carlo.** The risk simulation does not apply date constraints.
+- **Imports.** MSPDI import does not carry constraints. Re-enter them after
+  importing.
+
+### Choosing a constraint
+
+- **Prefer links.** A link explains why a date moves; a constraint only
+  states that it may not.
+- **Prefer soft constraints.** Use SNET or FNET when work cannot start or
+  finish before a date, for example a delivery or a permit.
+- **Use hard constraints sparingly.** They cap how late work may run. Treat a
+  deadline as a deadline: an FNLT shows when the plan misses it, and an MFO or
+  MSO also pins the late dates, hiding any slack.
+
+### Charts saved before 18 November 2026
+
+Earlier versions scheduled an MSO, SNLT or FNET task as ASAP. A chart that
+holds one of these types now schedules by it, so its dates, float, critical
+path and SQ-08 counts can change. Saved baselines are not changed, so
+variances against them can change too. No conversion is needed.
 
 ## Documents and Combined Reports
 
@@ -804,8 +928,10 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | Administrator Escrow | [Definition](#user-term-administrator-escrow) |
 | Administrator-Key Recovery Code | [Definition](#user-term-administrator-key-recovery-code) |
 | Agile | [Definition](#user-term-agile) |
+| ALAP | [Definition](#user-term-scheduling-constraint) |
 | Application Settings | [Topic](#application-settings) |
 | Archival PDF | [Definition](#user-term-pdf-a-2u) |
+| ASAP | [Definition](#user-term-scheduling-constraint) |
 | Audit Trail | [Definition](#user-term-audit-trail) |
 | Autosave | [Definition](#user-term-autosave) |
 | Backlog | [Definition](#user-term-backlog) |
@@ -854,9 +980,12 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | First Run | [Topic](#first-run) |
 | Fishbone Diagram | [Definition](#user-term-fishbone-diagram) |
 | Float (Slack) | [Definition](#user-term-float-slack) |
+| FNET | [Definition](#user-term-scheduling-constraint) |
+| FNLT | [Definition](#user-term-scheduling-constraint) |
 | Fonts | [Topic](#fonts) |
 | Forecast | [Definition](#user-term-forecast) |
 | Gantt Chart | [Definition](#user-term-gantt-chart) |
+| Hard Constraint | [Definition](#user-term-hard-constraint) |
 | Issue | [Definition](#user-term-issue) |
 | Issue Log | [Definition](#user-term-issue-log) |
 | Iteration | [Definition](#user-term-iteration) |
@@ -869,8 +998,10 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | Lead Time | [Definition](#user-term-lead-time) |
 | Logs and Startup Diagnostics | [Topic](#logs-and-startup-diagnostics) |
 | LS / LF | [Definition](#user-term-ls-lf) |
+| MFO | [Definition](#user-term-scheduling-constraint) |
 | Milestone | [Definition](#user-term-milestone) |
 | Monte Carlo Simulation | [Definition](#user-term-monte-carlo-simulation) |
+| MSO | [Definition](#user-term-scheduling-constraint) |
 | MSPDI | [Definition](#user-term-mspdi) |
 | MTTR | [Definition](#user-term-mttr) |
 | Objective | [Definition](#user-term-objective) |
@@ -913,10 +1044,14 @@ Abbreviations and alternate labels are indexed alongside full terms.
 | Schedule Import and Export | [Topic](#schedule-import-and-export) |
 | Schedule Performance Index (SPI) | [Definition](#user-term-schedule-performance-index-spi) |
 | Schedule Quality Audit | [Topic](#charts) |
+| Scheduling Constraint | [Definition](#user-term-scheduling-constraint) |
+| Scheduling Constraints | [Topic](#scheduling-constraints) |
 | Scrum | [Definition](#user-term-scrum) |
 | Scrumban | [Definition](#user-term-scrumban) |
 | Sigma Level | [Definition](#user-term-sigma-level) |
 | SIPOC | [Definition](#user-term-sipoc) |
+| SNET | [Definition](#user-term-scheduling-constraint) |
+| SNLT | [Definition](#user-term-scheduling-constraint) |
 | Solution Matrix | [Definition](#user-term-solution-matrix) |
 | SPI | [Definition](#user-term-schedule-performance-index-spi) |
 | Sprint | [Definition](#user-term-sprint) |
@@ -992,6 +1127,7 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-float-slack"></a>**Float (Slack)** | Amount of time a task can be delayed without delaying the project end date (total float) or a successor's start (free float). | [Critical Path](#user-term-critical-path) |
 | <a id="user-term-forecast"></a>**Forecast** | An estimate of a future outcome based on a named method and assumptions. It is neither an actual observation nor the approved reference plan. | — |
 | <a id="user-term-gantt-chart"></a>**Gantt Chart** | Schedule bars on a time axis with dependency arrows, critical-path highlighting, and progress bars. Shares data with CPM in GoPMgr. | — |
+| <a id="user-term-hard-constraint"></a>**Hard Constraint** | A scheduling constraint that limits how late a task may run: start no later than (SNLT), finish no later than (FNLT), must start on (MSO) or must finish on (MFO). It hides what a delay does to that date; the schedule audit counts these under SQ-08. Start or finish no earlier than (SNET, FNET) are soft. | [Scheduling Constraint](#user-term-scheduling-constraint) |
 | <a id="user-term-issue"></a>**Issue** | A problem or condition that has occurred and needs handling. A risk is an uncertain event; a change request proposes an alteration to the plan. | [Risk](#user-term-risk), [Change Request](#user-term-change-request) |
 | <a id="user-term-issue-log"></a>**Issue Log** | Tracks problems that have already occurred, with owner, priority, and resolution plan. Distinct from Risk Register (potential future events). | [Risk Register](#user-term-risk-register) |
 | <a id="user-term-iteration"></a>**Iteration** | A repeated work and review cycle, often time-boxed, such as a Scrum Sprint. A PRINCE2 management stage is a governance interval; continuous-flow methods need not use fixed iterations. | — |
@@ -1031,6 +1167,7 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-saved-change"></a>**Saved Change** | An edit whose save operation completed successfully. An in-flight or pending edit is not yet saved. Exporting a file and retaining a backup are separate actions. | [Autosave](#user-term-autosave), [Export](#user-term-export), [Backup](#user-term-backup) |
 | <a id="user-term-scenario"></a>**Scenario** | An isolated what-if partition. Charts copied into a scenario can be edited and compared against their captured baseline without touching the live plan, then promoted to a named schedule baseline or discarded. | — |
 | <a id="user-term-schedule-performance-index-spi"></a>**Schedule Performance Index (SPI)** | EV divided by PV on the stated baseline/progress basis. It compares budgeted work, not calendar finish-date slip; a zero denominator makes the ratio undefined. | [Critical Path](#user-term-critical-path), [Cost Performance Index (CPI)](#user-term-cost-performance-index-cpi) |
+| <a id="user-term-scheduling-constraint"></a>**Scheduling Constraint** | A rule tying a CPM task to a date or its late dates: ASAP, ALAP, SNET, SNLT, FNET, FNLT, MSO or MFO. Links always win: a constraint the links cannot meet is flagged as violated, not forced. | [Hard Constraint](#user-term-hard-constraint), [Float (Slack)](#user-term-float-slack), [Critical Path](#user-term-critical-path) |
 | <a id="user-term-scrum"></a>**Scrum** | Agile framework with time-boxed sprints, Product Backlog, and three roles. Four ceremonies: Sprint Planning, Daily Scrum, Sprint Review, Retrospective. | — |
 | <a id="user-term-scrumban"></a>**Scrumban** | Hybrid of Scrum's prioritized backlog and Kanban's continuous pull flow. No fixed sprint cadence. | — |
 | <a id="user-term-sigma-level"></a>**Sigma Level** | A measure of process performance in Six Sigma. A quoted 3.4 defects per million for six sigma assumes the conventional 1.5-sigma shift; it is not automatic proof of a process capability. | — |

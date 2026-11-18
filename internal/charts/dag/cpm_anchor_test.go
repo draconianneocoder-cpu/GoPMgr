@@ -52,12 +52,21 @@ func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
 			Constraint: "snet", ConstraintDate: "2026-06-04"},
 		{ID: "C", Label: "C", Duration: 4,
 			Constraint: "MFO", ConstraintDate: "2026-06-02"},
+		// KRN-01: the mapper passes MSO, FNET and SNLT through as well.
+		{ID: "D", Label: "D", Duration: 1,
+			Constraint: "mso", ConstraintDate: "2026-06-04"},
+		{ID: "E", Label: "E", Duration: 2,
+			Constraint: "FNET", ConstraintDate: "2026-06-05"},
+		{ID: "F", Label: "F", Duration: 2,
+			Constraint: "SNLT", ConstraintDate: "2026-06-01"},
 	}
 	doc := LayeredDocument{
 		Nodes: nodes,
 		Edges: []LayeredEdge{
 			{From: "A", To: "B"},
 			{From: "A", To: "C"},
+			{From: "A", To: "D"},
+			{From: "A", To: "F"},
 		},
 	}
 
@@ -77,6 +86,18 @@ func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
 	// C: 4 days after A cannot finish on Tuesday — violation flagged.
 	if !nodes[2].ConstraintViolated {
 		t.Error("C's impossible MFO must set ConstraintViolated")
+	}
+	// D: MSO Thursday ("mso") starts Thursday although A allows Tuesday.
+	if nodes[3].StartDate != "2026-06-04" || nodes[3].ConstraintViolated {
+		t.Errorf("D = %s, violated %v; want start 2026-06-04 (MSO), not flagged", nodes[3].StartDate, nodes[3].ConstraintViolated)
+	}
+	// E: FNET Friday holds a 2-day task to Thursday..Friday.
+	if nodes[4].StartDate != "2026-06-04" || nodes[4].FinishDate != "2026-06-05" {
+		t.Errorf("E = %s..%s, want 2026-06-04..2026-06-05 (FNET)", nodes[4].StartDate, nodes[4].FinishDate)
+	}
+	// F: after A it cannot start by Monday (SNLT): flagged.
+	if !nodes[5].ConstraintViolated {
+		t.Error("F's missed SNLT must set ConstraintViolated")
 	}
 }
 

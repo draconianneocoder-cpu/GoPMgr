@@ -531,9 +531,14 @@ func (m *overallocationMembers) sorted() []int {
 //     1.0). A task whose own demand exceeds capacity on day one of
 //     the search is placed at its precedence-earliest start and left
 //     flagged rather than pushed past the levelling horizon.
-//   - Date constraints: SNET/MFO forward effects are preserved via
-//     the initial CalculateCPM pass (the levelled start never moves
-//     earlier than the constrained ES).
+//   - Date constraints: the forward effects of SNET, FNET, MSO and MFO
+//     are preserved via the initial CalculateCPM pass (the levelled
+//     start never moves earlier than the constrained ES). Levelling does
+//     not re-evaluate violations, so it can move an MSO, SNLT, FNLT or
+//     MFO task past its date without setting ConstraintViolated. The
+//     desktop persists levelled delays only as SNET and never overrides
+//     any other constraint, so a levelled delay of such a task is not
+//     kept: the next schedule run returns it to its constrained dates.
 //
 // Beyond the capacity plan it accepts LevelingOptions carrying a
 // per-schedule Horizon (zero uses DefaultLevelingHorizon) and Strategy

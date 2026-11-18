@@ -19,7 +19,7 @@ import (
 // and the kernel.Task shape (used by the scheduler).
 //
 // LayoutCPM mutates the input document in place. Date-bearing
-// constraints (SNET/FNLT/MFO) are ignored on this un-anchored path;
+// constraints (SNET, SNLT, MSO, FNET, FNLT, MFO) are ignored on this un-anchored path;
 // use LayoutCPMScheduledWithPlan when a project start date is available.
 func LayoutCPM(doc LayeredDocument) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
@@ -81,15 +81,11 @@ func cpmTasksFromDoc(doc LayeredDocument) map[string]*kernel.Task {
 			ActualCostMinorUnits:   n.ActualCostMinorUnits,
 			Assignments:            n.Assignments,
 		}
-		switch kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))) {
-		case kernel.AsLateAsPossible:
+		switch c := kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))); {
+		case c == kernel.AsLateAsPossible:
 			t.Constraint = kernel.AsLateAsPossible
-		case kernel.StartNoEarlierThan:
-			t.Constraint, t.ConstraintDate = kernel.StartNoEarlierThan, n.ConstraintDate
-		case kernel.FinishNoLaterThan:
-			t.Constraint, t.ConstraintDate = kernel.FinishNoLaterThan, n.ConstraintDate
-		case kernel.MustFinishOn:
-			t.Constraint, t.ConstraintDate = kernel.MustFinishOn, n.ConstraintDate
+		case kernel.IsDateConstraint(c):
+			t.Constraint, t.ConstraintDate = c, n.ConstraintDate
 		}
 		tasks[n.ID] = t
 	}

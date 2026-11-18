@@ -232,7 +232,8 @@ func TestAuditScheduleSelectsTheProfileByKey(t *testing.T) {
 // parallel with A (5) -> B (3). B must finish on Wed 2026-06-03 but cannot
 // finish before day 8, so SQ-09 reports B, and its finish pulls A back too:
 // both have negative float. S (1 day) is free, so its float is large. M
-// carries MSO, which the scheduler does not support.
+// carries "xyz", a type the scheduler does not know (stored lower case, as
+// hand-edited data may be).
 func TestAuditScheduleJudgesTheScheduleTheAppReports(t *testing.T) {
 	for _, start := range []string{
 		"2026-06-01",
@@ -254,7 +255,7 @@ func auditMatchesTheApp(t *testing.T, start string) {
 		{"id":"B","label":"B","duration":3,"constraint":"MFO","constraint_date":"2026-06-03"},
 		{"id":"L","label":"L","duration":60},
 		{"id":"S","label":"S","duration":1},
-		{"id":"M","label":"M","duration":2,"constraint":"mso","constraint_date":"2026-06-02"}],
+		{"id":"M","label":"M","duration":2,"constraint":"xyz","constraint_date":"2026-06-02"}],
 		"edges":[{"from":"A","to":"B"}]}`
 	c := auditChart(t, d, p.ID, "Plan", data)
 
