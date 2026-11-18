@@ -1068,6 +1068,8 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 			Milestone:       t.Milestone,
 			PercentComplete: t.PercentComplete,
 			Assignments:     t.Assignments,
+			Constraint:      string(t.Constraint),
+			ConstraintDate:  t.ConstraintDate,
 		})
 		for _, l := range t.Links {
 			doc.Edges = append(doc.Edges, dag.LayeredEdge{

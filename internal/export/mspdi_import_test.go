@@ -4,6 +4,7 @@
 package export
 
 import (
+	"strings"
 	"testing"
 
 	"gopmgr/internal/kernel"
@@ -37,7 +38,7 @@ const sampleMSPDI = `<?xml version="1.0" encoding="UTF-8"?>
 
 // fromMSPDI parses with every field selected, the app's default choice.
 func fromMSPDI(data []byte) (ImportedProject, error) {
-	return FromMSPDIWithOptions(data, MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true})
+	return FromMSPDIWithOptions(data, MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true, IncludeConstraints: true})
 }
 
 func TestFromMSPDI(t *testing.T) {
@@ -109,22 +110,89 @@ func TestFromMSPDIWithOptionsRecordsSelectedFields(t *testing.T) {
 	if len(p.Tasks) == 0 || len(p.Tasks[0].Links) != 0 || p.Tasks[0].PercentComplete != 0 || len(p.Tasks[0].Assignments) != 0 {
 		t.Fatalf("field options were not applied: %+v", p.Tasks[0])
 	}
-	if len(p.Receipt.ExcludedFields) != 3 {
-		t.Fatalf("receipt exclusions = %#v, want 3 selected exclusions", p.Receipt.ExcludedFields)
+	if len(p.Receipt.ExcludedFields) != 4 {
+		t.Fatalf("receipt exclusions = %#v, want 4 selected exclusions", p.Receipt.ExcludedFields)
 	}
 	if p.Receipt.SkippedSummaryRows != 1 {
 		t.Fatalf("summary receipt = %+v, want one skipped summary", p.Receipt)
 	}
 }
 
+// Every MSPDI ConstraintType code maps to its GoPMgr type (Microsoft's
+// published codes: 0 ASAP, 1 ALAP, 2 MSO, 3 MFO, 4 SNET, 5 SNLT, 6 FNET,
+// 7 FNLT). ASAP is stored as no constraint. An unknown code, or a dated
+// type with no usable date, is left out and counted; with the option off
+// nothing is imported.
+func TestFromMSPDIConstraints(t *testing.T) {
+	task := func(uid, typ, date string) string {
+		s := "<Task><UID>" + uid + "</UID><Name>T" + uid + "</Name><Duration>PT8H0M0S</Duration>"
+		if typ != "" {
+			s += "<ConstraintType>" + typ + "</ConstraintType>"
+		}
+		if date != "" {
+			s += "<ConstraintDate>" + date + "</ConstraintDate>"
+		}
+		return s + "</Task>"
+	}
+	xml := `<Project xmlns="http://schemas.microsoft.com/project"><Tasks>` +
+		task("1", "0", "2026-06-04T08:00:00") + task("2", "1", "") +
+		task("3", "2", "2026-06-04T08:00:00") + task("4", "3", "2026-06-05T17:00:00") +
+		task("5", "4", "2026-06-08T08:00:00") + task("6", "5", "2026-06-09T08:00:00") +
+		task("7", "6", "2026-06-10T17:00:00") + task("8", "7", "2026-06-11T17:00:00") +
+		task("9", "2", "") + task("10", "9", "2026-06-04T08:00:00") + task("11", "5", "NA") +
+		task("12", "", "") +
+		`</Tasks></Project>`
+
+	p, err := fromMSPDI([]byte(xml))
+	if err != nil {
+		t.Fatalf("fromMSPDI: %v", err)
+	}
+	type got struct {
+		c    kernel.ConstraintType
+		date string
+	}
+	want := map[string]got{
+		"1": {}, "2": {kernel.AsLateAsPossible, ""},
+		"3": {kernel.MustStartOn, "2026-06-04"}, "4": {kernel.MustFinishOn, "2026-06-05"},
+		"5": {kernel.StartNoEarlierThan, "2026-06-08"}, "6": {kernel.StartNoLaterThan, "2026-06-09"},
+		"7": {kernel.FinishNoEarlierThan, "2026-06-10"}, "8": {kernel.FinishNoLaterThan, "2026-06-11"},
+		"9": {}, "10": {}, "11": {}, "12": {},
+	}
+	for _, task := range p.Tasks {
+		if g := (got{task.Constraint, task.ConstraintDate}); g != want[task.UID] {
+			t.Errorf("task %s: %+v, want %+v", task.UID, g, want[task.UID])
+		}
+	}
+	if p.Receipt.SkippedConstraints != 3 {
+		t.Errorf("skipped constraints = %d, want 3 (tasks 9, 10, 11)", p.Receipt.SkippedConstraints)
+	}
+
+	off, err := FromMSPDIWithOptions([]byte(xml), MSPDIImportOptions{})
+	if err != nil {
+		t.Fatalf("FromMSPDIWithOptions (no constraints): %v", err)
+	}
+	for _, task := range off.Tasks {
+		if task.Constraint != "" || task.ConstraintDate != "" {
+			t.Errorf("constraints off: task %s has %s %s", task.UID, task.Constraint, task.ConstraintDate)
+		}
+	}
+	if off.Receipt.SkippedConstraints != 0 {
+		t.Errorf("constraints off: skipped = %d, want 0", off.Receipt.SkippedConstraints)
+	}
+}
+
 func TestMSPDIRoundTrip(t *testing.T) {
 	tasks := map[string]*kernel.Task{
 		"A": {ID: "A", Title: "Design", Duration: 2, PercentComplete: 25,
-			Assignments: []kernel.Assignment{{Resource: "alice", Units: 0.5}}},
+			Assignments: []kernel.Assignment{{Resource: "alice", Units: 0.5}},
+			Constraint:  kernel.MustStartOn, ConstraintDate: "2026-06-04"},
 		"B": {ID: "B", Title: "Build", Duration: 3,
-			Links: []kernel.Link{{Pred: "A", Type: kernel.StartToStart, Lag: 1}}},
+			Links:      []kernel.Link{{Pred: "A", Type: kernel.StartToStart, Lag: 1}},
+			Constraint: kernel.FinishNoLaterThan, ConstraintDate: "2026-06-10"},
 		"M": {ID: "M", Title: "Ship", Duration: 0, Milestone: true,
-			Precedents: []string{"B"}},
+			Precedents: []string{"B"}, Constraint: kernel.AsLateAsPossible},
+		// A dated constraint without a valid date is not written.
+		"X": {ID: "X", Title: "Loose", Duration: 1, Constraint: kernel.StartNoEarlierThan, ConstraintDate: "soon"},
 	}
 	if !kernel.CalculateCPM(tasks) {
 		t.Fatal("CalculateCPM cycle")
@@ -139,7 +207,27 @@ func TestMSPDIRoundTrip(t *testing.T) {
 		t.Fatalf("fromMSPDI(ToMSPDI(...)): %v", err)
 	}
 
-	if back.Title != "Round Trip" || len(back.Tasks) != 3 {
+	// Microsoft Project reads the constraint date at the start of the day
+	// for a start constraint and its end for a finish constraint, and the
+	// schema puts ConstraintType before PredecessorLink.
+	text := string(xmlBytes)
+	for _, fragment := range []string{
+		"<ConstraintType>2</ConstraintType>", "<ConstraintDate>2026-06-04T08:00:00</ConstraintDate>",
+		"<ConstraintType>7</ConstraintType>", "<ConstraintDate>2026-06-10T17:00:00</ConstraintDate>",
+		"<ConstraintType>1</ConstraintType>",
+	} {
+		if !strings.Contains(text, fragment) {
+			t.Errorf("exported XML lacks %s", fragment)
+		}
+	}
+	if strings.Contains(text, "soon") || strings.Count(text, "<ConstraintType>") != 3 {
+		t.Error("X's constraint has no valid date and must not be written")
+	}
+	if b := text[strings.Index(text, "<UID>B</UID>"):]; strings.Index(b, "<ConstraintType>") > strings.Index(b, "<PredecessorLink>") {
+		t.Error("ConstraintType must come before PredecessorLink")
+	}
+
+	if back.Title != "Round Trip" || len(back.Tasks) != 4 {
 		t.Fatalf("round trip lost tasks: %+v", back)
 	}
 	byUID := map[string]ImportedTask{}
@@ -162,5 +250,12 @@ func TestMSPDIRoundTrip(t *testing.T) {
 	}
 	if !byUID["M"].Milestone {
 		t.Error("milestone flag lost in round trip")
+	}
+	for id, want := range map[string][2]string{
+		"A": {"MSO", "2026-06-04"}, "B": {"FNLT", "2026-06-10"}, "M": {"ALAP", ""}, "X": {"", ""},
+	} {
+		if got := [2]string{string(byUID[id].Constraint), byUID[id].ConstraintDate}; got != want {
+			t.Errorf("%s constraint after round trip = %v, want %v", id, got, want)
+		}
 	}
 }

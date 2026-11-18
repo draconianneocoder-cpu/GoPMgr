@@ -20,13 +20,14 @@ const sampleImportXML = `<?xml version="1.0" encoding="UTF-8"?>
     <Task><UID>1</UID><Name>Pack</Name><Duration>PT16H0M0S</Duration></Task>
     <Task>
       <UID>2</UID><Name>Move</Name><Duration>PT8H0M0S</Duration>
+      <ConstraintType>5</ConstraintType><ConstraintDate>2026-07-10T08:00:00</ConstraintDate>
       <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>3</Type><LinkLag>4800</LinkLag></PredecessorLink>
     </Task>
   </Tasks>
 </Project>`
 
 // allMSPDIFields imports every schedule field, the import dialog's default.
-var allMSPDIFields = export.MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true}
+var allMSPDIFields = export.MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true, IncludeConstraints: true}
 
 func TestImportMSPDIFromBytes(t *testing.T) {
 	d, err := db.InitDB(filepath.Join(t.TempDir(), "mspdi-import.pmforge"))
@@ -51,9 +52,11 @@ func TestImportMSPDIFromBytes(t *testing.T) {
 
 	var doc struct {
 		Nodes []struct {
-			ID       string  `json:"id"`
-			Label    string  `json:"label"`
-			Duration float64 `json:"duration"`
+			ID             string  `json:"id"`
+			Label          string  `json:"label"`
+			Duration       float64 `json:"duration"`
+			Constraint     string  `json:"constraint"`
+			ConstraintDate string  `json:"constraint_date"`
 		} `json:"nodes"`
 		Edges []struct {
 			From, To, Label string
@@ -67,6 +70,16 @@ func TestImportMSPDIFromBytes(t *testing.T) {
 	}
 	if doc.Edges[0].Label != "SS+1" {
 		t.Errorf("edge label = %q, want SS+1", doc.Edges[0].Label)
+	}
+	// Move's SNLT (type 5) reaches the chart node.
+	for _, n := range doc.Nodes {
+		want := [2]string{}
+		if n.ID == "2" {
+			want = [2]string{"SNLT", "2026-07-10"}
+		}
+		if got := [2]string{n.Constraint, n.ConstraintDate}; got != want {
+			t.Errorf("node %s constraint = %v, want %v", n.ID, got, want)
+		}
 	}
 
 	proj, err := d.GetProject()
@@ -88,6 +101,10 @@ func TestImportMSPDIFromBytes(t *testing.T) {
 	}
 	if tasks["2"].StartDate != "2026-07-07" {
 		t.Errorf("Move StartDate = %q, want 2026-07-07", tasks["2"].StartDate)
+	}
+	// SNLT Friday 07-10 (index 4) is armed and met by a Tuesday start.
+	if m := tasks["2"]; !m.ConstraintArmed || m.ConstraintDay != 4 || m.ConstraintViolated {
+		t.Errorf("Move constraint armed %v day %v violated %v, want armed day 4 met", m.ConstraintArmed, m.ConstraintDay, m.ConstraintViolated)
 	}
 }
 
@@ -113,8 +130,8 @@ func TestImportMSPDIWithOptionsPersistsMappingReceipt(t *testing.T) {
 	if err := json.Unmarshal([]byte(c.Config), &config); err != nil {
 		t.Fatalf("decode import receipt: %v", err)
 	}
-	if len(config.Receipt.ExcludedFields) != 3 {
-		t.Fatalf("receipt exclusions = %#v, want three", config.Receipt.ExcludedFields)
+	if len(config.Receipt.ExcludedFields) != 4 {
+		t.Fatalf("receipt exclusions = %#v, want four", config.Receipt.ExcludedFields)
 	}
 }
 

@@ -342,6 +342,9 @@ export const en = {
   'cpm.level': 'Level',
   'cpm.level.hint':
     "Delay contended tasks until resources fit capacity. Each delay is kept as the task's levelled start; constraints are never changed.",
+  'dashboard.import.constraints': 'Constraints',
+  'dashboard.import.constraints.hint':
+    'Import each task\'s constraint and date. GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date.',
   'cpm.levelStart': 'Levelled start',
   'cpm.levelStart.hint':
     'Resource levelling delayed this task to this date. Level again to recompute it, or clear it to schedule the task from its links and constraint alone.',

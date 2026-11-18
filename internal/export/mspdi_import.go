@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopmgr/internal/kernel"
 )
@@ -23,6 +24,10 @@ type ImportedTask struct {
 	PercentComplete float64
 	Links           []kernel.Link
 	Assignments     []kernel.Assignment
+	// Constraint and ConstraintDate (YYYY-MM-DD) are the task's
+	// scheduling constraint; empty for ASAP or when not imported.
+	Constraint     kernel.ConstraintType
+	ConstraintDate string
 }
 
 // ImportedProject is the result of FromMSPDIWithOptions.
@@ -39,6 +44,9 @@ type MSPDIImportOptions struct {
 	IncludeDependencies bool `json:"include_dependencies"`
 	IncludeProgress     bool `json:"include_progress"`
 	IncludeAssignments  bool `json:"include_assignments"`
+	// IncludeConstraints imports task constraint types and dates. Callers
+	// that predate it leave it false, which keeps their earlier result.
+	IncludeConstraints bool `json:"include_constraints"`
 }
 
 // MSPDIImportReceipt records exactly which source fields were preserved,
@@ -50,6 +58,9 @@ type MSPDIImportReceipt struct {
 	Transformations    []string `json:"transformations"`
 	SkippedSummaryRows int      `json:"skipped_summary_rows"`
 	SkippedNullRows    int      `json:"skipped_null_rows"`
+	// SkippedConstraints counts constraints left out because their type is
+	// unknown or a dated type has no usable date.
+	SkippedConstraints int `json:"skipped_constraints"`
 }
 
 // mspdiImport mirrors the subset of the MSPDI schema GoPMgr reads.
@@ -67,6 +78,8 @@ type mspdiImport struct {
 		Summary         string  `xml:"Summary"`
 		IsNull          string  `xml:"IsNull"`
 		PercentComplete float64 `xml:"PercentComplete"`
+		ConstraintType  *int    `xml:"ConstraintType"`
+		ConstraintDate  string  `xml:"ConstraintDate"`
 		Predecessors    []struct {
 			PredecessorUID string  `xml:"PredecessorUID"`
 			Type           *int    `xml:"Type"`
@@ -104,6 +117,10 @@ const mspdiHoursPerDay = 8.0
 //     full-time, same as GoPMgr).
 //   - The project StartDate is reduced to YYYY-MM-DD for
 //     project.start_date compatibility.
+//   - ConstraintType: 0=ASAP (stored as none), 1=ALAP, 2=MSO, 3=MFO,
+//     4=SNET, 5=SNLT, 6=FNET, 7=FNLT; ConstraintDate is reduced to
+//     YYYY-MM-DD. An unknown type, or a dated type without a usable date,
+//     is left out and counted in the receipt.
 func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProject, error) {
 	var raw mspdiImport
 	if err := xml.Unmarshal(data, &raw); err != nil {
@@ -130,6 +147,14 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 	} else {
 		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "resource.assignments")
 		out.Receipt.Transformations = append(out.Receipt.Transformations, "resource UID converted to resource name for GoPMgr assignments")
+	}
+	if !options.IncludeConstraints {
+		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "task.constraints (user selection)")
+	} else {
+		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "task.constraint_type", "task.constraint_date")
+		out.Receipt.Transformations = append(out.Receipt.Transformations,
+			"task.constraint_date reduced to YYYY-MM-DD",
+			"constraints keep their type, but GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date")
 	}
 	if out.Title == "" {
 		out.Title = raw.Name
@@ -183,6 +208,14 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 		if options.IncludeProgress {
 			task.PercentComplete = t.PercentComplete
 		}
+		if options.IncludeConstraints && t.ConstraintType != nil {
+			c, date, ok := mspdiConstraint(*t.ConstraintType, t.ConstraintDate)
+			if ok {
+				task.Constraint, task.ConstraintDate = c, date
+			} else {
+				out.Receipt.SkippedConstraints++
+			}
+		}
 		if !options.IncludeAssignments {
 			task.Assignments = nil
 		}
@@ -233,6 +266,42 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 	}
 
 	return out, nil
+}
+
+// mspdiConstraintTypes maps MSPDI ConstraintType codes to GoPMgr types.
+var mspdiConstraintTypes = map[int]kernel.ConstraintType{
+	0: kernel.AsSoonAsPossible,
+	1: kernel.AsLateAsPossible,
+	2: kernel.MustStartOn,
+	3: kernel.MustFinishOn,
+	4: kernel.StartNoEarlierThan,
+	5: kernel.StartNoLaterThan,
+	6: kernel.FinishNoEarlierThan,
+	7: kernel.FinishNoLaterThan,
+}
+
+// mspdiConstraint converts an MSPDI constraint. ASAP is returned as no
+// constraint. ok is false for an unknown type or a dated type whose date
+// does not begin with a YYYY-MM-DD date.
+func mspdiConstraint(code int, rawDate string) (kernel.ConstraintType, string, bool) {
+	c, known := mspdiConstraintTypes[code]
+	switch {
+	case !known:
+		return "", "", false
+	case c == kernel.AsSoonAsPossible:
+		return "", "", true
+	case !kernel.IsDateConstraint(c):
+		return c, "", true
+	}
+	date := strings.TrimSpace(rawDate)
+	if len(date) < len(kernel.DateLayout) {
+		return "", "", false
+	}
+	date = date[:len(kernel.DateLayout)]
+	if _, err := time.Parse(kernel.DateLayout, date); err != nil {
+		return "", "", false
+	}
+	return c, date, true
 }
 
 // isoHoursToDays converts MSPDI's PT<h>H<m>M<s>S duration form into

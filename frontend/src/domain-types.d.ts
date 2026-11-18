@@ -173,6 +173,7 @@ declare global {
     include_dependencies: boolean;
     include_progress: boolean;
     include_assignments: boolean;
+    include_constraints: boolean;
   }
 
   interface OpenProjectCheck {
