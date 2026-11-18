@@ -51,7 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // setConstraint writes a choice the user made. The select also writes
   // its current value when it mounts; a write that changes nothing the
   // editor shows is ignored, so opening a task never rewrites "ASAP",
-  // "asap" or "" (levelling treats an explicit ASAP differently from none).
+  // "asap" or "" (a chart's stored data changes only when the user acts).
   function setConstraint(node: { constraint?: string }, value: string | undefined) {
     if (value === constraintKey(node.constraint)) return;
     node.constraint = value;
@@ -346,7 +346,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         false // CPM editor applies pins only; splitting is applied from the Gantt view
       );
       // Reload the shell's doc from the DB so the editor shows the
-      // new SNET pins and a later save can't clobber them.
+      // new levelled starts and a later save can't clobber them.
       await shellRef?.reloadFromDB();
       // Success flash plus a persistent warning for tasks whose demand
       // exceeds capacity (still overallocated; badges also show it).
@@ -361,10 +361,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // clearLevelStart removes the start levelling gave a task, saves, and
+  // reloads, so the task is scheduled from its links and constraint again
+  // straight away (levelling recomputes it on its next run).
+  async function clearLevelStart(node: { level_start?: string }) {
+    if (resourceBusy) return;
+    resourceBusy = true;
+    try {
+      node.level_start = undefined;
+      if (await shellRef?.save()) await shellRef?.reloadFromDB();
+    } finally {
+      resourceBusy = false;
+    }
+  }
+
   // previewSplitting reports (read-only) whether interrupting tasks across
   // non-contiguous days would resolve overallocation, without changing the
   // saved schedule. Splitting isn't persisted: a split task can't be stored
-  // as the single SNET start pin the chart model uses.
+  // as the single levelled start the CPM editor applies.
   async function previewSplitting() {
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
@@ -824,6 +838,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p role="status" class="mt-2 p-2 bg-slate-900 border border-slate-500 rounded text-xs text-slate-200">
         {unappliedMessage(node.constraint_unapplied)}
       </p>
+    {/if}
+    {#if node.level_start}
+      <div class="mt-2 flex items-center justify-between gap-2 text-xs" title={t('cpm.levelStart.hint')}>
+        <span class="text-slate-500">{t('cpm.levelStart')}</span>
+        <span class="font-mono text-cyan-300">{node.level_start}</span>
+        <Button
+          variant="secondary"
+          size="compact"
+          disabled={resourceBusy}
+          aria-label={t('cpm.levelStart.clear.label', { label: node.label || node.id })}
+          onclick={() => clearLevelStart(node)}
+        >{t('cpm.levelStart.clear')}</Button>
+      </div>
     {/if}
     <div class="mt-3 p-2 bg-slate-950 rounded text-xs space-y-1">
       {#if node.start_date}

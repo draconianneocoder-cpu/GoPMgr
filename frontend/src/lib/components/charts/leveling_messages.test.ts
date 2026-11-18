@@ -25,7 +25,7 @@ describe('summarizeLabels', () => {
 describe('levelResourcesMessages', () => {
   it('reports pins with no warning when everything fit', () => {
     const m = levelResourcesMessages({ pinned: 2 });
-    expect(m.flash).toBe('Levelled: 2 tasks pinned (SNET)');
+    expect(m.flash).toBe('Levelled: 2 tasks delayed');
     expect(m.warn).toBe('');
     expect(m.warnTitle).toBe('');
   });
@@ -40,8 +40,16 @@ describe('levelResourcesMessages', () => {
   });
   it('pins can coexist with a residual overallocation warning', () => {
     const m = levelResourcesMessages({ pinned: 1, unplaced_labels: ['X'] });
-    expect(m.flash).toBe('Levelled: 1 task pinned (SNET)');
+    expect(m.flash).toBe('Levelled: 1 task delayed');
     expect(m.warn).toBe('1 task still overallocated: X');
+  });
+  it('names the tasks whose constraint date levelling broke, after any overallocation', () => {
+    const m = levelResourcesMessages({ pinned: 2, unplaced_labels: ['X'], constraint_violation_labels: ['Survey'] });
+    expect(m.warn).toBe('1 task still overallocated: X. Levelling moved 1 task past its constraint date: Survey');
+    expect(m.warnTitle).toContain('clear the levelled start of: Survey.');
+    expect(levelResourcesMessages({ pinned: 2, constraint_violation_labels: ['A', 'B'] }).warn).toBe(
+      'Levelling moved 2 tasks past their constraint dates: A, B',
+    );
   });
 });
 

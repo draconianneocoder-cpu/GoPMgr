@@ -1092,6 +1092,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			DurationEstimate       kernel.DurationEstimate `json:"duration_estimate"`
 			Constraint             string                  `json:"constraint"`
 			ConstraintDate         string                  `json:"constraint_date"`
+			LevelStart             string                  `json:"level_start"`
 			PercentComplete        float64                 `json:"percent_complete"`
 			Milestone              bool                    `json:"milestone"`
 			ActualStart            string                  `json:"actual_start"`
@@ -1128,6 +1129,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			DurationEstimate:       n.DurationEstimate,
 			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
 			ConstraintDate:         n.ConstraintDate,
+			LevelStart:             n.LevelStart,
 			PercentComplete:        n.PercentComplete,
 			Milestone:              n.Milestone,
 			ActualStart:            n.ActualStart,

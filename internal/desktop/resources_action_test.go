@@ -52,6 +52,37 @@ func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 	return &App{db: d}, d, c
 }
 
+// levelledNode is what levelling persists on a node, as stored.
+type levelledNode struct {
+	Constraint, ConstraintDate, LevelStart string
+}
+
+// storedLevelling reads every node's constraint and levelled start from
+// the saved chart.
+func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]levelledNode {
+	t.Helper()
+	got, err := d.GetChart(chartID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	var doc struct {
+		Nodes []struct {
+			ID             string `json:"id"`
+			Constraint     string `json:"constraint"`
+			ConstraintDate string `json:"constraint_date"`
+			LevelStart     string `json:"level_start"`
+		} `json:"nodes"`
+	}
+	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
+		t.Fatalf("unmarshal persisted doc: %v", err)
+	}
+	out := map[string]levelledNode{}
+	for _, n := range doc.Nodes {
+		out[n.ID] = levelledNode{n.Constraint, n.ConstraintDate, n.LevelStart}
+	}
+	return out
+}
+
 func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	app, d, c := newResourceTestApp(t)
 
@@ -66,35 +97,103 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 		t.Fatalf("UnplacedTaskIDs = %v, want none (both tasks fit)", res.UnplacedTaskIDs)
 	}
 
-	got, err := d.GetChart(c.ID)
+	// A keeps day 0 (no levelled start); B is pushed behind A's 2 days:
+	// Mon+Tue for A, so B starts Wednesday 2026-06-03. Levelling stores
+	// that as B's levelled start and writes no constraint (owner decision
+	// 2026-11-18).
+	byID := storedLevelling(t, d, c.ID)
+	if byID["A"] != (levelledNode{}) {
+		t.Errorf("A = %+v, want nothing stored", byID["A"])
+	}
+	if byID["B"] != (levelledNode{LevelStart: "2026-06-03"}) {
+		t.Errorf("B = %+v, want levelled start 2026-06-03 and no constraint", byID["B"])
+	}
+
+	// Levelling again keeps B's levelled start: it recomputes from the
+	// logic, not from the previous run's delay. (Before 2026-11-18 a
+	// second run cleared the SNET pin it still needed.)
+	res, err = app.LevelChartResources(c.ID, "", false, false)
 	if err != nil {
-		t.Fatalf("GetChart: %v", err)
+		t.Fatalf("second LevelChartResources: %v", err)
 	}
-	var doc struct {
-		Nodes []struct {
-			ID             string `json:"id"`
-			Constraint     string `json:"constraint"`
-			ConstraintDate string `json:"constraint_date"`
-		} `json:"nodes"`
+	if res.Pinned != 1 {
+		t.Fatalf("second run pinned = %d, want 1", res.Pinned)
 	}
-	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
-		t.Fatalf("unmarshal persisted doc: %v", err)
+	if again := storedLevelling(t, d, c.ID); again["B"] != (levelledNode{LevelStart: "2026-06-03"}) || again["A"] != (levelledNode{}) {
+		t.Errorf("after a second run: A = %+v, B = %+v; want A nothing, B levelled start 2026-06-03", again["A"], again["B"])
 	}
 
-	byID := map[string]struct {
-		Constraint, Date string
-	}{}
-	for _, n := range doc.Nodes {
-		byID[n.ID] = struct{ Constraint, Date string }{n.Constraint, n.ConstraintDate}
+	// With alice able to do both at once, the delay is no longer needed:
+	// levelling clears B's levelled start rather than keeping its own.
+	if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: "project-1", Name: "alice", Availability: 2}); err != nil {
+		t.Fatalf("SaveStakeholder: %v", err)
 	}
+	if res, err = app.LevelChartResources(c.ID, "", false, false); err != nil || res.Pinned != 0 {
+		t.Fatalf("third run: pinned %d, err %v; want 0, nil", res.Pinned, err)
+	}
+	if freed := storedLevelling(t, d, c.ID); freed["B"] != (levelledNode{}) {
+		t.Errorf("with capacity 2: B = %+v, want nothing stored", freed["B"])
+	}
+}
 
-	// A keeps day 0 (no pin); B is pushed behind A's 2 days:
-	// Mon+Tue for A, so B starts Wednesday 2026-06-03.
-	if byID["A"].Constraint != "" {
-		t.Errorf("A must not be pinned, got %q", byID["A"].Constraint)
+// Levelling never writes, rewrites or removes a constraint (owner decision
+// 2026-11-18): a task with its own constraint gets a levelled start like
+// any other, a hand-set SNET that is not needed stays, an explicit ASAP is
+// levelled like no constraint, and an ALAP task gets no levelled start.
+// It also names the tasks whose date levelling broke, and only those.
+//
+// Every task but LP needs alice full-time; there are no links; the project
+// starts Monday 2026-06-01 (index 0). Late starts from the plain pass:
+// LP (6 days, no resource) sets the project finish 6; V (MSO Fri 05-29,
+// before the start) is already violated, LF pinned -1+1 = 0, LS -1;
+// S (SNLT Mon) LS 0; E (explicit ASAP), H (hand-set SNET Mon), M (MSO
+// Mon 06-08, index 5) and Q (ALAP) LS 5. LTF places by (LS, ID): V Mon
+// (0); LP needs no resource; S Tue (1), breaking its SNLT; E Wed (2); H
+// Thu (3); M stays on its MSO day (5); Q wants day 5, finds alice busy and
+// moves to 6, but ALAP tasks get no levelled start. Violated after and
+// not before: S only.
+func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Constrained", Data: `{
+		"nodes": [
+			{"id":"LP","label":"LP","duration":6},
+			{"id":"S","label":"Survey","duration":1,"constraint":"SNLT","constraint_date":"2026-06-01","assignments":[{"resource":"alice"}]},
+			{"id":"V","label":"V","duration":1,"constraint":"MSO","constraint_date":"2026-05-29","assignments":[{"resource":"alice"}]},
+			{"id":"E","label":"E","duration":1,"constraint":"ASAP","assignments":[{"resource":"alice"}]},
+			{"id":"M","label":"M","duration":1,"constraint":"MSO","constraint_date":"2026-06-08","assignments":[{"resource":"alice"}]},
+			{"id":"H","label":"H","duration":1,"constraint":"SNET","constraint_date":"2026-06-01","assignments":[{"resource":"alice"}]},
+			{"id":"Q","label":"Q","duration":1,"constraint":"ALAP","assignments":[{"resource":"alice"}]}
+		],
+		"edges": []
+	}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
 	}
-	if byID["B"].Constraint != "SNET" || byID["B"].Date != "2026-06-03" {
-		t.Errorf("B = %+v, want SNET @ 2026-06-03", byID["B"])
+	res, err := app.LevelChartResources(c.ID, "ltf", false, false)
+	if err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	got := storedLevelling(t, d, c.ID)
+	want := map[string]levelledNode{
+		"LP": {},
+		"S":  {Constraint: "SNLT", ConstraintDate: "2026-06-01", LevelStart: "2026-06-02"},
+		"V":  {Constraint: "MSO", ConstraintDate: "2026-05-29"},
+		"E":  {Constraint: "ASAP", LevelStart: "2026-06-03"},
+		"M":  {Constraint: "MSO", ConstraintDate: "2026-06-08"},
+		"H":  {Constraint: "SNET", ConstraintDate: "2026-06-01", LevelStart: "2026-06-04"},
+		"Q":  {Constraint: "ALAP"},
+	}
+	for id, w := range want {
+		if got[id] != w {
+			t.Errorf("%s = %+v, want %+v", id, got[id], w)
+		}
+	}
+	if res.Pinned != 3 {
+		t.Errorf("pinned = %d, want 3 (S, E, H)", res.Pinned)
+	}
+	if len(res.ConstraintViolationTaskIDs) != 1 || res.ConstraintViolationTaskIDs[0] != "S" ||
+		len(res.ConstraintViolationLabels) != 1 || res.ConstraintViolationLabels[0] != "Survey" {
+		t.Errorf("violations = %v %v, want [S] [Survey] (V was violated before levelling)", res.ConstraintViolationTaskIDs, res.ConstraintViolationLabels)
 	}
 }
 
@@ -208,28 +307,6 @@ func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
 		"edges": [{"from":"A","to":"P"}]
 	}`
 
-	constraintByID := func(app *App, d *db.Database, chartID string) map[string]string {
-		t.Helper()
-		got, err := d.GetChart(chartID)
-		if err != nil {
-			t.Fatalf("GetChart: %v", err)
-		}
-		var doc struct {
-			Nodes []struct {
-				ID         string `json:"id"`
-				Constraint string `json:"constraint"`
-			} `json:"nodes"`
-		}
-		if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-		out := map[string]string{}
-		for _, n := range doc.Nodes {
-			out[n.ID] = n.Constraint
-		}
-		return out
-	}
-
 	// Default LTF: B (least float) keeps day 0, A is delayed and pinned.
 	appLTF, dLTF, _ := newResourceTestApp(t)
 	cLTF, err := dLTF.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "LTF", Data: data})
@@ -239,9 +316,9 @@ func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
 	if _, err := appLTF.LevelChartResources(cLTF.ID, "ltf", false, false); err != nil {
 		t.Fatalf("LevelChartResources LTF: %v", err)
 	}
-	ltf := constraintByID(appLTF, dLTF, cLTF.ID)
-	if ltf["A"] != "SNET" || ltf["B"] != "" {
-		t.Errorf("LTF: A=%q B=%q, want A pinned (SNET), B free", ltf["A"], ltf["B"])
+	ltf := storedLevelling(t, dLTF, cLTF.ID)
+	if ltf["A"].LevelStart == "" || ltf["B"] != (levelledNode{}) {
+		t.Errorf("LTF: A=%+v B=%+v, want A levelled, B free", ltf["A"], ltf["B"])
 	}
 
 	// EDF: A (earliest deadline) keeps day 0, B is delayed and pinned.
@@ -253,9 +330,9 @@ func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
 	if _, err := appEDF.LevelChartResources(cEDF.ID, "edf", false, false); err != nil {
 		t.Fatalf("LevelChartResources EDF: %v", err)
 	}
-	edf := constraintByID(appEDF, dEDF, cEDF.ID)
-	if edf["B"] != "SNET" || edf["A"] != "" {
-		t.Errorf("EDF: A=%q B=%q, want B pinned (SNET), A free", edf["A"], edf["B"])
+	edf := storedLevelling(t, dEDF, cEDF.ID)
+	if edf["B"].LevelStart == "" || edf["A"] != (levelledNode{}) {
+		t.Errorf("EDF: A=%+v B=%+v, want B levelled, A free", edf["A"], edf["B"])
 	}
 }
 
@@ -280,28 +357,6 @@ func TestLevelChartResourcesPriorityCriticalFlipsPersistedOutcome(t *testing.T) 
 		],
 		"edges": [{"from":"F","to":"G"}]
 	}`
-	constraintByID := func(app *App, d *db.Database, chartID string) map[string]string {
-		t.Helper()
-		got, err := d.GetChart(chartID)
-		if err != nil {
-			t.Fatalf("GetChart: %v", err)
-		}
-		var doc struct {
-			Nodes []struct {
-				ID         string `json:"id"`
-				Constraint string `json:"constraint"`
-			} `json:"nodes"`
-		}
-		if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
-			t.Fatalf("unmarshal: %v", err)
-		}
-		out := map[string]string{}
-		for _, n := range doc.Nodes {
-			out[n.ID] = n.Constraint
-		}
-		return out
-	}
-
 	// EDF without override: the critical task C is delayed/pinned.
 	appOff, dOff, _ := newResourceTestApp(t)
 	cOff, err := dOff.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "off", Data: data})
@@ -311,8 +366,8 @@ func TestLevelChartResourcesPriorityCriticalFlipsPersistedOutcome(t *testing.T) 
 	if _, err := appOff.LevelChartResources(cOff.ID, "edf", false, false); err != nil {
 		t.Fatalf("LevelChartResources off: %v", err)
 	}
-	if off := constraintByID(appOff, dOff, cOff.ID); off["C"] != "SNET" {
-		t.Errorf("EDF (no override): C=%q, want C pinned (critical delayed)", off["C"])
+	if off := storedLevelling(t, dOff, cOff.ID); off["C"].LevelStart == "" || off["C"].Constraint != "" {
+		t.Errorf("EDF (no override): C=%+v, want C levelled (critical delayed), no constraint", off["C"])
 	}
 
 	// EDF with priorityCritical: C is protected, so it is NOT pinned.
@@ -324,12 +379,12 @@ func TestLevelChartResourcesPriorityCriticalFlipsPersistedOutcome(t *testing.T) 
 	if _, err := appOn.LevelChartResources(cOn.ID, "edf", true, false); err != nil {
 		t.Fatalf("LevelChartResources on: %v", err)
 	}
-	on := constraintByID(appOn, dOn, cOn.ID)
-	if on["C"] != "" {
-		t.Errorf("EDF+priorityCritical: C=%q, want C free (critical protected)", on["C"])
+	on := storedLevelling(t, dOn, cOn.ID)
+	if on["C"] != (levelledNode{}) {
+		t.Errorf("EDF+priorityCritical: C=%+v, want C free (critical protected)", on["C"])
 	}
-	if on["F"] != "SNET" {
-		t.Errorf("EDF+priorityCritical: F=%q, want F pinned (yielded to critical C)", on["F"])
+	if on["F"].LevelStart == "" || on["F"].Constraint != "" {
+		t.Errorf("EDF+priorityCritical: F=%+v, want F levelled (yielded to critical C), no constraint", on["F"])
 	}
 }
 

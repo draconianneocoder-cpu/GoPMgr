@@ -188,6 +188,19 @@ type Task struct {
 	// none without notice (KRN-01 b). Empty when armed or not dated.
 	ConstraintUnapplied ConstraintIssue `json:"constraint_unapplied,omitempty"`
 
+	// LevelStart is the start date (DateLayout) resource levelling gave
+	// the task. It is not a constraint: levelling owns it, writing and
+	// clearing it on each run, and never touches Constraint. Once
+	// ApplyConstraintDates has armed it (LevelStartArmed, LevelStartDay:
+	// the first working day on or after it), the forward pass starts the
+	// task no earlier, before any constraint is checked, so a levelled
+	// delay that breaks a latest limit is flagged. It is never violated
+	// itself. LevelResourcesWithOptions disarms it, because levelling
+	// recomputes it from the logic and the user's constraints.
+	LevelStart      string  `json:"level_start,omitempty"`
+	LevelStartDay   float64 `json:"level_start_day,omitempty"`
+	LevelStartArmed bool    `json:"level_start_armed,omitempty"`
+
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
 	// or needed before, its pinned date; an SNLT task starting late; an
@@ -397,6 +410,11 @@ func (plan *cpmPlan) run() {
 			if candidate > es {
 				es = candidate
 			}
+		}
+
+		// A levelled start delays the task like a start floor.
+		if t.LevelStartArmed && t.LevelStartDay > es {
+			es = t.LevelStartDay
 		}
 
 		// Forward-acting constraints.

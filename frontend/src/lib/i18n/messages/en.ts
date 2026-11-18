@@ -259,9 +259,15 @@ export const en = {
   // Resource-leveling results, shared by the Gantt and CPM editors.
   'leveling.moreLabels': '{labels} +{count} more',
   'leveling.pinned': {
-    one: 'Levelled: {count} task pinned (SNET)',
-    other: 'Levelled: {count} tasks pinned (SNET)',
+    one: 'Levelled: {count} task delayed',
+    other: 'Levelled: {count} tasks delayed',
   },
+  'leveling.constraintsBroken': {
+    one: 'Levelling moved {count} task past its constraint date: {labels}',
+    other: 'Levelling moved {count} tasks past their constraint dates: {labels}',
+  },
+  'leveling.constraintsBroken.hint':
+    'Levelling does not avoid constraint dates while it places tasks. Add capacity, change the constraint, or clear the levelled start of: {labels}.',
   'leveling.noneShifted': 'No tasks could be shifted into free capacity',
   'leveling.alreadyLevel': 'Already level: nothing moved',
   'leveling.stillOverallocated': {
@@ -334,7 +340,13 @@ export const en = {
   'cpm.level.protectCritical.hint':
     'Protect the critical path: critical tasks win resource contention ahead of floating tasks.',
   'cpm.level': 'Level',
-  'cpm.level.hint': 'Delay contended tasks until resources fit capacity; delays persist as SNET constraints',
+  'cpm.level.hint':
+    "Delay contended tasks until resources fit capacity. Each delay is kept as the task's levelled start; constraints are never changed.",
+  'cpm.levelStart': 'Levelled start',
+  'cpm.levelStart.hint':
+    'Resource levelling delayed this task to this date. Level again to recompute it, or clear it to schedule the task from its links and constraint alone.',
+  'cpm.levelStart.clear': 'Clear',
+  'cpm.levelStart.clear.label': 'Clear the levelled start of {label}',
   'cpm.previewSplitting.hint':
     'Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved.',
   'cpm.histogram': 'Histogram',
@@ -407,7 +419,7 @@ export const en = {
   'cpm.startVsBaseline': 'Start vs baseline',
   'cpm.finishVsBaseline': 'Finish vs baseline',
   'cpm.help':
-    "ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node with Float = 0 lies on the critical path and is highlighted red. Real start/finish dates appear once the project has a start date (Project Settings); non-working days are skipped using the project country's calendar. Incoming-link labels set the dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS. Date constraints (SNET/FNLT/MFO) also need the project start date; ALAP works without one. Links always win over constraints; impossible constraints flag the node amber instead. Resource assignments default to capacity 1.0 per resource; tasks whose resources are over capacity get an orange edge strip.",
+    "ES/EF/LS/LF computed server-side via internal/kernel CPM. Any node with Float = 0 lies on the critical path and is highlighted red. Real start/finish dates appear once the project has a start date (Project Settings); non-working days are skipped using the project country's calendar. Incoming-link labels set the dependency type and lag (FS/SS/FF/SF, e.g. SS+2); blank means FS. Date constraints (SNET, SNLT, FNET, FNLT, MSO, MFO) also need the project start date; ALAP works without one. Links always win over constraints; impossible constraints flag the node amber instead. Resource assignments default to capacity 1.0 per resource; tasks whose resources are over capacity get an orange edge strip.",
   'cpm.evm.title': 'Earned value',
   'cpm.evm.statusDate': 'Status date (blank = today)',
   'cpm.evm.compute': 'Compute',

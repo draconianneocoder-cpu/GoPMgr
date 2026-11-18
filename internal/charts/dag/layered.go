@@ -88,6 +88,12 @@ type LayeredNode struct {
 	ConstraintViolated  bool   `json:"constraint_violated,omitempty"`
 	ConstraintUnapplied string `json:"constraint_unapplied,omitempty"`
 
+	// LevelStart (input, YYYY-MM-DD) is the start resource levelling gave
+	// the task. Levelling owns it: it writes and clears it on each run and
+	// never changes Constraint. On an anchored schedule the task starts no
+	// earlier (kernel.Task.LevelStart).
+	LevelStart string `json:"level_start,omitempty"`
+
 	// Progress tracking (input, reporting-only): 0..100 percent
 	// complete and an explicit milestone marker, plus observed
 	// actual dates (YYYY-MM-DD).

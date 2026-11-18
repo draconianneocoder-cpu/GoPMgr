@@ -82,6 +82,7 @@ func cpmTasksFromDoc(doc LayeredDocument) map[string]*kernel.Task {
 			ActualCost:             n.ActualCost,
 			ActualCostMinorUnits:   n.ActualCostMinorUnits,
 			Assignments:            n.Assignments,
+			LevelStart:             n.LevelStart,
 		}
 		switch c := kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))); {
 		case c == kernel.AsLateAsPossible:

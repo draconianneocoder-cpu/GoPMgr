@@ -610,3 +610,25 @@ func TestMilestoneFinishConstraintsMeanTheEndOfTheDay(t *testing.T) {
 		t.Error("a milestone after work ending Thursday misses FNLT Wednesday and must be flagged")
 	}
 }
+
+// A levelled start (written by resource levelling, not a constraint)
+// delays a task like a start floor once armed, and a latest limit it
+// breaks is flagged on the next schedule. A (1 day) with levelled start
+// Wed 06-03 starts at 2; B with MSO Tue 06-02 and levelled start Thu
+// 06-04 is pulled to 1 by MSO, held to 3 by the levelled start: violated.
+// An unreadable levelled start is ignored.
+func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 1, LevelStart: "2026-06-03"},
+		"B": {ID: "B", Duration: 1, LevelStart: "2026-06-04", Constraint: MustStartOn, ConstraintDate: "2026-06-02"},
+		"C": {ID: "C", Duration: 1, LevelStart: "junk"},
+	}
+	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
+	mustCPM(t, tasks)
+	approx(t, "A.ES", tasks["A"].ES, 2)
+	approx(t, "B.ES", tasks["B"].ES, 3)
+	approx(t, "C.ES", tasks["C"].ES, 0)
+	if !tasks["B"].ConstraintViolated || tasks["A"].ConstraintViolated {
+		t.Errorf("violated: A %v B %v, want only B", tasks["A"].ConstraintViolated, tasks["B"].ConstraintViolated)
+	}
+}
