@@ -10,7 +10,7 @@ last_reviewed = "2026-11-18"
 claim_ids = ["page.roadmap"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/66ffb646c6eb5f736a87f23a246d14e734669db3/docs/ROADMAP.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/98490968479afb2e76c327496baffe753e999e93/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md"
@@ -45,4 +45,4 @@ High-scale scheduling is a direction, not an achieved performance benchmark. No 
 
 DuckDB was retired in favor of Go-native analytics. The DataFusion spike concluded without adoption. Neither is part of GoPMgr.
 
-[Read the complete canonical roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/66ffb646c6eb5f736a87f23a246d14e734669db3/docs/ROADMAP.md).
+[Read the complete canonical roadmap](https://github.com/draconianneocoder-cpu/GoPMgr/blob/98490968479afb2e76c327496baffe753e999e93/docs/ROADMAP.md).
