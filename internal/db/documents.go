@@ -41,7 +41,10 @@ var ValidDocumentStatuses = []string{"draft", "review", "approved", "archived"}
 // SaveDocument inserts or updates a document. On update, version is
 // bumped automatically.
 func (db *Database) SaveDocument(d Document) (Document, error) {
-	if d.ID == "" {
+	// generated records whether this save creates a record under a new ID;
+	// such a create must not update an existing record (BL-2).
+	generated := d.ID == ""
+	if generated {
 		id, err := newID("doc")
 		if err != nil {
 			return Document{}, fmt.Errorf("generate document id: %w", err)
@@ -75,6 +78,10 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 		isCreate = true
 		err = nil
 	} else if err != nil {
+		return Document{}, err
+	}
+	if generated && !isCreate {
+		err = ErrGeneratedIDCollision
 		return Document{}, err
 	}
 

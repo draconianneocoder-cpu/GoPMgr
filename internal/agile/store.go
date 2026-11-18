@@ -132,6 +132,22 @@ func (s *Store) ListColumns(boardID string) ([]Column, error) {
 	return out, rows.Err()
 }
 
+// ErrGeneratedIDCollision means a newly generated ID already names a stored
+// record. The upsert's guard never lets a generated ID update a row, so the
+// create is refused and nothing is written. With 128 random bits this points
+// to a broken entropy source, so it is not retried.
+var ErrGeneratedIDCollision = errors.New("generated ID is already in use; nothing was saved")
+
+// createOr returns ErrGeneratedIDCollision for a create under a generated ID
+// and notFound otherwise: the error requireOneRow reports when the upsert's
+// guard left no row written.
+func createOr(generated bool, notFound error) error {
+	if generated {
+		return ErrGeneratedIDCollision
+	}
+	return notFound
+}
+
 // Column errors. The texts are shown to the user by the Kanban board's
 // column manager.
 var (
@@ -171,7 +187,10 @@ func isBuiltInColumn(id string) bool {
 // moves it. The board must belong to this store's project, and an existing
 // column cannot move to another board.
 func (s *Store) SaveColumn(c Column) error {
-	if c.ID == "" {
+	// A create under a generated ID must not update an existing row (BL-2):
+	// the upsert's guard below binds !generated.
+	generated := c.ID == ""
+	if generated {
 		id, err := NewColumnID()
 		if err != nil {
 			return fmt.Errorf("generate column id: %w", err)
@@ -201,12 +220,12 @@ func (s *Store) SaveColumn(c Column) error {
 			name      = excluded.name,
 			order_idx = excluded.order_idx,
 			wip_limit = excluded.wip_limit
-		WHERE agile_columns.board_id = excluded.board_id
-	`, c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit)
+		WHERE agile_columns.board_id = excluded.board_id AND ?
+	`, c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit, !generated)
 	if err != nil {
 		return err
 	}
-	return requireOneRow(res, ErrColumnNotOnBoard)
+	return requireOneRow(res, createOr(generated, ErrColumnNotOnBoard))
 }
 
 // DeleteColumn removes an empty column the user added. Built-in columns
@@ -270,7 +289,10 @@ const workItemByIDQuery = `
 // closed_at so DORA can compute lead times. The write and readback are atomic;
 // success is returned only after commit, and a readback failure rolls back.
 func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
-	if wi.ID == "" {
+	// A create under a generated ID must not update an existing row (BL-2):
+	// the upsert's guard below binds !generated.
+	generated := wi.ID == ""
+	if generated {
 		id, err := NewWorkItemID()
 		if err != nil {
 			return WorkItem{}, fmt.Errorf("generate work item id: %w", err)
@@ -329,16 +351,16 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 			order_idx   = excluded.order_idx,
 			updated_at  = excluded.updated_at,
 			closed_at   = excluded.closed_at
-		WHERE agile_work_items.project_id = excluded.project_id
+		WHERE agile_work_items.project_id = excluded.project_id AND ?
 	`,
 		wi.ID, wi.ProjectID, string(wi.Type), wi.Title, wi.Description,
 		wi.State, wi.Points, wi.Assignee, wi.SprintID, string(wi.Priority),
-		wi.OrderIdx, now, now, closedAt,
+		wi.OrderIdx, now, now, closedAt, !generated,
 	)
 	if err != nil {
 		return WorkItem{}, fmt.Errorf("write work item: %w", err)
 	}
-	if err := requireOneRow(res, ErrNoWorkItem); err != nil {
+	if err := requireOneRow(res, createOr(generated, ErrNoWorkItem)); err != nil {
 		return WorkItem{}, err
 	}
 	saved, err := scanWorkItem(tx.QueryRow(workItemByIDQuery, wi.ID, s.ProjectID))
@@ -490,7 +512,10 @@ const sprintByIDQuery = `
 // only one sprint is active at a time (the GUI enforces this).
 // The write and scoped readback are atomic; success follows commit.
 func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
-	if sp.ID == "" {
+	// A create under a generated ID must not update an existing row (BL-2):
+	// the upsert's guard below binds !generated.
+	generated := sp.ID == ""
+	if generated {
 		id, err := NewSprintID()
 		if err != nil {
 			return Sprint{}, fmt.Errorf("generate sprint id: %w", err)
@@ -520,15 +545,15 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 			start_date = excluded.start_date,
 			end_date   = excluded.end_date,
 			capacity   = excluded.capacity
-		WHERE agile_sprints.project_id = excluded.project_id
+		WHERE agile_sprints.project_id = excluded.project_id AND ?
 	`,
 		sp.ID, sp.ProjectID, sp.Name, sp.Goal, string(sp.Status),
-		sp.StartDate, sp.EndDate, sp.Capacity,
+		sp.StartDate, sp.EndDate, sp.Capacity, !generated,
 	)
 	if err != nil {
 		return Sprint{}, fmt.Errorf("write sprint: %w", err)
 	}
-	if err := requireOneRow(res, ErrNoSprint); err != nil {
+	if err := requireOneRow(res, createOr(generated, ErrNoSprint)); err != nil {
 		return Sprint{}, err
 	}
 	saved, err := scanSprint(tx.QueryRow(sprintByIDQuery, sp.ID, s.ProjectID))
@@ -620,7 +645,10 @@ func scanSprint(row interface {
 // SaveDeployment upserts a deployment record. DORA metrics derive
 // from this table — every push to production should produce one row.
 func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
-	if d.ID == "" {
+	// A create under a generated ID must not update an existing row (BL-2):
+	// the upsert's guard below binds !generated.
+	generated := d.ID == ""
+	if generated {
 		id, err := NewDeploymentID()
 		if err != nil {
 			return Deployment{}, fmt.Errorf("generate deployment id: %w", err)
@@ -647,15 +675,15 @@ func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
 			lead_time_hours    = excluded.lead_time_hours,
 			restore_time_hours = excluded.restore_time_hours,
 			notes              = excluded.notes
-		WHERE agile_deployments.project_id = excluded.project_id
+		WHERE agile_deployments.project_id = excluded.project_id AND ?
 	`,
 		d.ID, d.ProjectID, d.TS.Format(time.RFC3339Nano), d.Version, successful,
-		d.LeadTimeHours, d.RestoreTimeHours, d.Notes,
+		d.LeadTimeHours, d.RestoreTimeHours, d.Notes, !generated,
 	)
 	if err != nil {
 		return Deployment{}, err
 	}
-	if err := requireOneRow(res, ErrNoDeployment); err != nil {
+	if err := requireOneRow(res, createOr(generated, ErrNoDeployment)); err != nil {
 		return Deployment{}, err
 	}
 	return d, nil
