@@ -46,8 +46,8 @@
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "3d5e7d5479ae988a050274271cddca73e32c05bb0c65554c4eb809528a76e259",
-          "reviewed_commit": "b7819a1f01d839c6a0a0be8f9287609aebc8527d"
+          "sha256": "5fadb0d29773951a8f75a46a7c9b688d2a274a7b7f6274f0aa1bfac3f666d8e1",
+          "reviewed_commit": "0969bea860ff54a91455626c8f586a382bf2fdc0"
         },
         {
           "path": "docs/user-guide.md",
@@ -161,8 +161,8 @@
       "dependencies": [
         {
           "path": "docs/ROADMAP.md",
-          "sha256": "3d5e7d5479ae988a050274271cddca73e32c05bb0c65554c4eb809528a76e259",
-          "reviewed_commit": "b7819a1f01d839c6a0a0be8f9287609aebc8527d"
+          "sha256": "5fadb0d29773951a8f75a46a7c9b688d2a274a7b7f6274f0aa1bfac3f666d8e1",
+          "reviewed_commit": "0969bea860ff54a91455626c8f586a382bf2fdc0"
         },
         {
           "path": "docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md",

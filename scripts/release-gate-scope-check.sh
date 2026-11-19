@@ -361,9 +361,11 @@ if ! bash scripts/release-update-ldflags_test.sh >/dev/null; then
 	fail=1
 fi
 ldflags_line='          echo "GOPMGR_RELEASE_LDFLAGS=$(bash scripts/release-update-ldflags.sh "$GITHUB_REF_NAME" "${{ matrix.platform }}" "$GOPMGR_UPDATE_PUBLIC_KEY" "$GITHUB_REPOSITORY")" >> "$GITHUB_ENV"'
-if ! grep -Fq "$ldflags_line" .github/workflows/release.yml ||
-	grep -Fq 'gopmgr/internal/update.ManifestURL' .github/workflows/release.yml ||
-	grep -Fq 'gopmgr/internal/update.UpdateChannelPublicKey' .github/workflows/release.yml; then
+ldflags_writes="$(grep -Fc 'GOPMGR_RELEASE_LDFLAGS=' .github/workflows/release.yml || true)"
+if [ "$ldflags_writes" -ne 1 ] ||
+	! grep -Fq "$ldflags_line" .github/workflows/release.yml ||
+	grep -Fq 'ManifestURL' .github/workflows/release.yml ||
+	grep -Fq 'UpdateChannelPublicKey' .github/workflows/release.yml; then
 	echo "release-scope: release build must take update ldflags from release-update-ldflags.sh" >&2
 	fail=1
 fi

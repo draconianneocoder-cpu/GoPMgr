@@ -296,5 +296,32 @@ text = "# -X gopmgr/internal/update.ManifestURL= -X gopmgr/internal/update.Updat
 open(path, "w").write(text)
 PY
 expect_failure "$ldflags_comment" "$ldflags_message"
+ldflags_split="$(new_fixture ldflags-split-symbol)"
+python3 -B - "$ldflags_split/.github/workflows/release.yml" "$ldflags_line" <<'PY'
+import sys
+path, line = sys.argv[1:]
+text = open(path).read()
+if text.count(line) != 1:
+    sys.exit("ldflags fixture: assignment not found once")
+extra = """
+          pkg=gopmgr/internal/update
+          echo "GOPMGR_RELEASE_LDFLAGS=${GOPMGR_RELEASE_LDFLAGS} -X ${pkg}.ManifestURL=https://example.invalid -X ${pkg}.UpdateChannelPublicKey=ignored" >> "$GITHUB_ENV"
+"""
+open(path, "w").write(text.replace(line, line + extra, 1))
+PY
+expect_failure "$ldflags_split" "$ldflags_message"
+ldflags_quoted="$(new_fixture ldflags-quoted-symbol)"
+python3 -B - "$ldflags_quoted/.github/workflows/release.yml" "$ldflags_line" <<'PY'
+import sys
+path, line = sys.argv[1:]
+text = open(path).read()
+if text.count(line) != 1:
+    sys.exit("ldflags fixture: assignment not found once")
+extra = '''
+          echo "GOPMGR_RELEASE_LDFLAGS=${GOPMGR_RELEASE_LDFLAGS} -X gopmgr/internal/update.Manifest"URL"=https://example.invalid/u.json -X gopmgr/internal/update.UpdateChannelPublic"Key"=${GOPMGR_UPDATE_PUBLIC_KEY}" >> "$GITHUB_ENV"
+'''
+open(path, "w").write(text.replace(line, line + extra, 1))
+PY
+expect_failure "$ldflags_quoted" "$ldflags_message"
 
 echo "release-gate-scope-check tests passed."
