@@ -15,6 +15,6 @@ that has been published, see [`releases/`](../releases/README.md).
 
 | ID | File | Kind | Status | Summary |
 | --- | --- | --- | --- | --- |
-| DOC-0126 | [`platform-notice.md`](platform-notice.md) | release | current | Windows unverified-preview notice placed first in every GitHub release's notes. |
+| DOC-0126 | [`platform-notice.md`](platform-notice.md) | release | current | Windows unverified-preview notice and the alpha.2 downgrade warning, first in every release note. |
 | DOC-0246 | [`README.md`](README.md) | index | current | Release notes folder: text that goes into a GitHub release. |
 <!-- ledger:end -->

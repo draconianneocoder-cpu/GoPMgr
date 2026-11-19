@@ -1125,7 +1125,7 @@
       "kind": "release",
       "status": "current",
       "status_evidence": "docs/design/docs-reorganization-inventory.md",
-      "summary": "Windows unverified-preview notice placed first in every GitHub release's notes."
+      "summary": "Windows unverified-preview notice and the alpha.2 downgrade warning, first in every release note."
     },
     {
       "id": "DOC-0127",

@@ -41,7 +41,7 @@ record or an evidence file. Adopted on 2026-11-11
 | Engine distrusts file schemas (`trusted_schema` off, defensive mode) | Implemented (PR 199) | `internal/sqlitedriver/hardening_test.go` |
 | Analytics: Go-native, Arrow-Go for Parquet | Implemented. DuckDB retired 2026-11-02; DataFusion not adopted 2026-11-09 | [DF0-G report](testing/adr-012-df0-g-report.md) |
 | Launchpad rules evaluated in Go; `zen-go` removed | Implemented (PR 199) | `internal/templates` |
-| Account data (`system.db`) marked with a reader level; a build refuses data marked by a newer one | Implemented (PR 201). Unverified on Windows; v1.1.0-alpha.2 and earlier ignore the mark | `internal/users/schema_gate.go` |
+| Account data (`system.db`) marked with a reader level; a build refuses data marked by a newer one | Implemented (PR 201). Unverified on Windows; v1.1.0-alpha.2 and earlier ignore the mark. Every release's notes must say that going back is unsupported and untested | `internal/users/schema_gate.go`, [platform notice](release-notes/platform-notice.md) |
 | Package versions come from version tags only (`v[0-9]*`) | Implemented (PR 200) | `scripts/package-version-lib.sh` |
 | Signing, notarization, live update channel | Open: mechanism built, no keys provisioned | [ROADMAP.md](ROADMAP.md) current focus 4 |
 
