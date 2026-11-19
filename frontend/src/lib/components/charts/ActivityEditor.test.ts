@@ -59,6 +59,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('ActivityEditor open', () => {
+  it('lays out the stored chart and does not write it, including the field timer', async () => {
+    vi.useFakeTimers();
+    const app = installApp();
+    render(ActivityEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    await vi.advanceTimersByTimeAsync(350);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('ActivityEditor migrated buttons', () => {
   it('load-error "Back to dashboard": Button variant="primary" size="md"', async () => {
     installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });

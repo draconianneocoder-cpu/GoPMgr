@@ -52,6 +52,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('FishboneEditor open', () => {
+  it('lays out the stored chart and does not write it, including the field timer', async () => {
+    vi.useFakeTimers();
+    const app = installApp(JSON.stringify({ effect: 'Late deliveries', categories: [] }));
+    render(FishboneEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('FishboneEditor "Apply 6 Ms preset"', () => {
   it('applies the preset immediately with no dialog when there are no existing categories', async () => {
     const app = installApp(JSON.stringify({ effect: '', categories: [] }));
@@ -122,9 +134,8 @@ describe('FishboneEditor "Apply 6 Ms preset"', () => {
     const app = installApp(
       JSON.stringify({ effect: 'Late deliveries', categories: [{ name: 'Custom category', causes: [] }] }),
     );
-    // installApp's default auto-resolving SaveChart runs the initial mount's
-    // own refreshLayout() (onMount saves once on load) — only swap in a
-    // controllable promise afterward, or the mount itself never completes.
+    // Opening does not save. Install the controllable SaveChart after mount,
+    // so only the confirmed preset is held open.
     const { getByText } = await mountLoaded(app);
     let resolveSave!: (v: unknown) => void;
     app.SaveChart.mockImplementation(

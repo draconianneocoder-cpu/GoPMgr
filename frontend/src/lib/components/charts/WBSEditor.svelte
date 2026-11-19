@@ -53,6 +53,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  let cleanDocument = '';
   // Set when the initial GetChart fails: renders a full-screen error with
   // a way back instead of a stuck editor + unhandled promise rejection.
   let loadError = $state('');
@@ -82,9 +83,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     let initialSnapshot: string | undefined;
     try {
       doc = JSON.parse(chart.data) as WBSDoc;
+      cleanDocument = snapshot();
     } catch {
       initialSnapshot = chart.data;
       doc = { root: { id: 'r', title: chart.title, children: [] } };
+      cleanDocument = chart.data;
     }
     stopAutosave = autosave.register(snapshot, persist, true, initialSnapshot);
     await refreshLayout();
@@ -195,13 +198,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function writeChart(): Promise<boolean> {
     if (!active || !chart) return false;
-    const submission = { ...chart, data: snapshot() };
+    const data = snapshot();
+    if (data === cleanDocument) {
+      try {
+        const res = await desktopApi.LayoutChart(chart.id);
+        if (active) layout = (res.body as unknown) as Layout;
+      } catch (err: unknown) {
+        if (active) status = `Layout failed: ${err}`;
+      }
+      return true;
+    }
+    const submission = { ...chart, data };
     saving = true;
     status = '';
     try {
       const updated = await desktopApi.SaveChart(submission);
       if (!active) return true;
       chart = updated;
+      cleanDocument = data;
       lastSavedAt = new Date();
       status = `Saved. Version updated at ${new Date().toLocaleTimeString()}.`;
       try {

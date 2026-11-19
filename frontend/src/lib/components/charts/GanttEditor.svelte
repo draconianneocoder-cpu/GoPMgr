@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { definedEntries } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
+  import { saveChartWhenDocumentChanges } from './chart-document';
   // GanttEditor: the first-class Gantt chart kind. Shares the
   // layered/CPM data model ({nodes, edges}); the backend computes the
   // full schedule (typed links + lag, constraints, overallocation,
@@ -48,6 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  let cleanDocument = '';
   // Set when the initial GetChart fails: renders a full-screen error with
   // a way back instead of a stuck editor + unhandled promise rejection.
   let loadError = $state('');
@@ -78,6 +80,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       doc = { nodes: [], edges: [] };
     }
+    cleanDocument = JSON.stringify(doc);
     await refreshLayout();
     void refreshBaseline();
   }
@@ -86,13 +89,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!chart) return false;
     status = '';
     try {
-      const updated = await desktopApi.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
-      chart = updated;
-      lastSavedAt = new Date();
-      const res = await desktopApi.LayoutChart(updated.id);
+      const data = JSON.stringify(doc);
+      const stored = await saveChartWhenDocumentChanges(chart, data, cleanDocument, (next) =>
+        desktopApi.SaveChart(next),
+      );
+      chart = stored.chart;
+      cleanDocument = stored.clean;
+      if (stored.wrote) lastSavedAt = new Date();
+      const res = await desktopApi.LayoutChart(chart.id);
       const body = res.body as { layout?: GanttLayout } | GanttLayout;
       layout = (body as any).layout ?? (body as GanttLayout);
       return true;
@@ -171,6 +175,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       );
       chart = await desktopApi.GetChart(session.editingId);
       doc = JSON.parse(chart.data) as GDoc;
+      cleanDocument = JSON.stringify(doc);
       await refreshLayout();
       status = splitLevelStatus(res);
       clearStatusAfter(4000);

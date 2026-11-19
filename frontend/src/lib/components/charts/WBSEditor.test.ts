@@ -275,6 +275,7 @@ describe('WBSEditor migrated "Delete" button', () => {
     const app = installApp();
     const { getByText } = render(WBSEditor);
     await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    expect(app.SaveChart).not.toHaveBeenCalled();
 
     const btn = getByText('Delete') as HTMLButtonElement;
     expect(btn.disabled).toBe(true);

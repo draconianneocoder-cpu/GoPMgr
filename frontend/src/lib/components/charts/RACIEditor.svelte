@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
+  import { saveChartWhenDocumentChanges } from './chart-document';
   // RACIEditor renders a Roles × Tasks grid with R/A/C/I dropdowns
   // per cell. The backend's LayoutRACI runs validation (each task
   // must have exactly one A; should have at least one R) and the
@@ -67,6 +68,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  let cleanDocument = '';
   // Set when the initial GetChart fails: renders a full-screen error with
   // a way back instead of a stuck editor + unhandled promise rejection.
   let loadError = $state('');
@@ -95,6 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       doc = { roles: [], tasks: [], assignments: {} };
     }
+    cleanDocument = JSON.stringify(doc);
     await refreshLayout();
     // Register for timed auto-save now the saved doc is loaded.
     stopAutosave = autosave.register(
@@ -110,13 +113,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshLayout() {
     if (!chart) return;
     try {
-      const updated = await desktopApi.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
-      chart = updated;
-      lastSavedAt = new Date();
-      const res = await desktopApi.LayoutChart(updated.id);
+      const data = JSON.stringify(doc);
+      const stored = await saveChartWhenDocumentChanges(chart, data, cleanDocument, (next) =>
+        desktopApi.SaveChart(next),
+      );
+      chart = stored.chart;
+      cleanDocument = stored.clean;
+      if (stored.wrote) lastSavedAt = new Date();
+      const res = await desktopApi.LayoutChart(chart.id);
       layout = res.body as RACILayout;
     } catch (err: any) {
       status = t('raci.layoutFailed', { error: String(err) });
@@ -207,11 +211,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
+      const data = JSON.stringify(doc);
       const updated = await desktopApi.SaveChart({
         ...chart,
-        data: JSON.stringify(doc),
+        data,
       });
       chart = updated;
+      cleanDocument = data;
       lastSavedAt = new Date();
       status = t('raci.savedAt', { time: formatTime(new Date()) });
       return true;
