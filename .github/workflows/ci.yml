@@ -86,6 +86,13 @@ jobs:
           # ledger with the one at the merge base (owner decision D8).
           fetch-depth: 0
 
+      - name: Pull request text
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | bash scripts/check-pr-text.sh
+
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:

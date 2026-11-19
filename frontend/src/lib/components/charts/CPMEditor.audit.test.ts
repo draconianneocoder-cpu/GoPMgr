@@ -99,6 +99,39 @@ describe('CPMEditor schedule audit saving', () => {
     expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterManualSave);
   });
 
+  it('stores a new task without layout dates, and an audit does not write the chart', async () => {
+    const app = installApp();
+    app.LayoutChart.mockImplementation(async () => {
+      const saved = app.SaveChart.mock.calls.at(-1)?.[0] as { data?: string } | undefined;
+      const parsed = JSON.parse(saved?.data || '{"nodes":[],"edges":[]}');
+      for (const node of parsed.nodes ?? []) node.es = 1;
+      return { body: { layout: { nodes: [], edges: [], width: 0, height: 0 }, doc: parsed } };
+    });
+    const { getByRole } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await settle(50);
+
+    await fireEvent.click(getByRole('button', { name: '+ Node' }));
+    await waitFor(() => {
+      const stored = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+      expect(stored.some((data) => data.includes('New activity'))).toBe(true);
+    });
+    await settle(400);
+    const stored = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+    expect(stored.every((data) => !data.includes('"es"'))).toBe(true);
+    const savesAfterEdit = app.SaveChart.mock.calls.length;
+
+    await fireEvent.click(getByRole('button', { name: 'Run audit' }));
+    await waitFor(() => expect(app.AuditSchedule).toHaveBeenCalledTimes(1));
+    await settle(400);
+    expect(app.SaveChart).toHaveBeenCalledTimes(savesAfterEdit);
+    for (const [chart] of app.SaveChart.mock.calls) {
+      const data = String((chart as { data: string }).data);
+      expect(data).not.toContain('"es"');
+      expect(JSON.parse(data).nodes.some((node: { label?: string }) => node.label === 'New activity')).toBe(true);
+    }
+  });
+
   it('drops one chart’s findings when the editor switches to another chart', async () => {
     const app = installApp();
     app.AuditSchedule.mockResolvedValue({ ...emptyResult, rules: [{ rule: 'SQ-15', evaluated: false, reason: 'no status date' }] });

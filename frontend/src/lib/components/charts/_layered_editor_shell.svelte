@@ -150,12 +150,33 @@ not routed directly.
   }
 
   let stopAutosave: (() => void) | null = null;
-  // The editor's working content as auto-save compares it. One named
-  // function, so saveIfDirty addresses this editor's auto-save entry.
-  const snapshotDoc = () => JSON.stringify(doc);
+  // Layout writes these onto the nodes it returns. They are not part of the
+  // stored chart. The next layout computes them again.
+  const layoutOutputKeys = [
+    'expected', 'variance', 'std_dev',
+    'es', 'ef', 'ls', 'lf', 'float', 'is_critical',
+    'start_date', 'finish_date',
+    'constraint_violated', 'constraint_unapplied',
+    'overallocated',
+  ] as const;
+
+  function storedDoc(): LayeredDoc {
+    const plain = $state.snapshot(doc);
+    return {
+      nodes: plain.nodes.map((node) => {
+        const stored: LayeredNode = { ...node };
+        for (const key of layoutOutputKeys) delete stored[key];
+        return stored;
+      }),
+      edges: plain.edges,
+    };
+  }
+
+  // One function, so saveIfDirty addresses this editor's auto-save entry.
+  // The string is the stored chart, not the layout result.
+  const snapshotDoc = () => JSON.stringify(storedDoc());
 
   onMount(async () => {
-    window.addEventListener('keydown', handleKeyDown);
     await loadChart();
     if (loadError) return; // failed load: no editor to auto-save
     // Register after load so the baseline snapshot is the saved doc and
@@ -174,18 +195,21 @@ not routed directly.
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await desktopApi.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
-      chart = updated;
-      lastSavedAt = new Date();
-      const res = await desktopApi.LayoutChart(updated.id);
+      // Opening a chart does not save. After registration, persist a user
+      // edit through auto-save before layout reads the stored chart.
+      if (stopAutosave) {
+        const saved = await autosave.saveRegisteredIfDirty(snapshotDoc);
+        if (!saved) {
+          layoutError = autosave.lastError || 'Save failed';
+          return;
+        }
+      }
+      const res = await desktopApi.LayoutChart(chart.id);
       // For layered kinds the body shape is {layout, doc}.
       const body = res.body as { layout?: any; doc?: LayeredDoc } | any;
       if (body && body.layout) {
         layout = body.layout;
-        if (body.doc) doc = body.doc; // accept backend annotations (PERT, CPM)
+        if (body.doc) doc = body.doc; // display backend annotations (PERT, CPM)
       } else {
         layout = body;
       }
@@ -279,7 +303,7 @@ not routed directly.
     try {
       const updated = await desktopApi.SaveChart({
         ...chart,
-        data: JSON.stringify(doc),
+        data: snapshotDoc(),
       });
       chart = updated;
       lastSavedAt = new Date();
@@ -355,7 +379,6 @@ not routed directly.
   // navigation away from a half-edited chart doesn't fire a save
   // call on an unmounted component. (DEVELOPER_HANDBOOK.md §10.5.)
   onDestroy(() => {
-    window.removeEventListener('keydown', handleKeyDown);
     stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -373,6 +396,8 @@ not routed directly.
     }
   });
 </script>
+
+<svelte:window onkeydown={handleKeyDown} />
 
 {#if loadError}
   <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">

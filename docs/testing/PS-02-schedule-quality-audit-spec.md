@@ -284,10 +284,12 @@ than a saved document of a new kind.
   (`saveIfDirty` in the editor shell). It waits for a save already in
   progress; if the save fails, it does not audit, because the findings would
   describe an older revision. An unchanged chart is not rewritten, so its
-  revision stays: manual saves (Ctrl/Cmd+S, Save) go through auto-save too,
-  which records them. Known limit: the shell's layout refresh saves without
-  updating auto-save's record, so the first audit after a structural edit can
-  save the same content once more.
+  revision stays. Manual saves (Ctrl/Cmd+S, Save) go through auto-save too,
+  which records them. Layout results are not stored. That includes early and
+  late dates, float, the critical flag, constraint status, overallocation,
+  and PERT expected values. Opening a chart does not save it. A later audit
+  does not save those results again. `SaveChart` leaves `updated_at` and the
+  audit chain unchanged when the stored fields are the same.
 - It audits the chart the editor holds and saves (the router can reuse the
   editor after the session's chart changes), and a chart switch starts a fresh
   panel, so one chart's findings never stay beside another. A new run clears

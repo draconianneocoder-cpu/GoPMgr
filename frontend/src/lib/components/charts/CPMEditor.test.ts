@@ -4,11 +4,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 
-// autosave.register sets up a timer; stub it so the mounted editor doesn't
-// leave a live interval running through the test.
-vi.mock('../../autosave.svelte', () => ({
-  autosave: { register: () => () => {} },
-}));
+// The real auto-save module starts a timer. This stub keeps its rule:
+// a dirty document is saved, and an unchanged document is not.
+const autosaveMock = vi.hoisted(() => {
+  let persist: () => Promise<boolean> = async () => true;
+  let read: () => string = () => '';
+  let last = '';
+  return {
+    register: (snapshot: () => string, save: () => Promise<boolean>) => {
+      read = snapshot;
+      persist = save;
+      last = snapshot();
+      return () => {};
+    },
+    saveRegisteredIfDirty: async () => {
+      if (read() === last) return true;
+      const ok = await persist();
+      if (ok) last = read();
+      return ok;
+    },
+    saveRegisteredNow: async () => {
+      const ok = await persist();
+      if (ok) last = read();
+      return ok;
+    },
+    lastError: '',
+  };
+});
+vi.mock('../../autosave.svelte', () => ({ autosave: autosaveMock }));
 
 import CPMEditor from './CPMEditor.svelte';
 import { session } from '../../session.svelte';
@@ -198,17 +221,19 @@ describe('CPMEditor scheduling constraints', () => {
       'Finish no earlier than', 'Finish no later than', 'Must start on', 'Must finish on',
     ]);
     expect(queryByLabelText('Constraint date')).not.toBeNull();
-    await new Promise((r) => setTimeout(r, 400)); // let any re-layout save run
-    expect(app.SaveChart).toHaveBeenCalled();
-    for (const [chart] of app.SaveChart.mock.calls) {
-      expect(String((chart as { data: string }).data)).toContain('"constraint":"mso"');
-    }
+    await new Promise((r) => setTimeout(r, 400));
+    expect(app.SaveChart).not.toHaveBeenCalled();
 
     await fireEvent.change(select, { target: { value: 'FNET' } });
     await fireEvent.change(select, { target: { value: 'SNLT' } });
     expect(queryByLabelText('Constraint date')).not.toBeNull();
     await fireEvent.change(select, { target: { value: 'ALAP' } });
     await waitFor(() => expect(queryByLabelText('Constraint date')).toBeNull());
+    await fireEvent.click(getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+    const saved = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+    expect(saved.every((data) => data.includes('"constraint":"ALAP"'))).toBe(true);
+    expect(saved.every((data) => !data.includes('"constraint":"mso"'))).toBe(true);
   });
 
   it('opens a task stored as "ASAP" without rewriting it', async () => {
@@ -223,10 +248,14 @@ describe('CPMEditor scheduling constraints', () => {
     const select = (await waitFor(() => getByLabelText('Constraint'))) as HTMLSelectElement;
     expect(select.selectedOptions[0].textContent).toBe('ASAP (default)');
     await new Promise((r) => setTimeout(r, 400));
-    expect(app.SaveChart).toHaveBeenCalled();
-    for (const [chart] of app.SaveChart.mock.calls) {
-      expect(String((chart as { data: string }).data)).toContain('"constraint":"ASAP"');
-    }
+    expect(app.SaveChart).not.toHaveBeenCalled();
+
+    await fireEvent.change(select, { target: { value: 'MSO' } });
+    await fireEvent.click(getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+    const saved = app.SaveChart.mock.calls.map(([chart]) => String((chart as { data: string }).data));
+    expect(saved.every((data) => data.includes('"constraint":"MSO"'))).toBe(true);
+    expect(saved.every((data) => !data.includes('"constraint":"ASAP"'))).toBe(true);
   });
 
   // KRN-01 b: a date constraint the scheduler could not apply is shown with
