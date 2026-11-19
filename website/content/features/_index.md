@@ -10,7 +10,7 @@ last_reviewed = "2026-11-18"
 claim_ids = ["page.features"]
 [[params.sources]]
 label = "docs/ROADMAP.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/b7819a1f01d839c6a0a0be8f9287609aebc8527d/docs/ROADMAP.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/0969bea860ff54a91455626c8f586a382bf2fdc0/docs/ROADMAP.md"
 [[params.sources]]
 label = "docs/user-guide.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/156a8eded0088d608f39c78e7c04a6089f9bbc8a/docs/user-guide.md"

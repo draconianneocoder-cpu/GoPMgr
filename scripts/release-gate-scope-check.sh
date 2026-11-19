@@ -353,6 +353,23 @@ if ! rg -Fq 'name: Reclaim macOS packaging space' .github/workflows/release.yml 
 	fail=1
 fi
 
+# The package build takes its update ldflags from one script. The workflow
+# must not name the manifest URL or public key, or a later edit can embed
+# them while still calling the script.
+if ! bash scripts/release-update-ldflags_test.sh >/dev/null; then
+	echo "release-scope: release build must take update ldflags from release-update-ldflags.sh" >&2
+	fail=1
+fi
+ldflags_line='          echo "GOPMGR_RELEASE_LDFLAGS=$(bash scripts/release-update-ldflags.sh "$GITHUB_REF_NAME" "${{ matrix.platform }}" "$GOPMGR_UPDATE_PUBLIC_KEY" "$GITHUB_REPOSITORY")" >> "$GITHUB_ENV"'
+ldflags_writes="$(grep -Fc 'GOPMGR_RELEASE_LDFLAGS=' .github/workflows/release.yml || true)"
+if [ "$ldflags_writes" -ne 1 ] ||
+	! grep -Fq "$ldflags_line" .github/workflows/release.yml ||
+	grep -Fq 'ManifestURL' .github/workflows/release.yml ||
+	grep -Fq 'UpdateChannelPublicKey' .github/workflows/release.yml; then
+	echo "release-scope: release build must take update ldflags from release-update-ldflags.sh" >&2
+	fail=1
+fi
+
 # GitHub does not infer its prerelease flag from a SemVer suffix. Exercise the
 # classification helper and a mutated workflow fixture before trusting the
 # live publish job, otherwise an alpha or RC tag could be marked as GA.

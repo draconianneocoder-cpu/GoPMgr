@@ -43,6 +43,7 @@ new_fixture() {
 	cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
 	cp "$CLASSIFY" "$fixture/scripts/release-publication-flag.sh"
 	cp "$CHANNEL" "$fixture/scripts/release-update-channel.sh"
+	cp "$ROOT/scripts/release-update-ldflags.sh" "$fixture/scripts/release-update-ldflags.sh"
 	printf '%s\n' "$fixture"
 }
 
@@ -97,6 +98,42 @@ expect_failure "$published_immediately" "release artifacts must remain private u
 dropped_channel="$(new_fixture dropped-channel)"
 perl -0pi -e 's#channel="\$\(bash scripts/release-update-channel\.sh "\$GITHUB_REF_NAME"\)"#channel="stable"#' \
 	"$dropped_channel/.github/workflows/release.yml"
-expect_failure "$dropped_channel" "build and publish jobs must both derive the signed-update channel"
+expect_failure "$dropped_channel" "the publication job and the release ldflags script must both derive the signed-update channel"
+unused_channel="$(new_fixture unused-channel)"
+python3 -B - "$unused_channel/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+line = '          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"\n'
+if text.count(line) != 1:
+    sys.exit("unused channel fixture: publish assignment not found once")
+open(path, "w").write(text.replace(line, line + line, 1))
+PY
+expect_failure "$unused_channel" "the publication job and the release ldflags script must both derive the signed-update channel"
+moved_channel="$(new_fixture moved-channel)"
+python3 -B - "$moved_channel/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+publish = '          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"\n'
+build = '          echo "GOPMGR_RELEASE_LDFLAGS=$(bash scripts/release-update-ldflags.sh "$GITHUB_REF_NAME" "${{ matrix.platform }}" "$GOPMGR_UPDATE_PUBLIC_KEY" "$GITHUB_REPOSITORY")" >> "$GITHUB_ENV"\n'
+if text.count(publish) != 1 or text.count(build) != 1:
+    sys.exit("moved channel fixture: lines not found once")
+text = text.replace(publish, '          channel="stable"\n', 1)
+text = text.replace(build, publish + build, 1)
+open(path, "w").write(text)
+PY
+expect_failure "$moved_channel" "publication job must derive the signed-update channel"
+overwritten_channel="$(new_fixture overwritten-channel)"
+python3 -B - "$overwritten_channel/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+helper = '          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"\n'
+if text.count(helper) != 1:
+    sys.exit("overwritten channel fixture: helper not found once")
+open(path, "w").write(text.replace(helper, helper + '          channel="stable"\n', 1))
+PY
+expect_failure "$overwritten_channel" "publication job must derive the signed-update channel"
 
 echo "check-release-publication-mode tests passed."

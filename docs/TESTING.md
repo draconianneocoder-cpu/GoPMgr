@@ -237,8 +237,9 @@ packaging. The release-scope gate also exercises
 explicit because GitHub does not infer release classification from SemVer.
 The same gate exercises `release-update-channel.sh`, which derives the signed
 update channel from the first prerelease identifier (`alpha` and `alpha.1`
-both select `alpha`) and selects `stable` only for a clean version tag. Both
-the package build and manifest publication jobs must call that helper. Release
+both select `alpha`) and selects `stable` only for a clean version tag. The
+package build takes that channel through `release-update-ldflags.sh`, which
+calls the helper. The manifest publication job calls the helper directly. Release
 preflight also resolves the REUSE executable directory through pipx itself;
 Python's user-base path is not assumed to contain pipx-installed commands.
 
