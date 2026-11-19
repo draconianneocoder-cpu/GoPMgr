@@ -327,6 +327,22 @@ if ! printf '%s\n' "$release_create" | rg -q -- '^[[:space:]]+--notes-file docs/
 	fail=1
 fi
 
+# 2026-11-11: v1.1.0-alpha.2 and earlier do not check the system.db reader
+# level. The same notes file must say that going back is unsupported and
+# untested. The sentence has to be rendered, not only present in an HTML comment.
+downgrade_sentence='**Do not go back to v1.1.0-alpha.2.** That build, and any earlier one, does not check the account database reader level. It still opens the account data. It does not understand disabled accounts, administrator access, or the super administrator. After a later build has opened that data, going back is unsupported and untested.'
+downgrade_body="$(python3 -c '
+import re, pathlib
+text = pathlib.Path("docs/release-notes/platform-notice.md").read_text()
+text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+text = re.sub(r"\s+", " ", text)
+print(text, end="")
+')"
+if ! printf '%s' "$downgrade_body" | rg -Fq -- "$downgrade_sentence"; then
+	echo "release-scope: release notes must say that going back to v1.1.0-alpha.2 is unsupported and untested." >&2
+	fail=1
+fi
+
 # The macOS CGO build can fill the hosted runner with disposable Go caches
 # before hdiutil stages the app. Preserve the post-build reclamation contract;
 # it is runner-only and must not be moved into the developer packaging script.

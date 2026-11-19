@@ -243,7 +243,7 @@ Find a document by ID with `make docs-ledger find=DOC-0001`.
 | ID | File | Kind | Status | Summary |
 | --- | --- | --- | --- | --- |
 | DOC-0246 | [`README.md`](release-notes/README.md) | index | current | Release notes folder: text that goes into a GitHub release. |
-| DOC-0126 | [`platform-notice.md`](release-notes/platform-notice.md) | release | current | Windows unverified-preview notice placed first in every GitHub release's notes. |
+| DOC-0126 | [`platform-notice.md`](release-notes/platform-notice.md) | release | current | Windows unverified-preview notice and the alpha.2 downgrade warning, first in every release note. |
 
 ## `docs/releases/`
 

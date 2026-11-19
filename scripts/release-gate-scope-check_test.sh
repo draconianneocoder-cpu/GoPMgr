@@ -94,6 +94,43 @@ sed -i.bak 's/GoPMgr does not support Windows yet\./GoPMgr runs on Windows./' "$
 rm -f "$windows_notice_softened/docs/release-notes/platform-notice.md.bak"
 expect_failure "$windows_notice_softened" "$windows_message"
 
+# 2026-11-11: release notes must say going back to v1.1.0-alpha.2 is unsupported and untested.
+downgrade_message="going back to v1.1.0-alpha.2 is unsupported and untested"
+downgrade_sentence='**Do not go back to v1.1.0-alpha.2.** That build, and any earlier one, does not check the account database reader level. It still opens the account data. It does not understand disabled accounts, administrator access, or the super administrator. After a later build has opened that data, going back is unsupported and untested.'
+downgrade_deleted="$(new_fixture downgrade-deleted)"
+python3 -B - "$downgrade_deleted/docs/release-notes/platform-notice.md" "$downgrade_sentence" <<'PY'
+import sys
+path, sentence = sys.argv[1:]
+text = open(path).read()
+if text.count(sentence) != 1:
+    sys.exit("downgrade fixture: sentence not found once")
+open(path, "w").write(text.replace(sentence, ""))
+PY
+expect_failure "$downgrade_deleted" "$downgrade_message"
+downgrade_comment="$(new_fixture downgrade-comment-only)"
+python3 -B - "$downgrade_comment/docs/release-notes/platform-notice.md" "$downgrade_sentence" <<'PY'
+import sys
+path, sentence = sys.argv[1:]
+text = open(path).read()
+if text.count(sentence) != 1:
+    sys.exit("downgrade fixture: sentence not found once")
+text = text.replace(sentence, "")
+text = text.replace("-->", sentence + "\n-->", 1)
+open(path, "w").write(text)
+PY
+expect_failure "$downgrade_comment" "$downgrade_message"
+downgrade_negated="$(new_fixture downgrade-negated)"
+python3 -B - "$downgrade_negated/docs/release-notes/platform-notice.md" "$downgrade_sentence" <<'PY'
+import sys
+path, sentence = sys.argv[1:]
+text = open(path).read()
+if text.count(sentence) != 1:
+    sys.exit("downgrade fixture: sentence not found once")
+negation = "Going back to v1.1.0-alpha.2 is supported. The phrase unsupported and untested does not apply."
+open(path, "w").write(text.replace(sentence, negation))
+PY
+expect_failure "$downgrade_negated" "$downgrade_message"
+
 # SEC-06: the advisory scan must stay in the release gate, unchanged.
 advisory_message="check-release.sh must run make engine-advisories"
 advisory_mutation() {
