@@ -67,6 +67,15 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('GanttEditor open', () => {
+  it('lays out the stored chart and does not write it', async () => {
+    const app = installApp();
+    render(GanttEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('GanttEditor split actions (handler glue)', () => {
   it('previewSplit: bridge result flows to the status line', async () => {
     const app = installApp();

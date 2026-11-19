@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
+  import { saveChartWhenDocumentChanges } from './chart-document';
   // The editor keeps the complete risk/issue/opportunity record in chart data;
   // the backend is authoritative for validation, score bands, and cell order.
   // Keeping scoring out of the component prevents screen, PDF, and report
@@ -49,6 +50,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   let loadError = $state('');
   let lastSavedAt = $state<Date | null>(null);
+  let cleanDocument = '';
   let stopAutosave: (() => void) | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -60,6 +62,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       chart = await desktopApi.GetChart(session.editingId);
       const parsed = JSON.parse(chart.data) as RiskDocument;
       doc = { items: parsed.items ?? [] };
+      cleanDocument = JSON.stringify(doc);
       await refreshLayout();
       stopAutosave = autosave.register(() => JSON.stringify(doc), () => save());
     } catch (err: any) {
@@ -69,12 +72,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function persistAndLayout(showSavedStatus = false) {
     if (!chart) return;
-    const updated = await desktopApi.SaveChart({ ...chart, data: JSON.stringify(doc) });
-    chart = updated;
-    lastSavedAt = new Date();
-    const result = await desktopApi.LayoutChart(updated.id);
+    const data = JSON.stringify(doc);
+    const stored = await saveChartWhenDocumentChanges(
+      chart,
+      data,
+      cleanDocument,
+      (next) => desktopApi.SaveChart(next),
+      showSavedStatus,
+    );
+    chart = stored.chart;
+    cleanDocument = stored.clean;
+    const savedAt = stored.wrote ? new Date() : null;
+    if (savedAt) lastSavedAt = savedAt;
+    const result = await desktopApi.LayoutChart(chart.id);
     layout = result.body as RiskLayout;
-    if (showSavedStatus) status = `Saved at ${lastSavedAt.toLocaleTimeString()}.`;
+    if (showSavedStatus && savedAt) status = `Saved at ${savedAt.toLocaleTimeString()}.`;
   }
 
   async function refreshLayout() {

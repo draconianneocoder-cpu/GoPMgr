@@ -24,12 +24,8 @@ vi.mock('../../desktop-api', () => ({ get desktopApi() { return desktopApiMock.c
 // Priority #2 continuation — see `Button.test.ts`'s row for the full
 // 28-site/26-file inventory and Gate A scoping). This file had zero prior
 // test coverage. Narrow by design: pins only the migrated button's exact
-// class string. Unlike every other chart editor in this family,
-// `MatrixEditor.svelte`'s own `refreshLayout()` calls only `SaveChart`, not
-// `LayoutChart` (confirmed by reading the component, not assumed) — the
-// mount-settled gate below waits on `SaveChart`, not `LayoutChart`, or the
-// `waitFor` would hang forever waiting for a call this component never
-// makes.
+// class string. Opening does not save. This editor lays the grid out
+// itself, so the mount gate is GetChart.
 //
 // 2026-08-19 (second pass, same date): the load-error "Back to dashboard"
 // button also migrated (variant="primary" size="md" — the same pattern
@@ -68,7 +64,8 @@ describe('MatrixEditor migrated header "&larr; Dashboard" button', () => {
   it('Button variant="nav"', async () => {
     const app = installApp();
     const { getByText } = render(MatrixEditor);
-    await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+    await waitFor(() => expect(app.GetChart).toHaveBeenCalled());
+    expect(app.SaveChart).not.toHaveBeenCalled();
 
     const btn = getByText('← Dashboard');
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(

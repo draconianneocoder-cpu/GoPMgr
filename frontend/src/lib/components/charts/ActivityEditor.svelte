@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
+  import { saveChartWhenDocumentChanges } from './chart-document';
   // ActivityEditor renders a UML 2.5 activity diagram with horizontal
   // swimlanes. Each swimlane is an actor / role / team; activities
   // assigned to a swimlane render in its column.
@@ -86,6 +87,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  let cleanDocument = '';
   // Set when the initial GetChart fails: renders a full-screen error with
   // a way back instead of a stuck editor + unhandled promise rejection.
   let loadError = $state('');
@@ -108,6 +110,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       doc = { swimlanes: [], nodes: [], edges: [] };
     }
+    cleanDocument = JSON.stringify(doc);
     await refreshLayout();
     // Register for timed auto-save now the saved doc is loaded.
     stopAutosave = autosave.register(
@@ -120,13 +123,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await desktopApi.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
-      chart = updated;
-      lastSavedAt = new Date();
-      const res = await desktopApi.LayoutChart(updated.id);
+      const data = JSON.stringify(doc);
+      const stored = await saveChartWhenDocumentChanges(chart, data, cleanDocument, (next) =>
+        desktopApi.SaveChart(next),
+      );
+      chart = stored.chart;
+      cleanDocument = stored.clean;
+      if (stored.wrote) lastSavedAt = new Date();
+      const res = await desktopApi.LayoutChart(chart.id);
       layout = res.body as Layout;
     } catch (err: any) {
       layoutError = String(err?.message ?? err);
@@ -235,11 +239,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
+      const data = JSON.stringify(doc);
       const updated = await desktopApi.SaveChart({
         ...chart,
-        data: JSON.stringify(doc),
+        data,
       });
       chart = updated;
+      cleanDocument = data;
       lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
       return true;

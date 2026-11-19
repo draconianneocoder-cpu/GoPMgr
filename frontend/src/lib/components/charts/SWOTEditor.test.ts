@@ -61,6 +61,15 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('SWOTEditor open', () => {
+  it('lays out the stored chart and does not write it', async () => {
+    const app = installApp();
+    render(SWOTEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('SWOTEditor migrated header "&larr; Dashboard" button', () => {
   it('Button variant="nav"', async () => {
     const app = installApp();

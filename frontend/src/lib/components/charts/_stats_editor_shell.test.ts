@@ -79,6 +79,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('stats editor open', () => {
+  it('lays out the stored chart and does not write it, including the field timer', async () => {
+    vi.useFakeTimers();
+    const app = installApp();
+    render(PieEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    await vi.advanceTimersByTimeAsync(350);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('_stats_editor_shell migrated header "&larr; Dashboard" button (via PieEditor)', () => {
   it('Button variant="nav"', async () => {
     const app = installApp();

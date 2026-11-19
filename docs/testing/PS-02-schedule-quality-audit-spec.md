@@ -289,7 +289,10 @@ than a saved document of a new kind.
   late dates, float, the critical flag, constraint status, overallocation,
   and PERT expected values. Opening a chart does not save it. A later audit
   does not save those results again. `SaveChart` leaves `updated_at` and the
-  audit chain unchanged when the stored fields are the same.
+  audit chain unchanged when the stored fields are the same. On 2026-11-19
+  the other chart editors follow the same open rule. A layout refresh writes
+  only after the editor's document string changes. Save still writes. A WBS
+  chart recovered from unreadable data stays dirty and is still written.
 - It audits the chart the editor holds and saves (the router can reuse the
   editor after the session's chart changes), and a chart switch starts a fresh
   panel, so one chart's findings never stay beside another. A new run clears
