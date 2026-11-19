@@ -33,6 +33,8 @@ new_fixture() {
 	cp "$ROOT/scripts/check-release-publication-mode_test.sh" "$fixture/scripts/check-release-publication-mode_test.sh"
 	cp "$ROOT/scripts/release-publication-flag.sh" "$fixture/scripts/release-publication-flag.sh"
 	cp "$ROOT/scripts/release-update-channel.sh" "$fixture/scripts/release-update-channel.sh"
+	cp "$ROOT/scripts/release-update-ldflags.sh" "$fixture/scripts/release-update-ldflags.sh"
+	cp "$ROOT/scripts/release-update-ldflags_test.sh" "$fixture/scripts/release-update-ldflags_test.sh"
 	cp "$ROOT/frontend/scripts/bundle-notices.test.mjs" "$fixture/frontend/scripts/bundle-notices.test.mjs"
 	mkdir -p "$fixture/frontend/dist"
 	: >"$fixture/frontend/dist/index.html"
@@ -256,5 +258,43 @@ for entrypoint in Makefile scripts/check-release.sh; do
 		expect_failure "$race_policy" 'race entrypoints must preserve uncached, bounded-package tests'
 	done
 done
+
+# The build step must use the ldflags script, and the workflow must not
+# name the manifest URL or public key itself.
+ldflags_message="release build must take update ldflags from release-update-ldflags.sh"
+ldflags_line='          echo "GOPMGR_RELEASE_LDFLAGS=$(bash scripts/release-update-ldflags.sh "$GITHUB_REF_NAME" "${{ matrix.platform }}" "$GOPMGR_UPDATE_PUBLIC_KEY" "$GITHUB_REPOSITORY")" >> "$GITHUB_ENV"'
+ldflags_dropped="$(new_fixture ldflags-dropped)"
+python3 -B - "$ldflags_dropped/.github/workflows/release.yml" "$ldflags_line" <<'PY'
+import sys
+path, line = sys.argv[1:]
+text = open(path).read()
+if text.count(line) != 1:
+    sys.exit("ldflags fixture: assignment not found once")
+open(path, "w").write(text.replace(line + "\n", ""))
+PY
+expect_failure "$ldflags_dropped" "$ldflags_message"
+ldflags_appended="$(new_fixture ldflags-appended)"
+python3 -B - "$ldflags_appended/.github/workflows/release.yml" "$ldflags_line" <<'PY'
+import sys
+path, line = sys.argv[1:]
+text = open(path).read()
+if text.count(line) != 1:
+    sys.exit("ldflags fixture: assignment not found once")
+extra = line + "\n          ldflags=\"$ldflags -X gopmgr/internal/update.ManifestURL=https://example.invalid -X gopmgr/internal/update.UpdateChannelPublicKey=ignored\"\n"
+open(path, "w").write(text.replace(line, extra, 1))
+PY
+expect_failure "$ldflags_appended" "$ldflags_message"
+ldflags_comment="$(new_fixture ldflags-comment)"
+python3 -B - "$ldflags_comment/.github/workflows/release.yml" "$ldflags_line" <<'PY'
+import sys
+path, line = sys.argv[1:]
+text = open(path).read()
+if text.count(line) != 1:
+    sys.exit("ldflags fixture: assignment not found once")
+text = text.replace(line + "\n", "")
+text = "# -X gopmgr/internal/update.ManifestURL= -X gopmgr/internal/update.UpdateChannelPublicKey=\n" + text
+open(path, "w").write(text)
+PY
+expect_failure "$ldflags_comment" "$ldflags_message"
 
 echo "release-gate-scope-check tests passed."

@@ -44,8 +44,13 @@ require_literal "$HELPER" 'printf '\''%s\n'\'' "--prerelease"' \
 	"classification helper must mark SemVer suffixes as prereleases."
 # shellcheck disable=SC2016 # Match literal source text; expansion would change the guard.
 channel_calls="$(grep -Fc 'channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"' "$WORKFLOW" || true)"
-if [ "$channel_calls" -ne 2 ]; then
-	echo "release-publication-mode: build and publish jobs must both derive the signed-update channel from the validated tag." >&2
+ldflags_script="$ROOT/scripts/release-update-ldflags.sh"
+script_calls=0
+if [ -f "$ldflags_script" ]; then
+	script_calls="$(grep -Fc 'channel="$(bash "$root/release-update-channel.sh" "$tag")"' "$ldflags_script" || true)"
+fi
+if [ "$channel_calls" -ne 1 ] || [ "$script_calls" -ne 1 ]; then
+	echo "release-publication-mode: the publication job and the release ldflags script must both derive the signed-update channel from the validated tag." >&2
 	fail=1
 fi
 

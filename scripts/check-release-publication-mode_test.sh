@@ -43,6 +43,7 @@ new_fixture() {
 	cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
 	cp "$CLASSIFY" "$fixture/scripts/release-publication-flag.sh"
 	cp "$CHANNEL" "$fixture/scripts/release-update-channel.sh"
+	cp "$ROOT/scripts/release-update-ldflags.sh" "$fixture/scripts/release-update-ldflags.sh"
 	printf '%s\n' "$fixture"
 }
 
@@ -97,6 +98,17 @@ expect_failure "$published_immediately" "release artifacts must remain private u
 dropped_channel="$(new_fixture dropped-channel)"
 perl -0pi -e 's#channel="\$\(bash scripts/release-update-channel\.sh "\$GITHUB_REF_NAME"\)"#channel="stable"#' \
 	"$dropped_channel/.github/workflows/release.yml"
-expect_failure "$dropped_channel" "build and publish jobs must both derive the signed-update channel"
+expect_failure "$dropped_channel" "the publication job and the release ldflags script must both derive the signed-update channel"
+unused_channel="$(new_fixture unused-channel)"
+python3 -B - "$unused_channel/.github/workflows/release.yml" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+line = '          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"\n'
+if text.count(line) != 1:
+    sys.exit("unused channel fixture: publish assignment not found once")
+open(path, "w").write(text.replace(line, line + line, 1))
+PY
+expect_failure "$unused_channel" "the publication job and the release ldflags script must both derive the signed-update channel"
 
 echo "check-release-publication-mode tests passed."
