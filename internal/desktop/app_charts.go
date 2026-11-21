@@ -422,6 +422,21 @@ func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (k
 	} else {
 		kernel.MarkConstraintsUnapplied(tasks, kernel.ConstraintNoStart)
 	}
+	// The simulation refuses what scheduling refuses: a constraint or
+	// levelled start can put the schedule beyond the kernel's limit, which
+	// the simulation's own input checks do not see. Check a copy, so the
+	// simulated tasks keep their inputs.
+	check := make(map[string]*kernel.Task, len(tasks))
+	for id, t := range tasks {
+		copied := *t
+		check[id] = &copied
+	}
+	if err := kernel.ScheduleCPM(check); err != nil {
+		if errors.Is(err, kernel.ErrSchedulingCycle) {
+			return kernel.SimResult{}, errScheduleCycle
+		}
+		return kernel.SimResult{}, scheduleTooLongErr(err)
+	}
 	result := kernel.RunMonteCarlo(tasks, iterations, workers)
 	if !result.Valid {
 		return result, errors.New(result.Error)

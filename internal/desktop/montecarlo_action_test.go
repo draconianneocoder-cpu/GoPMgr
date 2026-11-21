@@ -5,6 +5,7 @@ package desktop
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"gopmgr/internal/db"
+	"gopmgr/internal/kernel"
 	"gopmgr/internal/users"
 )
 
@@ -227,5 +229,20 @@ func TestRunChartMonteCarloSchedulesAsTheChart(t *testing.T) {
 			nearMonteCarlo(t, "P50", result.P50, tc.want)
 			nearMonteCarlo(t, "P90", result.P90, tc.want)
 		})
+	}
+}
+
+// The simulation refuses a schedule that scheduling refuses: an SNET a century
+// out puts the task beyond the kernel's schedule limit
+// (kernel.ErrScheduleTooLong), although every duration and lag is small.
+func TestRunChartMonteCarloRefusesAScheduleBeyondTheLimit(t *testing.T) {
+	app, d, _ := newMonteCarloTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Far", Data: `{"nodes":[
+		{"id":"A","label":"A","duration":1,"constraint":"SNET","constraint_date":"2126-06-01"}],"edges":[]}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.RunChartMonteCarlo(c.ID, 10, 1); !errors.Is(err, kernel.ErrScheduleTooLong) {
+		t.Fatalf("error = %v, want kernel.ErrScheduleTooLong", err)
 	}
 }
