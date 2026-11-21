@@ -554,9 +554,9 @@ func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, st
 		}
 		return explanation, "Move the date to a working day within the project."
 	}
-	if c.LevelStartArmed && c.ES <= c.LevelStartDay+1e-9 {
-		// The task sits on its levelled start, so levelling, not the
-		// links, holds it past the date.
+	if c.LevelStartBinding {
+		// The levelled start is later than the links allow, so
+		// levelling, not the logic, holds the task past the date.
 		return "Resource levelling delayed this task to " + c.LevelStart + ", past its constraint date.",
 			"Clear the levelled start or level again to see whether the date can be met; add capacity, or move the date."
 	}

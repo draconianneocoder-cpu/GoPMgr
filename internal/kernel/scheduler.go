@@ -200,6 +200,10 @@ type Task struct {
 	LevelStart      string  `json:"level_start,omitempty"`
 	LevelStartDay   float64 `json:"level_start_day,omitempty"`
 	LevelStartArmed bool    `json:"level_start_armed,omitempty"`
+	// LevelStartBinding is set by the forward pass when the levelled start
+	// is later than the start the links give, so levelling, not the
+	// logic, holds the task where it is.
+	LevelStartBinding bool `json:"level_start_binding,omitempty"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
@@ -393,6 +397,7 @@ func (plan *cpmPlan) run() {
 	// --- Forward pass: ES / EF ---
 	for i, t := range plan.order {
 		t.ConstraintViolated = false
+		t.LevelStartBinding = false
 		es := 0.0
 		for _, l := range plan.preds[i] {
 			p := l.task
@@ -415,6 +420,7 @@ func (plan *cpmPlan) run() {
 		// A levelled start delays the task like a start floor.
 		if t.LevelStartArmed && t.LevelStartDay > es {
 			es = t.LevelStartDay
+			t.LevelStartBinding = true
 		}
 
 		// Forward-acting constraints.
