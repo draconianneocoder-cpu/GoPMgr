@@ -106,9 +106,10 @@ func TestStoredOverlongChartIsRefusedByEveryReader(t *testing.T) {
 	assertScheduleTooLong(t, "LayoutChart", err)
 	_, err = app.LevelChartResources(c.ID, "", false, false)
 	assertScheduleTooLong(t, "LevelChartResources", err)
-	if _, err := app.RunChartMonteCarlo(c.ID, 10, 1); err == nil || !strings.Contains(err.Error(), "longer than 18250 working days") {
-		t.Errorf("RunChartMonteCarlo = %v, want the schedule-length refusal", err)
-	}
+	// Since 2026-11-21 the simulation schedules an armed copy first, so it
+	// refuses with the same error as every other reader.
+	_, err = app.RunChartMonteCarlo(c.ID, 10, 1)
+	assertScheduleTooLong(t, "RunChartMonteCarlo", err)
 	_, err = app.GenerateResourceHistogram(c.ID)
 	assertScheduleTooLong(t, "GenerateResourceHistogram", err)
 	_, err = app.SetScheduleBaseline(c.ID, "b")
