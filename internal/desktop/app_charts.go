@@ -413,6 +413,15 @@ func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (k
 	if len(tasks) == 0 {
 		return kernel.SimResult{}, errors.New("chart has no tasks")
 	}
+	// Each simulated run schedules as the chart does (owner decision
+	// 2026-11-21): date constraints and levelled starts are armed against
+	// the project start and calendar, and without a start date they are
+	// not applied, as in the schedule itself.
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		kernel.ApplyConstraintDates(tasks, start, calendar.For(proj.CountryCode).IsWorkday)
+	} else {
+		kernel.MarkConstraintsUnapplied(tasks, kernel.ConstraintNoStart)
+	}
 	result := kernel.RunMonteCarlo(tasks, iterations, workers)
 	if !result.Valid {
 		return result, errors.New(result.Error)
