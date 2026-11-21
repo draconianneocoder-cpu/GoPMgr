@@ -51,18 +51,40 @@ below passes against it unmodified.
   returns a nil slice, which marshals to `null`.
 - **Flags.** Every input task's `Overallocated` is cleared first, then set on
   each participant. Detection writes nothing else.
-- **Demand.** Each assignment occurrence adds its effective units: `Units <= 0`
-  counts as 1, and a positive `MaxUnits` caps the result. Assignments with a
+- **Demand.** Each assignment occurrence adds its effective units times the
+  share of the day the task uses (see Days): `Units <= 0` counts as 1, and
+  a positive `MaxUnits` caps the result. Assignments with a
   blank resource are skipped. A task with two assignments to one resource
   adds demand twice but is listed once. Each day's demand is summed from
   zero for that day; it is not carried from the day before.
-- **Days.** A task with `Duration > 0` occupies `round(ES)` through
-  `ceil(EF) - 1`, raised to the first day when lower. A non-empty `WorkDays`
-  replaces that span, in any order; an empty list, nil or not, means the
-  span. Detection does not reorder `WorkDays`.
+- **Days.** A task with `Duration > 0` occupies `floor(ES + 1e-9)` through
+  `ceil(EF - 1e-9) - 1`, raised to the first day when lower: the days its
+  work falls in, the rule the schedule uses to show it. On each of those
+  days its share is `max(0, min(EF, d+1) - max(ES, d))`: 1 for a day it
+  spans whole, the fraction used on a day it starts or ends part-way
+  through, and never negative. A non-empty `WorkDays` replaces that span,
+  in any order, and each listed day counts whole (share 1), including for
+  a zero-duration task; an empty list, nil or not, means the span.
+  Detection does not reorder `WorkDays`. Days before 0 add no demand.
 - **Horizon.** Every profile has length (last occupied span day + 1) over all
-  tasks, including tasks with no assignments. Split days outside
-  `[0, horizon)` add no demand.
+  tasks with `Duration > 0`, including tasks with no assignments. Split
+  days never extend it, and split days outside `[0, horizon)` add no
+  demand.
+
+### Contract change, 2026-11-21 (owner decision)
+
+Until 2026-11-21 a part day counted as a whole one, and a part-day start
+counted on the next day: a span ran from `round(ES)` to `ceil(EF) - 1`,
+and every day in it took the full units (OR-01-S4: a task from 0.5 to 0.9
+counted on day 1, whole). The schedule shows that task on day 0, so its
+overallocation badge and histogram sat one day after its bar. The owner
+chose to count the fraction used ("count the used fraction"): demand now
+lands on the days shown, weighted by the share of each day used, so two
+half-day tasks on one person in one day are not an overload. Whole-day
+schedules and split tasks are unchanged. The frozen copy (OR-02) was not
+edited and keeps the old answers; the hand oracle gives the two rows whose
+answer changed (F-20, OR-01-S4) separate expectations for production and
+for the frozen copy, and adds production-only rows (OR-01-S4b to S4e).
 - **Capacity.** Each step replaces the one before it:
   1. the plan default (1 when not positive);
   2. a positive `Capacities[resource]`;
@@ -92,9 +114,10 @@ approved behavior change with its own tests.
 
 | Oracle | File | What it proves |
 | --- | --- | --- |
-| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus five supplementary cases (OR-01-S1 to S5). It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
+| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus supplementary cases OR-01-S1 to S5 and, since 2026-11-21, production-only part-day cases OR-01-S4b to S4e (a day-long task straddling two days, two half-day tasks sharing a day, a trailing half day, a sliver below a day boundary). F-20 and OR-01-S4 carry separate production and frozen-copy expectations. It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
 | Frozen legacy reference (OR-02) | `internal/kernel/overallocation_legacy_ref_test.go` | A copy of the detection path at the pinned blob, written as free functions. |
-| Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random schedules, and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
+| Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random whole-day schedules (whole-day starts and durations since 2026-11-21, where both contracts agree), and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
+| Part-day grid property | `TestPartDayDemandMatchesAnEighthDayGrid` in the differential file | On 2,000 seeded schedules whose starts and durations are multiples of 1/8 day (from day -1), each resource's usage equals an independent count of eighth-day cells per day times effective units, exactly. |
 | Participant index | `internal/kernel/overallocation_index_test.go` | A contiguous span is one membership run however long; split days become sorted, deduplicated, merged runs; repeated assignments and aliased keys give one run per entry and resource. Also T2 and T3 benchmarks. |
 | Benchmarks | `internal/kernel/overallocation_bench_test.go` | Timing and allocations at T0 and T1, run before and after RES-A-1. |
 
@@ -111,7 +134,9 @@ tolerance is used anywhere.
 - OR-01-S5 also shows that each day's demand is summed from zero: a running
   sum would leave 0.20000000000000004 on its last day instead of 0.2.
 - The random schedules use multiples of 1/8, so any summation order is exact.
-  They cannot tell how demand is summed; OR-01-S5 does that.
+  They cannot tell how demand is summed; OR-01-S5 does that. The part-day
+  grid property uses multiples of 1/8 day and of 1/8 unit, so every share
+  and product is exact and its comparison needs no tolerance either.
 - F-07 checks the threshold itself and the values one ULP either side.
 - NOT RUN: the design's tolerance-compared sums whose binary64 value depends
   on map order, and threshold cases whose classification depends on it.
@@ -142,7 +167,7 @@ the same tests on Linux.
 | RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3 | Passing locally |
 | RES-A07 threshold | `TestOverallocationThresholdIsLiteral` (F-07) | Passing locally |
 | RES-A08 performance | Paired before-and-after benchmarks at T0 and T1; T2 and T3 for the new detector | Measured (see Benchmarks). RSS and the old detector's T2 and T3 NOT RUN; budgets BLOCKED (OWN-10) |
-| RES-A09 aliases, unassigned horizon, rounding | F-17, F-19, F-20, OR-01-S4 | Passing locally |
+| RES-A09 aliases, unassigned horizon, part days | F-17, F-19, F-20, OR-01-S4, OR-01-S4b to S4e, the part-day grid property | Passing locally (part-day rule changed 2026-11-21) |
 | RES-A10 literal comparison, zero demand | F-18, F-21 | Passing locally |
 
 ## Sensitivity
@@ -232,6 +257,16 @@ run. Five were caught:
 - the stale cache, by `TestDetectOverallocations`, but only on its second
   run in one process.
 
+### Seeds against the part-day rule (2026-11-21)
+
+Run on linux/amd64 with Go 1.27.4; all caught:
+
+- a whole day counted for every occupied day (share 1): the hand oracle
+  and the grid property;
+- `round(ES)` restored as the first day: the hand oracle and the grid
+  property;
+- the share not clamped at 0: OR-01-S4e.
+
 ## Benchmarks (indicative)
 
 ```sh
@@ -272,8 +307,11 @@ It is not the S0 generator, and these numbers are not comparable with S0's.
 ## Changing these tests
 
 - Do not edit the frozen reference to follow production. If the detector's
-  output is meant to change, record the decision here, update the hand
-  oracle row by row, and update the hash pin in the same change.
+  output is meant to change, record the decision here and update the hand
+  oracle row by row. The 2026-11-21 part-day change kept the frozen copy
+  and its hash pin: rows whose answer changed carry separate production
+  and frozen-copy expectations, and the differential test is limited to
+  the inputs on which both contracts agree.
 - A faster detector passes only if every test here passes unchanged, the
   differential test included. RES-A-1 did: it removed `tasksOnDay` and
   `occupiesDay` from production, and the frozen copy keeps its own versions.

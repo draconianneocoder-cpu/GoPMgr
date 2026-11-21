@@ -177,6 +177,19 @@ type overallocationFixture struct {
 	want  []Overallocation
 	flags map[string]bool      // expected Task.Overallocated for every map key
 	usage map[string][]float64 // expected ResourceUsage, exactly
+	// production, when set, is production's answer where the 2026-11-21
+	// contract change (part-day demand by fraction) makes it differ from
+	// the frozen copy, which keeps the fields above so a damaged copy is
+	// still caught. productionOnly rows have no frozen-copy answer.
+	production     *overallocationExpect
+	productionOnly bool
+}
+
+// overallocationExpect is one detector's expected answer for a fixture.
+type overallocationExpect struct {
+	want  []Overallocation
+	flags map[string]bool
+	usage map[string][]float64
 }
 
 func overallocationFixtures(t *testing.T) []overallocationFixture {
@@ -485,7 +498,11 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			usage: map[string][]float64{"r": {2}},
 		},
 		{
-			id: "F-20 fractional ES and EF occupy rounded days",
+			// The frozen copy counts whole rounded days (0.75 each). Since
+			// 2026-11-21 production counts the share used: day 0 0.51 of a
+			// day (0.49 to 1), day 1 0.25 (1 to 1.25), times 0.75 units:
+			// 0.3825 and 0.1875, both under capacity 0.5.
+			id: "F-20 fractional ES and EF: frozen copy rounds, production counts the share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.76, 0.49, 1.25, resAssign("r", 0.75))}
 			},
@@ -496,11 +513,18 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			},
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0.75, 0.75}},
+			production: &overallocationExpect{
+				flags: map[string]bool{"A": false},
+				usage: map[string][]float64{"r": {0.3825, 0.1875}},
+			},
 		},
 		{
-			// round(0.5) is 1 (half away from zero), and ceil(0.9)-1 = 0 is
-			// raised to the first day, so the task occupies day 1 only.
-			id: "OR-01-S4 a half-day start rounds up",
+			// Frozen copy: round(0.5) is 1 (half away from zero), and
+			// ceil(0.9)-1 = 0 is raised to the first day, so the task
+			// occupies day 1 only, whole. Production since 2026-11-21: the
+			// work (0.5 to 0.9) falls in day 0 and uses 0.4 of it, under
+			// capacity 0.5.
+			id: "OR-01-S4 a part-day start: frozen copy rounds up, production counts its own day by share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.4, 0.5, 0.9, resAssign("r", 1))}
 			},
@@ -508,6 +532,67 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			want:  []Overallocation{{Resource: "r", Day: 1, Demand: 1, Capacity: 0.5, TaskIDs: []string{"A"}}},
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0, 1}},
+			production: &overallocationExpect{
+				flags: map[string]bool{"A": false},
+				usage: map[string][]float64{"r": {0.4}},
+			},
+		},
+		{
+			// 0.5 to 1.5 at 1 unit: half of day 0 and half of day 1, each
+			// under capacity 0.5 (equal is allowed).
+			id:             "OR-01-S4b a day-long task straddling two days uses half of each",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1, 0.5, 1.5, resAssign("r", 1))}
+			},
+			plan:  ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.5}},
+			flags: map[string]bool{"A": false},
+			usage: map[string][]float64{"r": {0.5, 0.5}},
+		},
+		{
+			// Two half-day tasks one after the other on one person fill
+			// day 0 exactly: not an overload.
+			id:             "OR-01-S4c two half-day tasks share one day",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, resAssign("r", 1)),
+					"B": resTask("B", 0.5, 0.5, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			flags: map[string]bool{"A": false, "B": false},
+			usage: map[string][]float64{"r": {1}},
+		},
+		{
+			// A sliver of work just below a day boundary (1.9999999995 to
+			// 1.9999999996) is placed on day 2 by the span rule's epsilon
+			// but covers none of it: its share is clamped to 0, never
+			// negative demand.
+			id:             "OR-01-S4e a sliver below a day boundary adds no negative demand",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1e-10, 1.9999999995, 1.9999999996, resAssign("r", 1))}
+			},
+			plan:  unit,
+			flags: map[string]bool{"A": false},
+			usage: map[string][]float64{"r": {0, 0, 0}},
+		},
+		{
+			// 2.5 days from day 0 at 1 unit against capacity 0.6: days 0
+			// and 1 whole (breaches), day 2 half (0.5, within capacity).
+			id:             "OR-01-S4d a trailing half day counts half",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 2.5, 0, 2.5, resAssign("r", 1))}
+			},
+			plan: ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.6}},
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {1, 1, 0.5}},
 		},
 		{
 			id: "F-21 out-of-range split day leaves zero demand on a zero-capacity day",
@@ -542,6 +627,12 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 func TestOverallocationHandOracle(t *testing.T) {
 	for _, d := range overallocationDetectors() {
 		for _, f := range overallocationFixtures(t) {
+			if f.productionOnly && d.name != "production" {
+				continue
+			}
+			if f.production != nil && d.name == "production" {
+				f.want, f.flags, f.usage = f.production.want, f.production.flags, f.production.usage
+			}
 			t.Run(d.name+"/"+f.id, func(t *testing.T) {
 				tasks := f.build()
 				if len(f.flags) != len(tasks) {

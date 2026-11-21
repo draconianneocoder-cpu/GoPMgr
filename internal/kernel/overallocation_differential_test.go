@@ -209,8 +209,12 @@ func generateOverallocationCase(rng *rand.Rand) (map[string]*Task, ResourceCapac
 	tasks := make(map[string]*Task, n+1)
 	keys := make([]string, 0, n)
 	for i := range n {
-		duration := pickFrom(rng, 0, 0, 0.4, 1, 1, 2, 3, 5.5, 9)
-		es := float64(rng.IntN(12)) + pickFrom(rng, 0, 0, 0.25, 0.5, 0.75)
+		// Whole days only: since the 2026-11-21 contract change production
+		// counts a part day by the share used, where the frozen copy rounds
+		// to whole days; on whole-day schedules the two contracts agree.
+		// Part days are held by the hand oracle and the grid property test.
+		duration := pickFrom(rng, 0.0, 0, 1, 1, 2, 3, 9)
+		es := float64(rng.IntN(12))
 		task := &Task{ID: fmt.Sprintf("T%d", rng.IntN(n+2)), Duration: duration, ES: es, EF: es + duration}
 		switch rng.IntN(10) {
 		case 0, 1, 2:
@@ -383,7 +387,11 @@ func (c *differentialCoverage) require(t *testing.T) {
 	}{
 		// A quarter to a third of what TestDetectorMatchesFrozenLegacyReference's
 		// seeds produced with Go 1.27.3, leaving room for a toolchain to
-		// change the random stream.
+		// change the random stream. The whole-day generator of 2026-11-21
+		// measured breaches 9961, duplicate IDs 900, aliases 542, split
+		// gaps 944, late weekly 1440, zero capacity 669, assignment
+		// calendars 3249, empty WorkDays 1293: every floor still holds
+		// with room.
 		{"breaches", c.breaches, 4000},
 		{"breaches listing a printed ID twice", c.duplicateIDBreaches, 300},
 		{"breaches involving an aliased key", c.aliasBreaches, 200},
@@ -396,6 +404,87 @@ func (c *differentialCoverage) require(t *testing.T) {
 	for _, f := range floors {
 		if f.got < f.floor {
 			t.Errorf("generator produced %d %s, want at least %d", f.got, f.name, f.floor)
+		}
+	}
+}
+
+// Part-day demand (OR-01 contract change, 2026-11-21): on schedules whose
+// starts and durations are multiples of an eighth of a day, each day's
+// demand must equal an independent count of the eighth-day cells the work
+// covers on that day, times the assignment's effective units. Every value
+// is a multiple of 1/64, so the comparison is exact. The oracle mirrors
+// production's profile rules: a resource gets a profile when a task with
+// work assigns it, every profile is as long as the last day any task's
+// work reaches (+1), and days before 0 are dropped.
+func TestPartDayDemandMatchesAnEighthDayGrid(t *testing.T) {
+	floorDiv := func(a, b int) int {
+		q := a / b
+		if a%b != 0 && (a < 0) != (b < 0) {
+			q--
+		}
+		return q
+	}
+	effective := func(a Assignment) float64 {
+		u := a.Units
+		if u <= 0 {
+			u = 1
+		}
+		if a.MaxUnits > 0 && u > a.MaxUnits {
+			u = a.MaxUnits
+		}
+		return u
+	}
+	rng := rand.New(rand.NewPCG(20261121, 0x9e3779b97f4a7c15))
+	for i := range 2000 {
+		tasks := map[string]*Task{}
+		for k := range 1 + rng.IntN(12) {
+			startCell := rng.IntN(105) - 8 // -1 to 12 days, in eighths
+			cells := rng.IntN(41)          // 0 to 5 days
+			task := &Task{ID: fmt.Sprintf("T%d", k), Duration: float64(cells) / 8,
+				ES: float64(startCell) / 8, EF: float64(startCell+cells) / 8}
+			for range rng.IntN(4) {
+				a := Assignment{Resource: pickFrom(rng, "", "r0", "r1"), Units: pickFrom(rng, -1, 0, 0.125, 0.5, 1, 1.5)}
+				if rng.IntN(4) == 0 {
+					a.MaxUnits = pickFrom(rng, 0.25, 1.25)
+				}
+				task.Assignments = append(task.Assignments, a)
+			}
+			tasks[task.ID] = task
+		}
+
+		horizon := 0
+		for _, task := range tasks {
+			if task.Duration > 0 {
+				lastCell := int(task.EF*8) - 1
+				horizon = max(horizon, floorDiv(lastCell, 8)+1)
+			}
+		}
+		want := map[string][]float64{}
+		for _, task := range tasks {
+			if task.Duration <= 0 {
+				continue
+			}
+			for _, a := range task.Assignments {
+				if a.Resource == "" {
+					continue
+				}
+				if want[a.Resource] == nil {
+					want[a.Resource] = make([]float64, horizon)
+				}
+				for cell := int(task.ES * 8); cell < int(task.EF*8); cell++ {
+					if day := floorDiv(cell, 8); day >= 0 && day < horizon {
+						want[a.Resource][day] += effective(a) / 8
+					}
+				}
+			}
+		}
+		if diff := usageDiff(ResourceUsage(tasks), want); diff != "" {
+			var b strings.Builder
+			for _, id := range sortedTaskKeys(tasks) {
+				task := tasks[id]
+				fmt.Fprintf(&b, "  %s ES %v EF %v %+v\n", id, task.ES, task.EF, task.Assignments)
+			}
+			t.Fatalf("case %d: %s\n%s", i, diff, b.String())
 		}
 	}
 }

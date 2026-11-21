@@ -206,32 +206,56 @@ func occupiedDays(t *Task) []int {
 }
 
 // taskSpan is the inclusive integer day range a task occupies for
-// resource demand (start = round(ES), last day = ceil(EF)-1;
-// zero-duration tasks occupy no days). This rounding is the OR-01
-// contract (OR-01-S4: a half-day start rounds up). AnchorSchedule shows a
-// part-day start on the day it falls in instead (floor), so for a task
-// whose ES has a fraction of .5 or more the shown start day and the first
-// day its demand is counted on differ by one. A task whose dates
-// are not finite offsets within maxAllocationDays, which CalculateCPM
-// never produces, is reported as occupying no days, because callers size
-// slices from the span.
+// resource demand: the days its work falls in, by the rule AnchorSchedule
+// uses to show it (first = floor(ES), last = ceil(EF)-1, raised to the
+// first; the epsilon absorbs noise from summed fractions). Zero-duration
+// tasks occupy no days. Since 2026-11-21 (owner decision, OR-01 contract
+// change) a part-day start counts on the day it falls in, not the next
+// one. A task whose dates are not finite offsets within
+// maxAllocationDays, which CalculateCPM never produces, is reported as
+// occupying no days, because callers size slices from the span.
 func taskSpan(t *Task) (first, last int, occupies bool) {
 	if t.Duration <= 0 || !withinAllocationLimit(t.ES) || !withinAllocationLimit(t.EF) {
 		return 0, 0, false
 	}
-	first = int(math.Round(t.ES))
-	last = int(math.Ceil(t.EF)) - 1
+	first, last = spanDays(t.ES, t.EF)
+	return first, last, true
+}
+
+// spanDays is the inclusive day range [es, ef) of work falls in: floor(es)
+// to ceil(ef)-1, raised to the first day. Levelling and detection share it.
+func spanDays(es, ef float64) (first, last int) {
+	first = int(math.Floor(es + 1e-9))
+	last = int(math.Ceil(ef-1e-9)) - 1
 	if last < first {
 		last = first
 	}
-	return first, last, true
+	return first, last
+}
+
+// dayShare is the fraction of working day d that [es, ef) covers, never
+// negative: 1 for a day the work spans whole, less on a day it starts or
+// ends part-way through. Resource demand on day d is units times the share
+// (OR-01 contract change, 2026-11-21).
+func dayShare(es, ef float64, d int) float64 {
+	return max(0, min(ef, float64(d+1))-max(es, float64(d)))
+}
+
+// taskDayShare is a task's share of day d for resource demand. A split
+// task (WorkDays) takes each listed day whole, as levelling books it.
+func taskDayShare(t *Task, d int) float64 {
+	if len(t.WorkDays) > 0 {
+		return 1
+	}
+	return dayShare(t.ES, t.EF, d)
 }
 
 // ResourceUsage builds each resource's per-day demand profile from a
 // scheduled task map (CalculateCPM must have run). The slice index is
-// the working-day offset; the value is the summed assignment units of
-// every task occupying that day. All profiles share the same length
-// (the project's last occupied day + 1).
+// the working-day offset; the value is the sum, over every task occupying
+// that day, of its assignment units times the share of the day it uses
+// (taskDayShare). All profiles share the same length (the last day of any
+// task's span + 1; split days never extend it).
 func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 	horizon := 0
 	for _, t := range tasks {
@@ -257,7 +281,7 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 			}
 			for _, d := range od {
 				if d >= 0 && d < len(profile) {
-					profile[d] += a.effectiveUnits()
+					profile[d] += a.effectiveUnits() * taskDayShare(t, d)
 				}
 			}
 		}
