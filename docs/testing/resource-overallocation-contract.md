@@ -85,6 +85,8 @@ schedules and split tasks are unchanged. The frozen copy (OR-02) was not
 edited and keeps the old answers; the hand oracle gives the two rows whose
 answer changed (F-20, OR-01-S4) separate expectations for production and
 for the frozen copy, and adds production-only rows (OR-01-S4b to S4e).
+Resource levelling books the same shares (part-day levelling, also
+2026-11-21), so the leveller and the detector agree.
 - **Capacity.** Each step replaces the one before it:
   1. the plan default (1 when not positive);
   2. a positive `Capacities[resource]`;

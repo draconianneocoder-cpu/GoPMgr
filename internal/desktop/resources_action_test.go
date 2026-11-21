@@ -631,3 +631,34 @@ func TestGenerateResourceHistogramNoAssignments(t *testing.T) {
 		t.Error("histogram with no assignments must error")
 	}
 }
+
+// Part-day levelling (owner decision 2026-11-21): a chain of part-day
+// tasks on one person that fits within the day's capacity is left where
+// the logic puts it, so levelling stores no levelled start. A (0.5 day),
+// B (0.4) and C (0.5) run 0 to 1.4: day 0 holds exactly 1 day of work.
+func TestLevelChartResourcesLeavesAFittingPartDayChain(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Part days", Data: `{
+		"nodes": [
+			{"id":"A","label":"A","duration":0.5,"assignments":[{"resource":"alice"}]},
+			{"id":"B","label":"B","duration":0.4,"assignments":[{"resource":"alice"}]},
+			{"id":"C","label":"C","duration":0.5,"assignments":[{"resource":"alice"}]}
+		],
+		"edges": [{"from":"A","to":"B"},{"from":"B","to":"C"}]
+	}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	res, err := app.LevelChartResources(c.ID, "", false, false)
+	if err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	if res.Pinned != 0 || len(res.UnplacedTaskIDs) != 0 {
+		t.Fatalf("result = %+v, want nothing delayed or unplaced", res)
+	}
+	for id, n := range storedLevelling(t, d, c.ID) {
+		if n != (levelledNode{}) {
+			t.Errorf("%s = %+v, want nothing stored", id, n)
+		}
+	}
+}

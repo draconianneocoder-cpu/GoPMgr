@@ -274,6 +274,93 @@ func TestLevelResourcesFractionalUnitsShare(t *testing.T) {
 	approx(t, "B.ES", tasks["B"].ES, 0)
 }
 
+// Part-day levelling (owner decision 2026-11-21): a task is tried at its
+// earliest start, part days included, and demand counts the share of each
+// day used, so part-day work can share a day. Everything runs on alice at
+// capacity 1 unless stated; every oracle is worked by hand in its case.
+func TestLevelResourcesInPartDays(t *testing.T) {
+	alice := []Assignment{{Resource: "alice"}}
+	cases := []struct {
+		name     string
+		tasks    map[string]*Task
+		capacity float64
+		want     map[string]float64 // levelled ES
+	}{
+		{
+			// A [0, 0.5), B [0.5, 0.9), C [0.9, 1.4): day 0 holds 0.5 + 0.4
+			// + 0.1 = 1, day 1 0.4; nothing moves. Rounding up used to put
+			// B on day 1 and C on day 2.
+			name: "a chain of part-day tasks stays on its days",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0.5, Assignments: alice},
+				"B": {ID: "B", Duration: 0.4, Precedents: []string{"A"}, Assignments: alice},
+				"C": {ID: "C", Duration: 0.5, Precedents: []string{"B"}, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"A": 0, "B": 0.5, "C": 0.9},
+		},
+		{
+			// Two unlinked half-day tasks fill day 0 exactly.
+			name: "two half-day tasks share a day",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0.5, Assignments: alice},
+				"B": {ID: "B", Duration: 0.5, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"A": 0, "B": 0},
+		},
+		{
+			// At capacity 0.75, A (first by ID, equal late starts) takes
+			// 0.5 of day 0; B's 0.5 more would make 1 > 0.75, so B moves to
+			// the next whole day, 1.
+			name: "a half-day task that does not fit moves to the next day",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0.5, Assignments: alice},
+				"B": {ID: "B", Duration: 0.5, Assignments: alice},
+			},
+			capacity: 0.75,
+			want:     map[string]float64{"A": 0, "B": 1},
+		},
+		{
+			// P (no resource) ends at 0.5, so Y could start at 0.5; X fills
+			// day 0, so Y's half day does not fit there and Y moves to 1.
+			name: "a part-day earliest start that does not fit moves to the next day",
+			tasks: map[string]*Task{
+				"P": {ID: "P", Duration: 0.5},
+				"X": {ID: "X", Duration: 1, Assignments: alice},
+				"Y": {ID: "Y", Duration: 0.5, Precedents: []string{"P"}, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"P": 0, "X": 0, "Y": 1},
+		},
+		{
+			// A milestone between two half-day tasks keeps its part-day
+			// start (0.5), so B starts at 0.5 too: day 0 holds 0.5 + 0.5.
+			name: "a milestone in a part-day chain is not rounded up",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0.5, Assignments: alice},
+				"M": {ID: "M", Duration: 0, Milestone: true, Precedents: []string{"A"}},
+				"B": {ID: "B", Duration: 0.5, Precedents: []string{"M"}, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"A": 0, "M": 0.5, "B": 0.5},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !levelResources(tc.tasks, map[string]float64{"alice": tc.capacity}) {
+				t.Fatal("leveling reported a cycle")
+			}
+			for id, es := range tc.want {
+				approx(t, id+".ES", tc.tasks[id].ES, es)
+			}
+			if over := DetectOverallocations(tc.tasks, map[string]float64{"alice": tc.capacity}); len(over) != 0 {
+				t.Errorf("levelled schedule still overallocated: %+v", over)
+			}
+		})
+	}
+}
+
 func TestLevelResourcesImpossibleDemandStaysPut(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 1,

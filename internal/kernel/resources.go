@@ -543,9 +543,13 @@ func (m *overallocationMembers) sorted() []int {
 // using the serial method: tasks become ready when all predecessors
 // are levelled, the ready task with the smallest (LS, ID) — i.e. the
 // least float, under the default LeastTotalFloat strategy — goes first,
-// and each task is delayed to the earliest
-// integer start where its precedence links are satisfied and every
-// assigned resource has capacity across its whole span.
+// and each task is placed at the first of these starts where every
+// assigned resource has capacity across its whole span: its earliest start
+// (the precedence links and its constrained ES), which may fall part-way
+// through a day, then each following whole day. Demand counts the share of
+// each day used, as DetectOverallocations does, so part-day work can share
+// a day (part-day levelling, owner decision 2026-11-21). Splitting, when
+// allowed, still books whole days.
 //
 // Semantics and limits (documented simplifications for this first
 // leveling pass):
@@ -660,12 +664,22 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 		return true
 	}
 
-	// fits reports whether t can occupy `days` contiguous days from start.
-	fits := func(t *Task, start int) bool {
-		days := int(math.Ceil(t.Duration))
-		for d := start; d < start+days; d++ {
-			if !dayHasCapacity(t, d) {
-				return false
+	// fits reports whether t can run contiguously from start (which may
+	// fall part-way through a day): on every day its work touches, each
+	// assignment's units times the share of the day used must fit, the
+	// rule DetectOverallocations applies (spanDays, dayShare).
+	fits := func(t *Task, start float64) bool {
+		finish := start + t.Duration
+		first, last := spanDays(start, finish)
+		for d := first; d <= last; d++ {
+			share := dayShare(start, finish, d)
+			for _, a := range t.Assignments {
+				if a.Resource == "" {
+					continue
+				}
+				if demand(booked[a.Resource], d)+a.effectiveUnits()*share > plan.capacityForAssignment(a, d)+1e-9 {
+					return false
+				}
 			}
 		}
 		return true
@@ -710,13 +724,26 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 		}
 	}
 
-	// contiguousDays is the day list start..start+days-1.
-	contiguousDays := func(start, days int) []int {
-		out := make([]int, days)
-		for i := range out {
-			out[i] = start + i
+	// bookShares adds t's demand for a contiguous run from start: units
+	// times the share of each day used.
+	bookShares := func(t *Task, start float64) {
+		finish := start + t.Duration
+		first, last := spanDays(start, finish)
+		for _, a := range t.Assignments {
+			if a.Resource == "" {
+				continue
+			}
+			profile := booked[a.Resource]
+			if len(profile) < last+1 {
+				grown := make([]float64, last+1)
+				copy(grown, profile)
+				profile = grown
+			}
+			for d := max(first, 0); d <= last; d++ {
+				profile[d] += a.effectiveUnits() * dayShare(start, finish, d)
+			}
+			booked[a.Resource] = profile
 		}
-		return out
 	}
 
 	for len(pending) > 0 {
@@ -774,18 +801,24 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			earliest = 0
 		}
 
+		// Part-day levelling (owner decision 2026-11-21): a task is tried
+		// at its earliest start, which may fall part-way through a day, and
+		// then at each following whole day. Whole-day schedules see the
+		// same candidates as before.
 		startFloor := int(math.Ceil(earliest - 1e-9))
-		start := startFloor
+		start := earliest
 		t.WorkDays = nil
 		if t.Duration > 0 && len(t.Assignments) > 0 {
 			days := int(math.Ceil(t.Duration))
 
 			// Earliest contiguous placement (if any within the horizon).
-			contigStart, contigOK := 0, false
-			for offset := 0; offset <= horizon; offset++ {
-				if fits(t, startFloor+offset) {
-					contigStart, contigOK = startFloor+offset, true
-					break
+			contigStart, contigOK := 0.0, false
+			if fits(t, earliest) {
+				contigStart, contigOK = earliest, true
+			}
+			for offset := 0; !contigOK && offset <= horizon; offset++ {
+				if fits(t, float64(startFloor+offset)) {
+					contigStart, contigOK = float64(startFloor+offset), true
 				}
 			}
 			// Earliest split placement (greedy earliest capacity days). Its
@@ -797,41 +830,42 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 				splitWD, splitOK = splitDays(t, startFloor, days)
 			}
 
-			contigFinish := math.MaxInt
+			contigFinish := math.Inf(1)
 			if contigOK {
-				contigFinish = contigStart + days
+				contigFinish = contigStart + t.Duration
 			}
-			splitFinish := math.MaxInt
+			splitFinish := math.Inf(1)
 			if splitOK {
-				splitFinish = splitWD[len(splitWD)-1] + 1
+				splitFinish = float64(splitWD[len(splitWD)-1] + 1)
 			}
 
 			switch {
 			case splitOK && splitFinish < contigFinish:
 				// Splitting finishes strictly sooner => the days are
 				// non-contiguous; interrupt the task around the busy days.
-				start = splitWD[0]
+				start = float64(splitWD[0])
 				bookProfileDays(t, splitWD)
 				t.WorkDays = append([]int(nil), splitWD...)
 				t.EF = float64(splitWD[len(splitWD)-1] + 1)
 				splitIDs = append(splitIDs, id)
 			case contigOK:
 				start = contigStart
-				bookProfileDays(t, contiguousDays(start, days))
-				t.EF = float64(start) + t.Duration
+				bookShares(t, start)
+				t.EF = start + t.Duration
 			default:
 				// Nothing fit within the horizon (e.g. single-day demand >
 				// capacity): leave the task at its earliest start, booked so
 				// the overallocation stays visible to DetectOverallocations,
 				// and report it unplaced.
-				start = startFloor
-				bookProfileDays(t, contiguousDays(start, days))
-				t.EF = float64(start) + t.Duration
+				bookShares(t, start)
+				t.EF = start + t.Duration
 				unplaced = append(unplaced, id)
 			}
-			t.ES = float64(start)
+			t.ES = start
 		} else {
-			t.ES = float64(start)
+			// No resource or no work: nothing to level, so the task keeps
+			// its earliest start, part days included.
+			t.ES = start
 			t.EF = t.ES + t.Duration
 		}
 		levelled[id] = true
