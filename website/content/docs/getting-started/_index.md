@@ -5,14 +5,14 @@ weight = 30
 [params]
 status = "development"
 applies_to = "Development snapshot 88b92cf935c7; manual review 4f4ab0c7572a, 49f0fe5d727f, f54b26428f70"
-last_reviewed = "2026-11-18"
+last_reviewed = "2026-11-23"
 claim_ids = ["page.docs.getting-started"]
 [[params.sources]]
 label = "docs/INSTALL.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/49f0fe5d727fd4eff383d2c6e3c767ea7cfa0408/docs/INSTALL.md"
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/156a8eded0088d608f39c78e7c04a6089f9bbc8a/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/ce25b75b8d9e22060ac437387a617aa92ce63c2c/docs/user-guide.md"
 +++
 
 <!--
@@ -33,4 +33,4 @@ The reviewed current source requires macOS 26 Tahoe or Ubuntu 26.04 for those re
 
 ## Backup and recovery
 
-Removing the application may leave your project and account data on disk. Recovery codes are one-time credentials. New codes replace the previous codes only after you choose **Use the new codes**. Read the [canonical recovery guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/156a8eded0088d608f39c78e7c04a6089f9bbc8a/docs/user-guide.md#recovery-codes-and-encryption) before relying on them. This tutorial does not ask you to delete, migrate or reset existing data.
+Removing the application may leave your project and account data on disk. Recovery codes are one-time credentials. New codes replace the previous codes only after you choose **Use the new codes**. Read the [canonical recovery guidance](https://github.com/draconianneocoder-cpu/GoPMgr/blob/ce25b75b8d9e22060ac437387a617aa92ce63c2c/docs/user-guide.md#recovery-codes-and-encryption) before relying on them. This tutorial does not ask you to delete, migrate or reset existing data.
