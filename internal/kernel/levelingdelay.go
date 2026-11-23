@@ -18,6 +18,11 @@ import (
 // it. GoPMgr stores the result itself (LevelStart and LevelStartFraction);
 // these helpers convert for MSPDI export and import.
 
+// maxElapsedDelayMinutes bounds an elapsed delay read from a file: twice
+// the calendar span of the longest schedule the kernel allocates for, far
+// below time.Duration's limit.
+const maxElapsedDelayMinutes = float64(maxAllocationDays) * 2 * 24 * 60
+
 // LevelingDelay is one task's delay read from a file: Amount elapsed
 // minutes when Elapsed, else working days.
 type LevelingDelay struct {
@@ -155,7 +160,11 @@ func ApplyLevelingDelays(tasks map[string]*Task, delays map[string]LevelingDelay
 		start = ForwardConstrainedStart(t, start)
 		if d, has := delays[t.ID]; has && d.Amount > 0 {
 			levelled, fits := start+d.Amount, true
-			if d.Elapsed {
+			switch {
+			case d.Elapsed && d.Amount > maxElapsedDelayMinutes:
+				// Beyond any schedule (and time.Duration): not applied.
+				fits = false
+			case d.Elapsed:
 				at := w.at(start).Add(time.Duration(math.Round(d.Amount)) * time.Minute)
 				levelled, fits = w.offset(at)
 			}

@@ -388,7 +388,7 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
   },
   {
     term: "Levelled Start",
-    def: "The start date resource levelling gave a CPM task. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged.",
+    def: "The start resource levelling gave a CPM task: a date, with a time of day when the task starts part-way through a day. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged. MSPDI files carry it as a levelling delay.",
     id: "levelled-start",
     aliases: [
       "Leveled Start",

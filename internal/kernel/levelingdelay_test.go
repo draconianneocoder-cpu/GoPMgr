@@ -73,11 +73,12 @@ func TestLevelingDelayMinutes(t *testing.T) {
 // Applying delays read from a file gives the levelled starts back: the
 // elapsed delays above, a working delay of 1.5 days, an elapsed delay
 // ending on a Saturday (to Monday 08:00, offset 5), and skips: an ALAP
-// task and a delay beyond the schedule limit.
+// task and delays beyond the schedule limit, working and elapsed.
 func TestApplyLevelingDelays(t *testing.T) {
 	tasks := delayNetwork()
 	tasks["S"] = &Task{ID: "S", Duration: 1}
 	tasks["X"] = &Task{ID: "X", Duration: 1}
+	tasks["Y"] = &Task{ID: "Y", Duration: 1}
 	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
 	starts, skipped, ok := ApplyLevelingDelays(tasks, map[string]LevelingDelay{
 		"B": {6180, true},
@@ -86,6 +87,7 @@ func TestApplyLevelingDelays(t *testing.T) {
 		"S": {5 * 1440, true}, // Monday 08:00 + 5 days: Saturday 08:00
 		"Q": {60, true},
 		"X": {MaxScheduleDays, false},
+		"Y": {1e15, true}, // would overflow time.Duration
 	}, conStart, weekdaysOnly)
 	if !ok {
 		t.Fatal("cycle")
@@ -93,7 +95,7 @@ func TestApplyLevelingDelays(t *testing.T) {
 	if want := map[string]float64{"B": 4.75, "C": 5.25, "N": 1.5, "S": 5}; !reflect.DeepEqual(starts, want) {
 		t.Errorf("starts %v, want %v", starts, want)
 	}
-	if want := []string{"Q", "X"}; !reflect.DeepEqual(skipped, want) {
+	if want := []string{"Q", "X", "Y"}; !reflect.DeepEqual(skipped, want) {
 		t.Errorf("skipped %v, want %v", skipped, want)
 	}
 	if tasks["B"].ES != 0 || tasks["B"].EF != 0 {
