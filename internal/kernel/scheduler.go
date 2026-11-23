@@ -49,7 +49,8 @@ const (
 	// determines the early dates.
 	AsSoonAsPossible ConstraintType = "ASAP"
 	// AsLateAsPossible schedules the task at its late dates,
-	// consuming its own float. Needs no constraint date.
+	// consuming its own float, unless it has an armed levelled start:
+	// then it stays where levelling put it. Needs no constraint date.
 	AsLateAsPossible ConstraintType = "ALAP"
 	// StartNoEarlierThan keeps ES at or after the constraint day.
 	StartNoEarlierThan ConstraintType = "SNET"
@@ -378,7 +379,7 @@ func effectiveLinks(t *Task) []Link {
 //
 // Constraints: armed SNET, FNET, MSO and MFO act in the forward pass;
 // MSO, MFO, SNLT and FNLT in the backward pass; and ALAP in a post-pass that moves the task to
-// its late dates. Links always win over constraints; an unsatisfiable
+// its late dates (an ALAP task with an armed levelled start stays at it). Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
 // Earliest limits use ConstraintDay and latest limits ConstraintDay minus
 // ConstraintLateShift, so an MSO or MFO dated on a non-working day, or
@@ -585,8 +586,12 @@ func (plan *cpmPlan) run() {
 	// As-late-as-possible tasks sit at their late dates, consuming
 	// their own float. Applied after both passes so no other task's
 	// dates shift (successors were computed from the early dates).
+	// An ALAP task with an armed levelled start stays where levelling put
+	// it (owner decision 2026-11-23, "keep levelled position"): levelling
+	// placed it as late as capacity allowed, and moving it to the late
+	// dates of the saved schedule could put it on top of other work.
 	for _, t := range plan.order {
-		if t.Constraint == AsLateAsPossible {
+		if t.Constraint == AsLateAsPossible && !t.LevelStartArmed {
 			t.ES, t.EF = t.LS, t.LF
 			t.Float = 0
 			t.IsCritical = true

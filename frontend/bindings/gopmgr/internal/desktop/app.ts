@@ -1117,8 +1117,9 @@ export function LayoutChart(id: string): $CancellablePromise<charts$0.LayoutResu
  * start, as the day it starts in (node level_start) and the share of that
  * day already passed (level_start_fraction; owner decision 2026-11-23); every other task's is cleared, including successors their
  * links move as far. Levelling ignores the previous run's levelled starts
- * and never changes a constraint (owner decision 2026-11-18). ALAP tasks
- * get none: the ALAP pass moves them to their late dates regardless.
+ * and never changes a constraint (owner decision 2026-11-18). An ALAP task
+ * levelling places keeps its levelled start, and the ALAP pass leaves it
+ * there (owner decision 2026-11-23).
  * Requires a project start date to express levelled offsets as dates.
  *
  * Returns a LevelResult with the number of tasks pinned and any tasks

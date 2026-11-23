@@ -14,9 +14,12 @@ import "math"
 // it) and its forward constraints give, by the forward pass's own rules;
 // a task levelled later than that keeps its levelled start. A successor
 // that its links already move as far as levelling did keeps none, so the
-// stored starts are the fewest that hold the schedule. ALAP tasks keep
-// none: the ALAP pass places them, and the forward pass gives their
-// successors their early dates. Returns false on a cycle.
+// stored starts are the fewest that hold the schedule. An ALAP task
+// levelling placed (work on a named resource) always keeps its levelled
+// start, since the ALAP pass would otherwise move it to the saved
+// schedule's late dates (owner decision 2026-11-23, "keep levelled
+// position"); the forward pass then gives its successors its levelled
+// dates. Returns false on a cycle.
 func LevelStartsToKeep(tasks map[string]*Task) (map[string]float64, bool) {
 	plan, ok := newCPMPlan(tasks)
 	if !ok {
@@ -35,13 +38,28 @@ func LevelStartsToKeep(tasks map[string]*Task) (map[string]float64, bool) {
 			es = math.Max(es, linkCandidate(l.typ, l.lag, savedES[p], savedES[p]+l.task.Duration, t.Duration))
 		}
 		es = ForwardConstrainedStart(t, es)
-		if t.Constraint != AsLateAsPossible && t.ES > es+1e-9 {
+		alap := t.Constraint == AsLateAsPossible
+		if (alap && levelledByResource(t)) || (!alap && t.ES > es+1e-9) {
 			keep[t.ID] = t.ES
 			es = t.ES
 		}
 		savedES[i] = es
 	}
 	return keep, true
+}
+
+// levelledByResource reports whether levelling places t: it has work and
+// an assignment to a named resource.
+func levelledByResource(t *Task) bool {
+	if t.Duration <= 0 {
+		return false
+	}
+	for _, a := range t.Assignments {
+		if a.Resource != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // RebuildSplitDays restores, after a schedule pass, the working days of

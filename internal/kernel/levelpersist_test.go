@@ -52,12 +52,26 @@ func TestLevelStartsToKeep(t *testing.T) {
 			want: map[string]float64{"A": 1, "B": 4},
 		},
 		{
-			// Q is ALAP: levelling places it at its late start, 2, but the
-			// ALAP pass does that itself, so it keeps nothing.
-			name: "an ALAP task keeps nothing",
+			// A and B (2 days each) are serialised, B to day 2. Q (ALAP)
+			// waits for alice from its late start, 1, to day 4. Saved
+			// without its start, the ALAP pass would put Q at the saved
+			// schedule's late start, 3, on top of B, so Q keeps 4 (owner
+			// decision 2026-11-23, "keep levelled position").
+			name: "a levelled ALAP task keeps its levelled start",
 			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 2, Assignments: alice},
+				"B": {ID: "B", Duration: 2, Assignments: alice},
 				"Q": {ID: "Q", Duration: 1, Constraint: AsLateAsPossible, Assignments: alice},
-				"R": {ID: "R", Duration: 3},
+			},
+			want: map[string]float64{"B": 2, "Q": 4},
+		},
+		{
+			// R is ALAP with no resource: levelling does not place it, so
+			// the ALAP pass keeps doing so.
+			name: "an ALAP task without a resource keeps nothing",
+			tasks: map[string]*Task{
+				"R": {ID: "R", Duration: 1, Constraint: AsLateAsPossible},
+				"S": {ID: "S", Duration: 3},
 			},
 			want: map[string]float64{},
 		},
@@ -142,12 +156,13 @@ func TestRebuildSplitDays(t *testing.T) {
 // networks with every link type, lags, start and finish constraints, part
 // days and splitting, scheduling a fresh copy that holds only the kept
 // levelled starts and the split segments gives every task the levelled
-// start, finish and working days. ALAP tasks are left out: the ALAP pass
-// can place a task later than levelling did (a documented limit, covered
-// by the hand case above and the desktop tests).
+// start, finish and working days, ALAP tasks levelling places included
+// (since 2026-11-23 they keep their levelled start). An ALAP task with no
+// resource is not placed by levelling: the ALAP pass puts it at the saved
+// schedule's late dates, which levelling may have moved.
 func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261123, 11))
-	kept, split := 0, 0
+	kept, split, alap := 0, 0, 0
 	for i := range 1000 {
 		input := map[string]*Task{}
 		for k := range 4 + rng.IntN(12) {
@@ -162,8 +177,11 @@ func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 					Lag:  pickFrom(rng, 0, 0, 0.5, 1, -0.5)})
 			}
 			if rng.IntN(5) == 0 {
-				task.Constraint = pickFrom(rng, StartNoEarlierThan, FinishNoEarlierThan, MustStartOn, MustFinishOn)
-				task.ConstraintArmed, task.ConstraintDay = true, float64(rng.IntN(6))
+				task.Constraint = pickFrom(rng, StartNoEarlierThan, FinishNoEarlierThan, MustStartOn, MustFinishOn, AsLateAsPossible)
+				task.ConstraintArmed, task.ConstraintDay = task.Constraint != AsLateAsPossible, float64(rng.IntN(6))
+				if task.Constraint == AsLateAsPossible {
+					task.ConstraintDay = 0
+				}
 			}
 			for range rng.IntN(3) {
 				task.Assignments = append(task.Assignments,
@@ -181,6 +199,11 @@ func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 			t.Fatalf("case %d: cycle", i)
 		}
 		kept += len(keep)
+		for id := range keep {
+			if levelled[id].Constraint == AsLateAsPossible {
+				alap++
+			}
+		}
 
 		saved := cloneTaskMap(input)
 		for id, task := range saved {
@@ -200,6 +223,9 @@ func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 		}
 		RebuildSplitDays(saved)
 		for id, want := range levelled {
+			if want.Constraint == AsLateAsPossible && !levelledByResource(want) {
+				continue // the ALAP pass places it, on the saved schedule
+			}
 			got := saved[id]
 			if !sameOffset(got.ES, want.ES) || !sameOffset(got.EF, want.EF) || !reflect.DeepEqual(got.WorkDays, want.WorkDays) {
 				t.Fatalf("case %d task %s (%+v): saved ES %v EF %v days %v, levelled ES %v EF %v days %v (kept %v)",
@@ -207,9 +233,9 @@ func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 			}
 		}
 	}
-	t.Logf("%d levelled starts kept, %d split tasks", kept, split)
-	if kept < 300 || split < 50 {
-		t.Errorf("generator kept %d starts and split %d tasks, want at least 300 and 50", kept, split)
+	t.Logf("%d levelled starts kept (%d ALAP), %d split tasks", kept, alap, split)
+	if kept < 300 || split < 50 || alap < 100 {
+		t.Errorf("generator kept %d starts (%d ALAP) and split %d tasks, want at least 300 (100) and 50", kept, alap, split)
 	}
 }
 

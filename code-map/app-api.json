@@ -919,7 +919,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 835,
+      "line": 836,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1049,7 +1049,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 969,
+      "line": 970,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1097,7 +1097,7 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 580,
+      "line": 581,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
@@ -1446,7 +1446,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 759,
+      "line": 760,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [
