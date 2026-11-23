@@ -687,3 +687,56 @@ func TestLevelChartResourcesLeavesAFittingPartDayChain(t *testing.T) {
 		}
 	}
 }
+
+// Levelling stores a digest of what it read, and the chart's layout
+// compares it with the stored chart. Round-tripped through the store as
+// the app does it, a just-levelled chart is not stale (assignments here
+// carry an empty skill-tag list, which saving drops); changing a duration
+// makes it stale (owner decision 2026-11-21).
+func TestLevelledChartIsStaleOnlyAfterAScheduleEdit(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Tags", Data: `{
+		"nodes": [
+			{"id":"A","label":"A","duration":2,"assignments":[{"resource":"alice","skill_tags":[]}]},
+			{"id":"B","label":"B","duration":2,"assignments":[{"resource":"alice","skill_tags":[]}]}
+		],
+		"edges": []
+	}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.LevelChartResources(c.ID, "", false, false); err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	stale := func() bool {
+		t.Helper()
+		res, err := app.LayoutChart(c.ID)
+		if err != nil {
+			t.Fatalf("LayoutChart: %v", err)
+		}
+		var body struct {
+			Doc struct {
+				LevellingStale bool `json:"levelling_stale"`
+			} `json:"doc"`
+		}
+		if err := json.Unmarshal(res.Body, &body); err != nil {
+			t.Fatalf("decode layout: %v", err)
+		}
+		return body.Doc.LevellingStale
+	}
+	if stale() {
+		t.Fatal("a chart just levelled reports stale levelling")
+	}
+
+	stored, err := d.GetChart(c.ID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	stored.Data = strings.Replace(stored.Data, `"duration":2`, `"duration":3`, 1)
+	if _, err := d.SaveChart(stored); err != nil {
+		t.Fatalf("SaveChart (edit): %v", err)
+	}
+	if !stale() {
+		t.Fatal("a duration edit after levelling does not report stale levelling")
+	}
+}

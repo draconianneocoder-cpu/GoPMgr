@@ -31,15 +31,19 @@ func TestLevellingInputsDigestTracksSchedulingInputsOnly(t *testing.T) {
 		t.Fatalf("digest %q has no version prefix", base)
 	}
 	same := map[string]func(*LayeredDocument){
-		"label":                        func(d *LayeredDocument) { d.Nodes[0].Label = "Renamed" },
-		"progress":                     func(d *LayeredDocument) { d.Nodes[0].PercentComplete = 50 },
-		"estimate":                     func(d *LayeredDocument) { d.Nodes[0].DurationEstimate.Optimistic = 1 },
-		"levelled start":               func(d *LayeredDocument) { d.Nodes[1].LevelStart = "" },
-		"split segments":               func(d *LayeredDocument) { d.Nodes[1].WorkSegments = []WorkSegment{{Start: 0, End: 1}} },
-		"computed fields":              func(d *LayeredDocument) { d.Nodes[0].ES, d.Nodes[0].ConstraintViolated = 4, true },
-		"constraint case and spaces":   func(d *LayeredDocument) { d.Nodes[0].Constraint = " SNET " },
-		"node order":                   func(d *LayeredDocument) { d.Nodes[0], d.Nodes[1] = d.Nodes[1], d.Nodes[0] },
-		"skill tag order":              func(d *LayeredDocument) { d.Nodes[0].Assignments[0].SkillTags = []string{"a", "x"} },
+		"label":                      func(d *LayeredDocument) { d.Nodes[0].Label = "Renamed" },
+		"progress":                   func(d *LayeredDocument) { d.Nodes[0].PercentComplete = 50 },
+		"estimate":                   func(d *LayeredDocument) { d.Nodes[0].DurationEstimate.Optimistic = 1 },
+		"levelled start":             func(d *LayeredDocument) { d.Nodes[1].LevelStart = "" },
+		"split segments":             func(d *LayeredDocument) { d.Nodes[1].WorkSegments = []WorkSegment{{Start: 0, End: 1}} },
+		"computed fields":            func(d *LayeredDocument) { d.Nodes[0].ES, d.Nodes[0].ConstraintViolated = 4, true },
+		"constraint case and spaces": func(d *LayeredDocument) { d.Nodes[0].Constraint = " SNET " },
+		"node order":                 func(d *LayeredDocument) { d.Nodes[0], d.Nodes[1] = d.Nodes[1], d.Nodes[0] },
+		"skill tag order":            func(d *LayeredDocument) { d.Nodes[0].Assignments[0].SkillTags = []string{"a", "x"} },
+		"empty skill tags":           func(d *LayeredDocument) { d.Nodes[1].Assignments[0].SkillTags = []string{} },
+		"assignment with no resource": func(d *LayeredDocument) {
+			d.Nodes[1].Assignments = append(d.Nodes[1].Assignments, kernel.Assignment{Units: 1})
+		},
 		"link label spelling":          func(d *LayeredDocument) { d.Edges[0].Label = "" },
 		"stored digest and stale flag": func(d *LayeredDocument) { d.LevelledInputs, d.LevellingStale = "v1:x", true },
 	}

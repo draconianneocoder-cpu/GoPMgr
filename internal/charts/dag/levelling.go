@@ -21,10 +21,10 @@ const levellingDigestVersion = "v1:"
 
 // LevellingInputsDigest identifies the chart content resource levelling
 // read: each task's duration, milestone flag, constraint as the kernel
-// reads it (and its date, for date constraints) and assignments, and each
-// link's ends, type and lag. Labels, progress, costs, estimates, levelled
-// starts, split segments and computed fields are left out, so editing
-// them never makes levelling look out of date. The project start date, the
+// reads it (and its date, for date constraints) and assignments to a
+// named resource, and each link's ends, type and lag. Labels, progress,
+// costs, estimates, levelled starts, split segments and computed fields
+// are left out, so editing them never makes levelling look out of date. The project start date, the
 // work calendar and resource capacity outside the chart are not included
 // either (a documented limit).
 func LevellingInputsDigest(doc LayeredDocument) string {
@@ -61,8 +61,18 @@ func LevellingInputsDigest(doc LayeredDocument) string {
 		}
 		canon := node{ID: n.ID, Duration: n.Duration, Milestone: n.Milestone, Constraint: constraint, ConstraintDate: date}
 		for _, a := range n.Assignments {
-			tags := slices.Clone(a.SkillTags)
-			sort.Strings(tags)
+			// Levelling and detection skip an assignment with no resource,
+			// so its row is not an input.
+			if a.Resource == "" {
+				continue
+			}
+			// An empty tag list is stored as absent (omitempty), so both
+			// must give the same digest.
+			var tags []string
+			if len(a.SkillTags) > 0 {
+				tags = slices.Clone(a.SkillTags)
+				sort.Strings(tags)
+			}
 			canon.Assignments = append(canon.Assignments, assignment{a.Resource, a.Units, a.CalendarID, a.MaxUnits, tags})
 		}
 		raw, _ := json.Marshal(canon) // plain strings, numbers and slices: cannot fail
