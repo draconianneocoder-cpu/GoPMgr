@@ -9,7 +9,7 @@ last_reviewed = "2026-11-23"
 claim_ids = ["page.docs.getting-started.first-project"]
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/9d40babff1982e5928960a27240ccedd34c59eaa/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1215353d5d96c462e8a6a2962af41a84e9548711/docs/user-guide.md"
 [[params.sources]]
 label = "docs/INSTALL.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/49f0fe5d727fd4eff383d2c6e3c767ea7cfa0408/docs/INSTALL.md"

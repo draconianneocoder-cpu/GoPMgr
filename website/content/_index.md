@@ -19,7 +19,7 @@ label = "docs/branding.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/docs/branding.md"
 [[params.sources]]
 label = "docs/user-guide.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/9d40babff1982e5928960a27240ccedd34c59eaa/docs/user-guide.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/1215353d5d96c462e8a6a2962af41a84e9548711/docs/user-guide.md"
 +++
 
 <!--
@@ -37,7 +37,7 @@ Explore critical-path scheduling, calendars and baselines. [See development capa
 
 ### Understand the cost
 
-Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/9d40babff1982e5928960a27240ccedd34c59eaa/docs/user-guide.md#portfolio-and-dashboard).
+Read about project budgets, committed costs and earned value in the [canonical user guide](https://github.com/draconianneocoder-cpu/GoPMgr/blob/1215353d5d96c462e8a6a2962af41a84e9548711/docs/user-guide.md#portfolio-and-dashboard).
 
 ### Start with the documentation
 
