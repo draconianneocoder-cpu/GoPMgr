@@ -411,7 +411,7 @@ export const HELP_GLOSSARY: readonly HelpTerm[] = [
   },
   {
     term: "Monte Carlo Simulation",
-    def: "Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.",
+    def: "Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Each run applies the chart's constraints and levelled starts as the schedule does. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.",
     id: "monte-carlo-simulation"
   },
   {

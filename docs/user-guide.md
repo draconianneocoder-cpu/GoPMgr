@@ -351,7 +351,10 @@ CPM charts can generate a Resource Histogram. The generated histogram shows
 resource demand as bars and overlays dashed capacity lines from stakeholder
 availability and Project Settings Resource Capacity calendars.
 CPM and Gantt task over-allocation badges use the same Resource Capacity
-calendars when a project has a start date.
+calendars when a project has a start date. Demand counts the part of each
+day a task uses: a half-day task at full time adds half a day, so two
+half-day tasks for one person on one day are not an overload. The split
+preview judges capacity the same way.
 
 CPM charts also include a Monte Carlo risk panel. Add optional optimistic,
 most-likely, and pessimistic duration estimates to tasks that carry schedule
@@ -462,10 +465,9 @@ calendar. Each one is a test of the scheduler.
   Wednesday) appears on Wednesday.
 - **Durations under one day.** A task with a duration between 0 and 1 day,
   which PERT estimates can produce, is shown on the day its work starts, so
-  two half-day tasks in a row both show on Monday. Resource demand counts a
-  task that starts in the second half of a day on the next day, so the
-  overallocation badge and histogram can place such a task one day after its
-  bar.
+  two half-day tasks in a row both show on Monday. Its resource demand is
+  counted on the same days, by the part of each day it uses, so the
+  overallocation badge and histogram match its bar.
 - **A date that cannot be applied.** If the constraint date is missing or
   not a valid date, or lies too far from the project start, GoPMgr does not
   apply the constraint. The node shows a grey **?** marker, the task panel
@@ -485,16 +487,29 @@ calendar. Each one is a test of the scheduler.
   a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
   flagged, levelling names it, and the audit names levelling as the cause.
   Select **Clear** next to a levelled start to schedule that task from its
-  links and constraint alone until you level again. Editing a task does not
-  clear its levelled start: level again after changing durations or links.
-  ALAP tasks get no levelled start.
-- **Whole days.** Levelling places tasks on whole working days, so it can move
-  a chain of part-day tasks onto separate days.
+  links and constraint alone until you level again. ALAP tasks get no
+  levelled start.
+- **After you edit.** Editing a task does not clear its levelled start. When
+  you change a duration, a link, a constraint or an assignment after
+  levelling, the CPM and Gantt editors say "The schedule changed since
+  levelling. Level again to update the levelled starts." You can dismiss
+  the note. It does not notice changes to the project start date, the
+  work calendar, or resource capacity set outside the chart, and charts
+  levelled before 21 November 2026 never show it until levelled again.
+- **Part days.** Levelling tries each task at its earliest start, part days
+  included, and then at each following whole day, counting the part of each
+  day the task uses. Part-day tasks can share a day when capacity allows, so
+  a chain of short tasks is not spread over separate days. Splitting a task
+  around busy days still books whole days.
 - **Charts levelled before 18 November 2026.** Earlier versions stored
   levelling delays as SNET constraints. Those SNETs look like any other and
   are kept. Remove the ones levelling added, then level again.
-- **Monte Carlo.** The risk simulation applies neither date constraints nor
-  levelled starts.
+- **Monte Carlo.** Each simulated run applies date constraints and levelled
+  starts as the schedule does, so with every duration at its estimate the
+  simulation finishes when the schedule does. A must date (MSO, MFO) holds
+  its task in every run. Without a project start date, neither is applied.
+  A schedule the scheduler refuses as too long is refused by the simulation
+  too.
 - **Imports and exports.** MSPDI import brings each task's constraint type and
   date when **Constraints** is selected (the default). A constraint of an
   unknown type, or a dated one without a usable date, is left out and counted
@@ -1166,7 +1181,7 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-levelled-start"></a>**Levelled Start** | The start date resource levelling gave a CPM task. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged. | [Resource Leveling](#user-term-resource-leveling), [Scheduling Constraint](#user-term-scheduling-constraint) |
 | <a id="user-term-ls-lf"></a>**LS / LF** | Latest Start / Latest Finish. Calculated during the backward pass through a CPM network. | — |
 | <a id="user-term-milestone"></a>**Milestone** | A significant zero-duration schedule event. A Definition of Done is a completion-quality standard; a throughput target is a delivery-rate goal, not a milestone. | — |
-| <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
+| <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Each run applies the chart's constraints and levelled starts as the schedule does. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
 | <a id="user-term-mspdi"></a>**MSPDI** | Microsoft Project Data Interchange — the .xml schedule format GoPMgr imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing. | — |
 | <a id="user-term-mttr"></a>**MTTR** | Mean Time to Restore. DORA metric: average hours to recover from a failed deployment. | — |
 | <a id="user-term-objective"></a>**Objective** | OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results. | — |

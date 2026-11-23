@@ -38,7 +38,7 @@ decisions or ADR-012, an Architecture Change Request (ACR) decides.
 > reporting catalog is retained; read-only host reports need not await executable
 > extensions. [ADR-015](ADR-015-secure-extension-platform.md) supplements ADR-010's
 > extension direction without adopting a runtime or authorizing a slice. Current
-> KRN-01 and format/audit/financial decisions limit dependent report claims. KRN-02
+> Format/audit/financial decisions limit dependent report claims; KRN-01 was fixed on 2026-11-18 (see STATUS). KRN-02
 > was fixed in PR #213 (`22b7df1`); preserve its regressions.
 > This addition does not rewrite the historical PS table or qualify new features.
 
