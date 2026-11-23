@@ -127,8 +127,8 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	}
 	// Levelling records what it read, so the editors can warn after a
 	// schedule edit (owner decision 2026-11-21).
-	if got := storedLevelledInputs(t, d, c.ID); !strings.HasPrefix(got, "v1:") {
-		t.Errorf("levelled_inputs = %q, want a v1 digest", got)
+	if got := storedLevelledInputs(t, d, c.ID); !strings.HasPrefix(got, "v2:") {
+		t.Errorf("levelled_inputs = %q, want a v2 digest", got)
 	}
 
 	// Levelling again keeps B's levelled start: it recomputes from the
