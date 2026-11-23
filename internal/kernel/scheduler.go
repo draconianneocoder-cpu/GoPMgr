@@ -119,6 +119,33 @@ func MarkConstraintsUnapplied(tasks map[string]*Task, reason ConstraintIssue) {
 	}
 }
 
+// ForwardConstrainedStart is the start an armed date constraint gives a
+// task whose links allow linkStart: SNET and FNET delay it, MSO and MFO
+// pull it to their date when the links allow. It does not apply the
+// levelled start and sets no violation; the forward pass and the levelling
+// persistence pass both use it, so they agree.
+func ForwardConstrainedStart(t *Task, linkStart float64) float64 {
+	es := linkStart
+	if !t.ConstraintArmed {
+		return es
+	}
+	switch t.Constraint {
+	case StartNoEarlierThan:
+		es = max(es, t.ConstraintDay)
+	case MustFinishOn:
+		if target := t.ConstraintDay - t.Duration; target >= es {
+			es = target
+		}
+	case MustStartOn:
+		if t.ConstraintDay >= es {
+			es = t.ConstraintDay
+		}
+	case FinishNoEarlierThan:
+		es = max(es, t.ConstraintDay-t.Duration)
+	}
+	return es
+}
+
 // lateConstraintDay is the offset a latest limit compares with: the last
 // working day on or before the constraint date (see ConstraintLateShift).
 func lateConstraintDay(t *Task) float64 {
@@ -203,8 +230,13 @@ type Task struct {
 	// LevelStartBinding is set by the forward pass when the levelled start
 	// is later than the start the links give, so levelling, not the
 	// logic, holds the task where it is.
-	// Not serialised: it is recomputed on every run.
+	// Not serialised: it is recomputed on every run. Since 2026-11-23 it
+	// compares with LevelEarliest (links plus forward constraints).
 	LevelStartBinding bool `json:"-"`
+	// LevelEarliest is set by the forward pass: the start the links and the
+	// forward constraints give, without the levelled start. A levelled
+	// delay is measured from it (persistence, MSPDI LevelingDelay).
+	LevelEarliest float64 `json:"-"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
@@ -418,42 +450,28 @@ func (plan *cpmPlan) run() {
 			}
 		}
 
-		// A levelled start delays the task like a start floor.
+		// Forward-acting constraints, then the levelled start: LevelEarliest
+		// is the start the links and constraints give, the start levelling
+		// measures its delay from.
+		es = ForwardConstrainedStart(t, es)
+		t.LevelEarliest = es
 		if t.LevelStartArmed && t.LevelStartDay > es {
 			// The epsilon keeps noise from summed fractional durations
 			// from naming levelling as the cause.
 			t.LevelStartBinding = t.LevelStartDay > es+1e-9
 			es = t.LevelStartDay
 		}
-
-		// Forward-acting constraints.
+		// Links or a non-working date force a start (MSO) or finish (MFO)
+		// past the date, so no start or finish can fall on it.
 		if t.ConstraintArmed {
 			switch t.Constraint {
-			case StartNoEarlierThan:
-				if t.ConstraintDay > es {
-					es = t.ConstraintDay
-				}
-			case MustFinishOn:
-				if target := t.ConstraintDay - t.Duration; target >= es {
-					es = target
-				}
-				// Links force a finish past the date, or the date is not
-				// a working day, so no finish can fall on it.
-				if es+t.Duration > lateConstraintDay(t)+1e-9 {
-					t.ConstraintViolated = true
-				}
 			case MustStartOn:
-				if t.ConstraintDay >= es {
-					es = t.ConstraintDay
-				}
-				// Links force a start past the date, or the date is not a
-				// working day, so no start can fall on it.
 				if es > lateConstraintDay(t)+1e-9 {
 					t.ConstraintViolated = true
 				}
-			case FinishNoEarlierThan:
-				if target := t.ConstraintDay - t.Duration; target > es {
-					es = target
+			case MustFinishOn:
+				if es+t.Duration > lateConstraintDay(t)+1e-9 {
+					t.ConstraintViolated = true
 				}
 			}
 		}

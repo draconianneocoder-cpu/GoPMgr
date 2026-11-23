@@ -618,18 +618,41 @@ func TestMilestoneFinishConstraintsMeanTheEndOfTheDay(t *testing.T) {
 // 06-04: the levelled start sets ES 3 before MSO is checked, and 3 > 1,
 // so MSO is violated.
 // An unreadable levelled start is ignored.
+//
+// LevelEarliest is the start the links and forward constraints give
+// without the levelled start, and levelling binds only when the levelled
+// start is later than it (2026-11-23). D has SNET Wed 06-03 (2) and the
+// same levelled start: the constraint, not levelling, holds it, so it is
+// not binding (the earlier pass compared with the link start, 0, and named
+// levelling). E has SNET Tue 06-02 (1) and levelled start Thu 06-04 (3):
+// levelling binds, measured from 1.
 func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 1, LevelStart: "2026-06-03"},
 		"B": {ID: "B", Duration: 1, LevelStart: "2026-06-04", Constraint: MustStartOn, ConstraintDate: "2026-06-02"},
 		"C": {ID: "C", Duration: 1, LevelStart: "junk"},
+		"D": {ID: "D", Duration: 1, LevelStart: "2026-06-03", Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-03"},
+		"E": {ID: "E", Duration: 1, LevelStart: "2026-06-04", Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-02"},
 	}
 	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
 	mustCPM(t, tasks)
 	approx(t, "A.ES", tasks["A"].ES, 2)
 	approx(t, "B.ES", tasks["B"].ES, 3)
 	approx(t, "C.ES", tasks["C"].ES, 0)
+	approx(t, "D.ES", tasks["D"].ES, 2)
+	approx(t, "E.ES", tasks["E"].ES, 3)
 	if !tasks["B"].ConstraintViolated || tasks["A"].ConstraintViolated {
 		t.Errorf("violated: A %v B %v, want only B", tasks["A"].ConstraintViolated, tasks["B"].ConstraintViolated)
+	}
+	for id, want := range map[string]struct {
+		earliest float64
+		binding  bool
+	}{
+		"A": {0, true}, "B": {1, true}, "C": {0, false}, "D": {2, false}, "E": {1, true},
+	} {
+		approx(t, id+".LevelEarliest", tasks[id].LevelEarliest, want.earliest)
+		if tasks[id].LevelStartBinding != want.binding {
+			t.Errorf("%s binding %v, want %v", id, tasks[id].LevelStartBinding, want.binding)
+		}
 	}
 }

@@ -107,6 +107,7 @@ func (plan *cpmPlan) clearResults() {
 		t.IsCritical = false
 		t.ConstraintViolated = false
 		t.LevelStartBinding = false
+		t.LevelEarliest = 0
 	}
 }
 
