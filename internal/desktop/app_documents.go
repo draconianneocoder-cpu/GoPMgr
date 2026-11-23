@@ -848,7 +848,7 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		}
 	}
 
-	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode}
+	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode, LevelingDelays: levelingDelays(proj, kernelTasks)}
 
 	// Earned-value summary at today's status date — only when the
 	// project is anchored (offsets map to dates); renderers further
@@ -997,6 +997,18 @@ func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) error 
 		kernel.AnchorSchedule(tasks, start, isWorkday)
 	}
 	return nil
+}
+
+// levelingDelays is, by task ID, each task's levelling delay in elapsed
+// minutes for the MSPDI export (kernel.LevelingDelayMinutes); nil when the
+// project has no start date, since a delay needs dates. Both export paths
+// (the dialog and --export) use it, after scheduleProjectTasks.
+func levelingDelays(proj db.Project, tasks map[string]*kernel.Task) map[string]int {
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok || len(tasks) == 0 {
+		return nil
+	}
+	return kernel.LevelingDelayMinutes(tasks, start, calendar.For(proj.CountryCode).IsWorkday)
 }
 
 // errScheduleCycle is the scheduler's cycle refusal worded for the user.

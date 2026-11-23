@@ -15,4 +15,10 @@ export interface MSPDIImportOptions {
      * that predate it leave it false, which keeps their earlier result.
      */
     "include_constraints": boolean;
+
+    /**
+     * IncludeLevelingDelay imports each task's levelling delay as its
+     * levelled start. Callers that predate it leave it false.
+     */
+    "include_leveling_delay": boolean;
 }

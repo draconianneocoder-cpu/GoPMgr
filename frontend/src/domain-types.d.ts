@@ -174,6 +174,7 @@ declare global {
     include_progress: boolean;
     include_assignments: boolean;
     include_constraints: boolean;
+    include_leveling_delay: boolean;
   }
 
   interface OpenProjectCheck {

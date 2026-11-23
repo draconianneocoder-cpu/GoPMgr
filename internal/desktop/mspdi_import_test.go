@@ -5,9 +5,12 @@ package desktop
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"gopmgr/internal/cli"
 	"gopmgr/internal/db"
 	"gopmgr/internal/export"
 )
@@ -130,8 +133,10 @@ func TestImportMSPDIWithOptionsPersistsMappingReceipt(t *testing.T) {
 	if err := json.Unmarshal([]byte(c.Config), &config); err != nil {
 		t.Fatalf("decode import receipt: %v", err)
 	}
-	if len(config.Receipt.ExcludedFields) != 4 {
-		t.Fatalf("receipt exclusions = %#v, want four", config.Receipt.ExcludedFields)
+	// All five options off: links, progress, assignments, constraints and
+	// levelling delays.
+	if len(config.Receipt.ExcludedFields) != 5 {
+		t.Fatalf("receipt exclusions = %#v, want five", config.Receipt.ExcludedFields)
 	}
 }
 
@@ -152,5 +157,111 @@ func TestImportMSPDIKeepsExistingStartDate(t *testing.T) {
 	proj, _ := d.GetProject()
 	if proj.StartDate != "2026-01-01" {
 		t.Errorf("existing start date must be preserved, got %q", proj.StartDate)
+	}
+}
+
+// A levelled schedule exported as MSPDI and imported again keeps its
+// levelled starts (owner decision 2026-11-23: LevelingDelay, following
+// Microsoft's documentation), whether or not links are imported: the
+// delays are applied on the file's own network. X (4.75 days on alice,
+// critical through X2) holds Y back to Friday 06-05 15:00; Z follows Y by
+// its link and needs no start of its own. Y's delay is written in elapsed
+// minutes, Monday 08:00 to Friday 15:00: 6180.
+func TestMSPDIRoundTripKeepsLevelledStarts(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Levelled", Data: `{"nodes":[
+		{"id":"X","label":"X","duration":4.75,"assignments":[{"resource":"alice"}]},
+		{"id":"X2","label":"X2","duration":3},
+		{"id":"Y","label":"Y","duration":1,"assignments":[{"resource":"alice"}]},
+		{"id":"Z","label":"Z","duration":1}],
+		"edges":[{"from":"X","to":"X2"},{"from":"Y","to":"Z"}]}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.LevelChartResources(c.ID, "", false, false); err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	levelled := storedLevelling(t, d, c.ID)
+	if want := (levelledNode{LevelStart: "2026-06-05", LevelStartFraction: 0.75}); levelled["Y"] != want || levelled["Z"] != (levelledNode{}) {
+		t.Fatalf("levelled Y %+v Z %+v, want Y %+v and nothing on Z", levelled["Y"], levelled["Z"], want)
+	}
+	// The export reads the project's current CPM chart: keep only this one.
+	charts, err := d.ListCharts("project-1", "cpm")
+	if err != nil {
+		t.Fatalf("ListCharts: %v", err)
+	}
+	for _, other := range charts {
+		if other.ID != c.ID {
+			if err := d.DeleteChart(other.ID); err != nil {
+				t.Fatalf("DeleteChart: %v", err)
+			}
+		}
+	}
+
+	out := filepath.Join(t.TempDir(), "levelled.xml")
+	if err := runHeadlessExport(&cli.Config{ExportPath: out, ExportFormat: "mspdi"}, d); err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "<LevelingDelay>6180</LevelingDelay>") || strings.Count(string(data), "<LevelingDelay>") != 1 {
+		t.Fatalf("export should carry one delay, Y's 6180 elapsed minutes:\n%s", data)
+	}
+
+	for _, withLinks := range []bool{true, false} {
+		options := allMSPDIFields
+		options.IncludeDependencies, options.IncludeLevelingDelay = withLinks, true
+		imported, err := app.importMSPDIFromBytesWithOptions(data, options)
+		if err != nil {
+			t.Fatalf("import (links %v): %v", withLinks, err)
+		}
+		got := storedLevelling(t, d, imported.ID)
+		for _, id := range []string{"X", "X2", "Y", "Z"} {
+			if got[id] != levelled[id] {
+				t.Errorf("links %v: imported %s = %+v, want %+v", withLinks, id, got[id], levelled[id])
+			}
+		}
+		if !strings.HasPrefix(storedLevelledInputs(t, d, imported.ID), "v2:") {
+			t.Errorf("links %v: the imported levelled chart has no levelling digest", withLinks)
+		}
+		if withLinks && layoutReportsStale(t, app, imported.ID) {
+			t.Error("a just-imported levelled chart reports stale levelling")
+		}
+	}
+}
+
+// Without a project start date the delays cannot be placed on dates: they
+// are counted as skipped, and nothing is stored.
+func TestMSPDIImportSkipsLevelingDelaysWithoutAStartDate(t *testing.T) {
+	d, err := db.InitDB(filepath.Join(t.TempDir(), "mspdi-delay.pmforge"))
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "No start"}); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	app := &App{db: d}
+	options := allMSPDIFields
+	options.IncludeLevelingDelay = true
+	c, err := app.importMSPDIFromBytesWithOptions([]byte(`<Project xmlns="http://schemas.microsoft.com/project"><Tasks>
+		<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration><LevelingDelay>2</LevelingDelay><LevelingDelayFormat>7</LevelingDelayFormat></Task>
+		</Tasks></Project>`), options)
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if got := storedLevelling(t, d, c.ID)["1"]; got != (levelledNode{}) {
+		t.Errorf("stored %+v, want nothing", got)
+	}
+	var config struct {
+		Receipt export.MSPDIImportReceipt `json:"mspdi_import_receipt"`
+	}
+	if err := json.Unmarshal([]byte(c.Config), &config); err != nil {
+		t.Fatal(err)
+	}
+	if config.Receipt.SkippedLevelingDelays != 1 {
+		t.Errorf("skipped %d, want 1", config.Receipt.SkippedLevelingDelays)
 	}
 }

@@ -1129,6 +1129,18 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		}
 	}
 
+	// The project start the chart will be scheduled from: the project's,
+	// or the file's when the project has none (adopted below).
+	startProj := proj
+	if _, ok := parseProjectDate(proj.StartDate); !ok && imported.StartDate != "" {
+		startProj.StartDate = imported.StartDate
+	}
+	levelled := applyImportedLevelingDelays(&doc, &imported, startProj)
+	if levelled {
+		layered := dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges}
+		doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(startProj, resourceCapacityPlan(d, proj.ID), layered))
+	}
+
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return db.Chart{}, err
@@ -1136,9 +1148,19 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 	// Refuse a file whose schedule is beyond the kernel's limit before
 	// anything is stored, including the project start date below. Other
 	// layout errors (a dependency cycle) are left for the editor, where
-	// they can be corrected.
+	// they can be corrected. Levelled starts count: they are checked on
+	// the anchored schedule.
 	if _, err := charts.Layout(charts.KindCPM, string(blob)); errors.Is(err, kernel.ErrScheduleTooLong) {
 		return db.Chart{}, fmt.Errorf("this file was not imported: %w", scheduleTooLongErr(err))
+	}
+	if levelled {
+		tasks, err := cpmChartDataToKernelTasks(string(blob))
+		if err != nil {
+			return db.Chart{}, err
+		}
+		if err := scheduleProjectTasks(startProj, tasks); err != nil && !errors.Is(err, errScheduleCycle) {
+			return db.Chart{}, fmt.Errorf("this file was not imported: %w", err)
+		}
 	}
 
 	title := imported.Title
@@ -1165,6 +1187,61 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		Data:      string(blob),
 		Config:    string(receipt),
 	})
+}
+
+// applyImportedLevelingDelays turns the levelling delays read from an MSPDI
+// file into levelled starts on doc's nodes (date and share of the day),
+// measured on the file's full network (imported.LevelingNetwork) with
+// proj's start date and calendar, so the starts are the same whether or
+// not links and constraints were imported. Delays it cannot apply (no
+// start date, a cycle, an ALAP task, beyond the schedule limit) are
+// counted in the receipt. It reports whether any start was set.
+func applyImportedLevelingDelays(doc *dagDoc, imported *export.ImportedProject, proj db.Project) bool {
+	delays := map[string]kernel.LevelingDelay{}
+	tasks := map[string]*kernel.Task{}
+	for _, t := range imported.LevelingNetwork {
+		tasks[t.UID] = &kernel.Task{ID: t.UID, Duration: t.DurationDays, Milestone: t.Milestone,
+			Links: t.Links, Constraint: t.Constraint, ConstraintDate: t.ConstraintDate}
+		if t.LevelingDelay != nil {
+			delays[t.UID] = *t.LevelingDelay
+		}
+	}
+	if len(delays) == 0 {
+		return false
+	}
+	receipt := &imported.Receipt
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		receipt.SkippedLevelingDelays += len(delays)
+		receipt.Transformations = append(receipt.Transformations, "levelling delays not applied: the project has no start date")
+		return false
+	}
+	isWorkday := calendar.For(proj.CountryCode).IsWorkday
+	kernel.ApplyConstraintDates(tasks, start, isWorkday)
+	starts, skipped, ok := kernel.ApplyLevelingDelays(tasks, delays, start, isWorkday)
+	if !ok {
+		receipt.SkippedLevelingDelays += len(delays)
+		receipt.Transformations = append(receipt.Transformations, "levelling delays not applied: the file's links form a cycle")
+		return false
+	}
+	receipt.SkippedLevelingDelays += len(skipped)
+	if len(starts) == 0 {
+		return false
+	}
+	// The date of each start's day, by the rule the editors show it with.
+	dated := make(map[string]*kernel.Task, len(starts))
+	for id, at := range starts {
+		dated[id] = &kernel.Task{ID: id, ES: at, EF: at}
+	}
+	kernel.AnchorSchedule(dated, start, isWorkday)
+	for i := range doc.Nodes {
+		n := &doc.Nodes[i]
+		if at, ok := starts[n.ID]; ok {
+			_, fraction := kernel.SplitDayOffset(at)
+			n.LevelStart, n.LevelStartFraction = dated[n.ID].StartDate, fraction
+		}
+	}
+	return true
 }
 
 // levellingContext is what resource levelling reads from outside a chart,

@@ -4,6 +4,8 @@
 package export
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -110,8 +112,10 @@ func TestFromMSPDIWithOptionsRecordsSelectedFields(t *testing.T) {
 	if len(p.Tasks) == 0 || len(p.Tasks[0].Links) != 0 || p.Tasks[0].PercentComplete != 0 || len(p.Tasks[0].Assignments) != 0 {
 		t.Fatalf("field options were not applied: %+v", p.Tasks[0])
 	}
-	if len(p.Receipt.ExcludedFields) != 4 {
-		t.Fatalf("receipt exclusions = %#v, want 4 selected exclusions", p.Receipt.ExcludedFields)
+	// Five options, all off: links, progress, assignments, constraints and
+	// levelling delays.
+	if len(p.Receipt.ExcludedFields) != 5 {
+		t.Fatalf("receipt exclusions = %#v, want 5 selected exclusions", p.Receipt.ExcludedFields)
 	}
 	if p.Receipt.SkippedSummaryRows != 1 {
 		t.Fatalf("summary receipt = %+v, want one skipped summary", p.Receipt)
@@ -198,7 +202,7 @@ func TestMSPDIRoundTrip(t *testing.T) {
 		t.Fatal("CalculateCPM cycle")
 	}
 
-	xmlBytes, err := ToMSPDI("Round Trip", tasks)
+	xmlBytes, err := ToMSPDI("Round Trip", tasks, nil)
 	if err != nil {
 		t.Fatalf("ToMSPDI: %v", err)
 	}
@@ -257,5 +261,81 @@ func TestMSPDIRoundTrip(t *testing.T) {
 		if got := [2]string{string(byUID[id].Constraint), byUID[id].ConstraintDate}; got != want {
 			t.Errorf("%s constraint after round trip = %v, want %v", id, got, want)
 		}
+	}
+}
+
+// LevelingDelay is read in its LevelingDelayFormat's units (Microsoft's
+// documentation: 3 with format 7 is 3 days). Working units become working
+// days (480 minutes, 8 hours, 5 days a week), elapsed units elapsed
+// minutes; estimated codes 35 to 42 read as 3 to 10. Months, percent, an
+// unknown or missing format, an unreadable or negative value are skipped
+// and counted; zero is no delay.
+func TestFromMSPDILevelingDelays(t *testing.T) {
+	type delay = kernel.LevelingDelay
+	cases := []struct {
+		value, format string
+		want          *delay
+		skipped       bool
+	}{
+		{"480", "3", &delay{Amount: 1}, false},
+		{"300", "4", &delay{Amount: 300, Elapsed: true}, false},
+		{"12", "5", &delay{Amount: 1.5}, false},
+		{"2", "6", &delay{Amount: 120, Elapsed: true}, false},
+		{"3", "7", &delay{Amount: 3}, false},
+		{"2", "8", &delay{Amount: 2880, Elapsed: true}, false},
+		{"1", "9", &delay{Amount: 5}, false},
+		{"1", "10", &delay{Amount: 10080, Elapsed: true}, false},
+		{"2", "39", &delay{Amount: 2}, false},                   // estimated days
+		{"1", "40", &delay{Amount: 1440, Elapsed: true}, false}, // estimated elapsed days
+		{"1", "11", nil, true},                                  // months
+		{"50", "19", nil, true},                                 // percent
+		{"1", "99", nil, true},
+		{"1", "", nil, true},
+		{"abc", "7", nil, true},
+		{"-1", "7", nil, true},
+		{"0", "7", nil, false},
+	}
+	var b strings.Builder
+	b.WriteString(`<Project xmlns="http://schemas.microsoft.com/project"><Tasks>`)
+	b.WriteString(`<Task><UID>P</UID><Name>P</Name><Duration>PT8H0M0S</Duration></Task>`)
+	for i, c := range cases {
+		fmt.Fprintf(&b, `<Task><UID>%d</UID><Name>T</Name><Duration>PT8H0M0S</Duration><LevelingDelay>%s</LevelingDelay>`, i, c.value)
+		if c.format != "" {
+			fmt.Fprintf(&b, `<LevelingDelayFormat>%s</LevelingDelayFormat>`, c.format)
+		}
+		b.WriteString(`<PredecessorLink><PredecessorUID>P</PredecessorUID></PredecessorLink></Task>`)
+	}
+	b.WriteString(`</Tasks></Project>`)
+	data := []byte(b.String())
+
+	// Links off: the delays still come with the file's full network.
+	p, err := FromMSPDIWithOptions(data, MSPDIImportOptions{IncludeLevelingDelay: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	skipped := 0
+	for i, c := range cases {
+		task := p.Tasks[i+1]
+		if !reflect.DeepEqual(task.LevelingDelay, c.want) {
+			t.Errorf("%s in format %q: read %+v, want %+v", c.value, c.format, task.LevelingDelay, c.want)
+		}
+		if c.skipped {
+			skipped++
+		}
+	}
+	if p.Receipt.SkippedLevelingDelays != skipped {
+		t.Errorf("skipped %d, want %d", p.Receipt.SkippedLevelingDelays, skipped)
+	}
+	if len(p.Tasks[1].Links) != 0 || len(p.LevelingNetwork) != len(p.Tasks) || len(p.LevelingNetwork[1].Links) != 1 ||
+		!reflect.DeepEqual(p.LevelingNetwork[1].LevelingDelay, cases[0].want) {
+		t.Errorf("with links off the chart has none, but the levelling network keeps them and the delays: %+v", p.LevelingNetwork[1])
+	}
+
+	off, err := FromMSPDIWithOptions(data, MSPDIImportOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if off.Tasks[1].LevelingDelay != nil || off.Receipt.SkippedLevelingDelays != 0 || off.LevelingNetwork != nil {
+		t.Errorf("option off: delay %+v, skipped %d, network %d", off.Tasks[1].LevelingDelay, off.Receipt.SkippedLevelingDelays, len(off.LevelingNetwork))
 	}
 }
