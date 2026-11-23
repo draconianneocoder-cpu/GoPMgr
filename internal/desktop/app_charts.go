@@ -671,6 +671,17 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	}
 	sort.Strings(violated)
 
+	// Record what levelling read, so the editors can warn when the
+	// schedule changes before the next levelling (owner decision
+	// 2026-11-21). Nothing levelled, nothing to go stale.
+	doc.LevelledInputs = ""
+	for _, n := range doc.Nodes {
+		if n.LevelStart != "" || len(n.WorkSegments) > 0 {
+			doc.LevelledInputs = dag.LevellingInputsDigest(dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges})
+			break
+		}
+	}
+
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return LevelResult{}, err
@@ -932,6 +943,9 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 type dagDoc struct {
 	Nodes []dag.LayeredNode `json:"nodes"`
 	Edges []dag.LayeredEdge `json:"edges"`
+	// LevelledInputs is dag.LayeredDocument's stored levelling digest;
+	// LevelChartResources sets it.
+	LevelledInputs string `json:"levelled_inputs,omitempty"`
 }
 
 // ImportMSPDIChartWithOptions opens a file dialog for a Microsoft Project Data

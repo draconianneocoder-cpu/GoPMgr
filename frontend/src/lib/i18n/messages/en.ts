@@ -268,6 +268,8 @@ export const en = {
   },
   'leveling.constraintsBroken.hint':
     'Levelling does not avoid constraint dates while it places tasks. Add capacity, change the constraint, or clear the levelled start of: {labels}.',
+  'leveling.stale': 'The schedule changed since levelling. Level again to update the levelled starts.',
+  'leveling.stale.dismiss': 'Dismiss',
   'leveling.noneShifted': 'No tasks could be shifted into free capacity',
   'leveling.alreadyLevel': 'Already level: nothing moved',
   'leveling.stillOverallocated': {

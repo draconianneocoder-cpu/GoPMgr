@@ -63,6 +63,7 @@ func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, i
 	if err != nil {
 		return LayoutResult{}, err
 	}
+	doc.LevellingStale = dag.LevellingIsStale(doc)
 	return wrapWithAnnotated(def, kind, layout, doc)
 }
 
@@ -133,6 +134,7 @@ func Layout(kind Kind, rawData string) (LayoutResult, error) {
 		if err != nil {
 			return LayoutResult{}, err
 		}
+		doc.LevellingStale = dag.LevellingIsStale(doc)
 		return wrapWithAnnotated(def, kind, layout, doc)
 
 	case KindGantt:
@@ -144,6 +146,7 @@ func Layout(kind Kind, rawData string) (LayoutResult, error) {
 		if err != nil {
 			return LayoutResult{}, err
 		}
+		doc.LevellingStale = dag.LevellingIsStale(doc)
 		return wrapWithAnnotated(def, kind, layout, doc)
 
 	// --- DAG family: radial / causal ---

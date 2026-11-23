@@ -713,7 +713,7 @@
     {
       "method": "ExportChartMonteCarloRiskReport",
       "file": "internal/desktop/app_charts.go",
-      "line": 426,
+      "line": 450,
       "params": "chartID string, iterations int, workers int",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -919,7 +919,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 789,
+      "line": 824,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1049,7 +1049,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 920,
+      "line": 958,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1097,11 +1097,12 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 552,
+      "line": 576,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
         "gopmgr/internal/calendar",
+        "gopmgr/internal/charts/dag",
         "gopmgr/internal/kernel"
       ]
     },
@@ -1445,7 +1446,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 713,
+      "line": 748,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [
@@ -1549,6 +1550,7 @@
       "params": "chartID string, iterations int, workers int",
       "returns": "kernel.SimResult, error",
       "uses_internal_packages": [
+        "gopmgr/internal/calendar",
         "gopmgr/internal/charts",
         "gopmgr/internal/kernel"
       ]

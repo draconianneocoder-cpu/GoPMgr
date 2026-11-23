@@ -4,10 +4,13 @@
 package charts
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"gopmgr/internal/charts/dag"
 	"gopmgr/internal/kernel"
 )
 
@@ -51,5 +54,49 @@ func TestLayoutWithSchedule_NonCPMDelegates(t *testing.T) {
 	}
 	if string(res.Body) != string(plain.Body) {
 		t.Error("non-CPM kinds must produce identical output via either entry point")
+	}
+}
+
+// The CPM and Gantt layouts, anchored or not, report in their annotated
+// document whether the chart's scheduling inputs changed since levelling
+// (owner decision 2026-11-21). The layouts take the document by value, so
+// a flag set inside them would be lost; the engine sets it.
+func TestLayoutsReportStaleLevelling(t *testing.T) {
+	levelled := dag.LayeredDocument{
+		Nodes: []dag.LayeredNode{{ID: "A", Label: "A", Duration: 2, LevelStart: "2026-06-03"}},
+	}
+	digest := dag.LevellingInputsDigest(levelled)
+	raw := func(duration float64) string {
+		return fmt.Sprintf(`{"nodes":[{"id":"A","label":"A","duration":%v,"level_start":"2026-06-03"}],"edges":[],"levelled_inputs":%q}`, duration, digest)
+	}
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	for _, kind := range []Kind{KindCPM, KindGantt} {
+		for _, anchored := range []bool{false, true} {
+			for duration, want := range map[float64]bool{2: false, 3: true} {
+				var res LayoutResult
+				var err error
+				if anchored {
+					res, err = LayoutWithSchedulePlan(kind, raw(duration), start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
+				} else {
+					res, err = Layout(kind, raw(duration))
+				}
+				if err != nil {
+					t.Fatalf("%s anchored=%v: %v", kind, anchored, err)
+				}
+				var body struct {
+					Doc struct {
+						LevelledInputs string `json:"levelled_inputs"`
+						LevellingStale bool   `json:"levelling_stale"`
+					} `json:"doc"`
+				}
+				if err := json.Unmarshal(res.Body, &body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				if body.Doc.LevellingStale != want || body.Doc.LevelledInputs != digest {
+					t.Errorf("%s anchored=%v duration %v: stale %v (stored %q), want stale %v with the stored digest kept",
+						kind, anchored, duration, body.Doc.LevellingStale, body.Doc.LevelledInputs, want)
+				}
+			}
+		}
 	}
 }

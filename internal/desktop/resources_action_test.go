@@ -84,6 +84,22 @@ func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]le
 	return out
 }
 
+// storedLevelledInputs reads the levelling digest stored in the chart.
+func storedLevelledInputs(t *testing.T, d *db.Database, chartID string) string {
+	t.Helper()
+	got, err := d.GetChart(chartID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	var doc struct {
+		LevelledInputs string `json:"levelled_inputs"`
+	}
+	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
+		t.Fatalf("unmarshal persisted doc: %v", err)
+	}
+	return doc.LevelledInputs
+}
+
 func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	app, d, c := newResourceTestApp(t)
 
@@ -108,6 +124,11 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	}
 	if byID["B"] != (levelledNode{LevelStart: "2026-06-03"}) {
 		t.Errorf("B = %+v, want levelled start 2026-06-03 and no constraint", byID["B"])
+	}
+	// Levelling records what it read, so the editors can warn after a
+	// schedule edit (owner decision 2026-11-21).
+	if got := storedLevelledInputs(t, d, c.ID); !strings.HasPrefix(got, "v1:") {
+		t.Errorf("levelled_inputs = %q, want a v1 digest", got)
 	}
 
 	// Levelling again keeps B's levelled start: it recomputes from the
@@ -134,6 +155,10 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	}
 	if freed := storedLevelling(t, d, c.ID); freed["B"] != (levelledNode{}) {
 		t.Errorf("with capacity 2: B = %+v, want nothing stored", freed["B"])
+	}
+	// Nothing levelled, nothing that can go stale.
+	if got := storedLevelledInputs(t, d, c.ID); got != "" {
+		t.Errorf("with nothing levelled: levelled_inputs = %q, want none", got)
 	}
 }
 

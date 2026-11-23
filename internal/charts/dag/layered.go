@@ -128,6 +128,13 @@ type LayeredEdge struct {
 type LayeredDocument struct {
 	Nodes []LayeredNode `json:"nodes"`
 	Edges []LayeredEdge `json:"edges"`
+
+	// LevelledInputs (stored) is LevellingInputsDigest of the chart when
+	// resource levelling last ran and left levelled starts or split
+	// segments; empty otherwise. LevellingStale (computed by the CPM and
+	// Gantt layouts) says the scheduling inputs changed since then.
+	LevelledInputs string `json:"levelled_inputs,omitempty"`
+	LevellingStale bool   `json:"levelling_stale,omitempty"`
 }
 
 // ErrCycle is returned by LayoutLayered when the graph contains a

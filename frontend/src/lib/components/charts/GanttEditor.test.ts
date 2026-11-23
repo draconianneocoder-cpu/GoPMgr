@@ -76,6 +76,25 @@ describe('GanttEditor open', () => {
   });
 });
 
+// Owner decision 2026-11-21: the Gantt editor shows the stale-levelling
+// note when the layout's annotated document reports it, without adopting
+// that document as its own.
+describe('GanttEditor stale-levelling note', () => {
+  it('shows the note from the layout document and can dismiss it', async () => {
+    const app = installApp({
+      LayoutChart: vi.fn(async () => ({
+        body: { layout: { rows: [], deps: [], horizon: 0, anchored: false }, doc: { nodes: [], edges: [], levelling_stale: true } },
+      })),
+    });
+    const { findByText, getByRole, queryByText } = render(GanttEditor);
+    const note = 'The schedule changed since levelling. Level again to update the levelled starts.';
+    expect(await findByText(note)).toBeTruthy();
+    expect(app.SaveChart).not.toHaveBeenCalled();
+    await fireEvent.click(getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(queryByText(note)).toBeNull());
+  });
+});
+
 describe('GanttEditor split actions (handler glue)', () => {
   it('previewSplit: bridge result flows to the status line', async () => {
     const app = installApp();
