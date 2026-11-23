@@ -9,9 +9,10 @@ import (
 	"time"
 )
 
-// Levelling delays in Microsoft Project terms (owner decision D-MSPDI,
-// 2026-11-23: follow Microsoft's documentation). A task's levelling delay
-// is how long levelling held its start back from where its links and
+// Levelling delays in Microsoft Project terms (owner decisions 2026-11-23:
+// D-MSPDI, and tenths of elapsed minutes in the file, as MPXJ reads
+// Microsoft Project's; the MSPDI encoding is in internal/export). A task's
+// levelling delay is how long levelling held its start back from where its links and
 // constraints put it, measured on the clock: the working-day offsets are
 // placed on Microsoft Project's standard day (StartClock) and the
 // difference is elapsed time, as LevelingDelayFormat's elapsed units read

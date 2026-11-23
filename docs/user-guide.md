@@ -499,8 +499,10 @@ calendar. Each one is a test of the scheduler.
   a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
   flagged, levelling names it, and the audit names levelling as the cause.
   Select **Clear** next to a levelled start to schedule that task from its
-  links and constraint alone until you level again. ALAP tasks get no
-  levelled start.
+  links and constraint alone until you level again. An ALAP task that
+  levelling places keeps its levelled start and stays there, rather than
+  moving to its late dates, so it never lands on work levelling moved out
+  of its way.
 - **After you edit.** Editing a task does not clear its levelled start. When
   you change a duration, a link, a constraint or an assignment after
   levelling, the CPM and Gantt editors say "The schedule changed since
@@ -538,14 +540,19 @@ calendar. Each one is a test of the scheduler.
   constraint and its date. Export also writes each task's levelled start as
   Microsoft Project's levelling delay (LevelingDelay): how long levelling
   held the task back from where its links and constraints put it, measured
-  on the clock, in elapsed days when it is a whole number of days and in
-  elapsed minutes otherwise. Import reads it back when **Levelling delays**
-  is selected (the default), in any of the minute, hour, day or week
-  formats, working or elapsed, and stores it as a levelled start. It is
-  placed using the file's own links and constraints even when you do not
-  import them, and needs a project start date (the project's, or the file's
-  when the project has none). Delays in months or percent, on ALAP tasks, or
-  that cannot be read are left out and counted in the import receipt.
+  on the clock. Like Microsoft Project files, the file holds it in tenths of
+  elapsed minutes, shown in elapsed days when it is a whole number of days
+  and in elapsed minutes otherwise. (Microsoft's own example of this element
+  shows the value in its display unit; GoPMgr follows the reading of
+  MPXJ, the library most tools use to exchange these files.) Import reads it
+  back when **Levelling delays** is selected (the default), whatever unit it
+  is shown in, and stores it as a levelled start. It is placed using the
+  file's own links and constraints even when you do not import them, and
+  needs a project start date (the project's, or the file's when the project
+  has none). Delays with no unit, on ALAP tasks, or that cannot be read are
+  left out and counted in the import receipt; ALAP levelled starts are not
+  exported, because how Microsoft Project applies a delay to an ALAP task
+  could not be checked.
   Part-day start and finish times are written on the same 08:00 to 17:00
   day.
 

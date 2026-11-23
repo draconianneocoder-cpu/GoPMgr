@@ -349,7 +349,7 @@ export const en = {
     'Import each task\'s constraint and date. GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date.',
   'dashboard.import.levelingDelay': 'Levelling delays',
   'dashboard.import.levelingDelay.hint':
-    "Import each task's levelling delay as its levelled start. Delays are placed using the file's own links and constraints, even if you do not import them. Delays in months or percent are not imported; the receipt counts them.",
+    "Import each task's levelling delay as its levelled start. Delays are placed using the file's own links and constraints, even if you do not import them. Delays on ALAP tasks or with no unit are not imported; the receipt counts them.",
   'cpm.levelStart': 'Levelled start',
   'cpm.levelStart.hint':
     'Resource levelling delayed this task to this date. Level again to recompute it, or clear it to schedule the task from its links and constraint alone.',

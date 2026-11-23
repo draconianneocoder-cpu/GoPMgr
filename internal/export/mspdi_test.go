@@ -84,9 +84,10 @@ func TestToMSPDIDeterministicOrder(t *testing.T) {
 	}
 }
 
-// Levelling delays are written in Microsoft's form (owner decision
-// 2026-11-23): whole elapsed days as format 8, anything else in elapsed
-// minutes as format 4, between ConstraintDate and PredecessorLink. Part-day
+// Levelling delays are written in tenths of elapsed minutes (owner
+// decision 2026-11-23), shown in elapsed days (format 8) when whole days
+// and in elapsed minutes (format 4) otherwise, between ConstraintDate and
+// PredecessorLink. Part-day
 // starts and finishes fall at their working minute on the 08:00-12:00,
 // 13:00-17:00 day; a part-day milestone finishes when it starts.
 func TestToMSPDIWritesLevelingDelaysAndWorkingTimes(t *testing.T) {
@@ -108,8 +109,8 @@ func TestToMSPDIWritesLevelingDelaysAndWorkingTimes(t *testing.T) {
 		"<UID>D</UID><ID>D</ID><Name></Name><Start>2026-06-01T08:00:00</Start><Finish>2026-06-01T12:00:00</Finish>",
 		"<UID>B</UID><ID>B</ID><Name></Name><Start>2026-06-01T13:00:00</Start><Finish>2026-06-01T17:00:00</Finish>",
 		"<UID>M</UID><ID>M</ID><Name></Name><Start>2026-06-01T13:00:00</Start><Finish>2026-06-01T13:00:00</Finish>",
-		"<LevelingDelay>2</LevelingDelay><LevelingDelayFormat>8</LevelingDelayFormat>",
-		"<ConstraintDate>2026-06-01T08:00:00</ConstraintDate><LevelingDelay>300</LevelingDelay><LevelingDelayFormat>4</LevelingDelayFormat><PredecessorLink>",
+		"<LevelingDelay>28800</LevelingDelay><LevelingDelayFormat>8</LevelingDelayFormat>",
+		"<ConstraintDate>2026-06-01T08:00:00</ConstraintDate><LevelingDelay>3000</LevelingDelay><LevelingDelayFormat>4</LevelingDelayFormat><PredecessorLink>",
 	} {
 		if !strings.Contains(strings.Join(strings.Fields(s), ""), strings.Join(strings.Fields(want), "")) {
 			t.Errorf("missing %s in:\n%s", want, s)

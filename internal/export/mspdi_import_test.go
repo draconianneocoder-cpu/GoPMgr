@@ -264,12 +264,11 @@ func TestMSPDIRoundTrip(t *testing.T) {
 	}
 }
 
-// LevelingDelay is read in its LevelingDelayFormat's units (Microsoft's
-// documentation: 3 with format 7 is 3 days). Working units become working
-// days (480 minutes, 8 hours, 5 days a week), elapsed units elapsed
-// minutes; estimated codes 35 to 42 read as 3 to 10. Months, percent, an
-// unknown or missing format, an unreadable or negative value are skipped
-// and counted; zero is no delay.
+// LevelingDelay is read in tenths of elapsed minutes whatever its format,
+// which only says how Microsoft Project shows it (as MPXJ reads it; owner
+// decision 2026-11-23): 28800 is 2 elapsed days in any display unit. A
+// missing, null or undocumented format, or a value that is unreadable or
+// negative, is skipped and counted; zero is no delay.
 func TestFromMSPDILevelingDelays(t *testing.T) {
 	type delay = kernel.LevelingDelay
 	cases := []struct {
@@ -277,22 +276,19 @@ func TestFromMSPDILevelingDelays(t *testing.T) {
 		want          *delay
 		skipped       bool
 	}{
-		{"480", "3", &delay{Amount: 1}, false},
-		{"300", "4", &delay{Amount: 300, Elapsed: true}, false},
-		{"12", "5", &delay{Amount: 1.5}, false},
-		{"2", "6", &delay{Amount: 120, Elapsed: true}, false},
-		{"3", "7", &delay{Amount: 3}, false},
-		{"2", "8", &delay{Amount: 2880, Elapsed: true}, false},
-		{"1", "9", &delay{Amount: 5}, false},
-		{"1", "10", &delay{Amount: 10080, Elapsed: true}, false},
-		{"2", "39", &delay{Amount: 2}, false},                   // estimated days
-		{"1", "40", &delay{Amount: 1440, Elapsed: true}, false}, // estimated elapsed days
-		{"1", "11", nil, true},                                  // months
-		{"50", "19", nil, true},                                 // percent
-		{"1", "99", nil, true},
-		{"1", "", nil, true},
+		{"28800", "8", &delay{Amount: 2880, Elapsed: true}, false}, // 2 elapsed days
+		{"28800", "7", &delay{Amount: 2880, Elapsed: true}, false}, // shown in days
+		{"3000", "4", &delay{Amount: 300, Elapsed: true}, false},   // 5 hours
+		{"3000", "39", &delay{Amount: 300, Elapsed: true}, false},  // estimated days
+		{"4800", "11", &delay{Amount: 480, Elapsed: true}, false},  // shown in months
+		{"4800", "20", &delay{Amount: 480, Elapsed: true}, false},  // shown in elapsed percent
+		{"45", "3", &delay{Amount: 4.5, Elapsed: true}, false},     // tenths are kept
+		{"4800", "21", nil, true},                                  // null format
+		{"4800", "53", nil, true},
+		{"4800", "13", nil, true}, // undocumented
+		{"4800", "", nil, true},
 		{"abc", "7", nil, true},
-		{"-1", "7", nil, true},
+		{"-10", "7", nil, true},
 		{"0", "7", nil, false},
 	}
 	var b strings.Builder

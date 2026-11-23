@@ -165,8 +165,8 @@ func TestImportMSPDIKeepsExistingStartDate(t *testing.T) {
 // Microsoft's documentation), whether or not links are imported: the
 // delays are applied on the file's own network. X (4.75 days on alice,
 // critical through X2) holds Y back to Friday 06-05 15:00; Z follows Y by
-// its link and needs no start of its own. Y's delay is written in elapsed
-// minutes, Monday 08:00 to Friday 15:00: 6180.
+// its link and needs no start of its own. Y's delay, Monday 08:00 to
+// Friday 15:00, is 6180 elapsed minutes, written in tenths: 61800.
 func TestMSPDIRoundTripKeepsLevelledStarts(t *testing.T) {
 	app, d, _ := newResourceTestApp(t)
 	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Levelled", Data: `{"nodes":[
@@ -206,8 +206,8 @@ func TestMSPDIRoundTripKeepsLevelledStarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "<LevelingDelay>6180</LevelingDelay>") || strings.Count(string(data), "<LevelingDelay>") != 1 {
-		t.Fatalf("export should carry one delay, Y's 6180 elapsed minutes:\n%s", data)
+	if !strings.Contains(string(data), "<LevelingDelay>61800</LevelingDelay>") || strings.Count(string(data), "<LevelingDelay>") != 1 {
+		t.Fatalf("export should carry one delay, Y's 61800 tenths of elapsed minutes:\n%s", data)
 	}
 
 	for _, withLinks := range []bool{true, false} {
@@ -247,7 +247,7 @@ func TestMSPDIImportSkipsLevelingDelaysWithoutAStartDate(t *testing.T) {
 	options := allMSPDIFields
 	options.IncludeLevelingDelay = true
 	c, err := app.importMSPDIFromBytesWithOptions([]byte(`<Project xmlns="http://schemas.microsoft.com/project"><Tasks>
-		<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration><LevelingDelay>2</LevelingDelay><LevelingDelayFormat>7</LevelingDelayFormat></Task>
+		<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration><LevelingDelay>9600</LevelingDelay><LevelingDelayFormat>7</LevelingDelayFormat></Task>
 		</Tasks></Project>`), options)
 	if err != nil {
 		t.Fatalf("import: %v", err)

@@ -77,9 +77,9 @@ type MSPDIImportReceipt struct {
 	// unknown or a dated type has no usable date.
 	SkippedConstraints int `json:"skipped_constraints"`
 	// SkippedLevelingDelays counts levelling delays left out: an
-	// unreadable value, a format with no fixed length (months, percent)
-	// or none, a delay on an ALAP task, one beyond the schedule limit,
-	// or all of them when the project has no start date.
+	// unreadable value, a missing, null or undocumented format, a delay on
+	// an ALAP task, one beyond the schedule limit, or all of them when the
+	// project has no start date.
 	SkippedLevelingDelays int `json:"skipped_leveling_delays"`
 }
 
@@ -332,13 +332,11 @@ const (
 )
 
 // parseLevelingDelay converts LevelingDelay and LevelingDelayFormat. The
-// value is in the format's units (Microsoft's documentation: a delay of 3
-// with format 7 is 3 days): 3 working minutes (480 a day), 4 elapsed
-// minutes, 5 working hours (8 a day), 6 elapsed hours, 7 working days, 8
-// elapsed days, 9 working weeks (5 days), 10 elapsed weeks; the estimated
-// codes 35 to 42 read as 3 to 10. Months, percent and unknown or missing
-// formats, and a value that is not a finite, non-negative number, are
-// skipped.
+// value is in tenths of elapsed minutes, whatever the format, which only
+// says how Microsoft Project shows the delay (MPXJ reads it so; owner
+// decision 2026-11-23). A delay needs a format, as in MPXJ: a missing,
+// null (21, 53) or undocumented format, and a value that is not a finite,
+// non-negative number, are skipped.
 func parseLevelingDelay(rawValue, rawFormat string) (kernel.LevelingDelay, delayStatus) {
 	text := strings.TrimSpace(rawValue)
 	if text == "" {
@@ -352,33 +350,22 @@ func parseLevelingDelay(rawValue, rawFormat string) (kernel.LevelingDelay, delay
 		return kernel.LevelingDelay{}, delayNone
 	}
 	format, err := strconv.Atoi(strings.TrimSpace(rawFormat))
-	if err != nil {
+	if err != nil || !mspdiDelayFormats[format] {
 		return kernel.LevelingDelay{}, delaySkipped
 	}
-	if format >= 35 && format <= 42 {
-		format -= 32
-	}
-	const day, workMinutes = 24 * 60, 8 * 60
-	switch format {
-	case 3:
-		return kernel.LevelingDelay{Amount: v / workMinutes}, delayRead
-	case 4:
-		return kernel.LevelingDelay{Amount: v, Elapsed: true}, delayRead
-	case 5:
-		return kernel.LevelingDelay{Amount: v / mspdiHoursPerDay}, delayRead
-	case 6:
-		return kernel.LevelingDelay{Amount: v * 60, Elapsed: true}, delayRead
-	case 7:
-		return kernel.LevelingDelay{Amount: v}, delayRead
-	case 8:
-		return kernel.LevelingDelay{Amount: v * day, Elapsed: true}, delayRead
-	case 9:
-		return kernel.LevelingDelay{Amount: v * 5}, delayRead
-	case 10:
-		return kernel.LevelingDelay{Amount: v * 7 * day, Elapsed: true}, delayRead
-	}
-	return kernel.LevelingDelay{}, delaySkipped
+	return kernel.LevelingDelay{Amount: v / 10, Elapsed: true}, delayRead
 }
+
+// mspdiDelayFormats are Microsoft's documented LevelingDelayFormat codes
+// for a unit: minutes to elapsed months (3-12), percent (19, 20) and their
+// estimated forms (35-44, 51, 52). 21 and 53 are Null.
+var mspdiDelayFormats = func() map[int]bool {
+	codes := map[int]bool{19: true, 20: true, 51: true, 52: true}
+	for c := 3; c <= 12; c++ {
+		codes[c], codes[c+32] = true, true
+	}
+	return codes
+}()
 
 // mspdiConstraintTypes maps MSPDI ConstraintType codes to GoPMgr types.
 var mspdiConstraintTypes = map[int]kernel.ConstraintType{

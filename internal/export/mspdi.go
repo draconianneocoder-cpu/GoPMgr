@@ -95,10 +95,10 @@ func mspdiLinkType(t kernel.LinkType) int {
 // of offsetting from "today".
 //
 // levelingDelays gives, by task ID, the levelling delay in elapsed minutes
-// (kernel.LevelingDelayMinutes); each is written as LevelingDelay in
-// elapsed days (format 8) when it is a whole number of days, else in
-// elapsed minutes (format 4), following Microsoft's documentation (owner
-// decision 2026-11-23). nil writes none.
+// (kernel.LevelingDelayMinutes); each is written as LevelingDelay in tenths
+// of elapsed minutes, shown in elapsed days (format 8) when it is a whole
+// number of days, else in elapsed minutes (format 4) (owner decision
+// 2026-11-23). nil writes none.
 //
 // Tasks are emitted in (ES, ID) order so the XML is deterministic for
 // a given schedule — byte-identical output for snapshot tests and
@@ -234,15 +234,18 @@ func twoDigits(n int) string {
 }
 
 // mspdiLevelingDelay is a delay of minutes elapsed minutes as MSPDI's
-// LevelingDelay and LevelingDelayFormat: whole elapsed days (8) when it is
-// a whole number of days, else elapsed minutes (4). None for no delay.
+// LevelingDelay and LevelingDelayFormat. The value is in tenths of elapsed
+// minutes, as Microsoft Project files carry it (MPXJ reads and writes it
+// so; owner decision 2026-11-23); the format is only the unit the delay is
+// shown in: elapsed days (8) for a whole number of days, else elapsed
+// minutes (4). None for no delay.
 func mspdiLevelingDelay(minutes int) (*int, *int) {
 	if minutes <= 0 {
 		return nil, nil
 	}
-	value, format := minutes, 4
+	value, format := minutes*10, 4
 	if minutes%(24*60) == 0 {
-		value, format = minutes/(24*60), 8
+		format = 8
 	}
 	return &value, &format
 }
