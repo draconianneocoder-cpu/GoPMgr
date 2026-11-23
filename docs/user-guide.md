@@ -356,8 +356,10 @@ day a task uses: a half-day task at full time adds half a day, so two
 half-day tasks for one person on one day are not an overload. A task that
 needs more of a resource at once than it has (two people from a team of
 one, or full time from someone half-time) is always an overload, however
-little of the day it uses, and levelling cannot place it. The split
-preview judges capacity the same way.
+little of the day it uses, and levelling cannot place it. Demand is
+counted per day: tasks are not sequenced within a day, so two part-day
+tasks may be shown at the same time for one person when their day's total
+fits. The split preview judges capacity the same way.
 
 CPM charts also include a Monte Carlo risk panel. Add optional optimistic,
 most-likely, and pessimistic duration estimates to tasks that carry schedule

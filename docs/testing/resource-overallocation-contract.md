@@ -97,7 +97,11 @@ units exceed the day's capacity is a breach on every day the task works
 part of, and levelling never places it there (it is reported unplaced).
 Whole days and split days already add the full units to the day's total,
 so only part days change; a full-time task on a part-time resource stays
-flagged, as before 2026-11-21.
+flagged, as before 2026-11-21. The rule is per assignment: demand is
+counted per day and tasks are not sequenced within a day, so two part-day
+tasks may run at the same time on one person when their day's total
+fits. Levelling's rate check reads the assignment's calendar and
+detection's the resource's, the same divergence as F-09.
 Resource levelling books the same shares (part-day levelling, also
 2026-11-21), so the leveller and the detector agree.
 - **Capacity.** Each step replaces the one before it:

@@ -611,9 +611,9 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 		},
 		{
 			// Two people at once on a one-person resource, from 0.5 to 1.5:
-			// each day's total is 2 x 0.5 = 1, within capacity, but no
-			// moment has two people, so both days are breaches (rate rule,
-			// owner decision 2026-11-23).
+			// each day's total is 2 x 0.5 = 1, within capacity, but this
+			// assignment's rate of 2 exceeds capacity 1, so both days are
+			// breaches (rate rule, owner decision 2026-11-23).
 			id:             "OR-01-S4f units above capacity are a breach however short the day's share",
 			productionOnly: true,
 			build: func() map[string]*Task {
