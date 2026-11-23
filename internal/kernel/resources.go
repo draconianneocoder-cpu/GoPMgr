@@ -289,6 +289,49 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 	return usage
 }
 
+// peakUnits is, per resource and day of its usage profile, the largest
+// effective units any one contiguous task uses it at on a day it works
+// part of. Units are a rate: a task needing more of a resource at once
+// than the resource has can never run, however little of the day it uses
+// (owner decision 2026-11-23), so detection flags such a day even when the
+// day's total demand fits. Whole days and split days already add the full
+// units to the day's demand, so only part days need this.
+func peakUnits(tasks map[string]*Task, usage map[string][]float64) map[string][]float64 {
+	peak := make(map[string][]float64, len(usage))
+	for _, t := range tasks {
+		if len(t.WorkDays) > 0 {
+			continue
+		}
+		first, last, ok := taskSpan(t)
+		if !ok {
+			continue
+		}
+		for _, a := range t.Assignments {
+			profile, exists := usage[a.Resource]
+			if a.Resource == "" || !exists {
+				continue
+			}
+			if peak[a.Resource] == nil {
+				peak[a.Resource] = make([]float64, len(profile))
+			}
+			for d := max(first, 0); d <= last && d < len(profile); d++ {
+				if dayShare(t.ES, t.EF, d) > 0 {
+					peak[a.Resource][d] = max(peak[a.Resource][d], a.effectiveUnits())
+				}
+			}
+		}
+	}
+	return peak
+}
+
+// peakAt reads peakUnits, 0 where no part-day task works.
+func peakAt(peak map[string][]float64, resource string, day int) float64 {
+	if p := peak[resource]; day < len(p) {
+		return p[day]
+	}
+	return 0
+}
+
 // ResourceCapacityProfiles builds calendar-aware per-day capacity
 // profiles for the requested resources. Every returned slice has
 // length horizon, with index d matching project working-day offset d.
@@ -346,6 +389,7 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 	}
 
 	usage := ResourceUsage(tasks)
+	peak := peakUnits(tasks, usage)
 	entries := overallocationEntries(tasks)
 	runs := overallocationMembershipRuns(entries, usage)
 
@@ -362,7 +406,7 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 		for day, demand := range usage[r] {
 			members.advanceTo(day)
 			capacity := plan.capacityFor(r, day)
-			if demand <= capacity+1e-9 {
+			if demand <= capacity+1e-9 && peakAt(peak, r, day) <= capacity+1e-9 {
 				continue
 			}
 			breach := Overallocation{
@@ -673,11 +717,17 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 		first, last := spanDays(start, finish)
 		for d := first; d <= last; d++ {
 			share := dayShare(start, finish, d)
+			if share <= 0 {
+				continue
+			}
 			for _, a := range t.Assignments {
 				if a.Resource == "" {
 					continue
 				}
-				if demand(booked[a.Resource], d)+a.effectiveUnits()*share > plan.capacityForAssignment(a, d)+1e-9 {
+				capacity := plan.capacityForAssignment(a, d) + 1e-9
+				// Units are a rate: more at once than the capacity never
+				// fits, however little of the day is used (peakUnits).
+				if a.effectiveUnits() > capacity || demand(booked[a.Resource], d)+a.effectiveUnits()*share > capacity {
 					return false
 				}
 			}

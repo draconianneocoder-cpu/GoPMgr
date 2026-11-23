@@ -44,7 +44,10 @@ below passes against it unmodified.
 ## Current behavior
 
 - **Records.** One `Overallocation` per resource and integer project day
-  where `demand <= capacity + 1e-9` is false. Records are ordered by
+  where `demand <= capacity + 1e-9` is false, or where some contiguous
+  task works part of that day (share above 0) with an assignment whose
+  effective units exceed `capacity + 1e-9` (the rate rule, 2026-11-23).
+  `Demand` is the day's total either way. Records are ordered by
   resource, then day. `TaskIDs` holds the printed `Task.ID` of every
   participating map entry, sorted, never truncated.
 - **Empty result.** No conflicts, including an empty or nil task map,
@@ -84,7 +87,17 @@ half-day tasks on one person in one day are not an overload. Whole-day
 schedules and split tasks are unchanged. The frozen copy (OR-02) was not
 edited and keeps the old answers; the hand oracle gives the two rows whose
 answer changed (F-20, OR-01-S4) separate expectations for production and
-for the frozen copy, and adds production-only rows (OR-01-S4b to S4e).
+for the frozen copy, and adds production-only rows (OR-01-S4b to S4f).
+
+Counting shares alone let a task use more of a resource at once than it
+has whenever the task straddled a day boundary: two people for half of
+each of two days on one person totals 1 per day. On 2026-11-23 the owner
+chose to treat units as a rate ("always a breach"): an assignment whose
+units exceed the day's capacity is a breach on every day the task works
+part of, and levelling never places it there (it is reported unplaced).
+Whole days and split days already add the full units to the day's total,
+so only part days change; a full-time task on a part-time resource stays
+flagged, as before 2026-11-21.
 Resource levelling books the same shares (part-day levelling, also
 2026-11-21), so the leveller and the detector agree.
 - **Capacity.** Each step replaces the one before it:
@@ -116,7 +129,7 @@ approved behavior change with its own tests.
 
 | Oracle | File | What it proves |
 | --- | --- | --- |
-| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus supplementary cases OR-01-S1 to S5 and, since 2026-11-21, production-only part-day cases OR-01-S4b to S4e (a day-long task straddling two days, two half-day tasks sharing a day, a trailing half day, a sliver below a day boundary). F-20 and OR-01-S4 carry separate production and frozen-copy expectations. It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
+| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus supplementary cases OR-01-S1 to S5 and, since 2026-11-21, production-only part-day cases OR-01-S4b to S4f (a day-long task straddling two days, two half-day tasks sharing a day, a trailing half day, a sliver below a day boundary, units above capacity on a part day). F-20 and OR-01-S4 carry separate production and frozen-copy expectations. It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
 | Frozen legacy reference (OR-02) | `internal/kernel/overallocation_legacy_ref_test.go` | A copy of the detection path at the pinned blob, written as free functions. |
 | Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random whole-day schedules (whole-day starts and durations since 2026-11-21, where both contracts agree), and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
 | Part-day grid property | `TestPartDayDemandMatchesAnEighthDayGrid` in the differential file | On 2,000 seeded schedules whose starts and durations are multiples of 1/8 day (from day -1), each resource's usage equals an independent count of eighth-day cells per day times effective units, exactly. |
@@ -169,7 +182,7 @@ the same tests on Linux.
 | RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3 | Passing locally |
 | RES-A07 threshold | `TestOverallocationThresholdIsLiteral` (F-07) | Passing locally |
 | RES-A08 performance | Paired before-and-after benchmarks at T0 and T1; T2 and T3 for the new detector | Measured (see Benchmarks). RSS and the old detector's T2 and T3 NOT RUN; budgets BLOCKED (OWN-10) |
-| RES-A09 aliases, unassigned horizon, part days | F-17, F-19, F-20, OR-01-S4, OR-01-S4b to S4e, the part-day grid property | Passing locally (part-day rule changed 2026-11-21) |
+| RES-A09 aliases, unassigned horizon, part days | F-17, F-19, F-20, OR-01-S4, OR-01-S4b to S4f, the part-day grid property | Passing locally (part-day rule changed 2026-11-21) |
 | RES-A10 literal comparison, zero demand | F-18, F-21 | Passing locally |
 
 ## Sensitivity
@@ -267,7 +280,11 @@ Run on linux/amd64 with Go 1.27.4; all caught:
   and the grid property;
 - `round(ES)` restored as the first day: the hand oracle and the grid
   property;
-- the share not clamped at 0: OR-01-S4e.
+- the share not clamped at 0: OR-01-S4e;
+- the rate rule removed from detection: F-20, OR-01-S4, S4b, S4d, S4f;
+- the rate rule applied on a share-0 day: OR-01-S4e;
+- the rate rule removed from levelling:
+  `TestLevelResourcesUnplaceablePartDayStartStays`.
 
 ## Benchmarks (indicative)
 

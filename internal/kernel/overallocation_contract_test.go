@@ -501,7 +501,9 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			// The frozen copy counts whole rounded days (0.75 each). Since
 			// 2026-11-21 production counts the share used: day 0 0.51 of a
 			// day (0.49 to 1), day 1 0.25 (1 to 1.25), times 0.75 units:
-			// 0.3825 and 0.1875, both under capacity 0.5.
+			// 0.3825 and 0.1875. Both totals fit capacity 0.5, but 0.75
+			// units at once exceed it, so both days are breaches (rate rule,
+			// 2026-11-23).
 			id: "F-20 fractional ES and EF: frozen copy rounds, production counts the share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.76, 0.49, 1.25, resAssign("r", 0.75))}
@@ -514,7 +516,11 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0.75, 0.75}},
 			production: &overallocationExpect{
-				flags: map[string]bool{"A": false},
+				want: []Overallocation{
+					{Resource: "r", Day: 0, Demand: 0.3825, Capacity: 0.5, TaskIDs: []string{"A"}},
+					{Resource: "r", Day: 1, Demand: 0.1875, Capacity: 0.5, TaskIDs: []string{"A"}},
+				},
+				flags: map[string]bool{"A": true},
 				usage: map[string][]float64{"r": {0.3825, 0.1875}},
 			},
 		},
@@ -522,8 +528,8 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			// Frozen copy: round(0.5) is 1 (half away from zero), and
 			// ceil(0.9)-1 = 0 is raised to the first day, so the task
 			// occupies day 1 only, whole. Production since 2026-11-21: the
-			// work (0.5 to 0.9) falls in day 0 and uses 0.4 of it, under
-			// capacity 0.5.
+			// work (0.5 to 0.9) falls in day 0 and uses 0.4 of it; the total
+			// fits capacity 0.5, but 1 unit at once does not (rate rule).
 			id: "OR-01-S4 a part-day start: frozen copy rounds up, production counts its own day by share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.4, 0.5, 0.9, resAssign("r", 1))}
@@ -533,20 +539,26 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0, 1}},
 			production: &overallocationExpect{
-				flags: map[string]bool{"A": false},
+				want:  []Overallocation{{Resource: "r", Day: 0, Demand: 0.4, Capacity: 0.5, TaskIDs: []string{"A"}}},
+				flags: map[string]bool{"A": true},
 				usage: map[string][]float64{"r": {0.4}},
 			},
 		},
 		{
-			// 0.5 to 1.5 at 1 unit: half of day 0 and half of day 1, each
-			// under capacity 0.5 (equal is allowed).
+			// 0.5 to 1.5 at 1 unit: half of day 0 and half of day 1. Each
+			// day's total equals capacity 0.5, but 1 unit at once exceeds
+			// it, so both days are breaches (rate rule).
 			id:             "OR-01-S4b a day-long task straddling two days uses half of each",
 			productionOnly: true,
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 1, 0.5, 1.5, resAssign("r", 1))}
 			},
-			plan:  ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.5}},
-			flags: map[string]bool{"A": false},
+			plan: ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.5}},
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 0.5, Capacity: 0.5, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 0.5, Capacity: 0.5, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0.5, 0.5}},
 		},
 		{
@@ -568,11 +580,12 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			// A sliver of work just below a day boundary (1.9999999995 to
 			// 1.9999999996) is placed on day 2 by the span rule's epsilon
 			// but covers none of it: its share is clamped to 0, never
-			// negative demand.
+			// negative demand, and its 2 units at once are not a breach on
+			// a day it does not work (rate rule only where share > 0).
 			id:             "OR-01-S4e a sliver below a day boundary adds no negative demand",
 			productionOnly: true,
 			build: func() map[string]*Task {
-				return map[string]*Task{"A": resTask("A", 1e-10, 1.9999999995, 1.9999999996, resAssign("r", 1))}
+				return map[string]*Task{"A": resTask("A", 1e-10, 1.9999999995, 1.9999999996, resAssign("r", 2))}
 			},
 			plan:  unit,
 			flags: map[string]bool{"A": false},
@@ -580,7 +593,8 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 		},
 		{
 			// 2.5 days from day 0 at 1 unit against capacity 0.6: days 0
-			// and 1 whole (breaches), day 2 half (0.5, within capacity).
+			// and 1 whole (breaches), day 2 half (0.5 total, within
+			// capacity, but 1 unit at once is not: a breach too).
 			id:             "OR-01-S4d a trailing half day counts half",
 			productionOnly: true,
 			build: func() map[string]*Task {
@@ -590,9 +604,28 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			want: []Overallocation{
 				{Resource: "r", Day: 0, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
 				{Resource: "r", Day: 1, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 2, Demand: 0.5, Capacity: 0.6, TaskIDs: []string{"A"}},
 			},
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {1, 1, 0.5}},
+		},
+		{
+			// Two people at once on a one-person resource, from 0.5 to 1.5:
+			// each day's total is 2 x 0.5 = 1, within capacity, but no
+			// moment has two people, so both days are breaches (rate rule,
+			// owner decision 2026-11-23).
+			id:             "OR-01-S4f units above capacity are a breach however short the day's share",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1, 0.5, 1.5, resAssign("r", 2))}
+			},
+			plan: unit,
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 1, Capacity: 1, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 1, Capacity: 1, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {1, 1}},
 		},
 		{
 			id: "F-21 out-of-range split day leaves zero demand on a zero-capacity day",

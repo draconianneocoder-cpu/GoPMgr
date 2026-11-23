@@ -353,7 +353,10 @@ availability and Project Settings Resource Capacity calendars.
 CPM and Gantt task over-allocation badges use the same Resource Capacity
 calendars when a project has a start date. Demand counts the part of each
 day a task uses: a half-day task at full time adds half a day, so two
-half-day tasks for one person on one day are not an overload. The split
+half-day tasks for one person on one day are not an overload. A task that
+needs more of a resource at once than it has (two people from a team of
+one, or full time from someone half-time) is always an overload, however
+little of the day it uses, and levelling cannot place it. The split
 preview judges capacity the same way.
 
 CPM charts also include a Monte Carlo risk panel. Add optional optimistic,

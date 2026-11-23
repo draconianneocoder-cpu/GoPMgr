@@ -3,7 +3,10 @@
 
 package kernel
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestResourceUsageProfile(t *testing.T) {
 	tasks := map[string]*Task{
@@ -310,15 +313,16 @@ func TestLevelResourcesInPartDays(t *testing.T) {
 			want:     map[string]float64{"A": 0, "B": 0},
 		},
 		{
-			// At capacity 0.75, A (first by ID, equal late starts) takes
-			// 0.5 of day 0; B's 0.5 more would make 1 > 0.75, so B moves to
-			// the next whole day, 1.
+			// A (0.75 day) goes first (smaller late start: the project
+			// finish is 0.75, so A's LS is 0 and B's 0.25) and takes 0.75
+			// of day 0; B's 0.5 more would make 1.25 > 1, so B moves to the
+			// next whole day, 1.
 			name: "a half-day task that does not fit moves to the next day",
 			tasks: map[string]*Task{
-				"A": {ID: "A", Duration: 0.5, Assignments: alice},
+				"A": {ID: "A", Duration: 0.75, Assignments: alice},
 				"B": {ID: "B", Duration: 0.5, Assignments: alice},
 			},
-			capacity: 0.75,
+			capacity: 1,
 			want:     map[string]float64{"A": 0, "B": 1},
 		},
 		{
@@ -359,6 +363,24 @@ func TestLevelResourcesInPartDays(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A task that can never fit (two units of a one-person resource) stays at
+// its earliest start, part days included, and is reported unplaced: P (0.5
+// day, no resource) ends at 0.5, so Y starts at 0.5, not at day 1.
+func TestLevelResourcesUnplaceablePartDayStartStays(t *testing.T) {
+	tasks := map[string]*Task{
+		"P": {ID: "P", Duration: 0.5},
+		"Y": {ID: "Y", Duration: 1, Precedents: []string{"P"}, Assignments: []Assignment{{Resource: "alice", Units: 2}}},
+	}
+	res, err := LevelResourcesWithOptions(tasks, capacityPlanFromMap(map[string]float64{"alice": 1}), LevelingOptions{})
+	if !errors.Is(err, ErrLevelingHorizonExceeded) {
+		t.Fatalf("error = %v, want ErrLevelingHorizonExceeded", err)
+	}
+	if len(res.UnplacedTaskIDs) != 1 || res.UnplacedTaskIDs[0] != "Y" {
+		t.Fatalf("unplaced = %v, want [Y]", res.UnplacedTaskIDs)
+	}
+	approx(t, "Y.ES", tasks["Y"].ES, 0.5)
 }
 
 func TestLevelResourcesImpossibleDemandStaysPut(t *testing.T) {
