@@ -990,6 +990,9 @@ func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) error 
 		}
 		return scheduleTooLongErr(err)
 	}
+	// Split tasks work on the days levelling gave them (after CPM, before
+	// detection and dates).
+	kernel.RebuildSplitDays(tasks)
 	if anchored {
 		kernel.AnchorSchedule(tasks, start, isWorkday)
 	}
@@ -1056,6 +1059,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			Constraint             string                  `json:"constraint"`
 			ConstraintDate         string                  `json:"constraint_date"`
 			LevelStart             string                  `json:"level_start"`
+			LevelStartFraction     float64                 `json:"level_start_fraction"`
 			PercentComplete        float64                 `json:"percent_complete"`
 			Milestone              bool                    `json:"milestone"`
 			ActualStart            string                  `json:"actual_start"`
@@ -1093,6 +1097,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
 			ConstraintDate:         n.ConstraintDate,
 			LevelStart:             n.LevelStart,
+			LevelStartFraction:     n.LevelStartFraction,
 			PercentComplete:        n.PercentComplete,
 			Milestone:              n.Milestone,
 			ActualStart:            n.ActualStart,

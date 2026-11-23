@@ -557,9 +557,20 @@ func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, st
 	if c.LevelStartBinding {
 		// The levelled start is later than the links allow, so
 		// levelling, not the logic, holds the task past the date.
-		return "Resource levelling delayed this task to " + c.LevelStart + ", past its constraint date.",
+		return "Resource levelling delayed this task to " + levelledStartText(c) + ", past its constraint date.",
 			"Clear the levelled start or level again to see whether the date can be met; add capacity, or move the date."
 	}
 	return "The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
 		"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date."
+}
+
+// levelledStartText is a levelled start as the audit shows it: the date,
+// with the time of day (kernel.StartClock) when levelling started the task
+// part-way through the day.
+func levelledStartText(t *kernel.Task) string {
+	if t.LevelStartFraction <= 0 || t.LevelStartFraction >= 1 {
+		return t.LevelStart
+	}
+	h, m := kernel.StartClock(t.LevelStartFraction)
+	return fmt.Sprintf("%s %02d:%02d", t.LevelStart, h, m)
 }

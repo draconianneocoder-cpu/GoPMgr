@@ -51,13 +51,18 @@ func LayoutCPMScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isW
 	return LayoutLayered(doc, DefaultLayeredOptions())
 }
 
-// scheduleCPM runs the kernel's CPM passes. A cyclic network is reported
-// as this package's ErrCycle, as it always has been; any other refusal
+// scheduleCPM runs the kernel's CPM passes and restores the working days
+// of tasks levelling split (kernel.RebuildSplitDays), so detection and the
+// dates see them as levelled. A cyclic network is reported as this
+// package's ErrCycle, as it always has been; any other refusal
 // (kernel.ErrScheduleTooLong) is returned as the kernel gave it.
 func scheduleCPM(tasks map[string]*kernel.Task) error {
 	err := kernel.ScheduleCPM(tasks)
 	if errors.Is(err, kernel.ErrSchedulingCycle) {
 		return ErrCycle
+	}
+	if err == nil {
+		kernel.RebuildSplitDays(tasks)
 	}
 	return err
 }
@@ -83,6 +88,10 @@ func cpmTasksFromDoc(doc LayeredDocument) map[string]*kernel.Task {
 			ActualCostMinorUnits:   n.ActualCostMinorUnits,
 			Assignments:            n.Assignments,
 			LevelStart:             n.LevelStart,
+			LevelStartFraction:     n.LevelStartFraction,
+		}
+		for _, seg := range n.WorkSegments {
+			t.PlannedWorkSegments = append(t.PlannedWorkSegments, kernel.WorkSegment{Start: seg.Start, End: seg.End})
 		}
 		switch c := kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))); {
 		case c == kernel.AsLateAsPossible:

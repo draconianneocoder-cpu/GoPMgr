@@ -93,6 +93,11 @@ type LayeredNode struct {
 	// never changes Constraint. On an anchored schedule the task starts no
 	// earlier (kernel.Task.LevelStart).
 	LevelStart string `json:"level_start,omitempty"`
+	// LevelStartFraction (input) is the share of LevelStart's working day
+	// passed when the levelled task starts (0 <= f < 1; owner decision
+	// D-STORE, 2026-11-23). Levelling writes and clears it with LevelStart
+	// (kernel.Task.LevelStartFraction).
+	LevelStartFraction float64 `json:"level_start_fraction,omitempty"`
 
 	// Progress tracking (input, reporting-only): 0..100 percent
 	// complete and an explicit milestone marker, plus observed

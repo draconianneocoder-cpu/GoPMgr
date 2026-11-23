@@ -146,6 +146,22 @@ func ForwardConstrainedStart(t *Task, linkStart float64) float64 {
 	return es
 }
 
+// linkCandidate is the earliest start one link allows a successor of the
+// given duration whose predecessor runs [predES, predEF). The forward pass
+// and LevelStartsToKeep share it.
+func linkCandidate(typ LinkType, lag, predES, predEF, duration float64) float64 {
+	switch typ {
+	case StartToStart:
+		return predES + lag
+	case FinishToFinish:
+		return predEF + lag - duration
+	case StartToFinish:
+		return predES + lag - duration
+	default: // FinishToStart
+		return predEF + lag
+	}
+}
+
 // lateConstraintDay is the offset a latest limit compares with: the last
 // working day on or before the constraint date (see ConstraintLateShift).
 func lateConstraintDay(t *Task) float64 {
@@ -224,9 +240,15 @@ type Task struct {
 	// delay that breaks a latest limit is flagged. It is never violated
 	// itself. LevelResourcesWithOptions disarms it, because levelling
 	// recomputes it from the logic and the user's constraints.
-	LevelStart      string  `json:"level_start,omitempty"`
-	LevelStartDay   float64 `json:"level_start_day,omitempty"`
-	LevelStartArmed bool    `json:"level_start_armed,omitempty"`
+	LevelStart string `json:"level_start,omitempty"`
+	// LevelStartFraction is the share of LevelStart's working day already
+	// passed when the task starts (0 <= f < 1; owner decision D-STORE,
+	// 2026-11-23): levelling in part days can start a task part-way
+	// through a day. ApplyConstraintDates arms LevelStartDay as the day's
+	// offset plus this fraction; a value outside [0, 1) is read as 0.
+	LevelStartFraction float64 `json:"level_start_fraction,omitempty"`
+	LevelStartDay      float64 `json:"level_start_day,omitempty"`
+	LevelStartArmed    bool    `json:"level_start_armed,omitempty"`
 	// LevelStartBinding is set by the forward pass when the levelled start
 	// is later than the start the links give, so levelling, not the
 	// logic, holds the task where it is.
@@ -433,19 +455,7 @@ func (plan *cpmPlan) run() {
 		t.LevelStartBinding = false
 		es := 0.0
 		for _, l := range plan.preds[i] {
-			p := l.task
-			var candidate float64
-			switch l.typ {
-			case StartToStart:
-				candidate = p.ES + l.lag
-			case FinishToFinish:
-				candidate = p.EF + l.lag - t.Duration
-			case StartToFinish:
-				candidate = p.ES + l.lag - t.Duration
-			default: // FinishToStart
-				candidate = p.EF + l.lag
-			}
-			if candidate > es {
+			if candidate := linkCandidate(l.typ, l.lag, l.task.ES, l.task.EF, t.Duration); candidate > es {
 				es = candidate
 			}
 		}

@@ -56,6 +56,7 @@ func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 // levelledNode is what levelling persists on a node, as stored.
 type levelledNode struct {
 	Constraint, ConstraintDate, LevelStart string
+	LevelStartFraction                     float64
 }
 
 // storedLevelling reads every node's constraint and levelled start from
@@ -68,10 +69,11 @@ func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]le
 	}
 	var doc struct {
 		Nodes []struct {
-			ID             string `json:"id"`
-			Constraint     string `json:"constraint"`
-			ConstraintDate string `json:"constraint_date"`
-			LevelStart     string `json:"level_start"`
+			ID             string  `json:"id"`
+			Constraint     string  `json:"constraint"`
+			ConstraintDate string  `json:"constraint_date"`
+			LevelStart     string  `json:"level_start"`
+			Fraction       float64 `json:"level_start_fraction"`
 		} `json:"nodes"`
 	}
 	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
@@ -79,7 +81,7 @@ func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]le
 	}
 	out := map[string]levelledNode{}
 	for _, n := range doc.Nodes {
-		out[n.ID] = levelledNode{n.Constraint, n.ConstraintDate, n.LevelStart}
+		out[n.ID] = levelledNode{n.Constraint, n.ConstraintDate, n.LevelStart, n.Fraction}
 	}
 	return out
 }
@@ -827,4 +829,86 @@ func layoutReportsStale(t *testing.T, app *App, chartID string) bool {
 		t.Fatalf("decode layout: %v", err)
 	}
 	return body.Doc.LevellingStale
+}
+
+// The saved chart lays out as levelling placed it (owner decisions
+// 2026-11-23): levelling, saving and laying out again gives each
+// task its levelled start and flags nothing. Project from Monday
+// 2026-06-01, weekdays.
+func TestLevelledChartLaysOutAsLevelled(t *testing.T) {
+	cases := []struct {
+		name     string
+		data     string
+		split    bool
+		calendar map[int]float64
+		stored   map[string]levelledNode
+		es       map[string]float64
+	}{
+		{
+			// A and B (half a day each on alice) would overlap at 0; A goes
+			// first (ID order) and B starts when A ends, half-way through
+			// Monday. Only B needs a stored start: Monday plus 0.5.
+			name: "a part-day start is stored with its share of the day",
+			data: `{"nodes":[
+				{"id":"A","label":"A","duration":0.5,"assignments":[{"resource":"alice"}]},
+				{"id":"B","label":"B","duration":0.5,"assignments":[{"resource":"alice"}]}],"edges":[]}`,
+			stored: map[string]levelledNode{"A": {}, "B": {LevelStart: "2026-06-01", LevelStartFraction: 0.5}},
+			es:     map[string]float64{"A": 0, "B": 0.5},
+		},
+		{
+			// alice is away on days 1 and 3, so S (3 days) splits onto days
+			// 0, 2 and 4 and finishes at 5; T follows S. Saved, the forward
+			// pass sees S end at 3, so T keeps its own start: day 5, Monday
+			// 06-08. S itself starts where the logic puts it.
+			name:     "the successor of a split task keeps its start",
+			split:    true,
+			calendar: map[int]float64{1: 0, 3: 0},
+			data: `{"nodes":[
+				{"id":"S","label":"S","duration":3,"assignments":[{"resource":"alice"}]},
+				{"id":"T","label":"T","duration":1,"assignments":[{"resource":"alice"}]}],
+				"edges":[{"from":"S","to":"T"}]}`,
+			stored: map[string]levelledNode{"S": {}, "T": {LevelStart: "2026-06-08"}},
+			es:     map[string]float64{"S": 0, "T": 5},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d, _ := newResourceTestApp(t)
+			if tc.calendar != nil {
+				saveAliceCalendar(t, d, tc.calendar, nil)
+			}
+			c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Levelled", Data: tc.data})
+			if err != nil {
+				t.Fatalf("SaveChart: %v", err)
+			}
+			if _, err := app.LevelChartResources(c.ID, "", false, tc.split); err != nil {
+				t.Fatalf("LevelChartResources: %v", err)
+			}
+			if got := storedLevelling(t, d, c.ID); !reflect.DeepEqual(got, tc.stored) {
+				t.Errorf("stored %+v, want %+v", got, tc.stored)
+			}
+
+			res, err := app.LayoutChart(c.ID)
+			if err != nil {
+				t.Fatalf("LayoutChart: %v", err)
+			}
+			var body struct {
+				Doc struct {
+					Nodes []struct {
+						ID            string  `json:"id"`
+						ES            float64 `json:"es"`
+						Overallocated bool    `json:"overallocated"`
+					} `json:"nodes"`
+				} `json:"doc"`
+			}
+			if err := json.Unmarshal(res.Body, &body); err != nil {
+				t.Fatalf("decode layout: %v", err)
+			}
+			for _, n := range body.Doc.Nodes {
+				if n.ES != tc.es[n.ID] || n.Overallocated {
+					t.Errorf("%s laid out at ES %v (overallocated %v), want ES %v and not overallocated", n.ID, n.ES, n.Overallocated, tc.es[n.ID])
+				}
+			}
+		})
+	}
 }

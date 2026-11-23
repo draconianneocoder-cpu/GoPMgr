@@ -147,8 +147,10 @@ func calendarDate(t time.Time) time.Time {
 // (SNET, SNLT, MSO, FNET, FNLT, MFO; see IsDateConstraint) by
 // converting ConstraintDate into working-day offsets against the project
 // start and work calendar, and arms each task's LevelStart the same way
-// (the next working day on or after it; an unreadable one is ignored,
-// since levelling rewrites it). Tasks with no constraint, ASAP, ALAP, or a
+// (the next working day on or after it, plus LevelStartFraction; an
+// unreadable one is ignored, since levelling rewrites it). A levelled
+// start on a day that is no longer a working day keeps its fraction on the
+// next working day. Tasks with no constraint, ASAP, ALAP, or a
 // date that cannot be converted are left unarmed; for the last,
 // ConstraintUnapplied says why. Every call first resets
 // the fields it sets. Call it BEFORE CalculateCPM; without it, date
@@ -183,7 +185,7 @@ func ApplyConstraintDates(tasks map[string]*Task, projectStart time.Time, isWork
 		if t.LevelStart != "" {
 			if date, err := time.Parse(DateLayout, t.LevelStart); err == nil {
 				if day, ok := DayOffset(projectStart, date, isWorkday); ok {
-					t.LevelStartDay, t.LevelStartArmed = day, true
+					t.LevelStartDay, t.LevelStartArmed = day+dayFraction(t.LevelStartFraction), true
 				}
 			}
 		}
@@ -259,6 +261,62 @@ func latestWorkdayOffset(projectStart, date time.Time, isWorkday WorkdayFunc) (f
 	}
 	return 0, false
 }
+
+// dayFraction reads a stored share of a working day: f when 0 <= f < 1,
+// else 0 (NaN included).
+func dayFraction(f float64) float64 {
+	if f >= 0 && f < 1 {
+		return f
+	}
+	return 0
+}
+
+// SplitDayOffset splits a working-day offset into the day it falls in (by
+// the rule AnchorSchedule shows a start with) and the share of that day
+// already passed, 0 within 1e-9 of the day's start: the form a levelled
+// start is stored in (LevelStart's date plus LevelStartFraction).
+func SplitDayOffset(offset float64) (day int, fraction float64) {
+	day = int(math.Floor(offset + 1e-9))
+	if fraction = offset - float64(day); fraction < 1e-9 {
+		fraction = 0
+	}
+	return day, fraction
+}
+
+// The working day on the clock (2026-11-23): where a time of
+// day is shown or exchanged (MSPDI, audit text), a working day follows
+// Microsoft Project's standard calendar, 08:00-12:00 and 13:00-17:00, so a
+// share f of the day is 8f working hours from 08:00, skipping 12:00-13:00.
+const (
+	workdayMinutes  = 480
+	morningMinutes  = 240
+	dayStartMinute  = 8 * 60
+	afternoonMinute = 13 * 60
+)
+
+// StartClock is the time of day a start f of the way through a working day
+// (0 <= f < 1) falls at: the next working minute, so f = 0 is 08:00 and f
+// = 0.5 is 13:00, not 12:00. Minutes are rounded.
+func StartClock(f float64) (hour, minute int) {
+	m := int(math.Round(dayFraction(f) * workdayMinutes))
+	if m < morningMinutes {
+		return clock(dayStartMinute + m)
+	}
+	return clock(afternoonMinute + m - morningMinutes)
+}
+
+// FinishClock is the time of day work ending f of the way through a
+// working day (0 < f <= 1) stops at: the last working minute, so f = 0.5
+// is 12:00 and f = 1 is 17:00. Minutes are rounded.
+func FinishClock(f float64) (hour, minute int) {
+	m := int(math.Round(math.Min(math.Max(f, 0), 1) * workdayMinutes))
+	if m <= morningMinutes {
+		return clock(dayStartMinute + m)
+	}
+	return clock(afternoonMinute + m - morningMinutes)
+}
+
+func clock(minutes int) (hour, minute int) { return minutes / 60, minutes % 60 }
 
 // startOffset is the working-day index a task begins on: the day its
 // start falls in, so a task starting part-way through day d (ES = d+0.5)

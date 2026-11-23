@@ -740,7 +740,7 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 		},
 		{
 			// A CalendarID naming no calendar falls back to the resource's
-			// own (R3.9), whose day 0 has no capacity.
+			// own, whose day 0 has no capacity.
 			id:             "T3-7 an unknown assignment calendar reads the resource's calendar",
 			productionOnly: true,
 			build: func() map[string]*Task {

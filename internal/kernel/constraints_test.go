@@ -4,6 +4,7 @@
 package kernel
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -655,4 +656,57 @@ func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
 			t.Errorf("%s binding %v, want %v", id, tasks[id].LevelStartBinding, want.binding)
 		}
 	}
+}
+
+// A levelled start part-way through a day is stored as its date and the
+// share of the day passed (D-STORE, 2026-11-23) and armed as the day's
+// offset plus that share. From Monday 2026-06-01 on weekdays: offset 2.75
+// is Wednesday 06-03 with 0.75 passed; 6.5 is Tuesday 06-09 (after the
+// weekend) with 0.5; summing noise just below a day boundary is that day.
+func TestLevelStartFractionRoundTrip(t *testing.T) {
+	for _, c := range []struct {
+		offset   float64
+		date     string
+		fraction float64
+	}{
+		{0, "2026-06-01", 0},
+		{0.5, "2026-06-01", 0.5},
+		{2.75, "2026-06-03", 0.75},
+		{6.5, "2026-06-09", 0.5},
+		{2.9999999999, "2026-06-04", 0},
+	} {
+		day, fraction := SplitDayOffset(c.offset)
+		task := &Task{ID: "A", Duration: 1, LevelStart: weekdayDate(day), LevelStartFraction: fraction}
+		if task.LevelStart != c.date || fraction != c.fraction {
+			t.Errorf("offset %v stored as %s + %v, want %s + %v", c.offset, task.LevelStart, fraction, c.date, c.fraction)
+		}
+		ApplyConstraintDates(map[string]*Task{"A": task}, conStart, weekdaysOnly)
+		if !task.LevelStartArmed || !sameOffset(task.LevelStartDay, c.offset) {
+			t.Errorf("offset %v armed as %v (armed %v)", c.offset, task.LevelStartDay, task.LevelStartArmed)
+		}
+	}
+
+	// A share outside [0, 1) is read as the start of the day; a date that
+	// is now a Saturday keeps its share on Monday 06-08 (offset 5).
+	for _, c := range []struct {
+		date     string
+		fraction float64
+		want     float64
+	}{
+		{"2026-06-02", 1, 1},
+		{"2026-06-02", -0.25, 1},
+		{"2026-06-02", math.NaN(), 1},
+		{"2026-06-06", 0.25, 5.25},
+	} {
+		task := &Task{ID: "A", Duration: 1, LevelStart: c.date, LevelStartFraction: c.fraction}
+		ApplyConstraintDates(map[string]*Task{"A": task}, conStart, weekdaysOnly)
+		approx(t, c.date+" LevelStartDay", task.LevelStartDay, c.want)
+	}
+}
+
+// weekdayDate is working day k counted from Monday 2026-06-01, weekdays
+// only, written out independently of AnchorSchedule.
+func weekdayDate(k int) string {
+	d := conStart.AddDate(0, 0, 7*(k/5)+k%5)
+	return d.Format(DateLayout)
 }

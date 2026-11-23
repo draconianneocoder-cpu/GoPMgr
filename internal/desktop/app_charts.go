@@ -555,14 +555,14 @@ func levelingStrategyFor(s string) kernel.LevelingStrategy {
 }
 
 // LevelChartResources runs the kernel's serial resource-levelling
-// pass on a CPM chart and PERSISTS the result: every task that
-// levelling starts on a later day than the logic and its constraints
-// alone would gets that date as its levelled start (node level_start);
-// every other task's levelled start is cleared. Levelling ignores the
-// previous run's levelled starts and never changes a constraint (owner
-// decision 2026-11-18). ALAP tasks get none: the ALAP pass moves them to
-// their late dates regardless. Requires a project start date to express
-// levelled offsets as dates.
+// pass on a CPM chart and PERSISTS the result: every task the saved chart
+// would otherwise start earlier than levelling placed it gets its levelled
+// start, as the day it starts in (node level_start) and the share of that
+// day already passed (level_start_fraction; owner decision 2026-11-23); every other task's is cleared, including successors their
+// links move as far. Levelling ignores the previous run's levelled starts
+// and never changes a constraint (owner decision 2026-11-18). ALAP tasks
+// get none: the ALAP pass moves them to their late dates regardless.
+// Requires a project start date to express levelled offsets as dates.
 //
 // Returns a LevelResult with the number of tasks pinned and any tasks
 // whose demand could not be fit within capacity (still overallocated).
@@ -647,6 +647,13 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		return LevelResult{}, scheduleTooLongErr(levelErr)
 	}
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
+	// The levelled starts the saved chart needs: those of the
+	// tasks the saved chart would otherwise start earlier than levelling
+	// placed them. Successors their links move as far get none.
+	keep, ok := kernel.LevelStartsToKeep(levelled)
+	if !ok {
+		return LevelResult{}, errors.New("chart contains a dependency cycle")
+	}
 
 	pinned := 0
 	var violated []string
@@ -663,13 +670,12 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		if lt.ConstraintViolated && !pt.ConstraintViolated {
 			violated = append(violated, n.ID)
 		}
-		n.LevelStart = ""
-		if lt.Constraint == kernel.AsLateAsPossible {
-			continue
-		}
-		// Dates in DateLayout compare in calendar order as strings.
-		if lt.StartDate > pt.StartDate {
-			n.LevelStart = lt.StartDate
+		n.LevelStart, n.LevelStartFraction = "", 0
+		if _, keepIt := keep[n.ID]; keepIt {
+			// Stored as the day it starts in and the share of that day
+			// already passed (owner decision D-STORE, 2026-11-23).
+			_, fraction := kernel.SplitDayOffset(lt.ES)
+			n.LevelStart, n.LevelStartFraction = lt.StartDate, fraction
 			pinned++
 		}
 	}

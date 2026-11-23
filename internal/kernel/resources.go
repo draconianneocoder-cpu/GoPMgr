@@ -542,7 +542,7 @@ func (s *instantSweep) day(d int, demand float64, m *overallocationMembers) ([]i
 // per day, the units of bookings that cover the day whole (summed, with the
 // smallest of their capacities that day) and the part-day pieces. A
 // multi-day booking adds its interior days to the whole-day totals; only
-// its part-day ends are listed (Gate A condition C3), so whole-day
+// its part-day ends are listed, so whole-day
 // schedules keep the memory and time of the earlier per-day totals.
 type resourceBookings struct {
 	whole    []float64 // summed units of whole-day bookings
@@ -1115,18 +1115,7 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			if !exists {
 				continue
 			}
-			var candidate float64
-			switch l.Type {
-			case StartToStart:
-				candidate = p.ES + l.Lag
-			case FinishToFinish:
-				candidate = p.EF + l.Lag - t.Duration
-			case StartToFinish:
-				candidate = p.ES + l.Lag - t.Duration
-			default: // FinishToStart
-				candidate = p.EF + l.Lag
-			}
-			if candidate > earliest {
+			if candidate := linkCandidate(l.Type, l.Lag, p.ES, p.EF, t.Duration); candidate > earliest {
 				earliest = candidate
 			}
 		}
