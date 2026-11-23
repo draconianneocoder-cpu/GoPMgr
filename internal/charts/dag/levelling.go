@@ -17,17 +17,19 @@ import (
 
 // levellingDigestVersion prefixes every digest, so a later change to the
 // canonical form below is told apart from a schedule change.
-const levellingDigestVersion = "v1:"
+const levellingDigestVersion = "v2:"
 
 // LevellingInputsDigest identifies the chart content resource levelling
 // read: each task's duration, milestone flag, constraint as the kernel
 // reads it (and its date, for date constraints) and assignments to a
 // named resource, and each link's ends, type and lag. Labels, progress,
 // costs, estimates, levelled starts, split segments and computed fields
-// are left out, so editing them never makes levelling look out of date. The project start date, the
-// work calendar and resource capacity outside the chart are not included
-// either (a documented limit).
-func LevellingInputsDigest(doc LayeredDocument) string {
+// are left out, so editing them never makes levelling look out of date.
+// context carries what levelling read from outside the chart: the project
+// start date, the work calendar and the capacity of the resources and
+// calendars the chart's assignments name (built by the caller; empty when
+// unknown). v2 added it; a v1 digest never matches.
+func LevellingInputsDigest(doc LayeredDocument, context string) string {
 	type assignment struct {
 		Resource   string   `json:"resource"`
 		Units      float64  `json:"units"`
@@ -92,6 +94,7 @@ func LevellingInputsDigest(doc LayeredDocument) string {
 	})
 
 	h := sha256.New()
+	h.Write([]byte("context\n" + context + "\n"))
 	for _, raw := range nodes {
 		h.Write(raw)
 		h.Write([]byte{'\n'})
@@ -102,15 +105,16 @@ func LevellingInputsDigest(doc LayeredDocument) string {
 	return levellingDigestVersion + hex.EncodeToString(h.Sum(nil))
 }
 
-// LevellingIsStale reports whether the chart's scheduling inputs changed
-// since levelling stored LevelledInputs, while some task still carries a
-// levelled start or split segments that the change may have made wrong.
-func LevellingIsStale(doc LayeredDocument) bool {
+// LevellingIsStale reports whether the chart's scheduling inputs, read with
+// context, changed since levelling stored LevelledInputs, while some task
+// still carries a levelled start or split segments that the change may
+// have made wrong.
+func LevellingIsStale(doc LayeredDocument, context string) bool {
 	if doc.LevelledInputs == "" {
 		return false
 	}
 	levelled := slices.ContainsFunc(doc.Nodes, func(n LayeredNode) bool {
 		return n.LevelStart != "" || len(n.WorkSegments) > 0
 	})
-	return levelled && LevellingInputsDigest(doc) != doc.LevelledInputs
+	return levelled && LevellingInputsDigest(doc, context) != doc.LevelledInputs
 }

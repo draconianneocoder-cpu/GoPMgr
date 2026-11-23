@@ -10,6 +10,10 @@ import (
 	"gopmgr/internal/kernel"
 )
 
+// ctx stands for what levelling read outside the chart (the desktop builds
+// it from the project start, calendar and referenced capacity).
+const ctx = `{"start":"2026-06-01","calendar":"US"}`
+
 // levelledDoc is a levelled chart: B carries a levelled start.
 func levelledDoc() LayeredDocument {
 	return LayeredDocument{
@@ -26,8 +30,8 @@ func levelledDoc() LayeredDocument {
 // The digest changes exactly when something levelling reads changes (owner
 // decision 2026-11-21: warn when the schedule changed since levelling).
 func TestLevellingInputsDigestTracksSchedulingInputsOnly(t *testing.T) {
-	base := LevellingInputsDigest(levelledDoc())
-	if !strings.HasPrefix(base, "v1:") {
+	base := LevellingInputsDigest(levelledDoc(), ctx)
+	if !strings.HasPrefix(base, "v2:") {
 		t.Fatalf("digest %q has no version prefix", base)
 	}
 	same := map[string]func(*LayeredDocument){
@@ -50,17 +54,22 @@ func TestLevellingInputsDigestTracksSchedulingInputsOnly(t *testing.T) {
 	for name, edit := range same {
 		doc := levelledDoc()
 		edit(&doc)
-		if got := LevellingInputsDigest(doc); got != base {
+		if got := LevellingInputsDigest(doc, ctx); got != base {
 			t.Errorf("%s changed the digest", name)
 		}
+	}
+
+	// The context outside the chart is part of what levelling read.
+	if LevellingInputsDigest(levelledDoc(), `{"start":"2026-06-08","calendar":"US"}`) == base {
+		t.Error("a different project start left the digest unchanged")
 	}
 
 	// A date left on a task whose constraint no longer uses one is not read.
 	asap := levelledDoc()
 	asap.Nodes[0].Constraint = "ASAP"
-	asapBase := LevellingInputsDigest(asap)
+	asapBase := LevellingInputsDigest(asap, ctx)
 	asap.Nodes[0].ConstraintDate = "2026-07-01"
-	if LevellingInputsDigest(asap) != asapBase {
+	if LevellingInputsDigest(asap, ctx) != asapBase {
 		t.Error("the date of an ASAP task changed the digest")
 	}
 
@@ -79,7 +88,7 @@ func TestLevellingInputsDigestTracksSchedulingInputsOnly(t *testing.T) {
 	for name, edit := range differ {
 		doc := levelledDoc()
 		edit(&doc)
-		if LevellingInputsDigest(doc) == base {
+		if LevellingInputsDigest(doc, ctx) == base {
 			t.Errorf("%s left the digest unchanged", name)
 		}
 	}
@@ -89,7 +98,7 @@ func TestLevellingInputsDigestTracksSchedulingInputsOnly(t *testing.T) {
 // since, and some task still carries a levelled start or split segments.
 func TestLevellingIsStale(t *testing.T) {
 	stored := levelledDoc()
-	stored.LevelledInputs = LevellingInputsDigest(stored)
+	stored.LevelledInputs = LevellingInputsDigest(stored, ctx)
 
 	edited := stored
 	edited.Nodes = append([]LayeredNode(nil), stored.Nodes...)
@@ -102,6 +111,10 @@ func TestLevellingIsStale(t *testing.T) {
 	never := edited
 	never.LevelledInputs = ""
 
+	// A digest from before the context was added (v1) never matches.
+	older := stored
+	older.LevelledInputs = "v1:" + strings.TrimPrefix(stored.LevelledInputs, "v2:")
+
 	for name, c := range map[string]struct {
 		doc  LayeredDocument
 		want bool
@@ -111,7 +124,7 @@ func TestLevellingIsStale(t *testing.T) {
 		"edited, levelled starts gone": {cleared, false},
 		"never levelled":               {never, false},
 	} {
-		if got := LevellingIsStale(c.doc); got != c.want {
+		if got := LevellingIsStale(c.doc, ctx); got != c.want {
 			t.Errorf("%s: stale %v, want %v", name, got, c.want)
 		}
 	}

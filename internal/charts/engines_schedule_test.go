@@ -18,7 +18,7 @@ const cpmRaw = `{"nodes":[{"id":"A","label":"A","duration":2}],"edges":[]}`
 
 func TestLayoutWithSchedule_CPMEmitsAnchoredDates(t *testing.T) {
 	start := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
-	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
+	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1}, "")
 	if err != nil {
 		t.Fatalf("LayoutWithSchedulePlan: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestLayoutWithSchedule_CPMEmitsAnchoredDates(t *testing.T) {
 }
 
 func TestLayoutWithSchedule_ZeroStartFallsBack(t *testing.T) {
-	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, time.Time{}, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
+	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, time.Time{}, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1}, "")
 	if err != nil {
 		t.Fatalf("LayoutWithSchedulePlan: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestLayoutWithSchedule_ZeroStartFallsBack(t *testing.T) {
 func TestLayoutWithSchedule_NonCPMDelegates(t *testing.T) {
 	raw := `{"root":{"id":"1","title":"Project"}}`
 	start := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
-	res, err := LayoutWithSchedulePlan(KindWBS, raw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
+	res, err := LayoutWithSchedulePlan(KindWBS, raw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1}, "")
 	if err != nil {
 		t.Fatalf("LayoutWithSchedulePlan(WBS): %v", err)
 	}
@@ -57,26 +57,28 @@ func TestLayoutWithSchedule_NonCPMDelegates(t *testing.T) {
 	}
 }
 
-// The CPM and Gantt layouts, anchored or not, report in their annotated
+// With project context the CPM and Gantt layouts report in their annotated
 // document whether the chart's scheduling inputs changed since levelling
-// (owner decision 2026-11-21). The layouts take the document by value, so
-// a flag set inside them would be lost; the engine sets it.
+// (owner decision 2026-11-21); the layouts take the document by value, so
+// the engine sets it. Plain Layout has no project context and never
+// reports it (unknown, not stale).
 func TestLayoutsReportStaleLevelling(t *testing.T) {
+	const context = `{"start":"2026-06-01"}`
 	levelled := dag.LayeredDocument{
 		Nodes: []dag.LayeredNode{{ID: "A", Label: "A", Duration: 2, LevelStart: "2026-06-03"}},
 	}
-	digest := dag.LevellingInputsDigest(levelled)
+	digest := dag.LevellingInputsDigest(levelled, context)
 	raw := func(duration float64) string {
 		return fmt.Sprintf(`{"nodes":[{"id":"A","label":"A","duration":%v,"level_start":"2026-06-03"}],"edges":[],"levelled_inputs":%q}`, duration, digest)
 	}
 	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	for _, kind := range []Kind{KindCPM, KindGantt} {
 		for _, anchored := range []bool{false, true} {
-			for duration, want := range map[float64]bool{2: false, 3: true} {
+			for duration, changed := range map[float64]bool{2: false, 3: true} {
 				var res LayoutResult
 				var err error
 				if anchored {
-					res, err = LayoutWithSchedulePlan(kind, raw(duration), start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
+					res, err = LayoutWithSchedulePlan(kind, raw(duration), start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1}, context)
 				} else {
 					res, err = Layout(kind, raw(duration))
 				}
@@ -92,6 +94,7 @@ func TestLayoutsReportStaleLevelling(t *testing.T) {
 				if err := json.Unmarshal(res.Body, &body); err != nil {
 					t.Fatalf("decode body: %v", err)
 				}
+				want := anchored && changed
 				if body.Doc.LevellingStale != want || body.Doc.LevelledInputs != digest {
 					t.Errorf("%s anchored=%v duration %v: stale %v (stored %q), want stale %v with the stored digest kept",
 						kind, anchored, duration, body.Doc.LevellingStale, body.Doc.LevelledInputs, want)

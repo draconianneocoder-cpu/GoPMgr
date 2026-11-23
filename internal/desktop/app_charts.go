@@ -188,14 +188,18 @@ func layoutChartForProject(d *db.Database, c db.Chart, proj db.Project) (charts.
 		projectStart time.Time
 		isWorkday    kernel.WorkdayFunc
 		capacityPlan kernel.ResourceCapacityPlan
+		context      string
 	)
 	if start, ok := parseProjectDate(proj.StartDate); ok {
 		projectStart = start
 		isWorkday = calendar.For(proj.CountryCode).IsWorkday
 		capacityPlan = resourceCapacityPlan(d, proj.ID)
+		if doc, err := dag.ParseLayered(c.Data); err == nil {
+			context = levellingContext(proj, capacityPlan, doc)
+		}
 	}
 
-	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan)
+	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan, context)
 	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
 		return charts.LayoutResult{}, scheduleTooLongErr(err)
 	}
@@ -677,7 +681,8 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	doc.LevelledInputs = ""
 	for _, n := range doc.Nodes {
 		if n.LevelStart != "" || len(n.WorkSegments) > 0 {
-			doc.LevelledInputs = dag.LevellingInputsDigest(dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges})
+			layered := dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges}
+			doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(proj, resourceCapacityPlan(d, proj.ID), layered))
 			break
 		}
 	}
@@ -1154,4 +1159,59 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		Data:      string(blob),
 		Config:    string(receipt),
 	})
+}
+
+// levellingContext is what resource levelling reads from outside a chart,
+// in a canonical form for dag.LevellingInputsDigest: the project start date
+// (normalised), the work calendar (calendar.For's country code) and the
+// capacity of every resource and calendar the chart's assignments name —
+// base capacity, and calendar default, weekly and override capacities.
+// Notes, skill tags and resources the chart does not use are left out, so
+// editing them does not make levelling look out of date. LevelChartResources
+// and the layout path both build it here.
+func levellingContext(proj db.Project, plan kernel.ResourceCapacityPlan, doc dag.LayeredDocument) string {
+	type calendarCapacity struct {
+		Default  float64         `json:"default"`
+		Weekly   map[int]float64 `json:"weekly"`
+		Override map[int]float64 `json:"overrides"`
+	}
+	type resourceCapacity struct {
+		Base     float64           `json:"base"`
+		Calendar *calendarCapacity `json:"calendar"`
+	}
+	calendarOf := func(key string) *calendarCapacity {
+		cal, ok := plan.Calendars[key]
+		if !ok {
+			return nil
+		}
+		return &calendarCapacity{cal.DefaultCapacity, cal.WeeklyCapacity, cal.Overrides}
+	}
+	ctx := struct {
+		Start     string                       `json:"start"`
+		Calendar  string                       `json:"calendar"`
+		Default   float64                      `json:"default"`
+		Resources map[string]resourceCapacity  `json:"resources"`
+		Calendars map[string]*calendarCapacity `json:"calendars"`
+	}{
+		Calendar:  calendar.For(proj.CountryCode).CountryCode,
+		Default:   plan.DefaultCapacity,
+		Resources: map[string]resourceCapacity{},
+		Calendars: map[string]*calendarCapacity{},
+	}
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		ctx.Start = start.Format(kernel.DateLayout)
+	}
+	for _, n := range doc.Nodes {
+		for _, a := range n.Assignments {
+			if a.Resource == "" {
+				continue
+			}
+			ctx.Resources[a.Resource] = resourceCapacity{plan.Capacities[a.Resource], calendarOf(a.Resource)}
+			if a.CalendarID != "" {
+				ctx.Calendars[a.CalendarID] = calendarOf(a.CalendarID)
+			}
+		}
+	}
+	raw, _ := json.Marshal(ctx) // maps of numbers and strings: cannot fail; keys are sorted
+	return string(raw)
 }

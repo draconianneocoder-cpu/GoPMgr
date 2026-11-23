@@ -740,3 +740,91 @@ func TestLevelledChartIsStaleOnlyAfterAScheduleEdit(t *testing.T) {
 		t.Fatal("a duration edit after levelling does not report stale levelling")
 	}
 }
+
+// What levelling read outside the chart is part of what can go stale: the
+// project start date, and the capacity of the resources the chart uses
+// (stakeholder availability, their calendars). Calendar notes and
+// resources the chart does not use are not. Each case levels the A/B alice
+// chart (a calendar for alice exists from the start), changes one thing,
+// and lays the chart out again.
+func TestLevellingGoesStaleWhenItsContextChanges(t *testing.T) {
+	cases := []struct {
+		name  string
+		edit  func(t *testing.T, d *db.Database)
+		stale bool
+	}{
+		{"project start date", func(t *testing.T, d *db.Database) {
+			if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Resource Test", StartDate: "2026-06-08"}); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
+		{"capacity of a resource the chart uses", func(t *testing.T, d *db.Database) {
+			if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: "project-1", Name: "alice", Availability: 0.5}); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
+		{"its calendar's capacity", func(t *testing.T, d *db.Database) {
+			saveAliceCalendar(t, d, map[int]float64{4: 0}, nil)
+		}, true},
+		{"its calendar's notes", func(t *testing.T, d *db.Database) {
+			saveAliceCalendar(t, d, nil, map[int]string{4: "training"})
+		}, false},
+		{"a resource the chart does not use", func(t *testing.T, d *db.Database) {
+			if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: "project-1", Name: "bob", Availability: 3}); err != nil {
+				t.Fatal(err)
+			}
+		}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d, c := newResourceTestApp(t)
+			saveAliceCalendar(t, d, nil, nil)
+			if _, err := app.LevelChartResources(c.ID, "", false, false); err != nil {
+				t.Fatalf("LevelChartResources: %v", err)
+			}
+			if layoutReportsStale(t, app, c.ID) {
+				t.Fatal("a chart just levelled reports stale levelling")
+			}
+			tc.edit(t, d)
+			if got := layoutReportsStale(t, app, c.ID); got != tc.stale {
+				t.Errorf("stale after the change = %v, want %v", got, tc.stale)
+			}
+		})
+	}
+}
+
+// saveAliceCalendar stores (or replaces) alice's resource calendar.
+func saveAliceCalendar(t *testing.T, d *db.Database, overrides map[int]float64, notes map[int]string) {
+	t.Helper()
+	cals, err := d.ListResourceCalendars("project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cal := db.ResourceCalendar{ProjectID: "project-1", Resource: "alice", DefaultCapacity: 1, Overrides: overrides, Notes: notes}
+	for _, existing := range cals {
+		if existing.Resource == "alice" {
+			cal.ID = existing.ID
+		}
+	}
+	if _, err := d.SaveResourceCalendar(cal); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// layoutReportsStale lays a chart out through the app and reads the flag.
+func layoutReportsStale(t *testing.T, app *App, chartID string) bool {
+	t.Helper()
+	res, err := app.LayoutChart(chartID)
+	if err != nil {
+		t.Fatalf("LayoutChart: %v", err)
+	}
+	var body struct {
+		Doc struct {
+			LevellingStale bool `json:"levelling_stale"`
+		} `json:"doc"`
+	}
+	if err := json.Unmarshal(res.Body, &body); err != nil {
+		t.Fatalf("decode layout: %v", err)
+	}
+	return body.Doc.LevellingStale
+}
