@@ -44,12 +44,17 @@ below passes against it unmodified.
 ## Current behavior
 
 - **Records.** One `Overallocation` per resource and integer project day
-  where `demand <= capacity + 1e-9` is false, or where some contiguous
-  task works part of that day (share above 0) with an assignment whose
-  effective units exceed `capacity + 1e-9` (the rate rule, 2026-11-23).
-  `Demand` is the day's total either way. Records are ordered by
-  resource, then day. `TaskIDs` holds the printed `Task.ID` of every
-  participating map entry, sorted, never truncated.
+  on which, at some moment, the units in use exceed the smallest capacity
+  among the assignments in use at that moment (time intervals, 2026-11-23;
+  see the change below). `Demand` is the day's total, which can be at or
+  below `Capacity` when the breach is an overlap within the day.
+  `Capacity` is the smallest capacity that day among the participants'
+  assignments to the resource. Records are ordered by resource, then day.
+  `TaskIDs` holds the printed `Task.ID` of every participating map entry,
+  sorted, never truncated: the entries in use at an overloaded moment.
+  When every participant covers the whole day (every day of a whole-day
+  schedule), this is the day-total comparison `demand <= capacity + 1e-9`
+  of earlier versions.
 - **Empty result.** No conflicts, including an empty or nil task map,
   returns a nil slice, which marshals to `null`.
 - **Flags.** Every input task's `Overallocated` is cleared first, then set on
@@ -103,7 +108,44 @@ tasks may run at the same time on one person when their day's total
 fits. Levelling's rate check reads the assignment's calendar and
 detection's the resource's, the same divergence as F-09.
 Resource levelling books the same shares (part-day levelling, also
-2026-11-21), so the leveller and the detector agree.
+2026-11-21), so the leveller and the detector agree. The rate rule and
+the day-total rule for part days were superseded on 2026-11-23 (below).
+
+### Contract change, 2026-11-23 (owner decisions D-TIME and D-CAL)
+
+The day-total rule let two part-day tasks run at the same moment on one
+person while their day's total fitted. The owner compared it with a rule
+over time and chose time intervals (D-TIME, "time intervals"), with the
+standing direction that GoPMgr's planning should be more accurate and
+precise than comparable programs. A contiguous task uses each assignment's
+effective units over `[ES, EF)` on the working-time axis, shrunk by `1e-9`
+at both ends so summing noise (0.1 + 0.2 against 0.3) is not an overlap; a
+split task uses them over each listed day whole, as often as the day is
+listed. A day is a breach when, at some moment, the units in use exceed
+the smallest capacity among the assignments in use then; NaN or infinite
+units in use, or a NaN capacity, make that moment a breach. The rate rule
+is the case of one assignment alone. Two half-day tasks at the same
+moment now breach (T3-1), one after the other do not (OR-01-S4c), and only
+the tasks in use at an overloaded moment take part (T3-2).
+
+The owner also chose one calendar rule (D-CAL, "assignment calendar"):
+detection, like levelling, reads an assignment's capacity from the
+calendar it names, and from the resource's own when it names none or one
+that does not exist (T3-7). F-09 is resolved: its row keeps the frozen
+copy's answer and has a separate production expectation, and
+`TestDetectorAndLevelerReadTheSameCalendar` replaces the two-sided
+tripwire.
+
+Levelling applies the same rule. It books whole-day totals per day (with
+the smallest capacity among them) and lists part-day pieces separately,
+checks a start against the shared overload sweep, sums a task's
+assignments to one resource (before, each was checked alone, so a task
+needing 1 + 1 of a one-person resource was reported levelled and then
+flagged), and tries the ends of part-day bookings as well as day
+boundaries. `TestLevelledScheduleIsOverallocatedOnlyByUnplacedTasks`
+holds the agreement: after levelling, every record names an unplaced
+task. Whole-day schedules without assignment calendars give the same
+records and the same levelled dates as before.
 - **Capacity.** Each step replaces the one before it:
   1. the plan default (1 when not positive);
   2. a positive `Capacities[resource]`;
@@ -111,13 +153,17 @@ Resource levelling books the same shares (part-day levelling, also
   4. a nonnegative `WeeklyCapacity[day mod 7]`;
   5. a nonnegative `Overrides[day]`.
 
-  Detection ignores `Assignment.CalendarID`; leveling honours it.
+  Since 2026-11-23 (D-CAL) detection and levelling both read an
+  assignment's capacity from the calendar its `CalendarID` names (steps 3
+  to 5 on that calendar, from the resource's base capacity), and from the
+  resource's own calendar when it names none or one that does not exist.
+  The frozen copy reads the resource's calendar only.
 
 ### Anomalies: current output, normative answer not decided
 
 | Fixture | Current behavior | Status |
 | --- | --- | --- |
-| F-09 | Detection reads the resource's calendar; leveling reads the assignment's | Divergence; harmonizing it needs a semantic decision |
+| F-09 | Detection read the resource's calendar; leveling read the assignment's | Resolved 2026-11-23 (D-CAL): both read the assignment's calendar |
 | F-10 | A repeated split day counts demand twice, participant once | Malformed input; policy pending (DEC-05) |
 | F-11 | A split day past the span horizon is dropped, so a possible conflict on that day is never reported | Known defect candidate; a fix needs its own change request |
 | F-15, F-19 | Two entries with one printed ID, or two keys aliasing one task, both appear in `TaskIDs` | Identity validation pending |
@@ -133,10 +179,12 @@ approved behavior change with its own tests.
 
 | Oracle | File | What it proves |
 | --- | --- | --- |
-| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus supplementary cases OR-01-S1 to S5 and, since 2026-11-21, production-only part-day cases OR-01-S4b to S4f (a day-long task straddling two days, two half-day tasks sharing a day, a trailing half day, a sliver below a day boundary, units above capacity on a part day). F-20 and OR-01-S4 carry separate production and frozen-copy expectations. It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
+| Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus supplementary cases OR-01-S1 to S5 and, since 2026-11-21, production-only part-day cases OR-01-S4b to S4f (a day-long task straddling two days, two half-day tasks sharing a day, a trailing half day, a sliver below a day boundary, units above capacity on a part day), and since 2026-11-23 production-only time-interval cases T3-1 to T3-7 (two half-day tasks at the same moment, only the overlapping two of three taking part, summing noise at a boundary, assignment calendars compared moment by moment, the smaller calendar binding an overlap, NaN units overloading only their own moments, an unknown calendar reading the resource's). F-09, F-20 and OR-01-S4 carry separate production and frozen-copy expectations. It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and F-09 calendar tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
 | Frozen legacy reference (OR-02) | `internal/kernel/overallocation_legacy_ref_test.go` | A copy of the detection path at the pinned blob, written as free functions. |
-| Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random whole-day schedules (whole-day starts and durations since 2026-11-21, where both contracts agree), and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
+| Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random whole-day schedules (whole-day starts and durations since 2026-11-21, and no assignment calendars since 2026-11-23, where both contracts agree), and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
 | Part-day grid property | `TestPartDayDemandMatchesAnEighthDayGrid` in the differential file | On 2,000 seeded schedules whose starts and durations are multiples of 1/8 day (from day -1), each resource's usage equals an independent count of eighth-day cells per day times effective units, exactly. |
+| Time-interval grid property | `TestDetectionMatchesAnEighthDayGrid` in the differential file | On 2,000 seeded eighth-day schedules with two assignment calendars, an unknown one and a resource calendar, the records (days, demand, capacity, participants) and flags equal an independent count of overloaded eighth-day cells, with capacities stated by the test, exactly. About 3,900 breaches, about 1,000 of them with the day's total within capacity. |
+| Levelling agreement | `TestLevelledScheduleIsOverallocatedOnlyByUnplacedTasks` in `resources_test.go` | On 600 random part-day schedules with links, assignment calendars, splitting and both strategies, every record detection finds after levelling names an unplaced task. |
 | Participant index | `internal/kernel/overallocation_index_test.go` | A contiguous span is one membership run however long; split days become sorted, deduplicated, merged runs; repeated assignments and aliased keys give one run per entry and resource. Also T2 and T3 benchmarks. |
 | Benchmarks | `internal/kernel/overallocation_bench_test.go` | Timing and allocations at T0 and T1, run before and after RES-A-1. |
 
@@ -163,7 +211,9 @@ tolerance is used anywhere.
 
 The differential test also fails if the generator stops producing any of
 these: duplicate IDs, aliases, split gaps, weekly days past day 6, zero
-capacity, assignment calendars or empty `WorkDays` lists.
+capacity or empty `WorkDays` lists. (Assignment calendars left the
+generator on 2026-11-23: production reads them and the frozen copy does
+not.)
 
 F-12, F-13, F-14 and F-22 cover the sparse design (RES-B) and are not
 implemented here.
@@ -183,10 +233,10 @@ the same tests on Linux.
 | RES-A03 repeated assignments, identity, demand summation | F-02, F-15, OR-01-S5 | Passing locally |
 | RES-A04 effective units | F-03 (both cases) | Passing locally |
 | RES-A05 split gaps, duplicates, clipping | F-04, OR-01-S1 (unsorted days), F-10, F-11, F-16 (empty list) | Passing locally |
-| RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3 | Passing locally |
+| RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3, T3-4, T3-5, T3-7 | Passing locally (assignment calendars read since 2026-11-23) |
 | RES-A07 threshold | `TestOverallocationThresholdIsLiteral` (F-07) | Passing locally |
 | RES-A08 performance | Paired before-and-after benchmarks at T0 and T1; T2 and T3 for the new detector | Measured (see Benchmarks). RSS and the old detector's T2 and T3 NOT RUN; budgets BLOCKED (OWN-10) |
-| RES-A09 aliases, unassigned horizon, part days | F-17, F-19, F-20, OR-01-S4, OR-01-S4b to S4f, the part-day grid property | Passing locally (part-day rule changed 2026-11-21) |
+| RES-A09 aliases, unassigned horizon, part days | F-17, F-19, F-20, OR-01-S4, OR-01-S4b to S4f, T3-1 to T3-6, both grid properties | Passing locally (part-day rule changed 2026-11-21, time intervals 2026-11-23) |
 | RES-A10 literal comparison, zero demand | F-18, F-21 | Passing locally |
 
 ## Sensitivity
@@ -290,6 +340,30 @@ Run on linux/amd64 with Go 1.27.4; all caught:
 - the rate rule removed from levelling:
   `TestLevelResourcesUnplaceablePartDayStartStays`.
 
+### Seeds against the time-interval rule (2026-11-23)
+
+Run on linux/amd64 with Go 1.27.4; all caught:
+
+- Detection:
+  - no separate count of non-finite units: T3-6;
+  - no `1e-9` shrink at occupancy ends: T3-3 (with a runtime sum; the
+    constant 0.1+0.2 is exact in Go and hid it);
+  - every member of the day taken as a participant: T3-2;
+  - the day's smallest capacity in place of the moment's: T3-4;
+  - the day-total rule on every day: F-20, OR-01-S4, S4b, S4d;
+  - the resource's capacity in place of the assignment's: F-09, T3-5 and
+    the time-interval grid property.
+- Levelling:
+  - booked capacities ignored: the levelling agreement property;
+  - part-day pieces ignored: the part-day levelling cases;
+  - only the last of a task's assignments to a resource counted: the
+    levelling agreement property;
+  - booking ends not tried as starts: the part-day levelling cases.
+- One seed was not detectable and was not kept as a test: putting starts
+  before ends at equal times changes only the summation order, because
+  zero-length segments are skipped and the shrink keeps abutting tasks
+  apart.
+
 ## Benchmarks (indicative)
 
 ```sh
@@ -327,6 +401,28 @@ It is not the S0 generator, and these numbers are not comparable with S0's.
 - Peak RSS was not measured, and the old detector was not run at T2 or T3.
 - These figures guide design only; they are not budgets.
 
+**Time intervals, 2026-11-23** (linux/amd64 container, 4 CPUs, Go 1.27.4;
+three runs each, ranges shown; indicative, not comparable with the M4
+figures above). Before is `a113db8`, after is the time-interval detector:
+
+| Tier | Before | After | Bytes per call, after | Allocations, after |
+| --- | --- | --- | --- | --- |
+| T0 | 0.91–1.06 ms | 0.83–0.96 ms | 486 KB (−7%) | 5,174 |
+| T1 | 27.8–31.0 ms | 23.7–26.4 ms | 11.2 MB (−7%) | 100,815 |
+| T2 | 185–208 ms | 160–184 ms | 58.5 MB (−7%) | 503,706 |
+| T3 | 397–478 ms | 377–428 ms | 116.8 MB (−7%) | 1,006,483 |
+
+Breaches and task references are unchanged at every tier (whole-day
+fixtures take the day-total path). `BenchmarkDetectOverallocationsPartDay`
+runs the same fixture in eighths of a day, so most days take the sweep:
+T0 1.42–1.60 ms, 506 KB, 1,102 breaches; T1 34.3–35.7 ms, 11.6 MB, 20,990
+breaches. `BenchmarkLevelResources` (default horizon): whole-day T1
+4.03–4.04 s and 17.0 MB against 3.73–4.27 s and 21.4 MB before (the
+ready-queue scan dominates); whole-day T0 21–27 ms against 12–13 ms,
+because four fixture tasks that assign one resource twice for more than
+it has are now unplaced and search the whole horizon; part-day T1
+3.9–4.0 s and 19.6 MB.
+
 ## Changing these tests
 
 - Do not edit the frozen reference to follow production. If the detector's
@@ -334,7 +430,8 @@ It is not the S0 generator, and these numbers are not comparable with S0's.
   oracle row by row. The 2026-11-21 part-day change kept the frozen copy
   and its hash pin: rows whose answer changed carry separate production
   and frozen-copy expectations, and the differential test is limited to
-  the inputs on which both contracts agree.
+  the inputs on which both contracts agree. The 2026-11-23 time-interval
+  and assignment-calendar change did the same.
 - A faster detector passes only if every test here passes unchanged, the
   differential test included. RES-A-1 did: it removed `tasksOnDay` and
   `occupiesDay` from production, and the frozen copy keeps its own versions.
