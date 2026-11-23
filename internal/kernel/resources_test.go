@@ -5,6 +5,11 @@ package kernel
 
 import (
 	"errors"
+	"fmt"
+	"math"
+	"math/rand/v2"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -303,27 +308,56 @@ func TestLevelResourcesInPartDays(t *testing.T) {
 			want:     map[string]float64{"A": 0, "B": 0.5, "C": 0.9},
 		},
 		{
-			// Two unlinked half-day tasks fill day 0 exactly.
+			// Two unlinked half-day tasks fill day 0 one after the other: at
+			// the same time they would need 2 at once (time intervals,
+			// 2026-11-23). A goes first (equal late starts, ID order); B
+			// starts when A ends.
 			name: "two half-day tasks share a day",
 			tasks: map[string]*Task{
 				"A": {ID: "A", Duration: 0.5, Assignments: alice},
 				"B": {ID: "B", Duration: 0.5, Assignments: alice},
 			},
 			capacity: 1,
-			want:     map[string]float64{"A": 0, "B": 0},
+			want:     map[string]float64{"A": 0, "B": 0.5},
 		},
 		{
 			// A (0.75 day) goes first (smaller late start: the project
-			// finish is 0.75, so A's LS is 0 and B's 0.25) and takes 0.75
-			// of day 0; B's 0.5 more would make 1.25 > 1, so B moves to the
-			// next whole day, 1.
-			name: "a half-day task that does not fit moves to the next day",
+			// finish is 0.75, so A's LS is 0 and B's 0.25) and takes [0,
+			// 0.75); B starts when A ends and runs into day 1 (time
+			// intervals: the first moment it fits, not the next whole day).
+			name: "a half-day task that does not fit at its start waits for the work before it",
 			tasks: map[string]*Task{
 				"A": {ID: "A", Duration: 0.75, Assignments: alice},
 				"B": {ID: "B", Duration: 0.5, Assignments: alice},
 			},
 			capacity: 1,
-			want:     map[string]float64{"A": 0, "B": 1},
+			want:     map[string]float64{"A": 0, "B": 0.75},
+		},
+		{
+			// X (critical through W) goes first and takes [0, 0.3); Y's
+			// earliest start, 0, overlaps it, so Y starts at X's end.
+			name: "a task starts when the booking before it ends",
+			tasks: map[string]*Task{
+				"X": {ID: "X", Duration: 0.3, Assignments: alice},
+				"W": {ID: "W", Duration: 1, Precedents: []string{"X"}},
+				"Y": {ID: "Y", Duration: 0.5, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"X": 0, "W": 0.3, "Y": 0.3},
+		},
+		{
+			// B (after P, critical through C) is placed first at [1, 1.4).
+			// Q (1.5 days) cannot start at 0 or 1 without overlapping B, so
+			// it starts at B's end, inside day 1: [1.4, 2.9).
+			name: "a multi-day task starts at a booking's end on a later day",
+			tasks: map[string]*Task{
+				"P": {ID: "P", Duration: 1},
+				"B": {ID: "B", Duration: 0.4, Precedents: []string{"P"}, Assignments: alice},
+				"C": {ID: "C", Duration: 2, Precedents: []string{"B"}},
+				"Q": {ID: "Q", Duration: 1.5, Assignments: alice},
+			},
+			capacity: 1,
+			want:     map[string]float64{"P": 0, "B": 1, "C": 1.4, "Q": 1.4},
 		},
 		{
 			// P (no resource) ends at 0.5, so Y could start at 0.5; X fills
@@ -421,4 +455,72 @@ func TestLevelResourcesUnassignedTasksUntouchedByContention(t *testing.T) {
 		t.Fatal("leveling reported a cycle")
 	}
 	approx(t, "X.ES", tasks["X"].ES, 0)
+}
+
+// Levelling and detection apply one rule (time intervals and assignment
+// calendars, 2026-11-23): a task is placed only where, at every moment of
+// its work, it fits beside everything booked before it, and only an
+// unplaced task is booked where it does not. So after levelling, every
+// overloaded moment detection finds has an unplaced task in use, and every
+// record names one; a fully levelled schedule has none. Random schedules in
+// eighths of a day, with links, assignment calendars, a resource calendar,
+// splitting and both strategies.
+func TestLevelledScheduleIsOverallocatedOnlyByUnplacedTasks(t *testing.T) {
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      map[string]float64{"r1": 1.5},
+		Calendars: map[string]ResourceCalendar{
+			"half": {DefaultCapacity: 0.5, Overrides: map[int]float64{3: 0}},
+			"r1":   {WeeklyCapacity: map[int]float64{5: 0, 6: 0}},
+		},
+	}
+	rng := rand.New(rand.NewPCG(20261123, 7))
+	partDay, unplacedCases := 0, 0
+	for i := range 600 {
+		tasks := map[string]*Task{}
+		n := 2 + rng.IntN(10)
+		for k := range n {
+			task := &Task{ID: fmt.Sprintf("T%02d", k), Duration: float64(rng.IntN(25)) / 8}
+			if k > 0 && rng.IntN(3) == 0 {
+				task.Precedents = []string{fmt.Sprintf("T%02d", rng.IntN(k))}
+			}
+			for range rng.IntN(3) {
+				a := Assignment{Resource: pickFrom(rng, "", "r0", "r1"), Units: pickFrom(rng, 0.25, 0.5, 1, 2)}
+				if rng.IntN(3) == 0 {
+					a.CalendarID = "half"
+				}
+				task.Assignments = append(task.Assignments, a)
+			}
+			tasks[task.ID] = task
+		}
+		opts := LevelingOptions{Horizon: 20, AllowSplitting: rng.IntN(2) == 0,
+			Strategy: pickFrom(rng, LeastTotalFloat, EarliestDeadline)}
+		res, err := LevelResourcesWithOptions(tasks, plan, opts)
+		if err != nil && !errors.Is(err, ErrLevelingHorizonExceeded) {
+			t.Fatalf("case %d: %v", i, err)
+		}
+		if len(res.UnplacedTaskIDs) > 0 {
+			unplacedCases++
+		}
+		for _, task := range tasks {
+			if task.ES != math.Trunc(task.ES) {
+				partDay++
+				break
+			}
+		}
+		for _, rec := range DetectOverallocationsWithPlan(tasks, plan) {
+			if !slices.ContainsFunc(rec.TaskIDs, func(id string) bool { return slices.Contains(res.UnplacedTaskIDs, id) }) {
+				var b strings.Builder
+				for _, id := range sortedTaskKeys(tasks) {
+					task := tasks[id]
+					fmt.Fprintf(&b, "  %s ES %v EF %v WorkDays %v %+v\n", id, task.ES, task.EF, task.WorkDays, task.Assignments)
+				}
+				t.Fatalf("case %d (%+v): record %+v names no unplaced task (unplaced %v)\n%s", i, opts, rec, res.UnplacedTaskIDs, b.String())
+			}
+		}
+	}
+	t.Logf("%d cases with a part-day start, %d with unplaced tasks", partDay, unplacedCases)
+	if partDay < 300 || unplacedCases < 50 {
+		t.Errorf("generator produced %d part-day and %d unplaced cases, want at least 300 and 50", partDay, unplacedCases)
+	}
 }

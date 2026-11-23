@@ -289,49 +289,6 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 	return usage
 }
 
-// peakUnits is, per resource and day of its usage profile, the largest
-// effective units any one contiguous task uses it at on a day it works
-// part of. Units are a rate: a task needing more of a resource at once
-// than the resource has can never run, however little of the day it uses
-// (owner decision 2026-11-23), so detection flags such a day even when the
-// day's total demand fits. Whole days and split days already add the full
-// units to the day's demand, so only part days need this.
-func peakUnits(tasks map[string]*Task, usage map[string][]float64) map[string][]float64 {
-	peak := make(map[string][]float64, len(usage))
-	for _, t := range tasks {
-		if len(t.WorkDays) > 0 {
-			continue
-		}
-		first, last, ok := taskSpan(t)
-		if !ok {
-			continue
-		}
-		for _, a := range t.Assignments {
-			profile, exists := usage[a.Resource]
-			if a.Resource == "" || !exists {
-				continue
-			}
-			if peak[a.Resource] == nil {
-				peak[a.Resource] = make([]float64, len(profile))
-			}
-			for d := max(first, 0); d <= last && d < len(profile); d++ {
-				if dayShare(t.ES, t.EF, d) > 0 {
-					peak[a.Resource][d] = max(peak[a.Resource][d], a.effectiveUnits())
-				}
-			}
-		}
-	}
-	return peak
-}
-
-// peakAt reads peakUnits, 0 where no part-day task works.
-func peakAt(peak map[string][]float64, resource string, day int) float64 {
-	if p := peak[resource]; day < len(p) {
-		return p[day]
-	}
-	return 0
-}
-
 // ResourceCapacityProfiles builds calendar-aware per-day capacity
 // profiles for the requested resources. Every returned slice has
 // length horizon, with index d matching project working-day offset d.
@@ -381,15 +338,23 @@ func DetectOverallocations(tasks map[string]*Task, capacities map[string]float64
 	return DetectOverallocationsWithPlan(tasks, capacityPlanFromMap(capacities))
 }
 
-// DetectOverallocationsWithPlan compares each resource's usage profile
-// to calendar-aware capacity and returns every breach.
+// DetectOverallocationsWithPlan flags every resource-day on which, at some
+// moment, the resource is used by more than it has (owner decision
+// 2026-11-23, D-TIME: time intervals). A contiguous task uses its
+// assignment's units over [ES, EF) on the working-time axis; a split task
+// uses them over each listed day whole. At each moment the concurrent units
+// are compared with the capacity of every assignment in use then, read from
+// the assignment's own calendar when it names one, else the resource's
+// (D-CAL). The record's Demand is the day's usage total, which can be at or
+// below Capacity when the breach is an overlap within the day; Capacity is
+// the smallest capacity among the participants' assignments to the
+// resource; TaskIDs are the tasks in use at an overloaded moment.
 func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacityPlan) []Overallocation {
 	for _, t := range tasks {
 		t.Overallocated = false
 	}
 
 	usage := ResourceUsage(tasks)
-	peak := peakUnits(tasks, usage)
 	entries := overallocationEntries(tasks)
 	runs := overallocationMembershipRuns(entries, usage)
 
@@ -401,28 +366,350 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 
 	var out []Overallocation
 	members := newOverallocationMembers(len(entries))
+	sweep := &instantSweep{entries: entries, plan: plan, workDays: map[int][]int{}}
 	for _, r := range resources {
 		members.start(runs[r])
+		sweep.startResource(r)
 		for day, demand := range usage[r] {
 			members.advanceTo(day)
-			capacity := plan.capacityFor(r, day)
-			if demand <= capacity+1e-9 && peakAt(peak, r, day) <= capacity+1e-9 {
+			if len(members.active) == 0 {
 				continue
 			}
-			breach := Overallocation{
-				Resource: r,
-				Day:      day,
-				Demand:   demand,
-				Capacity: capacity,
+			participants, capacity, breach := sweep.day(day, demand, members)
+			if !breach {
+				continue
 			}
-			for _, i := range members.sorted() {
-				breach.TaskIDs = append(breach.TaskIDs, entries[i].task.ID)
+			record := Overallocation{Resource: r, Day: day, Demand: demand, Capacity: capacity}
+			for _, i := range participants {
+				record.TaskIDs = append(record.TaskIDs, entries[i].task.ID)
 				entries[i].task.Overallocated = true
 			}
-			out = append(out, breach)
+			out = append(out, record)
 		}
 	}
 	return out
+}
+
+// boundaryEpsilon absorbs noise from summed fractional durations: an
+// occupancy is shrunk by it at both ends, so a task ending at 0.1+0.2 and
+// one starting at 0.3 do not overlap.
+const boundaryEpsilon = 1e-9
+
+// instantSweep evaluates the instant rule for one resource, one day at a
+// time. Its buffers are reused across days and resources.
+type instantSweep struct {
+	entries  []overallocationEntry
+	plan     ResourceCapacityPlan
+	resource string
+	workDays map[int][]int // entry -> its sorted split days
+	occ      []occupancy
+	events   []occupancyEvent
+	over     [][2]float64 // overloaded segments of the day, ascending
+}
+
+// occupancy is one assignment in use over [start, end) within a day.
+type occupancy struct {
+	start, end float64
+	units      float64
+	capacity   float64
+	entry, idx int
+}
+
+type occupancyEvent struct {
+	at    float64
+	end   bool
+	occ   int
+	entry int
+	idx   int
+}
+
+func (s *instantSweep) startResource(r string) {
+	s.resource = r
+	clear(s.workDays)
+}
+
+// minCapacity is the smallest capacity on day d among an entry's
+// assignments to the current resource.
+func (s *instantSweep) minCapacity(entry, d int, from float64) float64 {
+	for _, a := range s.entries[entry].task.Assignments {
+		if a.Resource == s.resource {
+			from = min(from, s.plan.capacityForAssignment(a, d))
+		}
+	}
+	return from
+}
+
+// splitCount is how many times a split entry lists day (F-10: each listing
+// counts, as in ResourceUsage).
+func (s *instantSweep) splitCount(entry, day int) int {
+	days, ok := s.workDays[entry]
+	if !ok {
+		days = slices.Clone(s.entries[entry].task.WorkDays)
+		slices.Sort(days)
+		s.workDays[entry] = days
+	}
+	lo, _ := slices.BinarySearch(days, day)
+	hi, _ := slices.BinarySearch(days, day+1)
+	return hi - lo
+}
+
+// wholeDay reports whether an entry's work covers day d entirely, so its
+// use is constant over the day.
+func wholeDay(t *Task, d int) bool {
+	if len(t.WorkDays) > 0 {
+		return true
+	}
+	return t.ES <= float64(d)+boundaryEpsilon && t.EF >= float64(d+1)-boundaryEpsilon
+}
+
+// day evaluates day d for the current resource given the entries occupying
+// it and its usage total. It returns the participants in entry order, the
+// record's capacity and whether the day is a breach.
+func (s *instantSweep) day(d int, demand float64, m *overallocationMembers) ([]int, float64, bool) {
+	minCap := math.Inf(1)
+	whole := true
+	for _, e := range m.active {
+		minCap = s.minCapacity(e, d, minCap)
+		whole = whole && wholeDay(s.entries[e].task, d)
+	}
+	// Every member uses the resource all day: the concurrent units are the
+	// day's total at every moment, and the smallest capacity binds. This is
+	// every day of a whole-day schedule.
+	if whole {
+		if demand <= minCap+boundaryEpsilon {
+			return nil, 0, false
+		}
+		return m.sorted(), minCap, true
+	}
+
+	s.occ = s.occ[:0]
+	lo, hi := float64(d), float64(d+1)
+	for _, e := range m.active {
+		t := s.entries[e].task
+		start, end, times := max(t.ES, lo), min(t.EF, hi), 1
+		if len(t.WorkDays) > 0 {
+			start, end, times = lo, hi, s.splitCount(e, d)
+		}
+		start, end = start+boundaryEpsilon, end-boundaryEpsilon
+		if !(start < end) {
+			continue
+		}
+		for i, a := range t.Assignments {
+			if a.Resource != s.resource {
+				continue
+			}
+			o := occupancy{start, end, a.effectiveUnits(), s.plan.capacityForAssignment(a, d), e, i}
+			for range times {
+				s.occ = append(s.occ, o)
+			}
+		}
+	}
+	s.over = s.over[:0]
+	s.events = overloadedSegments(s.occ, s.events, func(lo, hi float64) bool {
+		if n := len(s.over); n > 0 && s.over[n-1][1] == lo {
+			s.over[n-1][1] = hi
+		} else {
+			s.over = append(s.over, [2]float64{lo, hi})
+		}
+		return true
+	})
+	if len(s.over) == 0 {
+		return nil, 0, false
+	}
+
+	// Participants: entries in use during an overloaded segment.
+	var participants []int
+	capacity := math.Inf(1)
+	for _, o := range s.occ {
+		j, _ := slices.BinarySearchFunc(s.over, o.start, func(seg [2]float64, at float64) int {
+			return cmpFloat(seg[1], at)
+		})
+		// s.over[j] is the first segment ending after o.start.
+		if j == len(s.over) || !(s.over[j][1] > o.start) || !(s.over[j][0] < o.end) {
+			continue
+		}
+		participants = append(participants, o.entry)
+	}
+	slices.Sort(participants)
+	participants = slices.Compact(participants)
+	for _, e := range participants {
+		capacity = s.minCapacity(e, d, capacity)
+	}
+	return participants, capacity, true
+}
+
+// resourceBookings is what levelling has booked on one resource so far:
+// per day, the units of bookings that cover the day whole (summed, with the
+// smallest of their capacities that day) and the part-day pieces. A
+// multi-day booking adds its interior days to the whole-day totals; only
+// its part-day ends are listed (Gate A condition C3), so whole-day
+// schedules keep the memory and time of the earlier per-day totals.
+type resourceBookings struct {
+	whole    []float64 // summed units of whole-day bookings
+	wholeCap []float64 // smallest capacity among them; +Inf when none
+	part     map[int][]occupancy
+}
+
+// add books units over [lo, hi) within day d at the given capacity.
+func (b *resourceBookings) add(d int, lo, hi, units, capacity float64) {
+	if !(lo+boundaryEpsilon < hi-boundaryEpsilon) || d < 0 {
+		return
+	}
+	if lo <= float64(d)+boundaryEpsilon && hi >= float64(d+1)-boundaryEpsilon {
+		b.addWhole(d, units, capacity)
+		return
+	}
+	b.part[d] = append(b.part[d], occupancy{start: lo, end: hi, units: units, capacity: capacity})
+}
+
+func (b *resourceBookings) addWhole(d int, units, capacity float64) {
+	if d < 0 {
+		return
+	}
+	for len(b.whole) <= d {
+		b.whole = append(b.whole, 0)
+		b.wholeCap = append(b.wholeCap, math.Inf(1))
+	}
+	b.whole[d] += units
+	b.wholeCap[d] = min(b.wholeCap[d], capacity)
+}
+
+// bookingCheck holds buffers reused across levelling's capacity checks.
+type bookingCheck struct {
+	occ    []occupancy
+	events []occupancyEvent
+}
+
+// fits reports whether adding the assignments to resource r over [lo, hi)
+// within day d leaves no moment of [lo, hi) over capacity, given what b
+// has booked (nil: nothing). Each assignment is compared with its own
+// capacity, booked or new, as detection does.
+func (c *bookingCheck) fits(b *resourceBookings, plan ResourceCapacityPlan, assignments []Assignment, r string, d int, lo, hi float64) bool {
+	lo, hi = lo+boundaryEpsilon, hi-boundaryEpsilon
+	if !(lo < hi) {
+		return true
+	}
+	units, newCap := 0.0, math.Inf(1)
+	for _, a := range assignments {
+		if a.Resource == r {
+			units += a.effectiveUnits()
+			newCap = min(newCap, plan.capacityForAssignment(a, d))
+		}
+	}
+	base, baseCap := 0.0, math.Inf(1)
+	var parts []occupancy
+	if b != nil {
+		if d < len(b.whole) {
+			base, baseCap = b.whole[d], b.wholeCap[d]
+		}
+		parts = b.part[d]
+	}
+	if len(parts) == 0 {
+		// Constant over the window: the whole-day bookings and the new work.
+		return base+units <= min(baseCap, newCap)+boundaryEpsilon
+	}
+	c.occ = append(c.occ[:0],
+		occupancy{start: lo, end: hi, units: base, capacity: baseCap},
+		occupancy{start: lo, end: hi, units: units, capacity: newCap, idx: 1})
+	for i, o := range parts {
+		start, end := max(o.start+boundaryEpsilon, lo), min(o.end-boundaryEpsilon, hi)
+		if start < end {
+			c.occ = append(c.occ, occupancy{start: start, end: end, units: o.units, capacity: o.capacity, entry: i + 1})
+		}
+	}
+	free := true
+	c.events = overloadedSegments(c.occ, c.events, func(float64, float64) bool {
+		free = false
+		return false
+	})
+	return free
+}
+
+// overloadedSegments sweeps the occupancies (already shrunk by
+// boundaryEpsilon) and calls visit with each segment, in ascending order,
+// where the units in use exceed the smallest capacity among the
+// assignments in use; visit returns false to stop. Detection and levelling
+// share it. It returns the event buffer for reuse.
+func overloadedSegments(occ []occupancy, events []occupancyEvent, visit func(lo, hi float64) bool) []occupancyEvent {
+	events = events[:0]
+	for i, o := range occ {
+		events = append(events,
+			occupancyEvent{at: o.start, occ: i, entry: o.entry, idx: o.idx},
+			occupancyEvent{at: o.end, end: true, occ: i, entry: o.entry, idx: o.idx})
+	}
+	// Time, then ends before starts, then entry and assignment: a fixed
+	// order, so the running sums do not depend on map order. (Which moments
+	// are overloaded does not depend on it: segments of zero length are
+	// skipped, and the shrink keeps abutting tasks apart.)
+	slices.SortFunc(events, func(a, b occupancyEvent) int {
+		switch {
+		case a.at != b.at:
+			return cmpFloat(a.at, b.at)
+		case a.end != b.end:
+			if a.end {
+				return -1
+			}
+			return 1
+		case a.entry != b.entry:
+			return a.entry - b.entry
+		default:
+			return a.idx - b.idx
+		}
+	})
+
+	// The finite units are summed; non-finite ones are counted, since
+	// subtracting an infinity leaves NaN. A moment with any non-finite
+	// units in use is overloaded (!(u <= cap) holds for NaN and +Inf).
+	// Capacities in use are counted by value; a NaN capacity (a NaN
+	// DefaultCapacity) is counted apart, as NaN map keys never match, and
+	// makes every moment it is in use overloaded, as the day rule did.
+	sum, nonFinite, nanCaps, active := 0.0, 0, 0, 0
+	caps := map[float64]int{}
+	for i, ev := range events {
+		o := occ[ev.occ]
+		finite := !math.IsNaN(o.units) && !math.IsInf(o.units, 0)
+		switch {
+		case ev.end && finite:
+			sum -= o.units
+		case ev.end:
+			nonFinite--
+		case finite:
+			sum += o.units
+		default:
+			nonFinite++
+		}
+		delta := 1
+		if ev.end {
+			delta = -1
+		}
+		active += delta
+		if math.IsNaN(o.capacity) {
+			nanCaps += delta
+		} else if caps[o.capacity] += delta; caps[o.capacity] == 0 {
+			delete(caps, o.capacity)
+		}
+		if i+1 == len(events) || !(events[i+1].at > ev.at) || active == 0 {
+			continue
+		}
+		bind := math.Inf(1)
+		for c := range caps {
+			bind = min(bind, c)
+		}
+		if (nonFinite > 0 || nanCaps > 0 || !(sum <= bind+boundaryEpsilon)) && !visit(ev.at, events[i+1].at) {
+			break
+		}
+	}
+	return events
+}
+
+func cmpFloat(a, b float64) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	}
+	return 0
 }
 
 // The participant index below replaces a scan of every task on every
@@ -587,13 +874,15 @@ func (m *overallocationMembers) sorted() []int {
 // using the serial method: tasks become ready when all predecessors
 // are levelled, the ready task with the smallest (LS, ID) — i.e. the
 // least float, under the default LeastTotalFloat strategy — goes first,
-// and each task is placed at the first of these starts where every
-// assigned resource has capacity across its whole span: its earliest start
-// (the precedence links and its constrained ES), which may fall part-way
-// through a day, then each following whole day. Demand counts the share of
-// each day used, as DetectOverallocations does, so part-day work can share
-// a day (part-day levelling, owner decision 2026-11-21). Splitting, when
-// allowed, still books whole days.
+// and each task is placed at the earliest start where, at every moment of
+// its work, each resource it uses carries no more than the smallest
+// capacity among the assignments then in use (its own included): the rule
+// DetectOverallocations applies (time intervals and assignment calendars,
+// owner decisions 2026-11-23). Starts tried are its earliest start (the
+// precedence links and its constrained ES), which may fall part-way through
+// a day, then, day by day, the ends of part-day bookings on its resources
+// and each day boundary. A task's assignments to one resource are summed.
+// Splitting, when allowed, books whole days.
 //
 // Semantics and limits (documented simplifications for this first
 // leveling pass):
@@ -680,28 +969,22 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	// Ready-queue serial scheduling: pick the ready task with the
 	// smallest (LS, ID).
 	levelled := make(map[string]bool, len(tasks))
-	booked := make(map[string][]float64)
+	booked := make(map[string]*resourceBookings)
 	var unplaced []string
 	var splitIDs []string
 
 	pending := make([]string, len(order))
 	copy(pending, order)
 
-	demand := func(profile []float64, day int) float64 {
-		if day < len(profile) {
-			return profile[day]
-		}
-		return 0
-	}
-
-	// dayHasCapacity reports whether every assignment of t has room on a
-	// single day d.
-	dayHasCapacity := func(t *Task, d int) bool {
-		for _, a := range t.Assignments {
-			if a.Resource == "" {
-				continue
+	var check bookingCheck
+	// fitsWindow reports whether t's work over [lo, hi) within day d, on
+	// every resource it is assigned, leaves no moment over capacity.
+	fitsWindow := func(t *Task, d int, lo, hi float64) bool {
+		for i, a := range t.Assignments {
+			if a.Resource == "" || slices.ContainsFunc(t.Assignments[:i], func(b Assignment) bool { return b.Resource == a.Resource }) {
+				continue // each resource once, with all its assignments
 			}
-			if demand(booked[a.Resource], d)+a.effectiveUnits() > plan.capacityForAssignment(a, d)+1e-9 {
+			if !check.fits(booked[a.Resource], plan, t.Assignments, a.Resource, d, lo, hi) {
 				return false
 			}
 		}
@@ -709,39 +992,27 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	}
 
 	// fits reports whether t can run contiguously from start (which may
-	// fall part-way through a day): on every day its work touches, each
-	// assignment's units times the share of the day used must fit, the
-	// rule DetectOverallocations applies (spanDays, dayShare).
+	// fall part-way through a day), by the rule DetectOverallocations
+	// applies: at no moment of its work does any resource it uses carry
+	// more than the smallest capacity among the assignments then in use.
 	fits := func(t *Task, start float64) bool {
 		finish := start + t.Duration
 		first, last := spanDays(start, finish)
 		for d := first; d <= last; d++ {
-			share := dayShare(start, finish, d)
-			if share <= 0 {
-				continue
-			}
-			for _, a := range t.Assignments {
-				if a.Resource == "" {
-					continue
-				}
-				capacity := plan.capacityForAssignment(a, d) + 1e-9
-				// Units are a rate: more at once than the capacity never
-				// fits, however little of the day is used (peakUnits).
-				if a.effectiveUnits() > capacity || demand(booked[a.Resource], d)+a.effectiveUnits()*share > capacity {
-					return false
-				}
+			if !fitsWindow(t, d, max(start, float64(d)), min(finish, float64(d+1))) {
+				return false
 			}
 		}
 		return true
 	}
 
 	// splitDays scans forward from `from`, collecting `need` non-contiguous
-	// days (within the horizon) where every assignment has capacity. Returns
-	// (days, true) only if it found enough.
+	// whole days (within the horizon) where every assignment has capacity.
+	// Returns (days, true) only if it found enough.
 	splitDays := func(t *Task, from, need int) ([]int, bool) {
 		out := make([]int, 0, need)
 		for d := from; d <= from+horizon && len(out) < need; d++ {
-			if dayHasCapacity(t, d) {
+			if fitsWindow(t, d, float64(d), float64(d+1)) {
 				out = append(out, d)
 			}
 		}
@@ -751,49 +1022,61 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 		return out, true
 	}
 
-	// bookProfileDays adds t's demand on each of the given working days.
-	bookProfileDays := func(t *Task, workDays []int) {
-		if len(workDays) == 0 {
-			return
+	bookingsFor := func(r string) *resourceBookings {
+		b := booked[r]
+		if b == nil {
+			b = &resourceBookings{part: map[int][]occupancy{}}
+			booked[r] = b
 		}
-		maxDay := workDays[len(workDays)-1] + 1
+		return b
+	}
+	// bookDays books t whole on each of the given working days.
+	bookDays := func(t *Task, workDays []int) {
 		for _, a := range t.Assignments {
 			if a.Resource == "" {
 				continue
 			}
-			profile := booked[a.Resource]
-			if len(profile) < maxDay {
-				grown := make([]float64, maxDay)
-				copy(grown, profile)
-				profile = grown
-			}
+			b := bookingsFor(a.Resource)
 			for _, d := range workDays {
-				profile[d] += a.effectiveUnits()
+				b.addWhole(d, a.effectiveUnits(), plan.capacityForAssignment(a, d))
 			}
-			booked[a.Resource] = profile
 		}
 	}
-
-	// bookShares adds t's demand for a contiguous run from start: units
-	// times the share of each day used.
-	bookShares := func(t *Task, start float64) {
+	// bookRun books t contiguously from start: days its work covers whole
+	// go to the whole-day totals, its first and last part days to the
+	// part-day lists.
+	bookRun := func(t *Task, start float64) {
 		finish := start + t.Duration
 		first, last := spanDays(start, finish)
 		for _, a := range t.Assignments {
 			if a.Resource == "" {
 				continue
 			}
-			profile := booked[a.Resource]
-			if len(profile) < last+1 {
-				grown := make([]float64, last+1)
-				copy(grown, profile)
-				profile = grown
-			}
+			b := bookingsFor(a.Resource)
 			for d := max(first, 0); d <= last; d++ {
-				profile[d] += a.effectiveUnits() * dayShare(start, finish, d)
+				b.add(d, max(start, float64(d)), min(finish, float64(d+1)), a.effectiveUnits(), plan.capacityForAssignment(a, d))
 			}
-			booked[a.Resource] = profile
 		}
+	}
+	// partEnds returns, ascending and without repeats, the ends within day
+	// d (after `after`) of part-day bookings on t's resources: the moments
+	// within the day at which the load on them drops.
+	var ends []float64
+	partEnds := func(t *Task, d int, after float64) []float64 {
+		ends = ends[:0]
+		for _, a := range t.Assignments {
+			b := booked[a.Resource]
+			if a.Resource == "" || b == nil {
+				continue
+			}
+			for _, o := range b.part[d] {
+				if o.end > after+boundaryEpsilon && o.end < float64(d+1)-boundaryEpsilon {
+					ends = append(ends, o.end)
+				}
+			}
+		}
+		slices.Sort(ends)
+		return slices.Compact(ends)
 	}
 
 	for len(pending) > 0 {
@@ -851,10 +1134,15 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			earliest = 0
 		}
 
-		// Part-day levelling (owner decision 2026-11-21): a task is tried
-		// at its earliest start, which may fall part-way through a day, and
-		// then at each following whole day. Whole-day schedules see the
-		// same candidates as before.
+		// Part-day levelling (owner decisions 2026-11-21 and 2026-11-23,
+		// time intervals): a task is tried at its earliest start, which may
+		// fall part-way through a day, then, day by day, at each moment the
+		// load on its resources drops within the day (a part-day booking's
+		// end) and at the next day boundary (where capacity can change).
+		// The first start that fits is the earliest that does: a start
+		// blocked by an overloaded stretch can only become free past that
+		// stretch's end. Whole-day schedules see the same candidates as
+		// before: no part-day bookings, so only whole days.
 		startFloor := int(math.Ceil(earliest - 1e-9))
 		start := earliest
 		t.WorkDays = nil
@@ -866,9 +1154,15 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			if fits(t, earliest) {
 				contigStart, contigOK = earliest, true
 			}
-			for offset := 0; !contigOK && offset <= horizon; offset++ {
-				if fits(t, float64(startFloor+offset)) {
-					contigStart, contigOK = float64(startFloor+offset), true
+			for d := int(math.Floor(earliest + 1e-9)); !contigOK && d+1 <= startFloor+horizon; d++ {
+				for _, at := range partEnds(t, d, earliest) {
+					if fits(t, at) {
+						contigStart, contigOK = at, true
+						break
+					}
+				}
+				if !contigOK && fits(t, float64(d+1)) {
+					contigStart, contigOK = float64(d+1), true
 				}
 			}
 			// Earliest split placement (greedy earliest capacity days). Its
@@ -894,20 +1188,20 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 				// Splitting finishes strictly sooner => the days are
 				// non-contiguous; interrupt the task around the busy days.
 				start = float64(splitWD[0])
-				bookProfileDays(t, splitWD)
+				bookDays(t, splitWD)
 				t.WorkDays = append([]int(nil), splitWD...)
 				t.EF = float64(splitWD[len(splitWD)-1] + 1)
 				splitIDs = append(splitIDs, id)
 			case contigOK:
 				start = contigStart
-				bookShares(t, start)
+				bookRun(t, start)
 				t.EF = start + t.Duration
 			default:
 				// Nothing fit within the horizon (e.g. single-day demand >
 				// capacity): leave the task at its earliest start, booked so
 				// the overallocation stays visible to DetectOverallocations,
 				// and report it unplaced.
-				bookShares(t, start)
+				bookRun(t, start)
 				t.EF = start + t.Duration
 				unplaced = append(unplaced, id)
 			}

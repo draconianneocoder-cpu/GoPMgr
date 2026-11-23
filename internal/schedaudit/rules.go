@@ -460,7 +460,7 @@ func (a *auditor) checkOverallocation() error {
 		}
 		sort.Strings(res)
 		a.add(Overallocation, SeverityWarning, id, nil, "over capacity: "+strings.Join(res, ", "), "",
-			"On at least one day the work assigned to a resource is more than its capacity, so the dates cannot all be met as planned.",
+			"At some moment the work assigned to a resource needs more of it at once than it has, so the dates cannot all be met as planned.",
 			"Level the resource, change the assignment, or add capacity.")
 	}
 	a.ran(Overallocation, "")
