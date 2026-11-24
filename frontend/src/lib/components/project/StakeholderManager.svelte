@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { modalFocus } from '../../modal-focus';
   import { stakeholderPayload } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
   // StakeholderManager is the project-level address book. Each
@@ -350,12 +351,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-6"
     role="dialog"
     aria-modal="true"
+    aria-labelledby="stakeholder-dialog-title"
     onkeydown={(e) => e.key === 'Escape' && requestClose()}
     tabindex="-1"
+    use:modalFocus
   >
     <div class="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
       <header class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
+        <h2 id="stakeholder-dialog-title" class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit stakeholder' : 'New stakeholder'}
         </h2>
         <button

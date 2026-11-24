@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { modalFocus } from '../../modal-focus';
   import { workItemPayload } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
   // WorkItemEditor is a modal-style panel for editing one work item.
@@ -251,6 +252,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     aria-modal="true"
     aria-label={t('workItem.title.edit')}
     tabindex="-1"
+    use:modalFocus
   >
     <div class="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
       <header class="px-6 py-3 border-b border-slate-800 flex items-center justify-between">

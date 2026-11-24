@@ -17,6 +17,12 @@ export const en = {
   'help.lookup.openDefinition': '{term}: Definition',
   'help.lookup.openTopic': '{topic}: Topic',
 
+  'unsaved.title': 'Unsaved changes',
+  'unsaved.description': 'Save the current editor before leaving this view?',
+  'unsaved.cancel': 'Cancel',
+  'unsaved.discard': 'Discard',
+  'unsaved.save': 'Save and continue',
+  'unsaved.saving': 'Saving…',
   'common.password.show': 'Show password',
   'common.password.hide': 'Hide password',
   'common.username': 'Username',

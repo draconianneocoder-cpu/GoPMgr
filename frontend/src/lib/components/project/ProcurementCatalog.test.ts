@@ -80,3 +80,22 @@ describe('ProcurementCatalog unsaved dialog', () => {
     expect(ui.queryByRole('dialog')).toBeNull();
   });
 });
+
+// Keyboard focus moves into the dialog when it opens and returns to the
+// control that opened it when it closes (modalFocus, owned by
+// modal-focus.test.ts; 2026-11-24 dialog focus audit).
+describe('ProcurementCatalog dialog focus', () => {
+  it('names the dialog, takes focus, closes on Escape and returns focus to New supplier', async () => {
+    installApp();
+    const ui = render(ProcurementCatalog);
+    const opener = await ui.findByRole('button', { name: 'New supplier' });
+    opener.focus();
+    await fireEvent.click(opener);
+    const dialog = ui.getByRole('dialog', { name: 'New supplier' });
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+    await fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(ui.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+});

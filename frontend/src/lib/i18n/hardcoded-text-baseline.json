@@ -1,5 +1,5 @@
 {
-  "App.svelte": 9,
+  "App.svelte": 5,
   "lib/components/AppHeader.svelte": 4,
   "lib/components/AppSettings.svelte": 37,
   "lib/components/HelpGuide.svelte": 4,

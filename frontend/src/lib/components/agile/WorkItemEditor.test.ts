@@ -908,3 +908,14 @@ describe('WorkItemEditor methodology wording', () => {
     expect(utils.queryByLabelText('Story points')).toBeNull();
   });
 });
+
+// Keyboard focus moves into the dialog when it opens and returns to the
+// control that opened it when it closes (modalFocus, owned by
+// modal-focus.test.ts; 2026-11-24 dialog focus audit).
+describe('WorkItemEditor dialog focus', () => {
+  it('takes focus when it opens', async () => {
+    const utils = render(WorkItemEditor, { item: makeItem({}), onSaved: vi.fn(), onClose: vi.fn(), onDeleted: vi.fn() });
+    const dialog = utils.getByRole('dialog');
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+  });
+});

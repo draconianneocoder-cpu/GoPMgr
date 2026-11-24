@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { modalFocus } from '../../modal-focus';
   import { sprintPayload } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
   // SprintList: create, edit, activate, and complete sprints. The
@@ -369,6 +370,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     role="dialog"
     aria-modal="true"
     aria-label="Edit sprint"
+    use:modalFocus
     onclick={(e) => {
       if ((e.target as HTMLElement).dataset?.role === 'backdrop') requestClose();
     }}

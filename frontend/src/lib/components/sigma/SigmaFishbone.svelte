@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { modalFocus } from '../../modal-focus';
   import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
@@ -159,8 +160,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   {#if selectedCause}
     <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div class="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4">
-        <h4 class="text-sm font-bold uppercase tracking-widest text-amber-400 mb-2">5 Whys Drill-Down</h4>
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="five-whys-title"
+        tabindex="-1"
+        use:modalFocus={{ onEscape: () => (selectedCause = null) }}
+      >
+        <h4 id="five-whys-title" class="text-sm font-bold uppercase tracking-widest text-amber-400 mb-2">5 Whys Drill-Down</h4>
         <p class="text-xs text-slate-400 mb-4">Cause: {data.branches[selectedCause.branchIdx].causes[selectedCause.causeIdx].description}</p>
 
         <textarea

@@ -982,3 +982,22 @@ describe('SprintList migrated header "&larr; Dashboard" button', () => {
     );
   });
 });
+
+// Keyboard focus moves into the dialog when it opens and returns to the
+// control that opened it when it closes (modalFocus, owned by
+// modal-focus.test.ts; 2026-11-24 dialog focus audit).
+describe('SprintList editor dialog focus', () => {
+  it('takes focus when opened and returns it to + Sprint when closed', async () => {
+    render(SprintList);
+    await waitFor(() => expect(app.ListSprints).toHaveBeenCalled());
+    const opener = Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === '+ Sprint')!;
+    opener.focus();
+    await openNewEditor();
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+    await fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(document.activeElement).toBe(opener);
+  });
+});
