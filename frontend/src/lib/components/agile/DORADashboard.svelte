@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // deployment log with an inline "+ Record deployment" form.
 
   import { onMount, onDestroy } from 'svelte';
+  import { createDraftGuard } from '../../draft-guard';
   import { session, goto } from '../../session.svelte';
   import StatsChart from '../charts/StatsChart.svelte';
   import type { StatsLayout } from '../charts/_stats_types';
@@ -30,7 +31,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let formRestore = $state(0);
   let formNotes = $state('');
 
+  // A deployment typed into the open form is protected by the
+  // unsaved-changes guard: leaving the view or closing the window asks
+  // before discarding it. A hidden form holds nothing to save.
+  const formFields = () => JSON.stringify([formVersion, formSuccessful, formLead, formRestore, formNotes]);
+  const blankForm = JSON.stringify(['', true, 0, 0, '']);
+  const draftGuard = createDraftGuard(
+    () => (showForm ? formFields() : blankForm),
+    () => recordDeployment(),
+    () => error,
+  );
+  onDestroy(() => draftGuard.disarm());
+
   onMount(async () => {
+    draftGuard.arm();
     await refresh();
     loading = false;
   });
@@ -55,10 +69,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function recordDeployment() {
+  async function recordDeployment(): Promise<boolean> {
     if (!formVersion.trim()) {
       error = 'Version is required.';
-      return;
+      return false;
     }
     try {
       await desktopApi.SaveDeployment({
@@ -77,9 +91,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       formRestore = 0;
       formNotes = '';
       showForm = false;
+      draftGuard.arm();
       await refresh();
+      return true;
     } catch (err: any) {
       error = `Save failed: ${err}`;
+      return false;
     }
   }
 

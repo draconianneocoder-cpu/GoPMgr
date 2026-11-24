@@ -28,7 +28,7 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "3b121585c4cc1160fa68f949e6078fa4bba82fbfc7823b844451cbdf0637afea",
+      "sha256": "7dfe9043908c3fc562d18259374eb0010e126439026118126bc98b47332a1ced",
       "size": 2188,
       "mode": "100644"
     },
@@ -38,17 +38,17 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "15347c569b289c08fd82d0facb3e8c12b27cc8550121878d1da02fea5ffc961d",
+      "sha256": "f03af172a322f47c226cbc037a03ea58c778503016f3ed0456a3b221389ea7a5",
       "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "9482811822e5cfccf945757e4c42faba35b43688187cc585f26e94fc6ce5c2db",
+      "sha256": "b4382aa14978f92284f47cfd76eb211436f1c08c95d31df22f6c5f8a7c80a1fe",
       "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "2c876fe4b6c558c2c4af21fb4777ce4ec660f4de479506ca511633816c7232a9",
+      "sha256": "95881f3cdccc6e1dbc11f9272eaecdc62289efe09639e7314418d66cd0e47ebb",
       "size": 2867,
       "mode": "100644"
     },
@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "9de14e423232d528a353972cb1d64a322c877da5eaf1ec7c891175d225d9bdfb",
+      "sha256": "81e554e2b310d580e12c4a0323e62ee62e70b5f55241f484bdb8e5bf188b1550",
       "size": 2485,
       "mode": "100644"
     },
@@ -73,7 +73,7 @@
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "69a5741a175c221ecd895982708dd388472fede85ca049e00d15085a76b6e539",
+      "sha256": "87b2e8d917555e6fb401d9e89982ab93210b085beb98b0791bf2641acb9f7f43",
       "size": 2170,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "3ad2bc3d5b9b549dbd41fe38ac56599e3203bc254385ce6bd6d6a150f05d82db",
+      "sha256": "b60a15f8402886a5ede404f9bf91aee618b10c603bf9f00d211ba1c830c9028d",
       "size": 8426,
       "mode": "100644"
     },

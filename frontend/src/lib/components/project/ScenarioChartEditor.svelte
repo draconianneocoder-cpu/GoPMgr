@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { desktopApi } from '../../desktop-api';
   import { onDestroy, onMount } from 'svelte';
   import { autosave } from '../../autosave.svelte';
+  import { t } from '../../i18n/i18n.svelte';
   import { session, goto } from '../../session.svelte';
   import Button from '../Button.svelte';
 
@@ -55,6 +56,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // would save half-typed JSON.
   let stopDirtyGuard: (() => void) | null = null;
   let destroyed = false;
+
+  // The snapshot of the stored chart. Compare and Promote read the stored
+  // chart, so they wait while the editor shows anything else (owner
+  // decision 2026-11-24, "Disable until saved").
+  let savedSnapshot = $state('');
+  let unsaved = $derived(chart !== null && snapshot() !== savedSnapshot);
   onDestroy(() => {
     destroyed = true;
     stopDirtyGuard?.();
@@ -87,6 +94,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       title = loaded.title;
       data = pretty(loaded.data);
       config = pretty(loaded.config);
+      savedSnapshot = snapshot();
       void loadScenario(loaded.scenario_id);
       if (destroyed) return; // closed while loading: nothing to protect
       stopDirtyGuard = autosave.register(
@@ -139,6 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       config = pretty(saved.config);
       variances = {};
       comparisonLoaded = false;
+      savedSnapshot = snapshot();
       status = 'Saved.';
       return true;
     } catch (err: any) {
@@ -150,7 +159,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function compareToBaseline() {
-    if (!chart || comparing) return;
+    if (!chart || comparing || unsaved) return;
     comparing = true;
     status = '';
     error = '';
@@ -166,7 +175,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function promoteToBaseline() {
-    if (!chart || promoting) return;
+    if (!chart || promoting || unsaved) return;
     promoting = true;
     status = '';
     error = '';
@@ -195,7 +204,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="flex flex-wrap gap-2">
       <button
         onclick={compareToBaseline}
-        disabled={!chart || comparing}
+        disabled={!chart || comparing || unsaved}
+        aria-describedby={unsaved ? 'scenario-unsaved-hint' : undefined}
         class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-2 rounded"
       >
         {comparing ? 'Comparing...' : 'Compare to baseline'}
@@ -289,7 +299,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="flex items-end">
             <button
               onclick={promoteToBaseline}
-              disabled={!chart || promoting || baselineName.trim() === ''}
+              disabled={!chart || promoting || unsaved || baselineName.trim() === ''}
+              aria-describedby={unsaved ? 'scenario-unsaved-hint' : undefined}
               class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
             >
               {promoting ? 'Promoting...' : 'Promote to baseline'}
@@ -298,7 +309,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="flex items-end">
             <button
               onclick={compareToBaseline}
-              disabled={!chart || comparing}
+              disabled={!chart || comparing || unsaved}
+              aria-describedby={unsaved ? 'scenario-unsaved-hint' : undefined}
               class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
             >
               {comparing ? 'Comparing...' : 'Compare to baseline'}
@@ -306,6 +318,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
         </div>
 
+        {#if unsaved}
+          <p id="scenario-unsaved-hint" class="text-xs text-amber-300">
+            {t('scenarioChart.saveFirst')}
+          </p>
+        {/if}
         {#if comparisonLoaded}
           {#if varianceRows().length > 0}
             <div class="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1 text-[11px] text-slate-400">

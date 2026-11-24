@@ -7,6 +7,14 @@ import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import AppSettings from './AppSettings.svelte';
 import { THEME_STORAGE_KEY } from '../theme';
 import { session } from '../session.svelte';
+import { autosave } from '../autosave.svelte';
+import {
+  cancelNavigation,
+  navigation,
+  requestNavigation,
+  saveAndContinueNavigation,
+  session as navSession,
+} from '../session.svelte';
 
 const desktopApiMock = vi.hoisted(() => {
   const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
@@ -276,5 +284,30 @@ describe('account section', () => {
 
     await waitFor(() => expect(app.ChangePassword).toHaveBeenCalledWith('original-password', 'replacement-password'));
     expect(app.SaveAppSettings).not.toHaveBeenCalled();
+  });
+});
+
+
+// Owner decision 2026-11-24 ("All five forms"): unsaved settings ask
+// before they are discarded by leaving the view.
+describe('AppSettings unsaved changes', () => {
+  afterEach(() => {
+    autosave.discardAll();
+    cancelNavigation();
+    navigation.saving = false;
+    navigation.error = '';
+  });
+
+  it('asks before leaving with a changed setting, then saves it', async () => {
+    const ui = render(AppSettings);
+    const themeSelect = await ui.findByLabelText(/Default report\/PDF theme/i);
+    navSession.view = 'app_settings';
+    await fireEvent.change(themeSelect, { target: { value: 'classic' } });
+    requestNavigation('dashboard');
+    expect(navigation.pending?.view).toBe('dashboard');
+
+    await saveAndContinueNavigation();
+    expect(app.SaveAppSettings).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ default_theme: 'classic' }));
+    expect(navSession.view).toBe('dashboard');
   });
 });

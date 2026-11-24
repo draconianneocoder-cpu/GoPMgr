@@ -931,9 +931,8 @@ available from Application Settings. Auto-save is snapshot-based, so idle
 editors do not rewrite unchanged data or churn `updated_at`.
 
 Navigation, project close, and native window close protect registered
-editor changes with Save, Discard, and Cancel choices. Sign-out cannot be
-reached while an editor has unsaved changes, so no data loss is possible
-there either. After the desktop renderer is ready, native close uses the
+editor changes with Save, Discard, and Cancel choices. Sign out asks the
+same way. After the desktop renderer is ready, native close uses the
 editor's current local dirty state;
 a failed automatic or manual save remains dirty and must be retried or
 explicitly discarded.
@@ -943,6 +942,16 @@ Save, Discard, and Cancel protection, but are not timed-auto-saved because a
 successful modal save closes the editor. If a modal field changes while a save
 is in progress, the first saved result stays in place and the later change
 remains open for another Save before continuing.
+
+These forms ask the same way, also without timed auto-save: the scenario
+chart editor, Application Settings, the Kanban column manager, a deployment
+being recorded on the DORA dashboard, the Cost Control entry, reserve and
+approval-rationale fields, and the supplier and item dialogs of the
+procurement catalog. An empty form, or one closed with Cancel, holds nothing
+to save. Save in the prompt never approves a cost baseline: a typed approval
+rationale can only be discarded there, so approve it from Cost Control. In the
+scenario chart editor, Compare to baseline and Promote to baseline are
+unavailable until your edits are saved, because both use the saved chart.
 
 Stakeholder money values are retained exactly while their stored minor-unit
 amounts are safe JavaScript integers. If an older value is too large for that
