@@ -517,11 +517,12 @@ calendar. Each one is a test of the scheduler.
   on the same resource finishes, then each following day. Part-day tasks for
   one person run one after the other within the day, so a chain of short
   tasks is not spread over separate days. Splitting a task around busy days
-  books whole days; the chart keeps the split, and every schedule, report
-  and export uses those days while they still fit the task. If an edit
-  makes them stop fitting (a duration needing a different number of whole
-  days, or a start part-way through a day), the task is scheduled in one
-  piece again and the levelling note appears.
+  books whole days; the chart keeps the split through edits in the CPM and
+  Gantt editors, and every schedule, report, export and Gantt bar uses
+  those days while they still fit the task. If an edit makes them stop
+  fitting (a duration needing a different number of whole days, or a start
+  part-way through a day), the task is scheduled and drawn in one piece
+  again and the levelling note appears.
 - **Charts levelled before 18 November 2026.** Earlier versions stored
   levelling delays as SNET constraints. Those SNETs look like any other and
   are kept. Remove the ones levelling added, then level again.

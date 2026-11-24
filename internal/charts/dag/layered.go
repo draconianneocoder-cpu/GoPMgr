@@ -69,9 +69,10 @@ type LayeredNode struct {
 	// WorkSegments records a split (interrupted) task's working-day runs
 	// as offsets RELATIVE to the task's start, persisted by an
 	// apply-splitting resource-leveling run. Empty for an ordinary
-	// contiguous task. The Gantt layout turns these into absolute bar
-	// pieces (ES + offset), while the EVM adapter uses the same snapshot
-	// to pause planned-value accrual during idle gaps. They do not alter
+	// contiguous task. While they still fit the task
+	// (kernel.RebuildSplitDays), the schedule, the Gantt bars and the EVM
+	// adapter use them; otherwise they are ignored and the task runs in one
+	// piece. Editors keep them; levelling rewrites them. They do not alter
 	// CPM precedence passes.
 	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 

@@ -21,7 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import GanttBars from './GanttBars.svelte';
   import BaselineList from './BaselineList.svelte';
   import { GANTT_ROW_H as rowH, type GanttLayout, type GanttRow } from './gantt_geometry';
-  import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
+  import { splitLevelStatus, splitPreviewMessage } from './leveling_messages';
   import { formatList, formatTime, t } from '../../i18n/i18n.svelte';
 
   // Link-label syntax samples. They are input syntax, not text to translate.
@@ -192,12 +192,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  // onEdit handles any manual change to the schedule. A manual edit
-  // invalidates the leveled split snapshot, so it drops persisted
-  // work_segments before re-laying-out; stale interrupted bars can't render
-  // until the user re-runs "Level (split)".
+  // onEdit handles any manual change to the schedule. It keeps the split
+  // work_segments levelling saved: the schedule uses them while they still
+  // fit the task and draws split bars only then (kernel.RebuildSplitDays),
+  // and an edit that changes a levelling input shows the stale-levelling
+  // note. Clearing them here lost the levelled plan on any edit, a rename
+  // included.
   function onEdit() {
-    clearWorkSegments(doc.nodes);
     void refreshLayout();
   }
 
