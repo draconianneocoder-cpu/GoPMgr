@@ -7,7 +7,6 @@ import ProcurementCatalog from './ProcurementCatalog.svelte';
 import { autosave } from '../../autosave.svelte';
 import {
   cancelNavigation,
-  discardAndContinueNavigation,
   navigation,
   requestNavigation,
   saveAndContinueNavigation,

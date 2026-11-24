@@ -8,7 +8,6 @@ import ColumnManager from './ColumnManager.svelte';
 import { autosave } from '../../autosave.svelte';
 import {
   cancelNavigation,
-  discardAndContinueNavigation,
   navigation,
   requestNavigation,
   saveAndContinueNavigation,

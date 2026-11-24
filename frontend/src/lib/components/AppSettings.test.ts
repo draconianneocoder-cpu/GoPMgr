@@ -10,7 +10,6 @@ import { session } from '../session.svelte';
 import { autosave } from '../autosave.svelte';
 import {
   cancelNavigation,
-  discardAndContinueNavigation,
   navigation,
   requestNavigation,
   saveAndContinueNavigation,
