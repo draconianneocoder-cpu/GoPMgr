@@ -17,6 +17,10 @@ export const en = {
   'help.lookup.openDefinition': '{term}: Definition',
   'help.lookup.openTopic': '{topic}: Topic',
 
+  'fishbone.addCause.title': 'Add cause',
+  'fishbone.addCause.label': 'Cause description',
+  'fishbone.addCause.add': 'Add',
+  'fishbone.addCause.cancel': 'Cancel',
   'unsaved.title': 'Unsaved changes',
   'unsaved.description': 'Save the current editor before leaving this view?',
   'unsaved.cancel': 'Cancel',

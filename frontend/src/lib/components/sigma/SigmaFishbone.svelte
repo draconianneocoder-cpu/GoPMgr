@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { modalFocus } from '../../modal-focus';
+  import { t } from '../../i18n/i18n.svelte';
   import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
@@ -35,17 +36,28 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return `cause-${suffix}`;
   }
 
+  // The cause is typed into an in-app dialog: window.prompt() returns null
+  // at once in the macOS app (Wails v3.1.0's WKUIDelegate does not
+  // implement runJavaScriptTextInputPanel), so it silently added nothing.
+  let addingTo = $state<number | null>(null);
+  let newCause = $state('');
+
   function addCause(branchIdx: number) {
-    const desc = prompt('Enter cause description:');
-    if (desc) {
-      data.branches[branchIdx].causes.push({
-        id: nextCauseID(),
-        description: desc,
-        is_root_cause: false,
-        five_whys: [],
-        evidence: ''
-      });
-    }
+    addingTo = branchIdx;
+    newCause = '';
+  }
+
+  function confirmAddCause() {
+    const description = newCause.trim();
+    if (addingTo === null || !description) return;
+    data.branches[addingTo].causes.push({
+      id: nextCauseID(),
+      description,
+      is_root_cause: false,
+      five_whys: [],
+      evidence: ''
+    });
+    addingTo = null;
   }
 
   function openFiveWhys(branchIdx: number, causeIdx: number) {
@@ -157,6 +169,35 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </text>
     {/each}
   </svg>
+
+  {#if addingTo !== null}
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-cause-title"
+        tabindex="-1"
+        use:modalFocus={{ onEscape: () => (addingTo = null) }}
+      >
+        <form onsubmit={(event) => { event.preventDefault(); confirmAddCause(); }}>
+          <h4 id="add-cause-title" class="text-sm font-bold uppercase tracking-widest text-amber-400 mb-1">{t('fishbone.addCause.title')}</h4>
+          <p class="text-xs text-slate-400 mb-4">{data.branches[addingTo].category}</p>
+          <label class="block text-xs text-slate-400">
+            {t('fishbone.addCause.label')}
+            <input
+              bind:value={newCause}
+              class="mt-1 w-full bg-slate-950 border border-slate-800 p-2 rounded text-sm text-slate-100 focus:border-amber-500 outline-none"
+            />
+          </label>
+          <div class="flex justify-end gap-3 mt-4">
+            <button type="button" onclick={() => (addingTo = null)} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded">{t('fishbone.addCause.cancel')}</button>
+            <button type="submit" disabled={!newCause.trim()} class="text-xs bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white font-bold uppercase px-3 py-1.5 rounded">{t('fishbone.addCause.add')}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {/if}
 
   {#if selectedCause}
     <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
