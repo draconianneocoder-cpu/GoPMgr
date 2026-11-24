@@ -5,7 +5,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { definedEntries } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { autosave } from '../../autosave.svelte';
   import { session, goto } from '../../session.svelte';
   import Button from '../Button.svelte';
 
@@ -31,6 +32,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return raw || '{}';
     }
   }
+
+  // JSON text compared by content, so pretty-printing it is not an edit.
+  function sameJSON(raw: string): string {
+    try {
+      return JSON.stringify(JSON.parse(raw || '{}'));
+    } catch {
+      return raw;
+    }
+  }
+
+  // What a save would store, for the unsaved-changes guard. A blank title
+  // keeps the stored one and surrounding spaces are trimmed, as save does,
+  // so the guard sees an edit exactly when saving would change the chart.
+  function snapshot(): string {
+    if (!chart) return '';
+    return JSON.stringify([title.trim() || chart.title, sameJSON(data), sameJSON(config)]);
+  }
+
+  // Registered once the chart loads: navigation, project close and window
+  // close then ask before discarding edits. Not timed auto-save, which
+  // would save half-typed JSON.
+  let stopDirtyGuard: (() => void) | null = null;
+  let destroyed = false;
+  onDestroy(() => {
+    destroyed = true;
+    stopDirtyGuard?.();
+  });
 
   function assertJSON(label: string, raw: string) {
     try {
@@ -60,6 +88,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
       data = pretty(loaded.data);
       config = pretty(loaded.config);
       void loadScenario(loaded.scenario_id);
+      if (destroyed) return; // closed while loading: nothing to protect
+      stopDirtyGuard = autosave.register(
+        snapshot,
+        async () => {
+          if (await persist()) return true;
+          throw new Error(error || 'The scenario chart was not saved.');
+        },
+        false,
+      );
     } catch (err: any) {
       error = String(err?.message ?? err);
     } finally {
@@ -77,8 +114,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function save() {
-    if (!chart || saving) return;
+  // Manual save runs through the guard, so it records what was saved.
+  async function save(): Promise<boolean> {
+    return autosave.saveRegistered(snapshot);
+  }
+
+  async function persist(): Promise<boolean> {
+    if (!chart || saving) return false;
     saving = true;
     status = '';
     error = '';
@@ -98,8 +140,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       variances = {};
       comparisonLoaded = false;
       status = 'Saved.';
+      return true;
     } catch (err: any) {
       error = String(err?.message ?? err);
+      return false;
     } finally {
       saving = false;
     }
