@@ -199,3 +199,22 @@ describe('DORADashboard unsaved deployment', () => {
     expect(navSession.view).toBe('dashboard');
   });
 });
+
+// A deployment is created with a blank ID, so a second click while the
+// first save is in flight would record it twice and skew the metrics.
+describe('DORADashboard record deployment while a save is in flight', () => {
+  it('records the deployment once when Save is clicked twice', async () => {
+    const app = installApp([]);
+    let finish: (value: unknown) => void = () => {};
+    app.SaveDeployment.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const ui = await mountLoaded(app);
+    await fireEvent.click(ui.getByRole('button', { name: '+ Deployment' }));
+    await fireEvent.input(ui.getByPlaceholderText('e.g. v1.4.2'), { target: { value: 'v3.0' } });
+    const save = ui.getByRole('button', { name: /Save deployment|Saving/ });
+    await fireEvent.click(save);
+    await fireEvent.click(save);
+    finish(undefined);
+    await waitFor(() => expect(app.ComputeDORA).toHaveBeenCalledTimes(3));
+    expect(app.SaveDeployment).toHaveBeenCalledTimes(1);
+  });
+});

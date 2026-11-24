@@ -30,6 +30,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let formLead = $state(0);
   let formRestore = $state(0);
   let formNotes = $state('');
+  // A deployment is created with a blank ID, so a second save while one
+  // is in flight would record it twice.
+  let recording = $state(false);
 
   // A deployment typed into the open form is protected by the
   // unsaved-changes guard: leaving the view or closing the window asks
@@ -70,10 +73,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function recordDeployment(): Promise<boolean> {
+    if (recording) return false;
     if (!formVersion.trim()) {
       error = 'Version is required.';
       return false;
     }
+    recording = true;
     try {
       await desktopApi.SaveDeployment({
         id: '',
@@ -97,6 +102,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       error = `Save failed: ${err}`;
       return false;
+    } finally {
+      recording = false;
     }
   }
 
@@ -333,7 +340,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </div>
         <button
           onclick={recordDeployment}
-          disabled={!formVersion.trim()}
+          disabled={recording || !formVersion.trim()}
           class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
         >
           Save deployment
