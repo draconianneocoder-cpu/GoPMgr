@@ -17,9 +17,9 @@ Contents
   chart.js 4.6.1
   clsx 2.1.1
   fflate 0.8.3
-  read-excel-file 9.3.15
+  read-excel-file 9.3.20
   rolldown 1.2.19
-  svelte 5.57.3
+  svelte 5.59.0
   tailwindcss 4.3.5
   vite 8.3.8
   worker-f 0.1.16
@@ -135,7 +135,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-Package: read-excel-file 9.3.15
+Package: read-excel-file 9.3.20
 License (package.json): MIT
 Included as: JavaScript modules in the bundle
 
@@ -233,7 +233,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-Package: svelte 5.57.3
+Package: svelte 5.59.0
 License (package.json): MIT
 Included as: JavaScript modules in the bundle
 
