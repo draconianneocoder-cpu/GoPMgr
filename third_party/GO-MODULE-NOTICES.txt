@@ -15,23 +15,23 @@ Contents
 --------
 
   std
-  github.com/andybalholm/brotli v1.2.7
-  github.com/apache/arrow-go/v18 v18.8.0
-  github.com/apache/thrift v0.24.0
+  github.com/andybalholm/brotli v1.2.8
+  github.com/apache/arrow-go/v18 v18.9.0
+  github.com/apache/thrift v0.25.0
   github.com/cespare/xxhash/v2 v2.3.0
   github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
   github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
   github.com/go-ole/go-ole v1.3.0
   github.com/go-pdf/fpdf v0.9.0
-  github.com/goccy/go-json v0.10.6
+  github.com/goccy/go-json v0.12.0
   github.com/godbus/dbus/v5 v5.2.2
   github.com/gomutex/godocx v0.1.5
   github.com/google/flatbuffers v25.12.19+incompatible
   github.com/google/uuid v1.6.0
-  github.com/klauspost/compress v1.20.2
-  github.com/klauspost/cpuid/v2 v2.4.0
+  github.com/klauspost/compress v1.20.3
+  github.com/klauspost/cpuid/v2 v2.4.2
   github.com/mutecomm/go-sqlcipher/v4 v4.4.2
-  github.com/pierrec/lz4/v4 v4.1.29
+  github.com/pierrec/lz4/v4 v4.1.33
   github.com/richardlehane/mscfb v1.0.9
   github.com/richardlehane/msoleps v1.0.6
   github.com/rickar/cal/v2 v2.1.33
@@ -114,7 +114,7 @@ rights granted to you under this License for this implementation of Go
 shall terminate as of the date such litigation is filed.
 
 ================================================================================
-Module: github.com/andybalholm/brotli v1.2.7
+Module: github.com/andybalholm/brotli v1.2.8
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -140,7 +140,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ================================================================================
-Module: github.com/apache/arrow-go/v18 v18.8.0
+Module: github.com/apache/arrow-go/v18 v18.9.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE.txt -----
@@ -411,7 +411,7 @@ This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 ================================================================================
-Module: github.com/apache/thrift v0.24.0
+Module: github.com/apache/thrift v0.25.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -625,13 +625,6 @@ The Apache Thrift software includes a number of subcomponents with
 separate copyright notices and license terms. Your use of the source
 code for the these subcomponents is subject to the terms and
 conditions of the following licenses.
-
---------------------------------------------------
-Portions of the following files are licensed under the MIT License:
-
-  lib/erl/src/Makefile.am
-
-Please see doc/otp-base-license.txt for the full terms of this license.
 
 --------------------------------------------------
 For the aclocal/ax_boost_base.m4 and contrib/fb303/aclocal/ax_boost_base.m4 components:
@@ -887,7 +880,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-Module: github.com/goccy/go-json v0.10.6
+Module: github.com/goccy/go-json v0.12.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1217,7 +1210,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-Module: github.com/klauspost/compress v1.20.2
+Module: github.com/klauspost/compress v1.20.3
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1644,7 +1637,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-Module: github.com/klauspost/cpuid/v2 v2.4.0
+Module: github.com/klauspost/cpuid/v2 v2.4.2
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
@@ -1915,7 +1908,7 @@ public-domain Rijndael implementation by Vincent Rijmen, Antoon Bosselaers,
 and Paulo Barreto.
 
 ================================================================================
-Module: github.com/pierrec/lz4/v4 v4.1.29
+Module: github.com/pierrec/lz4/v4 v4.1.33
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----
