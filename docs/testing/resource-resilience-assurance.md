@@ -57,10 +57,10 @@ levelling delays, under the [development contract](../design/resource-resilience
 
 | Item | Record |
 | --- | --- |
-| Path and phase | Existing in-process host paths (chart layout, levelling, reports, export, import); MR-0 inventory entry. Not a new heavy path. |
+| Path and phase | Existing in-process host paths (chart layout, levelling, reports, export, import, and since 2026-11-24 Monte Carlo split days); MR-0 inventory entry. Not a new heavy path. |
 | MEM IDs | MEM-02 (envelope: measured allocation below), MEM-12 (exactness: independent oracles in the [overallocation contract](resource-overallocation-contract.md)). Others N/A for this slice only because nothing queues, isolates, retries or persists anew; independent reviewer agreement NOT obtained. |
 | Owners | Change approved by the owner's decisions; independent reviewer not assigned. |
-| Input and output bounds | Schedules within `kernel.MaxScheduleDays` (18,250 working days) and the 4× allocation limit. Detection keeps the per-day profiles and adds per-day buffers reused across days. Levelling keeps a per-resource whole-day total and capacity slice to the booked extent, plus part-day pieces (at most two per assignment of each part-day task). The delay helpers grow one date table to the latest offset they read. |
+| Input and output bounds | Schedules within `kernel.MaxScheduleDays` (18,250 working days) and the 4× allocation limit. Detection keeps the per-day profiles and adds per-day buffers reused across days. Levelling keeps a per-resource whole-day total and capacity slice to the booked extent, plus part-day pieces (at most two per assignment of each part-day task). The delay helpers grow one date table to the latest offset they read. Monte Carlo computes split days once per call, before the runs, and its workers share them read-only. |
 | Profile and ceiling | None approved (DEC-HARDWARE, OWN-10): BLOCKED. |
 | Peak and estimate | Allocation per call measured (contract, Benchmarks): detection −7% at T0–T3; whole-day levelling T1 17.0 MB against 21.4 MB; part-day levelling T1 19.6 MB. Peak RSS NOT RUN; no estimate made, so no estimation error. |
 | Admission, queue, cancellation | None, as before: synchronous calls on the caller's goroutine. Not changed. |
