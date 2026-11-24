@@ -28,27 +28,27 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "7dfe9043908c3fc562d18259374eb0010e126439026118126bc98b47332a1ced",
+      "sha256": "826580ff11f49ff3877c83493b2d8a9b845871e8301cd8114f1a9749e2e5e078",
       "size": 2188,
       "mode": "100644"
     },
     "content/community/_index.md": {
-      "sha256": "a177bfe97b51b590a8006eed9a5b5a320c95f776b5ee5d8771b344c008900601",
+      "sha256": "a813862a0fd9d6034bfe1e6c1e7eb91e9428b983edd0e6ad7ba1414642f4528b",
       "size": 1442,
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "f03af172a322f47c226cbc037a03ea58c778503016f3ed0456a3b221389ea7a5",
+      "sha256": "074156a88efdfcba63eaab24fec0af1cf713f06f9692cee6e04b6b8272e2df73",
       "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "b4382aa14978f92284f47cfd76eb211436f1c08c95d31df22f6c5f8a7c80a1fe",
+      "sha256": "f654cabdfe6ed6a40994c26df9fdfd06cdc574779bcfd0138bfab9c104e171e0",
       "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "95881f3cdccc6e1dbc11f9272eaecdc62289efe09639e7314418d66cd0e47ebb",
+      "sha256": "1a7003c4c0e24128e4e3dd17085834ef645213228731ef1921a8f17e4184bb77",
       "size": 2867,
       "mode": "100644"
     },
@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "81e554e2b310d580e12c4a0323e62ee62e70b5f55241f484bdb8e5bf188b1550",
+      "sha256": "136237e243ef0f765c39b4f6ccb22f489ac178a04e2c749421f9249e46badce6",
       "size": 2485,
       "mode": "100644"
     },
@@ -73,7 +73,7 @@
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "87b2e8d917555e6fb401d9e89982ab93210b085beb98b0791bf2641acb9f7f43",
+      "sha256": "39b9bbbbfe711700f95af9161baa0781e5252af5c0eee2f2caaf0602c3a0727d",
       "size": 2170,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "b60a15f8402886a5ede404f9bf91aee618b10c603bf9f00d211ba1c830c9028d",
+      "sha256": "e68016e51dda2698ebce42e32fa2a87d89900db62b65a63918cc6cec3db6b6b5",
       "size": 8426,
       "mode": "100644"
     },
