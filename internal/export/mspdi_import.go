@@ -353,7 +353,7 @@ func parseLevelingDelay(rawValue, rawFormat string) (kernel.LevelingDelay, delay
 	if err != nil || !mspdiDelayFormats[format] {
 		return kernel.LevelingDelay{}, delaySkipped
 	}
-	return kernel.LevelingDelay{Amount: v / 10, Elapsed: true}, delayRead
+	return kernel.LevelingDelay{Minutes: v / 10}, delayRead
 }
 
 // mspdiDelayFormats are Microsoft's documented LevelingDelayFormat codes

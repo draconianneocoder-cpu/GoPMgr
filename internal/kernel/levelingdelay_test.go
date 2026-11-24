@@ -71,9 +71,9 @@ func TestLevelingDelayMinutes(t *testing.T) {
 }
 
 // Applying delays read from a file gives the levelled starts back: the
-// elapsed delays above, a working delay of 1.5 days, an elapsed delay
+// delays above, one ending at lunch on Tuesday (to 13:00, offset 1.5), one
 // ending on a Saturday (to Monday 08:00, offset 5), and skips: an ALAP
-// task and delays beyond the schedule limit, working and elapsed.
+// task, a delay beyond the schedule limit and one beyond time.Duration.
 func TestApplyLevelingDelays(t *testing.T) {
 	tasks := delayNetwork()
 	tasks["S"] = &Task{ID: "S", Duration: 1}
@@ -81,13 +81,13 @@ func TestApplyLevelingDelays(t *testing.T) {
 	tasks["Y"] = &Task{ID: "Y", Duration: 1}
 	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
 	starts, skipped, ok := ApplyLevelingDelays(tasks, map[string]LevelingDelay{
-		"B": {6180, true},
-		"C": {4020, true},
-		"N": {1.5, false},
-		"S": {5 * 1440, true}, // Monday 08:00 + 5 days: Saturday 08:00
-		"Q": {60, true},
-		"X": {MaxScheduleDays, false},
-		"Y": {1e15, true}, // would overflow time.Duration
+		"B": {6180},
+		"C": {4020},
+		"N": {1680},     // Monday 08:00 + 28 hours: Tuesday 12:00
+		"S": {5 * 1440}, // Monday 08:00 + 5 days: Saturday 08:00
+		"Q": {60},
+		"X": {MaxScheduleDays * 1.5 * 1440}, // over MaxScheduleDays working days
+		"Y": {1e15},                         // would overflow time.Duration
 	}, conStart, weekdaysOnly)
 	if !ok {
 		t.Fatal("cycle")
@@ -145,7 +145,7 @@ func TestLevelingDelaysRoundTrip(t *testing.T) {
 		mustCPM(t, levelled)
 		delays := map[string]LevelingDelay{}
 		for id, minutes := range LevelingDelayMinutes(levelled, conStart, weekdaysOnly) {
-			delays[id] = LevelingDelay{float64(minutes), true}
+			delays[id] = LevelingDelay{float64(minutes)}
 		}
 		fresh := build()
 		ApplyConstraintDates(fresh, conStart, weekdaysOnly)

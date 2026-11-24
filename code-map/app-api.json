@@ -795,7 +795,7 @@
     {
       "method": "ExportDocumentPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 1205,
+      "line": 1206,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -805,7 +805,7 @@
     {
       "method": "ExportDocumentPDFGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 1278,
+      "line": 1279,
       "params": "id string, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -817,7 +817,7 @@
     {
       "method": "ExportDocumentPDFSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 1321,
+      "line": 1322,
       "params": "id string, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -919,7 +919,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 836,
+      "line": 821,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1049,7 +1049,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 970,
+      "line": 946,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1097,7 +1097,7 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 581,
+      "line": 565,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
@@ -1446,7 +1446,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 760,
+      "line": 745,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [

@@ -518,27 +518,11 @@ type LevelResult struct {
 // first working day, for persistence on a LayeredNode. Returns nil for a
 // non-split task so ordinary contiguous tasks carry no segments.
 func relativeWorkSegments(workDays []int) []dag.WorkSegment {
-	if len(workDays) == 0 {
-		return nil
-	}
-	base := workDays[0]
 	var segs []dag.WorkSegment
-	runStart := 0
-	prev := 0
-	for idx, w := range workDays {
-		rel := w - base
-		if idx == 0 {
-			runStart, prev = rel, rel
-			continue
-		}
-		if rel == prev+1 {
-			prev = rel
-			continue
-		}
-		segs = append(segs, dag.WorkSegment{Start: float64(runStart), End: float64(prev + 1)})
-		runStart, prev = rel, rel
+	for _, r := range kernel.DayRuns(workDays) {
+		base := float64(workDays[0])
+		segs = append(segs, dag.WorkSegment{Start: r.Start - base, End: r.End - base})
 	}
-	segs = append(segs, dag.WorkSegment{Start: float64(runStart), End: float64(prev + 1)})
 	return segs
 }
 
@@ -630,8 +614,9 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		return LevelResult{}, err
 	}
 	kernel.ApplyConstraintDates(levelled, start, cal.IsWorkday)
+	capacity := resourceCapacityPlan(d, proj.ID)
 	levelOutcome, levelErr := kernel.LevelResourcesWithOptions(
-		levelled, resourceCapacityPlan(d, proj.ID),
+		levelled, capacity,
 		kernel.LevelingOptions{
 			Strategy:         levelingStrategyFor(strategy),
 			PriorityCritical: priorityCritical,
@@ -689,7 +674,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	for _, n := range doc.Nodes {
 		if n.LevelStart != "" || len(n.WorkSegments) > 0 {
 			layered := dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges}
-			doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(proj, resourceCapacityPlan(d, proj.ID), layered))
+			doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(proj, capacity, layered))
 			break
 		}
 	}
@@ -872,16 +857,7 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 	}
 	categories := make([]string, horizon)
 	if start, ok := parseProjectDate(proj.StartDate); ok {
-		cal := calendar.For(proj.CountryCode)
-		dayTasks := make(map[string]*kernel.Task, horizon)
-		for i := 0; i < horizon; i++ {
-			id := fmt.Sprintf("d%d", i)
-			dayTasks[id] = &kernel.Task{ID: id, Duration: 1, ES: float64(i), EF: float64(i + 1)}
-		}
-		kernel.AnchorSchedule(dayTasks, start, cal.IsWorkday)
-		for i := 0; i < horizon; i++ {
-			categories[i] = dayTasks[fmt.Sprintf("d%d", i)].StartDate
-		}
+		categories = kernel.WorkdayDates(start, calendar.For(proj.CountryCode).IsWorkday, horizon)
 	} else {
 		for i := 0; i < horizon; i++ {
 			categories[i] = fmt.Sprintf("Day %d", i+1)
@@ -1229,17 +1205,18 @@ func applyImportedLevelingDelays(doc *dagDoc, imported *export.ImportedProject, 
 	if len(starts) == 0 {
 		return false
 	}
-	// The date of each start's day, by the rule the editors show it with.
-	dated := make(map[string]*kernel.Task, len(starts))
-	for id, at := range starts {
-		dated[id] = &kernel.Task{ID: id, ES: at, EF: at}
+	// The date of each start's day, as the editors show it.
+	last := 0
+	for _, at := range starts {
+		day, _ := kernel.SplitDayOffset(at)
+		last = max(last, day)
 	}
-	kernel.AnchorSchedule(dated, start, isWorkday)
+	dates := kernel.WorkdayDates(start, isWorkday, last+1)
 	for i := range doc.Nodes {
 		n := &doc.Nodes[i]
 		if at, ok := starts[n.ID]; ok {
-			_, fraction := kernel.SplitDayOffset(at)
-			n.LevelStart, n.LevelStartFraction = dated[n.ID].StartDate, fraction
+			day, fraction := kernel.SplitDayOffset(at)
+			n.LevelStart, n.LevelStartFraction = dates[max(day, 0)], fraction
 		}
 	}
 	return true

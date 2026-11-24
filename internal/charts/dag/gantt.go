@@ -87,16 +87,12 @@ func LayoutGanttScheduledWithPlan(doc LayeredDocument, projectStart time.Time, i
 // whose stored segments no longer fit it (a duration edited since
 // levelling), gets none, so the bar shows what the schedule uses.
 func workDayRuns(t *kernel.Task) []WorkSegment {
-	if t == nil || len(t.WorkDays) == 0 {
+	if t == nil {
 		return nil
 	}
 	var runs []WorkSegment
-	for _, d := range t.WorkDays {
-		if n := len(runs); n > 0 && runs[n-1].End == float64(d) {
-			runs[n-1].End++
-			continue
-		}
-		runs = append(runs, WorkSegment{Start: float64(d), End: float64(d + 1)})
+	for _, r := range kernel.DayRuns(t.WorkDays) {
+		runs = append(runs, WorkSegment(r))
 	}
 	return runs
 }

@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -140,11 +141,16 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 		samples[k] = make([]float64, iterations)
 	}
 	criticalCounts := make([][]int, workers)
-	splits := monteCarloSplits(tasks, taskIDs)
+	sims := make([]*monteCarloWorker, workers)
+	for w := range sims {
+		sims[w] = newMonteCarloWorker(tasks, taskIDs)
+	}
+	// Before any run: the first worker's copy still has the planned
+	// durations.
+	splits := monteCarloSplits(sims[0])
 	jobs := make(chan int)
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
-		sim := newMonteCarloWorker(tasks, taskIDs)
+	for w, sim := range sims {
 		sim.splits = splits
 		criticalCounts[w] = sim.criticalCounts
 		wg.Add(1)
@@ -262,26 +268,16 @@ type monteCarloSplit struct {
 // monteCarloSplits finds the tasks whose saved split the schedule uses,
 // by RebuildSplitDays' rule on the network scheduled with its planned
 // durations, so that at the planned durations every run finishes when the
-// schedule does (owner decision 2026-11-24, "follow the split days").
-func monteCarloSplits(tasks map[string]*Task, taskIDs []string) []monteCarloSplit {
-	network := make(map[string]*Task, len(taskIDs))
-	clones := make([]*Task, len(taskIDs))
-	hasSplit := false
-	for k, id := range taskIDs {
-		clones[k] = cloneTaskForSimulation(tasks[id])
-		network[id] = clones[k]
-		hasSplit = hasSplit || len(clones[k].PlannedWorkSegments) > 0
-	}
-	if !hasSplit {
+// schedule does (owner decision 2026-11-24, "follow the split days"). It
+// schedules sim's copy, which must not have run an iteration yet; each
+// iteration recomputes every result from the sampled durations.
+func monteCarloSplits(sim *monteCarloWorker) []monteCarloSplit {
+	if !slices.ContainsFunc(sim.clones, func(t *Task) bool { return len(t.PlannedWorkSegments) > 0 }) {
 		return nil
 	}
-	plan, ok := newCPMPlan(network)
-	if !ok {
-		return nil
-	}
-	plan.run()
+	sim.plan.run()
 	var out []monteCarloSplit
-	for k, t := range clones {
+	for k, t := range sim.clones {
 		days, ok := splitDays(t)
 		if !ok {
 			continue

@@ -403,8 +403,14 @@ type instantSweep struct {
 	resource string
 	workDays map[int][]int // entry -> its sorted split days
 	occ      []occupancy
-	events   []occupancyEvent
 	over     [][2]float64 // overloaded segments of the day, ascending
+	sweepBuffers
+}
+
+// sweepBuffers are the buffers overloadedSegments reuses across calls.
+type sweepBuffers struct {
+	events []occupancyEvent
+	caps   map[float64]int // capacities in use, by value
 }
 
 // occupancy is one assignment in use over [start, end) within a day.
@@ -505,7 +511,7 @@ func (s *instantSweep) day(d int, demand float64, m *overallocationMembers) ([]i
 		}
 	}
 	s.over = s.over[:0]
-	s.events = overloadedSegments(s.occ, s.events, func(lo, hi float64) bool {
+	s.overloadedSegments(s.occ, func(lo, hi float64) bool {
 		if n := len(s.over); n > 0 && s.over[n-1][1] == lo {
 			s.over[n-1][1] = hi
 		} else {
@@ -576,8 +582,8 @@ func (b *resourceBookings) addWhole(d int, units, capacity float64) {
 
 // bookingCheck holds buffers reused across levelling's capacity checks.
 type bookingCheck struct {
-	occ    []occupancy
-	events []occupancyEvent
+	occ []occupancy
+	sweepBuffers
 }
 
 // fits reports whether adding the assignments to resource r over [lo, hi)
@@ -618,7 +624,7 @@ func (c *bookingCheck) fits(b *resourceBookings, plan ResourceCapacityPlan, assi
 		}
 	}
 	free := true
-	c.events = overloadedSegments(c.occ, c.events, func(float64, float64) bool {
+	c.overloadedSegments(c.occ, func(float64, float64) bool {
 		free = false
 		return false
 	})
@@ -629,9 +635,10 @@ func (c *bookingCheck) fits(b *resourceBookings, plan ResourceCapacityPlan, assi
 // boundaryEpsilon) and calls visit with each segment, in ascending order,
 // where the units in use exceed the smallest capacity among the
 // assignments in use; visit returns false to stop. Detection and levelling
-// share it. It returns the event buffer for reuse.
-func overloadedSegments(occ []occupancy, events []occupancyEvent, visit func(lo, hi float64) bool) []occupancyEvent {
-	events = events[:0]
+// share it.
+func (b *sweepBuffers) overloadedSegments(occ []occupancy, visit func(lo, hi float64) bool) {
+	events := b.events[:0]
+	defer func() { b.events = events }()
 	for i, o := range occ {
 		events = append(events,
 			occupancyEvent{at: o.start, occ: i, entry: o.entry, idx: o.idx},
@@ -664,7 +671,11 @@ func overloadedSegments(occ []occupancy, events []occupancyEvent, visit func(lo,
 	// DefaultCapacity) is counted apart, as NaN map keys never match, and
 	// makes every moment it is in use overloaded, as the day rule did.
 	sum, nonFinite, nanCaps, active := 0.0, 0, 0, 0
-	caps := map[float64]int{}
+	if b.caps == nil {
+		b.caps = map[float64]int{}
+	}
+	caps := b.caps
+	clear(caps)
 	for i, ev := range events {
 		o := occ[ev.occ]
 		finite := !math.IsNaN(o.units) && !math.IsInf(o.units, 0)
@@ -699,7 +710,6 @@ func overloadedSegments(occ []occupancy, events []occupancyEvent, visit func(lo,
 			break
 		}
 	}
-	return events
 }
 
 func cmpFloat(a, b float64) int {

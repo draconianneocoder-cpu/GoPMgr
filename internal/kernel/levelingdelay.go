@@ -24,16 +24,17 @@ import (
 // below time.Duration's limit.
 const maxElapsedDelayMinutes = float64(maxAllocationDays) * 2 * 24 * 60
 
-// LevelingDelay is one task's delay read from a file: Amount elapsed
-// minutes when Elapsed, else working days.
+// LevelingDelay is one task's delay read from a file, in elapsed minutes.
 type LevelingDelay struct {
-	Amount  float64
-	Elapsed bool
+	Minutes float64
 }
 
 // workdayTable maps working-day offsets to dates (offset 0 = the first
-// working day on or after the project start), grown on demand, as
-// AnchorSchedule's table is built.
+// working day on or after the project start), grown on demand. The
+// project start is read as the calendar date it shows (calendarDate), so
+// the dates and the days isWorkday is asked about do not depend on its
+// time of day or zone. AnchorSchedule, WorkdayDates and the levelling-delay
+// helpers share it.
 type workdayTable struct {
 	isWorkday WorkdayFunc
 	dates     []time.Time
@@ -132,10 +133,9 @@ func LevelingDelayMinutes(tasks map[string]*Task, projectStart time.Time, isWork
 // ApplyLevelingDelays schedules tasks forward with each task's delay
 // applied after its links and forward constraints (the forward pass's own
 // rules), and returns the levelled start (working-day offset) of each task
-// a delay moves, by task ID. An elapsed delay is added on the clock from
-// the start the links and constraints give (StartClock), and a result
-// outside working time moves to the next working start; a working delay
-// is added to the offset. Delays on ALAP tasks, and starts that would put
+// a delay moves, by task ID. A delay is added on the clock from the start
+// the links and constraints give (StartClock), and a result outside
+// working time moves to the next working start. Delays on ALAP tasks, and starts that would put
 // the task beyond MaxScheduleDays, are not applied and are returned in
 // skipped (sorted). tasks must have their constraints armed
 // (ApplyConstraintDates against the same start and calendar); their ES and
@@ -146,28 +146,19 @@ func ApplyLevelingDelays(tasks map[string]*Task, delays map[string]LevelingDelay
 		return nil, nil, false
 	}
 	w := newWorkdayTable(projectStart, isWorkday)
-	index := make(map[*Task]int, len(plan.order))
-	for i, t := range plan.order {
-		index[t] = i
-	}
 	es := make([]float64, len(plan.order))
 	starts = map[string]float64{}
 	for i, t := range plan.order {
 		start := 0.0
 		for _, l := range plan.preds[i] {
-			p := index[l.task]
-			start = math.Max(start, linkCandidate(l.typ, l.lag, es[p], es[p]+l.task.Duration, t.Duration))
+			start = math.Max(start, linkCandidate(l.typ, l.lag, es[l.idx], es[l.idx]+l.task.Duration, t.Duration))
 		}
 		start = ForwardConstrainedStart(t, start)
-		if d, has := delays[t.ID]; has && d.Amount > 0 {
-			levelled, fits := start+d.Amount, true
-			switch {
-			case d.Elapsed && d.Amount > maxElapsedDelayMinutes:
-				// Beyond any schedule (and time.Duration): not applied.
-				fits = false
-			case d.Elapsed:
-				at := w.at(start).Add(time.Duration(math.Round(d.Amount)) * time.Minute)
-				levelled, fits = w.offset(at)
+		if d, has := delays[t.ID]; has && d.Minutes > 0 {
+			// Beyond any schedule (and time.Duration) a delay is not applied.
+			levelled, fits := 0.0, false
+			if d.Minutes <= maxElapsedDelayMinutes {
+				levelled, fits = w.offset(w.at(start).Add(time.Duration(math.Round(d.Minutes)) * time.Minute))
 			}
 			switch {
 			case t.Constraint == AsLateAsPossible || !fits || math.IsNaN(levelled) || levelled+t.Duration > MaxScheduleDays:

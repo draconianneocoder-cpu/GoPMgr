@@ -25,17 +25,12 @@ func LevelStartsToKeep(tasks map[string]*Task) (map[string]float64, bool) {
 	if !ok {
 		return nil, false
 	}
-	index := make(map[*Task]int, len(plan.order))
-	for i, t := range plan.order {
-		index[t] = i
-	}
 	savedES := make([]float64, len(plan.order))
 	keep := map[string]float64{}
 	for i, t := range plan.order {
 		es := 0.0
 		for _, l := range plan.preds[i] {
-			p := index[l.task]
-			es = math.Max(es, linkCandidate(l.typ, l.lag, savedES[p], savedES[p]+l.task.Duration, t.Duration))
+			es = math.Max(es, linkCandidate(l.typ, l.lag, savedES[l.idx], savedES[l.idx]+l.task.Duration, t.Duration))
 		}
 		es = ForwardConstrainedStart(t, es)
 		alap := t.Constraint == AsLateAsPossible
@@ -97,27 +92,45 @@ func RebuildSplitDays(tasks map[string]*Task) {
 // splitDays is t's working days from its saved segments, or false when
 // the segments do not apply (see RebuildSplitDays).
 func splitDays(t *Task) ([]int, bool) {
-	if len(t.PlannedWorkSegments) == 0 || t.Duration <= 0 || !withinAllocationLimit(t.ES) {
-		return nil, false
-	}
-	start := math.Round(t.ES)
-	if math.Abs(t.ES-start) > 1e-9 {
-		return nil, false
-	}
-	need := int(math.Ceil(t.Duration))
 	var days []int
-	for _, s := range t.PlannedWorkSegments {
-		lo, hi := math.Round(s.Start), math.Round(s.End)
-		if math.Abs(s.Start-lo) > 1e-9 || math.Abs(s.End-hi) > 1e-9 || lo < 0 || hi <= lo ||
-			len(days)+int(hi-lo) > need || (len(days) > 0 && int(start+lo) <= days[len(days)-1]) {
-			return nil, false
-		}
-		for d := lo; d < hi; d++ {
-			days = append(days, int(start+d))
-		}
-	}
-	if len(days) != need {
+	if !walkSplitDays(t, func(d int) { days = append(days, d) }) {
 		return nil, false
 	}
 	return days, true
+}
+
+// splitFits reports whether t's saved segments apply, as splitDays does,
+// without collecting the days.
+func splitFits(t *Task) bool {
+	return walkSplitDays(t, func(int) {})
+}
+
+// walkSplitDays calls day with each working day t's saved segments give,
+// in order, and reports whether the segments apply: t has work and starts
+// on a whole day, and the segments are ascending, disjoint whole days
+// adding up to ceil(Duration). day may have been called before a false
+// result.
+func walkSplitDays(t *Task, day func(int)) bool {
+	if len(t.PlannedWorkSegments) == 0 || t.Duration <= 0 || !withinAllocationLimit(t.ES) {
+		return false
+	}
+	start := math.Round(t.ES)
+	if math.Abs(t.ES-start) > 1e-9 {
+		return false
+	}
+	need := int(math.Ceil(t.Duration))
+	count, last := 0, 0
+	for _, s := range t.PlannedWorkSegments {
+		lo, hi := math.Round(s.Start), math.Round(s.End)
+		if math.Abs(s.Start-lo) > 1e-9 || math.Abs(s.End-hi) > 1e-9 || lo < 0 || hi <= lo ||
+			count+int(hi-lo) > need || (count > 0 && int(start+lo) <= last) {
+			return false
+		}
+		for d := lo; d < hi; d++ {
+			last = int(start + d)
+			count++
+			day(last)
+		}
+	}
+	return count == need
 }

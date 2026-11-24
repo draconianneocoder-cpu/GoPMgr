@@ -222,7 +222,7 @@ func plannedFraction(t *Task, asOfDay float64) float64 {
 		}
 		return 0
 	}
-	if _, valid := splitDays(t); valid {
+	if splitFits(t) {
 		if f, ok := splitPlannedFraction(t.PlannedWorkSegments, asOfDay-t.ES); ok {
 			return f
 		}

@@ -58,43 +58,25 @@ func AnchorSchedule(tasks map[string]*Task, projectStart time.Time, isWorkday Wo
 		}
 		return
 	}
-	if isWorkday == nil {
-		isWorkday = func(time.Time) bool { return true }
-	}
-
-	// Highest day offset any task needs.
-	maxOffset := 0
+	// Walk the calendar once, memoising offset -> date.
+	dates := newWorkdayTable(projectStart, isWorkday)
 	for _, t := range tasks {
-		if f := finishOffset(t); f > maxOffset {
-			maxOffset = f
-		}
+		t.StartDate = dates.date(startOffset(t)).Format(DateLayout)
+		t.FinishDate = dates.date(finishOffset(t)).Format(DateLayout)
 	}
+}
 
-	// Walk the calendar once and memoise offset -> date.
-	dates := make([]time.Time, maxOffset+1)
-	d := projectStart
-	run := 0
-	for !isWorkday(d) && run < maxNonWorkdayRun {
-		d = d.AddDate(0, 0, 1)
-		run++
+// WorkdayDates returns the dates (DateLayout) of working days 0 to n-1,
+// counted as AnchorSchedule counts them: offset 0 is the first working day
+// on or after projectStart. isWorkday may be nil (every day working). n
+// must be within the kernel's allocation limit.
+func WorkdayDates(projectStart time.Time, isWorkday WorkdayFunc, n int) []string {
+	dates := newWorkdayTable(projectStart, isWorkday)
+	out := make([]string, max(n, 0))
+	for k := range out {
+		out[k] = dates.date(k).Format(DateLayout)
 	}
-	dates[0] = d
-	for i := 1; i <= maxOffset; i++ {
-		d = d.AddDate(0, 0, 1)
-		run = 0
-		for !isWorkday(d) && run < maxNonWorkdayRun {
-			d = d.AddDate(0, 0, 1)
-			run++
-		}
-		dates[i] = d
-	}
-
-	for _, t := range tasks {
-		s := startOffset(t)
-		f := finishOffset(t)
-		t.StartDate = dates[s].Format(DateLayout)
-		t.FinishDate = dates[f].Format(DateLayout)
-	}
+	return out
 }
 
 // DayOffset is the inverse of AnchorSchedule's date mapping: it
@@ -324,11 +306,8 @@ func clock(minutes int) (hour, minute int) { return minutes / 60, minutes % 60 }
 // fractional durations (2.9999999999 is day 3). Resource-day attribution
 // (taskSpan) keeps its own rounding, which the OR-01 contract fixes.
 func startOffset(t *Task) int {
-	s := int(math.Floor(t.ES + 1e-9))
-	if s < 0 {
-		return 0
-	}
-	return s
+	s, _ := SplitDayOffset(t.ES)
+	return max(s, 0)
 }
 
 // finishOffset is the working-day index of the last day a task
