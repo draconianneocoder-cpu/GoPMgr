@@ -22,6 +22,10 @@ export default [
       // established GoPMgr policy during the toolchain migration; enable and
       // remediate them in focused follow-up changes instead of rewriting many
       // unrelated components as part of a dependency bump.
+      // The desktop WebView may not implement alert/confirm/prompt panels
+      // (Wails v3.1.0's macOS WKUIDelegate implements none), so they can
+      // silently do nothing; use ConfirmDialog or an in-app dialog.
+      'no-alert': 'error',
       'svelte/no-useless-mustaches': 'off',
       'svelte/prefer-svelte-reactivity': 'off',
       'svelte/require-each-key': 'off'
@@ -42,6 +46,7 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      'no-alert': 'error',
       'svelte/prefer-svelte-reactivity': 'off'
     }
   }
