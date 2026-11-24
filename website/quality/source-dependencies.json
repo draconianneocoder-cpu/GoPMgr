@@ -29,8 +29,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         }
       ]
     },
@@ -51,8 +51,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         }
       ]
     },
@@ -68,8 +68,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         },
         {
           "path": "docs/INSTALL.md",
@@ -95,8 +95,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         }
       ]
     },
@@ -112,8 +112,8 @@
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         },
         {
           "path": "docs/INSTALL.md",
@@ -210,8 +210,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "8863f92410be20dd40723542de03713d56a928f4d517e380639b98f91bd2749b",
-          "reviewed_commit": "1215353d5d96c462e8a6a2962af41a84e9548711"
+          "sha256": "4ebc4092e8a4f2812d3a279183da535b85a58a361d76d028597b01bed5736cee",
+          "reviewed_commit": "16ea865abb559a3b8d513299fcde291b931ebdb0"
         }
       ]
     },
