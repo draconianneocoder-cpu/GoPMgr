@@ -78,6 +78,18 @@ below passes against it unmodified.
   tasks with `Duration > 0`, including tasks with no assignments. Split
   days never extend it, and split days outside `[0, horizon)` add no
   demand.
+- **Capacity.** Each step replaces the one before it:
+  1. the plan default (1 when not positive);
+  2. a positive `Capacities[resource]`;
+  3. from the calendar named after the resource: a positive default;
+  4. a nonnegative `WeeklyCapacity[day mod 7]`;
+  5. a nonnegative `Overrides[day]`.
+
+  Since 2026-11-23 (D-CAL) detection and levelling both read an
+  assignment's capacity from the calendar its `CalendarID` names (steps 3
+  to 5 on that calendar, from the resource's base capacity), and from the
+  resource's own calendar when it names none or one that does not exist.
+  The frozen copy reads the resource's calendar only.
 
 ### Contract change, 2026-11-21 (owner decision)
 
@@ -146,18 +158,6 @@ boundaries. `TestLevelledScheduleIsOverallocatedOnlyByUnplacedTasks`
 holds the agreement: after levelling, every record names an unplaced
 task. Whole-day schedules without assignment calendars give the same
 records and the same levelled dates as before.
-- **Capacity.** Each step replaces the one before it:
-  1. the plan default (1 when not positive);
-  2. a positive `Capacities[resource]`;
-  3. from the calendar named after the resource: a positive default;
-  4. a nonnegative `WeeklyCapacity[day mod 7]`;
-  5. a nonnegative `Overrides[day]`.
-
-  Since 2026-11-23 (D-CAL) detection and levelling both read an
-  assignment's capacity from the calendar its `CalendarID` names (steps 3
-  to 5 on that calendar, from the resource's base capacity), and from the
-  resource's own calendar when it names none or one that does not exist.
-  The frozen copy reads the resource's calendar only.
 
 ### Anomalies: current output, normative answer not decided
 

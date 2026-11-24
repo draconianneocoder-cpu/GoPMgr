@@ -493,9 +493,9 @@ calendar. Each one is a test of the scheduler.
   the task starts part-way through a day (on a standard 08:00 to 17:00 day
   with a lunch hour, so half a day in is 13:00). Only tasks that need one
   get one: a task its links already move as far, after a delayed task,
-  gets none. It never writes, changes or removes a constraint. Each run recalculates every levelled start from the
-  links and constraints, so a delay that is no longer needed is cleared. A
-  levelled start delays the task like SNET but is never violated itself. If
+  gets none. It never writes, changes or removes a constraint. Each run
+  recalculates every levelled start from the links and constraints, so a
+  delay that is no longer needed is cleared. A levelled start delays the task like SNET but is never violated itself. If
   a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
   flagged, levelling names it, and the audit names levelling as the cause.
   Select **Clear** next to a levelled start to schedule that task from its
@@ -528,36 +528,36 @@ calendar. Each one is a test of the scheduler.
   are kept. Remove the ones levelling added, then level again.
 - **Monte Carlo.** Each simulated run applies date constraints, levelled
   starts and levelled splits as the schedule does, so with every duration at
-  its estimate the simulation finishes when the schedule does. A split task
-  works its split days in order in each run: shorter work ends on an
-  earlier split day, and longer work continues right after the last one. A must date (MSO, MFO) holds
-  its task in every run. Without a project start date, neither is applied.
-  A schedule the scheduler refuses as too long is refused by the simulation
-  too.
-- **Imports and exports.** MSPDI import brings each task's constraint type and
-  date when **Constraints** is selected (the default). A constraint of an
-  unknown type, or a dated one without a usable date, is left out and counted
-  in the import receipt. Microsoft Project by default holds a task to its
-  constraint date even against its links; GoPMgr keeps the links and flags the
-  constraint instead, so imported dates can differ. Export writes each
-  constraint and its date. Export also writes each task's levelled start as
+  its estimate the simulation finishes when the schedule does. A must date
+  (MSO, MFO) holds its task in every run. A split task works its split days
+  in order: shorter work ends on an earlier split day, and longer work
+  continues right after the last one. Without a project start date, date
+  constraints and levelled starts are not applied. A schedule the scheduler
+  refuses as too long is refused by the simulation too.
+- **MSPDI constraints.** Import brings each task's constraint type and date
+  when **Constraints** is selected (the default). A constraint of an
+  unknown type, or a dated one without a usable date, is left out and
+  counted in the import receipt. Microsoft Project by default holds a task
+  to its constraint date even against its links; GoPMgr keeps the links and
+  flags the constraint instead, so imported dates can differ. Export writes
+  each constraint and its date.
+- **MSPDI levelling delays.** Export writes each levelled start as
   Microsoft Project's levelling delay (LevelingDelay): how long levelling
   held the task back from where its links and constraints put it, measured
-  on the clock. Like Microsoft Project files, the file holds it in tenths of
+  on the clock. As in Microsoft Project files, the value is in tenths of
   elapsed minutes, shown in elapsed days when it is a whole number of days
-  and in elapsed minutes otherwise. (Microsoft's own example of this element
-  shows the value in its display unit; GoPMgr follows the reading of
-  MPXJ, the library most tools use to exchange these files.) Import reads it
-  back when **Levelling delays** is selected (the default), whatever unit it
-  is shown in, and stores it as a levelled start. It is placed using the
-  file's own links and constraints even when you do not import them, and
-  needs a project start date (the project's, or the file's when the project
-  has none). Delays with no unit, on ALAP tasks, or that cannot be read are
-  left out and counted in the import receipt; ALAP levelled starts are not
+  and in elapsed minutes otherwise. Part-day start and finish times are
+  written on the same 08:00 to 17:00 day. ALAP levelled starts are not
   exported, because how Microsoft Project applies a delay to an ALAP task
-  could not be checked.
-  Part-day start and finish times are written on the same 08:00 to 17:00
-  day.
+  could not be checked. Import reads delays back when **Levelling delays**
+  is selected (the default), whatever unit they are shown in, and stores
+  each as a levelled start. It places them using the file's own links and
+  constraints, even when you do not import those, and needs a project start
+  date (the project's, or the file's when the project has none). Delays
+  with no unit, on ALAP tasks, or that cannot be read are left out and
+  counted in the import receipt. GoPMgr reads the value as MPXJ, the
+  library most tools use for these files, does; Microsoft's own example of
+  this element shows the value in its display unit instead.
 
 ### Choosing a constraint
 
