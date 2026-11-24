@@ -98,7 +98,8 @@ func TestAgileGeneratedIDsFailWhenEntropyUnavailable(t *testing.T) {
 			name: "column",
 			want: "generate column id",
 			save: func() error {
-				return store.SaveColumn(Column{BoardID: "board-fixed", Name: "Blocked"})
+				_, err := store.SaveColumn(Column{BoardID: "board-fixed", Name: "Blocked"})
+				return err
 			},
 		},
 		{

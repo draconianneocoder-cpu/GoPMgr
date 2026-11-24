@@ -272,7 +272,13 @@ import Button from '../Button.svelte';
     control: 'control',
   };
 
+  // A new chart or document gets its ID from the backend, so a second
+  // click while one is being created would make a duplicate.
+  let creating = false;
+
   async function newChart(kind: string, title: string) {
+    if (creating) return;
+    creating = true;
     try {
       const starter = chartStarters[kind]?.() ?? {};
       const c = await desktopApi.SaveChart({
@@ -289,6 +295,8 @@ import Button from '../Button.svelte';
       goto(chartRoutes[kind] ?? 'charts', c.id);
     } catch (err: any) {
       showToast(`Could not create chart: ${err}`, 'error');
+    } finally {
+      creating = false;
     }
   }
 
@@ -317,6 +325,8 @@ import Button from '../Button.svelte';
   }
 
   async function newDocument(kind: string, defaultTitle: string) {
+    if (creating) return;
+    creating = true;
     try {
       const d = await desktopApi.NewDocument(kind, defaultTitle);
       // Both routes use the structured document editor today, but retaining
@@ -324,6 +334,8 @@ import Button from '../Button.svelte';
       goto(kind.startsWith('charter') ? 'charter' : 'documents', d.id);
     } catch (err: any) {
       showToast(`Could not create document: ${err}`, 'error');
+    } finally {
+      creating = false;
     }
   }
 

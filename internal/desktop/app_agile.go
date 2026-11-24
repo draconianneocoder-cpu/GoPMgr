@@ -90,11 +90,12 @@ func (a *App) EnsureDefaultBoard() (BoardWithColumns, error) {
 }
 
 // SaveColumn upserts a column on the project's board (rename, change WIP,
-// reorder, or add); agile.Store.SaveColumn validates it.
-func (a *App) SaveColumn(c agile.Column) error {
+// reorder, or add); agile.Store.SaveColumn validates it. It returns the
+// column as stored, so a caller learns a new column's ID.
+func (a *App) SaveColumn(c agile.Column) (agile.Column, error) {
 	s, err := a.agileStore()
 	if err != nil {
-		return err
+		return agile.Column{}, err
 	}
 	return s.SaveColumn(c)
 }

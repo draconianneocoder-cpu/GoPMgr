@@ -334,6 +334,43 @@ describe('Dashboard document creation', () => {
   });
 });
 
+// A new chart or document is created with a blank ID, so a second click
+// while the first create is in flight would make a duplicate record.
+describe('Dashboard creation while a create is in flight', () => {
+  it('creates one chart when chart types are clicked twice', async () => {
+    let finish: (value: unknown) => void = () => {};
+    const { getByRole } = await renderLoaded({
+      SaveChart: vi.fn(() => new Promise((resolve) => { finish = resolve; })),
+    });
+    await switchTab(getByRole, /^charts$/i);
+    await fireEvent.click(getByRole('button', { name: /^RACI Matrix/ }));
+    await fireEvent.click(getByRole('button', { name: /^RACI Matrix/ }));
+    finish({ id: 'new-chart-1', kind: 'raci' });
+
+    await waitFor(() => expect(session.view).toBe('raci'));
+    expect(app.SaveChart).toHaveBeenCalledOnce();
+  });
+
+  it('creates one document when a document type is clicked twice, and can create again after a failure', async () => {
+    let finish: (value: unknown) => void = () => {};
+    const { getByRole } = await renderLoaded({
+      NewDocument: vi.fn()
+        .mockRejectedValueOnce(new Error('disk full'))
+        .mockImplementation(() => new Promise((resolve) => { finish = resolve; })),
+    });
+    await switchTab(getByRole, /^documents$/i);
+    await fireEvent.click(getByRole('button', { name: /^Business Case/ }));
+    await waitFor(() => expect(getToasts().at(-1)?.message).toContain('disk full'));
+
+    await fireEvent.click(getByRole('button', { name: /^Business Case/ }));
+    await fireEvent.click(getByRole('button', { name: /^Business Case/ }));
+    finish({ id: 'new-doc-1', kind: 'business_case' });
+
+    await waitFor(() => expect(session.view).toBe('documents'));
+    expect(app.NewDocument).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('Dashboard Agile Pack toggle', () => {
   it('enabling shows the workspace links; disabling hides them again', async () => {
     const { getByRole, queryByRole } = await renderLoaded();

@@ -121,7 +121,7 @@ func TestAgileStore_RequiresOpenProject(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	// No OpenProject call: a.db stays nil.
-	if err := app.SaveColumn(agile.Column{BoardID: "b", Name: "x"}); err == nil || !strings.Contains(err.Error(), "agile: no project open") {
+	if _, err := app.SaveColumn(agile.Column{BoardID: "b", Name: "x"}); err == nil || !strings.Contains(err.Error(), "agile: no project open") {
 		t.Fatalf("SaveColumn with no project open: err = %v, want \"agile: no project open\"", err)
 	}
 }
@@ -222,7 +222,7 @@ func TestColumnAndWorkItem_AppMethodsRoundTrip(t *testing.T) {
 	}
 	firstColumn := bwc.Columns[0].ID
 
-	if err := app.SaveColumn(agile.Column{BoardID: bwc.Board.ID, Name: "Blocked", OrderIdx: 9}); err != nil {
+	if _, err := app.SaveColumn(agile.Column{BoardID: bwc.Board.ID, Name: "Blocked", OrderIdx: 9}); err != nil {
 		t.Fatalf("SaveColumn: %v", err)
 	}
 	after, err := app.EnsureDefaultBoard()
