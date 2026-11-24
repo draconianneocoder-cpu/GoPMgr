@@ -76,6 +76,25 @@ describe('GanttEditor open', () => {
   });
 });
 
+// Owner decision 2026-11-21: the Gantt editor shows the stale-levelling
+// note when the layout's annotated document reports it, without adopting
+// that document as its own.
+describe('GanttEditor stale-levelling note', () => {
+  it('shows the note from the layout document and can dismiss it', async () => {
+    const app = installApp({
+      LayoutChart: vi.fn(async () => ({
+        body: { layout: { rows: [], deps: [], horizon: 0, anchored: false }, doc: { nodes: [], edges: [], levelling_stale: true } },
+      })),
+    });
+    const { findByText, getByRole, queryByText } = render(GanttEditor);
+    const note = 'The schedule changed since levelling. Level again to update the levelled starts.';
+    expect(await findByText(note)).toBeTruthy();
+    expect(app.SaveChart).not.toHaveBeenCalled();
+    await fireEvent.click(getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(queryByText(note)).toBeNull());
+  });
+});
+
 describe('GanttEditor split actions (handler glue)', () => {
   it('previewSplit: bridge result flows to the status line', async () => {
     const app = installApp();
@@ -148,6 +167,34 @@ describe('GanttEditor split actions (handler glue)', () => {
 
 // Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
 // link (previously a raw <button>) to the new `nav` Button variant.
+// Levelling's split plan is the schedule while it fits the task
+// (2026-11-24): editing a task, even renaming it, must not drop the
+// work_segments levelling saved. The editor used to clear them on every
+// edit, so the task then ran over the days its resource was away.
+describe('GanttEditor keeps levelled split segments', () => {
+  it('saves the segments unchanged after a rename', async () => {
+    const segments = [{ start: 0, end: 1 }, { start: 2, end: 3 }];
+    const app = installApp({
+      GetChart: vi.fn(async () => ({
+        id: 'chart-1', project_id: 'p1', kind: 'gantt', title: 'G',
+        data: JSON.stringify({ nodes: [{ id: 'A', label: 'Pour', duration: 2, work_segments: segments }], edges: [] }),
+      })),
+      LayoutChart: vi.fn(async () => ({
+        body: { layout: { rows: [{ id: 'A', label: 'Pour', es: 0, ef: 3, float: 0, is_critical: true, milestone: false, percent_complete: 0 }], deps: [], horizon: 3, anchored: false } },
+      })),
+    });
+    const { findByDisplayValue } = await mountLoaded(app);
+    const name = await findByDisplayValue('Pour');
+    await fireEvent.input(name, { target: { value: 'Pour slab' } });
+    await fireEvent.change(name);
+
+    await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+    const saved = JSON.parse((app.SaveChart.mock.calls.at(-1)![0] as { data: string }).data);
+    expect(saved.nodes[0].label).toBe('Pour slab');
+    expect(saved.nodes[0].work_segments).toEqual(segments);
+  });
+});
+
 describe('GanttEditor migrated header "&larr; Dashboard" button', () => {
   it('Button variant="nav"', async () => {
     const app = installApp();

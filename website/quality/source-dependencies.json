@@ -9,7 +9,7 @@
         "page.home"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -29,8 +29,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         }
       ]
     },
@@ -41,7 +41,7 @@
         "page.features"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -51,8 +51,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         }
       ]
     },
@@ -63,13 +63,13 @@
         "page.docs"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         },
         {
           "path": "docs/INSTALL.md",
@@ -85,7 +85,7 @@
         "page.docs.getting-started"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -95,8 +95,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         }
       ]
     },
@@ -107,13 +107,13 @@
         "page.docs.getting-started.first-project"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         },
         {
           "path": "docs/INSTALL.md",
@@ -200,7 +200,7 @@
         "page.security"
       ],
       "status": "development",
-      "last_reviewed": "2026-11-18",
+      "last_reviewed": "2026-11-23",
       "reviewer": "GoPMgr guide reference source review",
       "dependencies": [
         {
@@ -210,8 +210,8 @@
         },
         {
           "path": "docs/user-guide.md",
-          "sha256": "b09c03f9e7b3aa1fe40ddd427aaab433269db191b17147fc8b8d94b7c41dbe35",
-          "reviewed_commit": "156a8eded0088d608f39c78e7c04a6089f9bbc8a"
+          "sha256": "c57949e21e610eea25f63c1ffdf8dc9a95160c1ddb5ad44ee4257107707d1e82",
+          "reviewed_commit": "73ebd12f4148f7170e22a3f4b2f885317ac7193c"
         }
       ]
     },

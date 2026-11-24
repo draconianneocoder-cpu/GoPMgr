@@ -99,6 +99,15 @@ func TestComputeEVM_SplitTaskPVPausesDuringGaps(t *testing.T) {
 			}
 		})
 	}
+
+	// The duration edited to 4 after splitting: the three one-day
+	// segments no longer describe the task (RebuildSplitDays), so PV accrues
+	// linearly over [0, 4), as the schedule runs it: 1.5 of 4 days.
+	tasks["A"].Duration = 4
+	mustCPM(t, tasks)
+	if got := mustComputeEVM(t, tasks, 1.5); got.PVMinorUnits != 11250 {
+		t.Fatalf("edited duration: PVMinorUnits = %d, want 11250 (linear)", got.PVMinorUnits)
+	}
 }
 
 func TestComputeEVM_ZeroDenominators(t *testing.T) {

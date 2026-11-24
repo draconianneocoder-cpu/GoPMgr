@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { render, waitFor, fireEvent } from '@testing-library/svelte';
 
 // The real auto-save module starts a timer. This stub saves a dirty
 // document and leaves an unchanged document unsaved.
@@ -148,5 +148,40 @@ describe('_layered_editor_shell migrated load-error "Back to dashboard" button (
         .split(/\s+/)
         .sort(),
     );
+  });
+});
+
+// Owner decision 2026-11-21: after levelling, an edit to the schedule shows
+// a dismissible note. The note comes from the layout's annotated document;
+// the shell saves levelling's stored digest (levelled_inputs) back with
+// the chart, never the computed levelling_stale flag, and opening the
+// chart writes nothing.
+describe('_layered_editor_shell stale-levelling note', () => {
+  it('shows the note from the layout, keeps the stored digest on save, and never saves the computed flag', async () => {
+    const stored = { nodes: [{ id: 'A', label: 'A' }], edges: [], levelled_inputs: 'v1:abc' };
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'network', title: 'N', data: JSON.stringify(stored) })),
+      LayoutChart: vi.fn(async () => ({
+        body: {
+          layout: { nodes: [{ id: 'A', title: 'A', depth: 0, x: 0, y: 0, width: 120, height: 40 }], edges: [], width: 200, height: 80 },
+          doc: { ...stored, levelling_stale: true },
+        },
+      })),
+    });
+    const { findByText, getByRole, queryByText } = render(NetworkEditor);
+    const note = 'The schedule changed since levelling. Level again to update the levelled starts.';
+    expect(await findByText(note)).toBeTruthy();
+    expect(app.SaveChart).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByRole('button', { name: '+ Node' }));
+    await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+    for (const [chart] of app.SaveChart.mock.calls) {
+      const saved = JSON.parse((chart as { data: string }).data);
+      expect(saved.levelled_inputs).toBe('v1:abc');
+      expect('levelling_stale' in saved).toBe(false);
+    }
+
+    await fireEvent.click(getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(queryByText(note)).toBeNull());
   });
 });

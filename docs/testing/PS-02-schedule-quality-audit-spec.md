@@ -198,8 +198,8 @@ what §3 left open:
   error (see KRN-01 in [STATUS](../STATUS.md)). When the calendar rather than
   the logic breaks a date (a must date on a non-working day or before the
   project start, or a latest date read back to the previous working day),
-  SQ-09 says so; when the task sits on the start resource levelling gave it,
-  SQ-09 names levelling instead. SQ-08's binding note points to SQ-09.
+  SQ-09 says so; when the start resource levelling gave the task is later
+  than its links allow (it binds), SQ-09 names levelling instead. SQ-08's binding note points to SQ-09.
 - **Not evaluated.** Any scheduler refusal (a cycle or a schedule too long)
   marks SQ-09 to SQ-11, SQ-15 and SQ-16 not evaluated, with the reason. SQ-16
   is stricter than §3 here because it needs early dates. SQ-04 runs its own

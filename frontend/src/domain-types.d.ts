@@ -174,6 +174,7 @@ declare global {
     include_progress: boolean;
     include_assignments: boolean;
     include_constraints: boolean;
+    include_leveling_delay: boolean;
   }
 
   interface OpenProjectCheck {
@@ -654,6 +655,7 @@ interface CostSummary {
     constraint_violated?: boolean;
     constraint_unapplied?: string;
     level_start?: string;
+    level_start_fraction?: number;
     percent_complete?: number;
     milestone?: boolean;
     actual_start?: string;

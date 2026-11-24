@@ -7,7 +7,6 @@ import {
   levelResourcesMessages,
   splitPreviewMessage,
   splitLevelStatus,
-  clearWorkSegments,
 } from './leveling_messages';
 
 describe('summarizeLabels', () => {
@@ -93,19 +92,5 @@ describe('splitLevelStatus', () => {
   });
   it('reports no splitting was needed', () => {
     expect(splitLevelStatus({ pinned: 0 })).toBe('Levelled; no tasks needed splitting');
-  });
-});
-
-describe('clearWorkSegments', () => {
-  it('strips work_segments from every node in place', () => {
-    const nodes = [
-      { id: 'A', work_segments: [{ start: 0, end: 1 }] },
-      { id: 'B' },
-    ];
-    clearWorkSegments(nodes);
-    expect(nodes[0].work_segments).toBeUndefined();
-    expect('work_segments' in nodes[1] ? nodes[1].work_segments : undefined).toBeUndefined();
-    // Other fields are untouched.
-    expect(nodes[0].id).toBe('A');
   });
 });

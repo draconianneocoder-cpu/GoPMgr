@@ -81,6 +81,11 @@ func TestCalculateCPMMatchesReference(t *testing.T) {
 		if gotOK != wantOK {
 			t.Fatalf("seed %d: CalculateCPM = %v, reference %v", seed, gotOK, wantOK)
 		}
+		// LevelEarliest (2026-11-23) postdates the frozen reference, which
+		// never sets it; its contract is held by TestLevelStartDelaysATaskAndCanBreakItsConstraint.
+		for _, task := range got {
+			task.LevelEarliest = 0
+		}
 		if !reflect.DeepEqual(got, want) {
 			for id := range want {
 				if !reflect.DeepEqual(got[id], want[id]) {

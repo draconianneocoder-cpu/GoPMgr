@@ -4,6 +4,7 @@
 package kernel
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -618,18 +619,94 @@ func TestMilestoneFinishConstraintsMeanTheEndOfTheDay(t *testing.T) {
 // 06-04: the levelled start sets ES 3 before MSO is checked, and 3 > 1,
 // so MSO is violated.
 // An unreadable levelled start is ignored.
+//
+// LevelEarliest is the start the links and forward constraints give
+// without the levelled start, and levelling binds only when the levelled
+// start is later than it (2026-11-23). D has SNET Wed 06-03 (2) and the
+// same levelled start: the constraint, not levelling, holds it, so it is
+// not binding (the earlier pass compared with the link start, 0, and named
+// levelling). E has SNET Tue 06-02 (1) and levelled start Thu 06-04 (3):
+// levelling binds, measured from 1.
 func TestLevelStartDelaysATaskAndCanBreakItsConstraint(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 1, LevelStart: "2026-06-03"},
 		"B": {ID: "B", Duration: 1, LevelStart: "2026-06-04", Constraint: MustStartOn, ConstraintDate: "2026-06-02"},
 		"C": {ID: "C", Duration: 1, LevelStart: "junk"},
+		"D": {ID: "D", Duration: 1, LevelStart: "2026-06-03", Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-03"},
+		"E": {ID: "E", Duration: 1, LevelStart: "2026-06-04", Constraint: StartNoEarlierThan, ConstraintDate: "2026-06-02"},
 	}
 	ApplyConstraintDates(tasks, conStart, weekdaysOnly)
 	mustCPM(t, tasks)
 	approx(t, "A.ES", tasks["A"].ES, 2)
 	approx(t, "B.ES", tasks["B"].ES, 3)
 	approx(t, "C.ES", tasks["C"].ES, 0)
+	approx(t, "D.ES", tasks["D"].ES, 2)
+	approx(t, "E.ES", tasks["E"].ES, 3)
 	if !tasks["B"].ConstraintViolated || tasks["A"].ConstraintViolated {
 		t.Errorf("violated: A %v B %v, want only B", tasks["A"].ConstraintViolated, tasks["B"].ConstraintViolated)
 	}
+	for id, want := range map[string]struct {
+		earliest float64
+		binding  bool
+	}{
+		"A": {0, true}, "B": {1, true}, "C": {0, false}, "D": {2, false}, "E": {1, true},
+	} {
+		approx(t, id+".LevelEarliest", tasks[id].LevelEarliest, want.earliest)
+		if tasks[id].LevelStartBinding != want.binding {
+			t.Errorf("%s binding %v, want %v", id, tasks[id].LevelStartBinding, want.binding)
+		}
+	}
+}
+
+// A levelled start part-way through a day is stored as its date and the
+// share of the day passed (D-STORE, 2026-11-23) and armed as the day's
+// offset plus that share. From Monday 2026-06-01 on weekdays: offset 2.75
+// is Wednesday 06-03 with 0.75 passed; 6.5 is Tuesday 06-09 (after the
+// weekend) with 0.5; summing noise just below a day boundary is that day.
+func TestLevelStartFractionRoundTrip(t *testing.T) {
+	for _, c := range []struct {
+		offset   float64
+		date     string
+		fraction float64
+	}{
+		{0, "2026-06-01", 0},
+		{0.5, "2026-06-01", 0.5},
+		{2.75, "2026-06-03", 0.75},
+		{6.5, "2026-06-09", 0.5},
+		{2.9999999999, "2026-06-04", 0},
+	} {
+		day, fraction := SplitDayOffset(c.offset)
+		task := &Task{ID: "A", Duration: 1, LevelStart: weekdayDate(day), LevelStartFraction: fraction}
+		if task.LevelStart != c.date || fraction != c.fraction {
+			t.Errorf("offset %v stored as %s + %v, want %s + %v", c.offset, task.LevelStart, fraction, c.date, c.fraction)
+		}
+		ApplyConstraintDates(map[string]*Task{"A": task}, conStart, weekdaysOnly)
+		if !task.LevelStartArmed || !sameOffset(task.LevelStartDay, c.offset) {
+			t.Errorf("offset %v armed as %v (armed %v)", c.offset, task.LevelStartDay, task.LevelStartArmed)
+		}
+	}
+
+	// A share outside [0, 1) is read as the start of the day; a date that
+	// is now a Saturday keeps its share on Monday 06-08 (offset 5).
+	for _, c := range []struct {
+		date     string
+		fraction float64
+		want     float64
+	}{
+		{"2026-06-02", 1, 1},
+		{"2026-06-02", -0.25, 1},
+		{"2026-06-02", math.NaN(), 1},
+		{"2026-06-06", 0.25, 5.25},
+	} {
+		task := &Task{ID: "A", Duration: 1, LevelStart: c.date, LevelStartFraction: c.fraction}
+		ApplyConstraintDates(map[string]*Task{"A": task}, conStart, weekdaysOnly)
+		approx(t, c.date+" LevelStartDay", task.LevelStartDay, c.want)
+	}
+}
+
+// weekdayDate is working day k counted from Monday 2026-06-01, weekdays
+// only, written out independently of AnchorSchedule.
+func weekdayDate(k int) string {
+	d := conStart.AddDate(0, 0, 7*(k/5)+k%5)
+	return d.Format(DateLayout)
 }

@@ -62,7 +62,7 @@ func LayoutGantt(doc LayeredDocument) (GanttLayout, error) {
 	}
 	kernel.DetectOverallocations(tasks, nil)
 	copyCPMResults(doc, tasks)
-	return ganttFromDoc(doc, false), nil
+	return ganttFromDoc(doc, tasks, false), nil
 }
 
 // LayoutGanttScheduledWithPlan is LayoutGantt with schedule context: date
@@ -78,24 +78,30 @@ func LayoutGanttScheduledWithPlan(doc LayeredDocument, projectStart time.Time, i
 	kernel.DetectOverallocationsWithPlan(tasks, plan)
 	kernel.AnchorSchedule(tasks, projectStart, isWorkday)
 	copyCPMResults(doc, tasks)
-	return ganttFromDoc(doc, true), nil
+	return ganttFromDoc(doc, tasks, true), nil
 }
 
-// absoluteWorkSegments converts a node's task-relative WorkSegments into
-// absolute project offsets (ES + segment). Returns nil for a task with no
-// split segments so ordinary bars render unchanged.
-func absoluteWorkSegments(n LayeredNode) []WorkSegment {
-	if len(n.WorkSegments) == 0 {
+// workDayRuns turns the working days a split task was scheduled on
+// (kernel.RebuildSplitDays) into absolute bar pieces, one per run of
+// consecutive days. A task the schedule runs in one piece, including one
+// whose stored segments no longer fit it (a duration edited since
+// levelling), gets none, so the bar shows what the schedule uses.
+func workDayRuns(t *kernel.Task) []WorkSegment {
+	if t == nil || len(t.WorkDays) == 0 {
 		return nil
 	}
-	out := make([]WorkSegment, len(n.WorkSegments))
-	for i, s := range n.WorkSegments {
-		out[i] = WorkSegment{Start: n.ES + s.Start, End: n.ES + s.End}
+	var runs []WorkSegment
+	for _, d := range t.WorkDays {
+		if n := len(runs); n > 0 && runs[n-1].End == float64(d) {
+			runs[n-1].End++
+			continue
+		}
+		runs = append(runs, WorkSegment{Start: float64(d), End: float64(d + 1)})
 	}
-	return out
+	return runs
 }
 
-func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
+func ganttFromDoc(doc LayeredDocument, tasks map[string]*kernel.Task, anchored bool) GanttLayout {
 	layout := GanttLayout{Anchored: anchored}
 	for _, n := range doc.Nodes {
 		layout.Rows = append(layout.Rows, GanttRow{
@@ -112,16 +118,11 @@ func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
 			Overallocated:       n.Overallocated,
 			ConstraintViolated:  n.ConstraintViolated,
 			ConstraintUnapplied: n.ConstraintUnapplied,
-			WorkSegments:        absoluteWorkSegments(n),
+			WorkSegments:        workDayRuns(tasks[n.ID]),
 		})
-		rowEnd := n.EF
-		for _, s := range n.WorkSegments {
-			if end := n.ES + s.End; end > rowEnd {
-				rowEnd = end
-			}
-		}
-		if rowEnd > layout.Horizon {
-			layout.Horizon = rowEnd
+		// EF already ends at a split task's last working day.
+		if n.EF > layout.Horizon {
+			layout.Horizon = n.EF
 		}
 	}
 	sort.Slice(layout.Rows, func(i, j int) bool {

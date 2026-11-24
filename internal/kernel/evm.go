@@ -210,9 +210,11 @@ func taskActualAmount(t *Task) money.Amount {
 }
 
 // plannedFraction is the share of a task's budget planned to be complete at
-// the status day. Persisted split segments are authoritative when valid;
-// otherwise the contiguous duration remains the defensive fallback for
-// callers that construct kernel tasks without passing through an adapter.
+// the status day. Persisted split segments are used while they still
+// describe the task, by the rule RebuildSplitDays applies (2026-11-23:
+// a whole-day start and whole-day segments adding up to
+// ceil(Duration)); otherwise, as after a duration edit, the contiguous
+// duration is used, as the schedule does.
 func plannedFraction(t *Task, asOfDay float64) float64 {
 	if t.Duration <= 0 {
 		if asOfDay >= t.ES {
@@ -220,8 +222,10 @@ func plannedFraction(t *Task, asOfDay float64) float64 {
 		}
 		return 0
 	}
-	if f, ok := splitPlannedFraction(t.PlannedWorkSegments, asOfDay-t.ES); ok {
-		return f
+	if _, valid := splitDays(t); valid {
+		if f, ok := splitPlannedFraction(t.PlannedWorkSegments, asOfDay-t.ES); ok {
+			return f
+		}
 	}
 	f := (asOfDay - t.ES) / t.Duration
 	if f < 0 {

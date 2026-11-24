@@ -177,6 +177,19 @@ type overallocationFixture struct {
 	want  []Overallocation
 	flags map[string]bool      // expected Task.Overallocated for every map key
 	usage map[string][]float64 // expected ResourceUsage, exactly
+	// production, when set, is production's answer where the 2026-11-21
+	// contract change (part-day demand by fraction) makes it differ from
+	// the frozen copy, which keeps the fields above so a damaged copy is
+	// still caught. productionOnly rows have no frozen-copy answer.
+	production     *overallocationExpect
+	productionOnly bool
+}
+
+// overallocationExpect is one detector's expected answer for a fixture.
+type overallocationExpect struct {
+	want  []Overallocation
+	flags map[string]bool
+	usage map[string][]float64
 }
 
 func overallocationFixtures(t *testing.T) []overallocationFixture {
@@ -335,7 +348,10 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			usage: map[string][]float64{"alpha": {2, 2}, "zebra": {2, 0}},
 		},
 		{
-			id: "F-09 detection ignores the assignment calendar",
+			// Frozen copy: capacity by resource name, so the winter calendar
+			// is ignored. Production since 2026-11-23 (D-CAL): the
+			// assignment's calendar gives capacity 0 on day 0.
+			id: "F-09 the assignment calendar: frozen copy ignores it, production reads it",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 1, 0, 1,
 					Assignment{Resource: "crew", Units: 1, CalendarID: "winter"})}
@@ -343,6 +359,11 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			plan:  calendar("winter", ResourceCalendar{Overrides: map[int]float64{0: 0}}),
 			flags: map[string]bool{"A": false},
 			usage: map[string][]float64{"crew": {1}},
+			production: &overallocationExpect{
+				want:  []Overallocation{{Resource: "crew", Day: 0, Demand: 1, Capacity: 0, TaskIDs: []string{"A"}}},
+				flags: map[string]bool{"A": true},
+				usage: map[string][]float64{"crew": {1}},
+			},
 		},
 		{
 			id: "F-10 duplicate split day doubles demand, not participants",
@@ -485,7 +506,13 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			usage: map[string][]float64{"r": {2}},
 		},
 		{
-			id: "F-20 fractional ES and EF occupy rounded days",
+			// The frozen copy counts whole rounded days (0.75 each). Since
+			// 2026-11-21 production counts the share used: day 0 0.51 of a
+			// day (0.49 to 1), day 1 0.25 (1 to 1.25), times 0.75 units:
+			// 0.3825 and 0.1875. Both totals fit capacity 0.5, but 0.75
+			// units at once exceed it, so both days are breaches (rate rule,
+			// 2026-11-23).
+			id: "F-20 fractional ES and EF: frozen copy rounds, production counts the share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.76, 0.49, 1.25, resAssign("r", 0.75))}
 			},
@@ -496,11 +523,22 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			},
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0.75, 0.75}},
+			production: &overallocationExpect{
+				want: []Overallocation{
+					{Resource: "r", Day: 0, Demand: 0.3825, Capacity: 0.5, TaskIDs: []string{"A"}},
+					{Resource: "r", Day: 1, Demand: 0.1875, Capacity: 0.5, TaskIDs: []string{"A"}},
+				},
+				flags: map[string]bool{"A": true},
+				usage: map[string][]float64{"r": {0.3825, 0.1875}},
+			},
 		},
 		{
-			// round(0.5) is 1 (half away from zero), and ceil(0.9)-1 = 0 is
-			// raised to the first day, so the task occupies day 1 only.
-			id: "OR-01-S4 a half-day start rounds up",
+			// Frozen copy: round(0.5) is 1 (half away from zero), and
+			// ceil(0.9)-1 = 0 is raised to the first day, so the task
+			// occupies day 1 only, whole. Production since 2026-11-21: the
+			// work (0.5 to 0.9) falls in day 0 and uses 0.4 of it; the total
+			// fits capacity 0.5, but 1 unit at once does not (rate rule).
+			id: "OR-01-S4 a part-day start: frozen copy rounds up, production counts its own day by share",
 			build: func() map[string]*Task {
 				return map[string]*Task{"A": resTask("A", 0.4, 0.5, 0.9, resAssign("r", 1))}
 			},
@@ -508,6 +546,210 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 			want:  []Overallocation{{Resource: "r", Day: 1, Demand: 1, Capacity: 0.5, TaskIDs: []string{"A"}}},
 			flags: map[string]bool{"A": true},
 			usage: map[string][]float64{"r": {0, 1}},
+			production: &overallocationExpect{
+				want:  []Overallocation{{Resource: "r", Day: 0, Demand: 0.4, Capacity: 0.5, TaskIDs: []string{"A"}}},
+				flags: map[string]bool{"A": true},
+				usage: map[string][]float64{"r": {0.4}},
+			},
+		},
+		{
+			// 0.5 to 1.5 at 1 unit: half of day 0 and half of day 1. Each
+			// day's total equals capacity 0.5, but 1 unit at once exceeds
+			// it, so both days are breaches (rate rule).
+			id:             "OR-01-S4b a day-long task straddling two days uses half of each",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1, 0.5, 1.5, resAssign("r", 1))}
+			},
+			plan: ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.5}},
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 0.5, Capacity: 0.5, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 0.5, Capacity: 0.5, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {0.5, 0.5}},
+		},
+		{
+			// Two half-day tasks one after the other on one person fill
+			// day 0 exactly: not an overload.
+			id:             "OR-01-S4c two half-day tasks share one day",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, resAssign("r", 1)),
+					"B": resTask("B", 0.5, 0.5, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			flags: map[string]bool{"A": false, "B": false},
+			usage: map[string][]float64{"r": {1}},
+		},
+		{
+			// A sliver of work just below a day boundary (1.9999999995 to
+			// 1.9999999996) is placed on day 2 by the span rule's epsilon
+			// but covers none of it: its share is clamped to 0, never
+			// negative demand, and its 2 units at once are not a breach on
+			// a day it does not work (rate rule only where share > 0).
+			id:             "OR-01-S4e a sliver below a day boundary adds no negative demand",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1e-10, 1.9999999995, 1.9999999996, resAssign("r", 2))}
+			},
+			plan:  unit,
+			flags: map[string]bool{"A": false},
+			usage: map[string][]float64{"r": {0, 0, 0}},
+		},
+		{
+			// 2.5 days from day 0 at 1 unit against capacity 0.6: days 0
+			// and 1 whole (breaches), day 2 half (0.5 total, within
+			// capacity, but 1 unit at once is not: a breach too).
+			id:             "OR-01-S4d a trailing half day counts half",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 2.5, 0, 2.5, resAssign("r", 1))}
+			},
+			plan: ResourceCapacityPlan{DefaultCapacity: 1, Capacities: map[string]float64{"r": 0.6}},
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 1, Capacity: 0.6, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 2, Demand: 0.5, Capacity: 0.6, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {1, 1, 0.5}},
+		},
+		{
+			// Two people at once on a one-person resource, from 0.5 to 1.5:
+			// each day's total is 2 x 0.5 = 1, within capacity, but this
+			// assignment's rate of 2 exceeds capacity 1, so both days are
+			// breaches (rate rule, owner decision 2026-11-23).
+			id:             "OR-01-S4f units above capacity are a breach however short the day's share",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1, 0.5, 1.5, resAssign("r", 2))}
+			},
+			plan: unit,
+			want: []Overallocation{
+				{Resource: "r", Day: 0, Demand: 1, Capacity: 1, TaskIDs: []string{"A"}},
+				{Resource: "r", Day: 1, Demand: 1, Capacity: 1, TaskIDs: []string{"A"}},
+			},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {1, 1}},
+		},
+		{
+			// Time intervals (D-TIME, 2026-11-23): two half-day tasks at the
+			// same time need 2 at once from a one-person resource. The day's
+			// total, 1, fits; the overlap does not.
+			id:             "T3-1 two half-day tasks at the same time overlap",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, resAssign("r", 1)),
+					"B": resTask("B", 0.5, 0, 0.5, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			want:  []Overallocation{{Resource: "r", Day: 0, Demand: 1, Capacity: 1, TaskIDs: []string{"A", "B"}}},
+			flags: map[string]bool{"A": true, "B": true},
+			usage: map[string][]float64{"r": {1}},
+		},
+		{
+			// A and B overlap from 0.25 to 0.5; C follows B. Only the two
+			// in use at the overloaded moment take part.
+			id:             "T3-2 three tasks on a day, two overlapping: only those two take part",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, resAssign("r", 1)),
+					"B": resTask("B", 0.5, 0.25, 0.75, resAssign("r", 1)),
+					"C": resTask("C", 0.25, 0.75, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			want:  []Overallocation{{Resource: "r", Day: 0, Demand: 1.25, Capacity: 1, TaskIDs: []string{"A", "B"}}},
+			flags: map[string]bool{"A": true, "B": true, "C": false},
+			usage: map[string][]float64{"r": {1.25}},
+		},
+		{
+			// A ends at 0.1+0.2 (0.30000000000000004), B starts at 0.3: the
+			// boundary tolerance keeps the summing noise from an overlap.
+			id:             "T3-3 boundary noise from summed fractions is not an overlap",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				// A runtime sum: the constant expression 0.1+0.2 is exact.
+				tenth := 0.1
+				end := tenth + 0.2
+				return map[string]*Task{
+					"A": resTask("A", end, 0, end, resAssign("r", 1)),
+					"B": resTask("B", 0.7, 0.3, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			flags: map[string]bool{"A": false, "B": false},
+			usage: map[string][]float64{"r": {1}},
+		},
+		{
+			// A's assignment calendar gives it capacity 0.5; A uses 0.5 in
+			// the morning and B 1 (of the resource's 1) in the afternoon.
+			// Neither is over its own capacity at any moment, though the
+			// day's total (0.75) exceeds A's capacity.
+			id:             "T3-4 assignment calendars compared at each moment, not with the day's total",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, Assignment{Resource: "r", Units: 0.5, CalendarID: "half"}),
+					"B": resTask("B", 0.5, 0.5, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  calendar("half", ResourceCalendar{DefaultCapacity: 0.5}),
+			flags: map[string]bool{"A": false, "B": false},
+			usage: map[string][]float64{"r": {0.75}},
+		},
+		{
+			// Both at 0.5 in the morning: 1 at once, over A's calendar
+			// capacity 0.5 though within the resource's 1. The record
+			// reports the smallest participant capacity.
+			id:             "T3-5 overlapping assignments with different calendars: the smaller binds",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.5, 0, 0.5, Assignment{Resource: "r", Units: 0.5, CalendarID: "half"}),
+					"B": resTask("B", 0.5, 0, 0.5, resAssign("r", 0.5)),
+				}
+			},
+			plan:  calendar("half", ResourceCalendar{DefaultCapacity: 0.5}),
+			want:  []Overallocation{{Resource: "r", Day: 0, Demand: 0.5, Capacity: 0.5, TaskIDs: []string{"A", "B"}}},
+			flags: map[string]bool{"A": true, "B": true},
+			usage: map[string][]float64{"r": {0.5}},
+		},
+		{
+			// NaN units overload every moment they are in use, and only
+			// those: B, after A on the same day, fits (a running sum that
+			// took the NaN in would stay NaN after A ends and flag B).
+			id:             "T3-6 NaN units overload only the moments they are in use",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{
+					"A": resTask("A", 0.25, 0, 0.25, resAssign("r", math.NaN())),
+					"B": resTask("B", 0.5, 0.5, 1, resAssign("r", 1)),
+				}
+			},
+			plan:  unit,
+			want:  []Overallocation{{Resource: "r", Day: 0, Demand: math.NaN(), Capacity: 1, TaskIDs: []string{"A"}}},
+			flags: map[string]bool{"A": true, "B": false},
+			usage: map[string][]float64{"r": {math.NaN()}},
+		},
+		{
+			// A CalendarID naming no calendar falls back to the resource's
+			// own, whose day 0 has no capacity.
+			id:             "T3-7 an unknown assignment calendar reads the resource's calendar",
+			productionOnly: true,
+			build: func() map[string]*Task {
+				return map[string]*Task{"A": resTask("A", 1, 0, 1, Assignment{Resource: "r", Units: 1, CalendarID: "nope"})}
+			},
+			plan:  calendar("r", ResourceCalendar{Overrides: map[int]float64{0: 0}}),
+			want:  []Overallocation{{Resource: "r", Day: 0, Demand: 1, Capacity: 0, TaskIDs: []string{"A"}}},
+			flags: map[string]bool{"A": true},
+			usage: map[string][]float64{"r": {1}},
 		},
 		{
 			id: "F-21 out-of-range split day leaves zero demand on a zero-capacity day",
@@ -542,6 +784,12 @@ func overallocationFixtures(t *testing.T) []overallocationFixture {
 func TestOverallocationHandOracle(t *testing.T) {
 	for _, d := range overallocationDetectors() {
 		for _, f := range overallocationFixtures(t) {
+			if f.productionOnly && d.name != "production" {
+				continue
+			}
+			if f.production != nil && d.name == "production" {
+				f.want, f.flags, f.usage = f.production.want, f.production.flags, f.production.usage
+			}
 			t.Run(d.name+"/"+f.id, func(t *testing.T) {
 				tasks := f.build()
 				if len(f.flags) != len(tasks) {
@@ -800,11 +1048,10 @@ func TestOverallocationJSONShape(t *testing.T) {
 	}
 }
 
-// TestDetectorAndLevelerReadDifferentCalendars is the two-sided F-09
-// tripwire (RES-C08): detection resolves capacity by resource name, while
-// leveling honours Assignment.CalendarID. Both halves are current behaviour,
-// not a judgement that the difference is right.
-func TestDetectorAndLevelerReadDifferentCalendars(t *testing.T) {
+// TestDetectorAndLevelerReadTheSameCalendar is the F-09 tripwire (RES-C08):
+// since 2026-11-23 (D-CAL) detection and levelling both honour
+// Assignment.CalendarID, so what levelling avoids, detection flags.
+func TestDetectorAndLevelerReadTheSameCalendar(t *testing.T) {
 	plan := ResourceCapacityPlan{DefaultCapacity: 1,
 		Calendars: map[string]ResourceCalendar{"winter": {Overrides: map[int]float64{0: 0}}}}
 	tasks := map[string]*Task{"A": {ID: "A", Duration: 1,
@@ -816,8 +1063,12 @@ func TestDetectorAndLevelerReadDifferentCalendars(t *testing.T) {
 	if tasks["A"].ES != 1 {
 		t.Errorf("leveling put A at ES %v, want 1: the winter calendar has no capacity on day 0", tasks["A"].ES)
 	}
-	tasks["A"].ES, tasks["A"].EF = 0, 1
 	if got := DetectOverallocationsWithPlan(tasks, plan); got != nil {
-		t.Errorf("detection = %s, want nil: it reads the crew calendar, which does not exist", formatOverallocations(got))
+		t.Errorf("detection after levelling = %s, want nil", formatOverallocations(got))
+	}
+	tasks["A"].ES, tasks["A"].EF = 0, 1
+	want := []Overallocation{{Resource: "crew", Day: 0, Demand: 1, Capacity: 0, TaskIDs: []string{"A"}}}
+	if diff := overallocationDiff(DetectOverallocationsWithPlan(tasks, plan), want); diff != "" {
+		t.Errorf("detection on day 0 reads the winter calendar:%s", diff)
 	}
 }

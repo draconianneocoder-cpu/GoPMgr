@@ -351,7 +351,19 @@ CPM charts can generate a Resource Histogram. The generated histogram shows
 resource demand as bars and overlays dashed capacity lines from stakeholder
 availability and Project Settings Resource Capacity calendars.
 CPM and Gantt task over-allocation badges use the same Resource Capacity
-calendars when a project has a start date.
+calendars when a project has a start date. A resource is overallocated when,
+at some moment, the tasks working then need more of it than it has. Two
+half-day tasks for one person are fine one after the other and an overload
+at the same time, even though both use half a day. A task that needs more
+of a resource at once than it has (two people from a team of one, or full
+time from someone half-time) is always an overload, and levelling cannot
+place it. When an assignment names a resource calendar, that calendar sets
+the capacity for that assignment, in the badges and in levelling alike;
+the histogram's capacity line shows the resource's own calendar. The
+histogram's bars are each day's total demand, which can be within capacity
+on a day with an overload, because the overload is an overlap. Only the
+tasks working at an overloaded moment get a badge. The split preview
+judges capacity the same way.
 
 CPM charts also include a Monte Carlo risk panel. Add optional optimistic,
 most-likely, and pessimistic duration estimates to tasks that carry schedule
@@ -462,10 +474,9 @@ calendar. Each one is a test of the scheduler.
   Wednesday) appears on Wednesday.
 - **Durations under one day.** A task with a duration between 0 and 1 day,
   which PERT estimates can produce, is shown on the day its work starts, so
-  two half-day tasks in a row both show on Monday. Resource demand counts a
-  task that starts in the second half of a day on the next day, so the
-  overallocation badge and histogram can place such a task one day after its
-  bar.
+  two half-day tasks in a row both show on Monday. Its resource demand is
+  counted on the same days, by the part of each day it uses, so the
+  overallocation badge and histogram match its bar.
 - **A date that cannot be applied.** If the constraint date is missing or
   not a valid date, or lies too far from the project start, GoPMgr does not
   apply the constraint. The node shows a grey **?** marker, the task panel
@@ -478,30 +489,75 @@ calendar. Each one is a test of the scheduler.
 ### Constraints, levelling and imports
 
 - **Levelling.** Levelling resources keeps each delay it adds as the task's
-  **levelled start**, shown in the task panel. It never writes, changes or
-  removes a constraint. Each run recalculates every levelled start from the
+  **levelled start**, shown in the task panel, with the time of day when
+  the task starts part-way through a day (on a standard 08:00 to 17:00 day
+  with a lunch hour, so half a day in is 13:00). Only tasks that need one
+  get one: a task its links already move as far, after a delayed task,
+  gets none. It never writes, changes or removes a constraint. Each run recalculates every levelled start from the
   links and constraints, so a delay that is no longer needed is cleared. A
   levelled start delays the task like SNET but is never violated itself. If
   a delay pushes an SNLT, FNLT, MSO or MFO task past its date, the task is
   flagged, levelling names it, and the audit names levelling as the cause.
   Select **Clear** next to a levelled start to schedule that task from its
-  links and constraint alone until you level again. Editing a task does not
-  clear its levelled start: level again after changing durations or links.
-  ALAP tasks get no levelled start.
-- **Whole days.** Levelling places tasks on whole working days, so it can move
-  a chain of part-day tasks onto separate days.
+  links and constraint alone until you level again. An ALAP task that
+  levelling places keeps its levelled start and stays there, rather than
+  moving to its late dates, so it never lands on work levelling moved out
+  of its way.
+- **After you edit.** Editing a task does not clear its levelled start. When
+  you change a duration, a link, a constraint or an assignment after
+  levelling, the CPM and Gantt editors say "The schedule changed since
+  levelling. Level again to update the levelled starts." It also appears
+  when the project start date, the work calendar, or the capacity of a
+  resource or calendar the chart's assignments use changes. You can
+  dismiss the note. Charts levelled before 21 November 2026 never show it
+  until levelled again, and charts levelled between then and 23 November
+  2026 show it until levelled again.
+- **Part days.** Levelling places each task at the first moment it fits:
+  its earliest start, part days included, then each moment a task before it
+  on the same resource finishes, then each following day. Part-day tasks for
+  one person run one after the other within the day, so a chain of short
+  tasks is not spread over separate days. Splitting a task around busy days
+  books whole days; the chart keeps the split through edits in the CPM and
+  Gantt editors, and every schedule, report, export and Gantt bar uses
+  those days while they still fit the task. If an edit makes them stop
+  fitting (a duration needing a different number of whole days, or a start
+  part-way through a day), the task is scheduled and drawn in one piece
+  again and the levelling note appears.
 - **Charts levelled before 18 November 2026.** Earlier versions stored
   levelling delays as SNET constraints. Those SNETs look like any other and
   are kept. Remove the ones levelling added, then level again.
-- **Monte Carlo.** The risk simulation applies neither date constraints nor
-  levelled starts.
+- **Monte Carlo.** Each simulated run applies date constraints, levelled
+  starts and levelled splits as the schedule does, so with every duration at
+  its estimate the simulation finishes when the schedule does. A split task
+  works its split days in order in each run: shorter work ends on an
+  earlier split day, and longer work continues right after the last one. A must date (MSO, MFO) holds
+  its task in every run. Without a project start date, neither is applied.
+  A schedule the scheduler refuses as too long is refused by the simulation
+  too.
 - **Imports and exports.** MSPDI import brings each task's constraint type and
   date when **Constraints** is selected (the default). A constraint of an
   unknown type, or a dated one without a usable date, is left out and counted
   in the import receipt. Microsoft Project by default holds a task to its
   constraint date even against its links; GoPMgr keeps the links and flags the
   constraint instead, so imported dates can differ. Export writes each
-  constraint and its date, but not levelled starts.
+  constraint and its date. Export also writes each task's levelled start as
+  Microsoft Project's levelling delay (LevelingDelay): how long levelling
+  held the task back from where its links and constraints put it, measured
+  on the clock. Like Microsoft Project files, the file holds it in tenths of
+  elapsed minutes, shown in elapsed days when it is a whole number of days
+  and in elapsed minutes otherwise. (Microsoft's own example of this element
+  shows the value in its display unit; GoPMgr follows the reading of
+  MPXJ, the library most tools use to exchange these files.) Import reads it
+  back when **Levelling delays** is selected (the default), whatever unit it
+  is shown in, and stores it as a levelled start. It is placed using the
+  file's own links and constraints even when you do not import them, and
+  needs a project start date (the project's, or the file's when the project
+  has none). Delays with no unit, on ALAP tasks, or that cannot be read are
+  left out and counted in the import receipt; ALAP levelled starts are not
+  exported, because how Microsoft Project applies a delay to an ALAP task
+  could not be checked.
+  Part-day start and finish times are written on the same 08:00 to 17:00
+  day.
 
 ### Choosing a constraint
 
@@ -600,7 +656,8 @@ serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.
 
 Before selecting a file, choose whether to import dependencies, percent
-complete, resource assignments, and constraints (see Scheduling Constraints). GoPMgr always preserves task identities,
+complete, resource assignments, constraints and levelling delays (see
+Scheduling Constraints). GoPMgr always preserves task identities,
 names, durations, milestones, and the project start date it supports; its
 stored mapping receipt records selected fields, intentional transformations,
 and skipped summary or null rows. This makes the MSPDI round-trip boundary
@@ -1163,10 +1220,10 @@ entries are maintained in `frontend/src/lib/components/help-glossary.ts`.
 | <a id="user-term-key-result-kr"></a>**Key Result (KR)** | OKRs: measurable, time-bound outcome tracking progress toward an Objective. Graded 0.0–1.0 at period close. | — |
 | <a id="user-term-launchpad"></a>**Launchpad** | GoPMgr's project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts. | — |
 | <a id="user-term-lead-time"></a>**Lead Time** | Total time from request to delivery. Includes queue time + cycle time. | [Cycle Time](#user-term-cycle-time) |
-| <a id="user-term-levelled-start"></a>**Levelled Start** | The start date resource levelling gave a CPM task. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged. | [Resource Leveling](#user-term-resource-leveling), [Scheduling Constraint](#user-term-scheduling-constraint) |
+| <a id="user-term-levelled-start"></a>**Levelled Start** | The start resource levelling gave a CPM task: a date, with a time of day when the task starts part-way through a day. It delays the task like start no earlier than (SNET) but is not a constraint: each levelling run recalculates or clears it, and you can clear it in the task panel. A constraint date it pushes the task past is flagged. MSPDI files carry it as a levelling delay. | [Resource Leveling](#user-term-resource-leveling), [Scheduling Constraint](#user-term-scheduling-constraint) |
 | <a id="user-term-ls-lf"></a>**LS / LF** | Latest Start / Latest Finish. Calculated during the backward pass through a CPM network. | — |
 | <a id="user-term-milestone"></a>**Milestone** | A significant zero-duration schedule event. A Definition of Done is a completion-quality standard; a throughput target is a delivery-rate goal, not a milestone. | — |
-| <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
+| <a id="user-term-monte-carlo-simulation"></a>**Monte Carlo Simulation** | Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Each run applies the chart's constraints and levelled starts as the schedule does. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking. | — |
 | <a id="user-term-mspdi"></a>**MSPDI** | Microsoft Project Data Interchange — the .xml schedule format GoPMgr imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing. | — |
 | <a id="user-term-mttr"></a>**MTTR** | Mean Time to Restore. DORA metric: average hours to recover from a failed deployment. | — |
 | <a id="user-term-objective"></a>**Objective** | OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results. | — |

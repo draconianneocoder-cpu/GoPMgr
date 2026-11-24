@@ -188,14 +188,18 @@ func layoutChartForProject(d *db.Database, c db.Chart, proj db.Project) (charts.
 		projectStart time.Time
 		isWorkday    kernel.WorkdayFunc
 		capacityPlan kernel.ResourceCapacityPlan
+		context      string
 	)
 	if start, ok := parseProjectDate(proj.StartDate); ok {
 		projectStart = start
 		isWorkday = calendar.For(proj.CountryCode).IsWorkday
 		capacityPlan = resourceCapacityPlan(d, proj.ID)
+		if doc, err := dag.ParseLayered(c.Data); err == nil {
+			context = levellingContext(proj, capacityPlan, doc)
+		}
 	}
 
-	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan)
+	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan, context)
 	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
 		return charts.LayoutResult{}, scheduleTooLongErr(err)
 	}
@@ -413,6 +417,30 @@ func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (k
 	if len(tasks) == 0 {
 		return kernel.SimResult{}, errors.New("chart has no tasks")
 	}
+	// Each simulated run schedules as the chart does (owner decision
+	// 2026-11-21): date constraints and levelled starts are armed against
+	// the project start and calendar, and without a start date they are
+	// not applied, as in the schedule itself.
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		kernel.ApplyConstraintDates(tasks, start, calendar.For(proj.CountryCode).IsWorkday)
+	} else {
+		kernel.MarkConstraintsUnapplied(tasks, kernel.ConstraintNoStart)
+	}
+	// The simulation refuses what scheduling refuses: a constraint or
+	// levelled start can put the schedule beyond the kernel's limit, which
+	// the simulation's own input checks do not see. Check a copy, so the
+	// simulated tasks keep their inputs.
+	check := make(map[string]*kernel.Task, len(tasks))
+	for id, t := range tasks {
+		copied := *t
+		check[id] = &copied
+	}
+	if err := kernel.ScheduleCPM(check); err != nil {
+		if errors.Is(err, kernel.ErrSchedulingCycle) {
+			return kernel.SimResult{}, errScheduleCycle
+		}
+		return kernel.SimResult{}, scheduleTooLongErr(err)
+	}
 	result := kernel.RunMonteCarlo(tasks, iterations, workers)
 	if !result.Valid {
 		return result, errors.New(result.Error)
@@ -527,14 +555,15 @@ func levelingStrategyFor(s string) kernel.LevelingStrategy {
 }
 
 // LevelChartResources runs the kernel's serial resource-levelling
-// pass on a CPM chart and PERSISTS the result: every task that
-// levelling starts on a later day than the logic and its constraints
-// alone would gets that date as its levelled start (node level_start);
-// every other task's levelled start is cleared. Levelling ignores the
-// previous run's levelled starts and never changes a constraint (owner
-// decision 2026-11-18). ALAP tasks get none: the ALAP pass moves them to
-// their late dates regardless. Requires a project start date to express
-// levelled offsets as dates.
+// pass on a CPM chart and PERSISTS the result: every task the saved chart
+// would otherwise start earlier than levelling placed it gets its levelled
+// start, as the day it starts in (node level_start) and the share of that
+// day already passed (level_start_fraction; owner decision 2026-11-23); every other task's is cleared, including successors their
+// links move as far. Levelling ignores the previous run's levelled starts
+// and never changes a constraint (owner decision 2026-11-18). An ALAP task
+// levelling places keeps its levelled start, and the ALAP pass leaves it
+// there (owner decision 2026-11-23).
+// Requires a project start date to express levelled offsets as dates.
 //
 // Returns a LevelResult with the number of tasks pinned and any tasks
 // whose demand could not be fit within capacity (still overallocated).
@@ -619,6 +648,13 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		return LevelResult{}, scheduleTooLongErr(levelErr)
 	}
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
+	// The levelled starts the saved chart needs: those of the
+	// tasks the saved chart would otherwise start earlier than levelling
+	// placed them. Successors their links move as far get none.
+	keep, ok := kernel.LevelStartsToKeep(levelled)
+	if !ok {
+		return LevelResult{}, errors.New("chart contains a dependency cycle")
+	}
 
 	pinned := 0
 	var violated []string
@@ -635,17 +671,28 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		if lt.ConstraintViolated && !pt.ConstraintViolated {
 			violated = append(violated, n.ID)
 		}
-		n.LevelStart = ""
-		if lt.Constraint == kernel.AsLateAsPossible {
-			continue
-		}
-		// Dates in DateLayout compare in calendar order as strings.
-		if lt.StartDate > pt.StartDate {
-			n.LevelStart = lt.StartDate
+		n.LevelStart, n.LevelStartFraction = "", 0
+		if _, keepIt := keep[n.ID]; keepIt {
+			// Stored as the day it starts in and the share of that day
+			// already passed (owner decision D-STORE, 2026-11-23).
+			_, fraction := kernel.SplitDayOffset(lt.ES)
+			n.LevelStart, n.LevelStartFraction = lt.StartDate, fraction
 			pinned++
 		}
 	}
 	sort.Strings(violated)
+
+	// Record what levelling read, so the editors can warn when the
+	// schedule changes before the next levelling (owner decision
+	// 2026-11-21). Nothing levelled, nothing to go stale.
+	doc.LevelledInputs = ""
+	for _, n := range doc.Nodes {
+		if n.LevelStart != "" || len(n.WorkSegments) > 0 {
+			layered := dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges}
+			doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(proj, resourceCapacityPlan(d, proj.ID), layered))
+			break
+		}
+	}
 
 	blob, err := json.Marshal(doc)
 	if err != nil {
@@ -908,6 +955,9 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 type dagDoc struct {
 	Nodes []dag.LayeredNode `json:"nodes"`
 	Edges []dag.LayeredEdge `json:"edges"`
+	// LevelledInputs is dag.LayeredDocument's stored levelling digest;
+	// LevelChartResources sets it.
+	LevelledInputs string `json:"levelled_inputs,omitempty"`
 }
 
 // ImportMSPDIChartWithOptions opens a file dialog for a Microsoft Project Data
@@ -1080,6 +1130,18 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		}
 	}
 
+	// The project start the chart will be scheduled from: the project's,
+	// or the file's when the project has none (adopted below).
+	startProj := proj
+	if _, ok := parseProjectDate(proj.StartDate); !ok && imported.StartDate != "" {
+		startProj.StartDate = imported.StartDate
+	}
+	levelled := applyImportedLevelingDelays(&doc, &imported, startProj)
+	if levelled {
+		layered := dag.LayeredDocument{Nodes: doc.Nodes, Edges: doc.Edges}
+		doc.LevelledInputs = dag.LevellingInputsDigest(layered, levellingContext(startProj, resourceCapacityPlan(d, proj.ID), layered))
+	}
+
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return db.Chart{}, err
@@ -1087,9 +1149,19 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 	// Refuse a file whose schedule is beyond the kernel's limit before
 	// anything is stored, including the project start date below. Other
 	// layout errors (a dependency cycle) are left for the editor, where
-	// they can be corrected.
+	// they can be corrected. Levelled starts count: they are checked on
+	// the anchored schedule.
 	if _, err := charts.Layout(charts.KindCPM, string(blob)); errors.Is(err, kernel.ErrScheduleTooLong) {
 		return db.Chart{}, fmt.Errorf("this file was not imported: %w", scheduleTooLongErr(err))
+	}
+	if levelled {
+		tasks, err := cpmChartDataToKernelTasks(string(blob))
+		if err != nil {
+			return db.Chart{}, err
+		}
+		if err := scheduleProjectTasks(startProj, tasks); err != nil && !errors.Is(err, errScheduleCycle) {
+			return db.Chart{}, fmt.Errorf("this file was not imported: %w", err)
+		}
 	}
 
 	title := imported.Title
@@ -1116,4 +1188,114 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		Data:      string(blob),
 		Config:    string(receipt),
 	})
+}
+
+// applyImportedLevelingDelays turns the levelling delays read from an MSPDI
+// file into levelled starts on doc's nodes (date and share of the day),
+// measured on the file's full network (imported.LevelingNetwork) with
+// proj's start date and calendar, so the starts are the same whether or
+// not links and constraints were imported. Delays it cannot apply (no
+// start date, a cycle, an ALAP task, beyond the schedule limit) are
+// counted in the receipt. It reports whether any start was set.
+func applyImportedLevelingDelays(doc *dagDoc, imported *export.ImportedProject, proj db.Project) bool {
+	delays := map[string]kernel.LevelingDelay{}
+	tasks := map[string]*kernel.Task{}
+	for _, t := range imported.LevelingNetwork {
+		tasks[t.UID] = &kernel.Task{ID: t.UID, Duration: t.DurationDays, Milestone: t.Milestone,
+			Links: t.Links, Constraint: t.Constraint, ConstraintDate: t.ConstraintDate}
+		if t.LevelingDelay != nil {
+			delays[t.UID] = *t.LevelingDelay
+		}
+	}
+	if len(delays) == 0 {
+		return false
+	}
+	receipt := &imported.Receipt
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		receipt.SkippedLevelingDelays += len(delays)
+		receipt.Transformations = append(receipt.Transformations, "levelling delays not applied: the project has no start date")
+		return false
+	}
+	isWorkday := calendar.For(proj.CountryCode).IsWorkday
+	kernel.ApplyConstraintDates(tasks, start, isWorkday)
+	starts, skipped, ok := kernel.ApplyLevelingDelays(tasks, delays, start, isWorkday)
+	if !ok {
+		receipt.SkippedLevelingDelays += len(delays)
+		receipt.Transformations = append(receipt.Transformations, "levelling delays not applied: the file's links form a cycle")
+		return false
+	}
+	receipt.SkippedLevelingDelays += len(skipped)
+	if len(starts) == 0 {
+		return false
+	}
+	// The date of each start's day, by the rule the editors show it with.
+	dated := make(map[string]*kernel.Task, len(starts))
+	for id, at := range starts {
+		dated[id] = &kernel.Task{ID: id, ES: at, EF: at}
+	}
+	kernel.AnchorSchedule(dated, start, isWorkday)
+	for i := range doc.Nodes {
+		n := &doc.Nodes[i]
+		if at, ok := starts[n.ID]; ok {
+			_, fraction := kernel.SplitDayOffset(at)
+			n.LevelStart, n.LevelStartFraction = dated[n.ID].StartDate, fraction
+		}
+	}
+	return true
+}
+
+// levellingContext is what resource levelling reads from outside a chart,
+// in a canonical form for dag.LevellingInputsDigest: the project start date
+// (normalised), the work calendar (calendar.For's country code) and the
+// capacity of every resource and calendar the chart's assignments name —
+// base capacity, and calendar default, weekly and override capacities.
+// Notes, skill tags and resources the chart does not use are left out, so
+// editing them does not make levelling look out of date. LevelChartResources
+// and the layout path both build it here.
+func levellingContext(proj db.Project, plan kernel.ResourceCapacityPlan, doc dag.LayeredDocument) string {
+	type calendarCapacity struct {
+		Default  float64         `json:"default"`
+		Weekly   map[int]float64 `json:"weekly"`
+		Override map[int]float64 `json:"overrides"`
+	}
+	type resourceCapacity struct {
+		Base     float64           `json:"base"`
+		Calendar *calendarCapacity `json:"calendar"`
+	}
+	calendarOf := func(key string) *calendarCapacity {
+		cal, ok := plan.Calendars[key]
+		if !ok {
+			return nil
+		}
+		return &calendarCapacity{cal.DefaultCapacity, cal.WeeklyCapacity, cal.Overrides}
+	}
+	ctx := struct {
+		Start     string                       `json:"start"`
+		Calendar  string                       `json:"calendar"`
+		Default   float64                      `json:"default"`
+		Resources map[string]resourceCapacity  `json:"resources"`
+		Calendars map[string]*calendarCapacity `json:"calendars"`
+	}{
+		Calendar:  calendar.For(proj.CountryCode).CountryCode,
+		Default:   plan.DefaultCapacity,
+		Resources: map[string]resourceCapacity{},
+		Calendars: map[string]*calendarCapacity{},
+	}
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		ctx.Start = start.Format(kernel.DateLayout)
+	}
+	for _, n := range doc.Nodes {
+		for _, a := range n.Assignments {
+			if a.Resource == "" {
+				continue
+			}
+			ctx.Resources[a.Resource] = resourceCapacity{plan.Capacities[a.Resource], calendarOf(a.Resource)}
+			if a.CalendarID != "" {
+				ctx.Calendars[a.CalendarID] = calendarOf(a.CalendarID)
+			}
+		}
+	}
+	raw, _ := json.Marshal(ctx) // maps of numbers and strings: cannot fail; keys are sorted
+	return string(raw)
 }
