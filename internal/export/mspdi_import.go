@@ -6,6 +6,7 @@ package export
 import (
 	"encoding/xml"
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,11 @@ type ImportedTask struct {
 	// scheduling constraint; empty for ASAP or when not imported.
 	Constraint     kernel.ConstraintType
 	ConstraintDate string
+	// LevelingDelay is the task's levelling delay read from the file
+	// (LevelingDelay in LevelingDelayFormat units), nil when it has none
+	// or it is not imported. The caller applies it on the file's full
+	// network (ImportedProject.LevelingNetwork).
+	LevelingDelay *kernel.LevelingDelay
 }
 
 // ImportedProject is the result of FromMSPDIWithOptions.
@@ -36,6 +42,12 @@ type ImportedProject struct {
 	StartDate string // YYYY-MM-DD, or "" when the file has none
 	Tasks     []ImportedTask
 	Receipt   MSPDIImportReceipt
+	// LevelingNetwork is every importable task with all its links and
+	// constraints, whatever the options, set when some task has a
+	// levelling delay: delays are measured on the file's own network, so
+	// they give the same starts whether or not links and constraints are
+	// imported.
+	LevelingNetwork []ImportedTask
 }
 
 // MSPDIImportOptions lets a user decide which logical schedule fields become
@@ -47,6 +59,9 @@ type MSPDIImportOptions struct {
 	// IncludeConstraints imports task constraint types and dates. Callers
 	// that predate it leave it false, which keeps their earlier result.
 	IncludeConstraints bool `json:"include_constraints"`
+	// IncludeLevelingDelay imports each task's levelling delay as its
+	// levelled start. Callers that predate it leave it false.
+	IncludeLevelingDelay bool `json:"include_leveling_delay"`
 }
 
 // MSPDIImportReceipt records exactly which source fields were preserved,
@@ -61,6 +76,11 @@ type MSPDIImportReceipt struct {
 	// SkippedConstraints counts constraints left out because their type is
 	// unknown or a dated type has no usable date.
 	SkippedConstraints int `json:"skipped_constraints"`
+	// SkippedLevelingDelays counts levelling delays left out: an
+	// unreadable value, a missing, null or undocumented format, a delay on
+	// an ALAP task, one beyond the schedule limit, or all of them when the
+	// project has no start date.
+	SkippedLevelingDelays int `json:"skipped_leveling_delays"`
 }
 
 // mspdiImport mirrors the subset of the MSPDI schema GoPMgr reads.
@@ -80,7 +100,10 @@ type mspdiImport struct {
 		PercentComplete float64 `xml:"PercentComplete"`
 		ConstraintType  *int    `xml:"ConstraintType"`
 		ConstraintDate  string  `xml:"ConstraintDate"`
-		Predecessors    []struct {
+		// Read as text, so a malformed value is skipped, not fatal.
+		LevelingDelay       string `xml:"LevelingDelay"`
+		LevelingDelayFormat string `xml:"LevelingDelayFormat"`
+		Predecessors        []struct {
 			PredecessorUID string  `xml:"PredecessorUID"`
 			Type           *int    `xml:"Type"`
 			LinkLag        float64 `xml:"LinkLag"`
@@ -156,6 +179,13 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 			"task.constraint_date reduced to YYYY-MM-DD",
 			"constraints keep their type, but GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date")
 	}
+	if !options.IncludeLevelingDelay {
+		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "task.leveling_delay (user selection)")
+	} else {
+		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "task.leveling_delay")
+		out.Receipt.Transformations = append(out.Receipt.Transformations,
+			"task.leveling_delay applied as a levelled start (date and share of the day) on the file's links and constraints, whatever was imported; elapsed delays follow the 08:00-12:00, 13:00-17:00 working day")
+	}
 	if out.Title == "" {
 		out.Title = raw.Name
 	}
@@ -207,6 +237,14 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 		}
 		if options.IncludeProgress {
 			task.PercentComplete = t.PercentComplete
+		}
+		if options.IncludeLevelingDelay {
+			switch delay, status := parseLevelingDelay(t.LevelingDelay, t.LevelingDelayFormat); status {
+			case delayRead:
+				task.LevelingDelay = &delay
+			case delaySkipped:
+				out.Receipt.SkippedLevelingDelays++
+			}
 		}
 		if options.IncludeConstraints && t.ConstraintType != nil {
 			c, date, ok := mspdiConstraint(*t.ConstraintType, t.ConstraintDate)
@@ -265,8 +303,69 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 		out.Tasks[i].Links = kept
 	}
 
+	for _, t := range out.Tasks {
+		if t.LevelingDelay == nil {
+			continue
+		}
+		if options.IncludeDependencies && options.IncludeConstraints {
+			out.LevelingNetwork = out.Tasks
+			break
+		}
+		// Links and constraints on, so this parse does not recurse.
+		full, err := FromMSPDIWithOptions(data, MSPDIImportOptions{IncludeDependencies: true, IncludeConstraints: true, IncludeLevelingDelay: true})
+		if err != nil {
+			return ImportedProject{}, err
+		}
+		out.LevelingNetwork = full.Tasks
+		break
+	}
+
 	return out, nil
 }
+
+type delayStatus int
+
+const (
+	delayNone    delayStatus = iota // no delay, or zero
+	delayRead                       // a delay to apply
+	delaySkipped                    // a delay that cannot be read
+)
+
+// parseLevelingDelay converts LevelingDelay and LevelingDelayFormat. The
+// value is in tenths of elapsed minutes, whatever the format, which only
+// says how Microsoft Project shows the delay (MPXJ reads it so; owner
+// decision 2026-11-23). A delay needs a format, as in MPXJ: a missing,
+// null (21, 53) or undocumented format, and a value that is not a finite,
+// non-negative number, are skipped.
+func parseLevelingDelay(rawValue, rawFormat string) (kernel.LevelingDelay, delayStatus) {
+	text := strings.TrimSpace(rawValue)
+	if text == "" {
+		return kernel.LevelingDelay{}, delayNone
+	}
+	v, err := strconv.ParseFloat(text, 64)
+	switch {
+	case err != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0:
+		return kernel.LevelingDelay{}, delaySkipped
+	case v == 0:
+		return kernel.LevelingDelay{}, delayNone
+	}
+	format, err := strconv.Atoi(strings.TrimSpace(rawFormat))
+	if err != nil || !mspdiDelayFormats[format] {
+		return kernel.LevelingDelay{}, delaySkipped
+	}
+	return kernel.LevelingDelay{Amount: v / 10, Elapsed: true}, delayRead
+}
+
+// mspdiDelayFormats are Microsoft's documented LevelingDelayFormat codes
+// for a unit: minutes to elapsed months (3-12), percent (19, 20) and their
+// estimated forms (35-44, 51, 52). 21 and 53 are Null.
+var mspdiDelayFormats = func() map[int]bool {
+	codes := map[int]bool{19: true, 20: true, 51: true, 52: true}
+	for c := 3; c <= 12; c++ {
+		codes[c], codes[c+32] = true, true
+	}
+	return codes
+}()
 
 // mspdiConstraintTypes maps MSPDI ConstraintType codes to GoPMgr types.
 var mspdiConstraintTypes = map[int]kernel.ConstraintType{

@@ -49,8 +49,8 @@ gates precede extension project-write capabilities; arbitrary existing App metho
 are not an equivalent safe extension API. Imported facts must remain unmodified;
 host-derived values are separately versioned and attributed. At the original
 `ac20cbe` review baseline, KRN-01/KRN-02 limited affected schedule and EVM claims.
-KRN-02 is now fixed in PR #213 (`22b7df1`); retain its regressions. KRN-01 remains
-open and limits dependent claims.
+KRN-02 is now fixed in PR #213 (`22b7df1`); retain its regressions. KRN-01 was
+fixed on 2026-11-18 (see STATUS); retain its regressions too.
 
 Use **EXT profile E0–E3** for execution trust, and **RILD evidence E0–E4** for
 report qualification. Host-native read-only reporting and its qualification can

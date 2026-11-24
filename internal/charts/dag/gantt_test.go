@@ -4,6 +4,7 @@
 package dag
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -85,7 +86,7 @@ func TestLayoutGanttScheduled(t *testing.T) {
 
 // TestLayoutGanttEmitsAbsoluteWorkSegments proves a node's task-relative
 // WorkSegments become absolute (ES + offset) Gantt bar pieces, and that the
-// horizon stretches to cover a split that finishes past EF.
+// split's finish and the horizon reach its last working day.
 func TestLayoutGanttEmitsAbsoluteWorkSegments(t *testing.T) {
 	doc := LayeredDocument{
 		Nodes: []LayeredNode{
@@ -111,9 +112,38 @@ func TestLayoutGanttEmitsAbsoluteWorkSegments(t *testing.T) {
 			t.Errorf("segment %d = {%.0f,%.0f}, want {%.0f,%.0f}", i, s.Start, s.End, wantStarts[i], wantStarts[i]+1)
 		}
 	}
-	// Horizon must cover the last segment end (ES+5), not just EF (ES+3).
-	if layout.Horizon < row.ES+5 {
-		t.Errorf("Horizon = %.0f, want >= %.0f (last split day)", layout.Horizon, row.ES+5)
+	// Horizon must cover the last segment end (ES+5), not just ES+Duration.
+	if layout.Horizon < row.ES+5 || row.EF != row.ES+5 {
+		t.Errorf("Horizon = %.0f, EF = %.0f, want both %.0f (last split day)", layout.Horizon, row.EF, row.ES+5)
+	}
+}
+
+// Split bars show what the schedule uses (2026-11-24). Segments that no
+// longer fit the task, here three one-day segments on a duration edited to
+// 4 after levelling, are ignored by the schedule (kernel.RebuildSplitDays),
+// so the bar is one piece of 4 days, not three pieces ending on day 5.
+func TestLayoutGanttDrawsOnlySegmentsTheScheduleUses(t *testing.T) {
+	doc := LayeredDocument{Nodes: []LayeredNode{{ID: "S", Label: "S", Duration: 4,
+		WorkSegments: []WorkSegment{{Start: 0, End: 1}, {Start: 2, End: 3}, {Start: 4, End: 5}}}}}
+	layout, err := LayoutGanttScheduledWithPlan(doc, time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), weekdaysOnly, defaultPlan)
+	if err != nil {
+		t.Fatalf("LayoutGanttScheduledWithPlan: %v", err)
+	}
+	row := layout.Rows[0]
+	if row.WorkSegments != nil || row.ES != 0 || row.EF != 4 || layout.Horizon != 4 {
+		t.Errorf("row %+v, horizon %v; want one 0-4 bar with no pieces and horizon 4", row, layout.Horizon)
+	}
+
+	// Segments that fit, two days then one after a gap: consecutive
+	// working days are one piece, so two pieces, not three.
+	doc.Nodes[0].Duration = 3
+	doc.Nodes[0].WorkSegments = []WorkSegment{{Start: 0, End: 2}, {Start: 3, End: 4}}
+	layout, err = LayoutGanttScheduledWithPlan(doc, time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), weekdaysOnly, defaultPlan)
+	if err != nil {
+		t.Fatalf("LayoutGanttScheduledWithPlan: %v", err)
+	}
+	if got, want := layout.Rows[0].WorkSegments, []WorkSegment{{Start: 0, End: 2}, {Start: 3, End: 4}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("pieces %+v, want %+v", got, want)
 	}
 }
 

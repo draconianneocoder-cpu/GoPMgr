@@ -171,6 +171,7 @@ func (a *auditor) schedule() error {
 	}
 	a.cpmErr = kernel.ScheduleCPM(a.cpm)
 	if a.cpmErr == nil {
+		kernel.RebuildSplitDays(a.cpm)
 		a.breaches = kernel.DetectOverallocationsWithPlan(a.cpm, a.in.Capacity)
 	}
 	return a.ctx.Err()

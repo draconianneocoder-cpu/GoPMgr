@@ -49,7 +49,8 @@ const (
 	// determines the early dates.
 	AsSoonAsPossible ConstraintType = "ASAP"
 	// AsLateAsPossible schedules the task at its late dates,
-	// consuming its own float. Needs no constraint date.
+	// consuming its own float, unless it has an armed levelled start:
+	// then it stays where levelling put it. Needs no constraint date.
 	AsLateAsPossible ConstraintType = "ALAP"
 	// StartNoEarlierThan keeps ES at or after the constraint day.
 	StartNoEarlierThan ConstraintType = "SNET"
@@ -116,6 +117,49 @@ func MarkConstraintsUnapplied(tasks map[string]*Task, reason ConstraintIssue) {
 		if IsDateConstraint(t.Constraint) {
 			t.ConstraintUnapplied = reason
 		}
+	}
+}
+
+// ForwardConstrainedStart is the start an armed date constraint gives a
+// task whose links allow linkStart: SNET and FNET delay it, MSO and MFO
+// pull it to their date when the links allow. It does not apply the
+// levelled start and sets no violation; the forward pass and the levelling
+// persistence pass both use it, so they agree.
+func ForwardConstrainedStart(t *Task, linkStart float64) float64 {
+	es := linkStart
+	if !t.ConstraintArmed {
+		return es
+	}
+	switch t.Constraint {
+	case StartNoEarlierThan:
+		es = max(es, t.ConstraintDay)
+	case MustFinishOn:
+		if target := t.ConstraintDay - t.Duration; target >= es {
+			es = target
+		}
+	case MustStartOn:
+		if t.ConstraintDay >= es {
+			es = t.ConstraintDay
+		}
+	case FinishNoEarlierThan:
+		es = max(es, t.ConstraintDay-t.Duration)
+	}
+	return es
+}
+
+// linkCandidate is the earliest start one link allows a successor of the
+// given duration whose predecessor runs [predES, predEF). The forward pass
+// and LevelStartsToKeep share it.
+func linkCandidate(typ LinkType, lag, predES, predEF, duration float64) float64 {
+	switch typ {
+	case StartToStart:
+		return predES + lag
+	case FinishToFinish:
+		return predEF + lag - duration
+	case StartToFinish:
+		return predES + lag - duration
+	default: // FinishToStart
+		return predEF + lag
 	}
 }
 
@@ -197,9 +241,25 @@ type Task struct {
 	// delay that breaks a latest limit is flagged. It is never violated
 	// itself. LevelResourcesWithOptions disarms it, because levelling
 	// recomputes it from the logic and the user's constraints.
-	LevelStart      string  `json:"level_start,omitempty"`
-	LevelStartDay   float64 `json:"level_start_day,omitempty"`
-	LevelStartArmed bool    `json:"level_start_armed,omitempty"`
+	LevelStart string `json:"level_start,omitempty"`
+	// LevelStartFraction is the share of LevelStart's working day already
+	// passed when the task starts (0 <= f < 1; owner decision D-STORE,
+	// 2026-11-23): levelling in part days can start a task part-way
+	// through a day. ApplyConstraintDates arms LevelStartDay as the day's
+	// offset plus this fraction; a value outside [0, 1) is read as 0.
+	LevelStartFraction float64 `json:"level_start_fraction,omitempty"`
+	LevelStartDay      float64 `json:"level_start_day,omitempty"`
+	LevelStartArmed    bool    `json:"level_start_armed,omitempty"`
+	// LevelStartBinding is set by the forward pass when the levelled start
+	// is later than the start the links give, so levelling, not the
+	// logic, holds the task where it is.
+	// Not serialised: it is recomputed on every run. Since 2026-11-23 it
+	// compares with LevelEarliest (links plus forward constraints).
+	LevelStartBinding bool `json:"-"`
+	// LevelEarliest is set by the forward pass: the start the links and the
+	// forward constraints give, without the levelled start. A levelled
+	// delay is measured from it (persistence, MSPDI LevelingDelay).
+	LevelEarliest float64 `json:"-"`
 
 	// ConstraintViolated is set by CalculateCPM when precedence links
 	// make the constraint unsatisfiable: an MSO or MFO task pushed past,
@@ -319,7 +379,7 @@ func effectiveLinks(t *Task) []Link {
 //
 // Constraints: armed SNET, FNET, MSO and MFO act in the forward pass;
 // MSO, MFO, SNLT and FNLT in the backward pass; and ALAP in a post-pass that moves the task to
-// its late dates. Links always win over constraints; an unsatisfiable
+// its late dates (an ALAP task with an armed levelled start stays at it). Links always win over constraints; an unsatisfiable
 // constraint sets ConstraintViolated instead of breaking precedence.
 // Earliest limits use ConstraintDay and latest limits ConstraintDay minus
 // ConstraintLateShift, so an MSO or MFO dated on a non-working day, or
@@ -393,58 +453,36 @@ func (plan *cpmPlan) run() {
 	// --- Forward pass: ES / EF ---
 	for i, t := range plan.order {
 		t.ConstraintViolated = false
+		t.LevelStartBinding = false
 		es := 0.0
 		for _, l := range plan.preds[i] {
-			p := l.task
-			var candidate float64
-			switch l.typ {
-			case StartToStart:
-				candidate = p.ES + l.lag
-			case FinishToFinish:
-				candidate = p.EF + l.lag - t.Duration
-			case StartToFinish:
-				candidate = p.ES + l.lag - t.Duration
-			default: // FinishToStart
-				candidate = p.EF + l.lag
-			}
-			if candidate > es {
+			if candidate := linkCandidate(l.typ, l.lag, l.task.ES, l.task.EF, t.Duration); candidate > es {
 				es = candidate
 			}
 		}
 
-		// A levelled start delays the task like a start floor.
+		// Forward-acting constraints, then the levelled start: LevelEarliest
+		// is the start the links and constraints give, the start levelling
+		// measures its delay from.
+		es = ForwardConstrainedStart(t, es)
+		t.LevelEarliest = es
 		if t.LevelStartArmed && t.LevelStartDay > es {
+			// The epsilon keeps noise from summed fractional durations
+			// from naming levelling as the cause.
+			t.LevelStartBinding = t.LevelStartDay > es+1e-9
 			es = t.LevelStartDay
 		}
-
-		// Forward-acting constraints.
+		// Links or a non-working date force a start (MSO) or finish (MFO)
+		// past the date, so no start or finish can fall on it.
 		if t.ConstraintArmed {
 			switch t.Constraint {
-			case StartNoEarlierThan:
-				if t.ConstraintDay > es {
-					es = t.ConstraintDay
-				}
-			case MustFinishOn:
-				if target := t.ConstraintDay - t.Duration; target >= es {
-					es = target
-				}
-				// Links force a finish past the date, or the date is not
-				// a working day, so no finish can fall on it.
-				if es+t.Duration > lateConstraintDay(t)+1e-9 {
-					t.ConstraintViolated = true
-				}
 			case MustStartOn:
-				if t.ConstraintDay >= es {
-					es = t.ConstraintDay
-				}
-				// Links force a start past the date, or the date is not a
-				// working day, so no start can fall on it.
 				if es > lateConstraintDay(t)+1e-9 {
 					t.ConstraintViolated = true
 				}
-			case FinishNoEarlierThan:
-				if target := t.ConstraintDay - t.Duration; target > es {
-					es = target
+			case MustFinishOn:
+				if es+t.Duration > lateConstraintDay(t)+1e-9 {
+					t.ConstraintViolated = true
 				}
 			}
 		}
@@ -548,8 +586,12 @@ func (plan *cpmPlan) run() {
 	// As-late-as-possible tasks sit at their late dates, consuming
 	// their own float. Applied after both passes so no other task's
 	// dates shift (successors were computed from the early dates).
+	// An ALAP task with an armed levelled start stays where levelling put
+	// it (owner decision 2026-11-23, "keep levelled position"): levelling
+	// placed it as late as capacity allowed, and moving it to the late
+	// dates of the saved schedule could put it on top of other work.
 	for _, t := range plan.order {
-		if t.Constraint == AsLateAsPossible {
+		if t.Constraint == AsLateAsPossible && !t.LevelStartArmed {
 			t.ES, t.EF = t.LS, t.LF
 			t.Float = 0
 			t.IsCritical = true

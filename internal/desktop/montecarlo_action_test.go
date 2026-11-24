@@ -5,6 +5,7 @@ package desktop
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"gopmgr/internal/db"
+	"gopmgr/internal/kernel"
 	"gopmgr/internal/users"
 )
 
@@ -184,5 +186,63 @@ func TestExportChartMonteCarloRiskReportWritesPrivatePDF(t *testing.T) {
 	}
 	if !bytes.Contains(raw, []byte("<pdfaid:part>2</pdfaid:part>")) {
 		t.Fatalf("exported report missing PDF/A metadata")
+	}
+}
+
+// Each simulated run schedules as the chart does (owner decision
+// 2026-11-21). With no estimates every run uses the stored durations, so
+// every percentile is the scheduled finish (working-day index, project
+// starting Monday 2026-06-01):
+//   - SNET: A (2 days) then B (1 day) with SNET Thursday 06-04 (3): B runs
+//     3 to 4, finish 4 (3 if the constraint were ignored).
+//   - levelled start: C (1 day) with levelled start Friday 06-05 (4):
+//     finish 5 (1 if ignored).
+//   - no project start: constraints are not applied, as in the schedule:
+//     the SNET chart finishes at 3.
+func TestRunChartMonteCarloSchedulesAsTheChart(t *testing.T) {
+	cases := []struct {
+		name, start, data string
+		want              float64
+	}{
+		{"SNET", "2026-06-01", `{"nodes":[{"id":"A","label":"A","duration":2},
+			{"id":"B","label":"B","duration":1,"constraint":"SNET","constraint_date":"2026-06-04"}],
+			"edges":[{"from":"A","to":"B"}]}`, 4},
+		{"levelled start", "2026-06-01", `{"nodes":[{"id":"C","label":"C","duration":1,"level_start":"2026-06-05"}],"edges":[]}`, 5},
+		{"no project start", "", `{"nodes":[{"id":"A","label":"A","duration":2},
+			{"id":"B","label":"B","duration":1,"constraint":"SNET","constraint_date":"2026-06-04"}],
+			"edges":[{"from":"A","to":"B"}]}`, 3},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d, _ := newMonteCarloTestApp(t)
+			if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Monte Carlo Test", StartDate: tc.start}); err != nil {
+				t.Fatalf("UpsertProject: %v", err)
+			}
+			c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: tc.name, Data: tc.data})
+			if err != nil {
+				t.Fatalf("SaveChart: %v", err)
+			}
+			result, err := app.RunChartMonteCarlo(c.ID, 50, 2)
+			if err != nil {
+				t.Fatalf("RunChartMonteCarlo: %v", err)
+			}
+			nearMonteCarlo(t, "P50", result.P50, tc.want)
+			nearMonteCarlo(t, "P90", result.P90, tc.want)
+		})
+	}
+}
+
+// The simulation refuses a schedule that scheduling refuses: an SNET a century
+// out puts the task beyond the kernel's schedule limit
+// (kernel.ErrScheduleTooLong), although every duration and lag is small.
+func TestRunChartMonteCarloRefusesAScheduleBeyondTheLimit(t *testing.T) {
+	app, d, _ := newMonteCarloTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Far", Data: `{"nodes":[
+		{"id":"A","label":"A","duration":1,"constraint":"SNET","constraint_date":"2126-06-01"}],"edges":[]}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.RunChartMonteCarlo(c.ID, 10, 1); !errors.Is(err, kernel.ErrScheduleTooLong) {
+		t.Fatalf("error = %v, want kernel.ErrScheduleTooLong", err)
 	}
 }

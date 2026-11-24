@@ -15,6 +15,7 @@ not routed directly.
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
   import { showToast } from '../../toast.svelte';
+  import { t } from '../../i18n/i18n.svelte';
   import LayeredDiagram from './LayeredDiagram.svelte';
   import Button from '../Button.svelte';
   import type { Snippet } from 'svelte';
@@ -46,6 +47,7 @@ not routed directly.
     constraint_violated?: boolean;
     constraint_unapplied?: string;
     level_start?: string;
+    level_start_fraction?: number;
     percent_complete?: number;
     milestone?: boolean;
     actual_start?: string;
@@ -82,6 +84,10 @@ not routed directly.
   interface LayeredDoc {
     nodes: LayeredNode[];
     edges: LayeredEdge[];
+    // Stored by resource levelling: what it read (a digest).
+    levelled_inputs?: string;
+    // Computed by the CPM layout: the schedule changed since levelling.
+    levelling_stale?: boolean;
   }
 
   // Props
@@ -169,8 +175,17 @@ not routed directly.
         return stored;
       }),
       edges: plain.edges,
+      // Keep levelling's stored digest; levelling_stale is a layout output.
+      ...(plain.levelled_inputs ? { levelled_inputs: plain.levelled_inputs } : {}),
     };
   }
+
+  // The stale-levelling note can be dismissed; it returns the next time
+  // the schedule goes stale after being current.
+  let staleDismissed = $state(false);
+  $effect(() => {
+    if (!doc.levelling_stale) staleDismissed = false;
+  });
 
   // One function, so saveIfDirty addresses this editor's auto-save entry.
   // The string is the stored chart, not the layout result.
@@ -455,6 +470,12 @@ not routed directly.
       {/if}
       {#if layoutError}
         <p class="text-xs text-red-400 mb-2" role="alert">Layout error: {layoutError}</p>
+      {/if}
+      {#if doc.levelling_stale && !staleDismissed}
+        <div class="mb-2 flex items-center gap-2 text-xs text-amber-300" role="status">
+          <span>{t('leveling.stale')}</span>
+          <Button variant="secondary" size="compact" onclick={() => (staleDismissed = true)}>{t('leveling.stale.dismiss')}</Button>
+        </div>
       {/if}
       {#if doc.nodes.length === 0}
         <p class="text-sm text-slate-500 text-center mt-12">

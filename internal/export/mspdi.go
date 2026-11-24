@@ -36,9 +36,15 @@ type mspdiTask struct {
 	// ConstraintType and ConstraintDate follow PercentComplete and come
 	// before PredecessorLink, in the schema's element order. Both are
 	// left out for ASAP and for a constraint that cannot be written.
-	ConstraintType *int        `xml:"ConstraintType,omitempty"`
-	ConstraintDate string      `xml:"ConstraintDate,omitempty"`
-	Predecessors   []mspdiLink `xml:"PredecessorLink,omitempty"`
+	ConstraintType *int   `xml:"ConstraintType,omitempty"`
+	ConstraintDate string `xml:"ConstraintDate,omitempty"`
+	// LevelingDelay and LevelingDelayFormat follow ConstraintDate and
+	// come before PredecessorLink (schema order); the delay is in the
+	// format's units (8 = elapsed days, 4 = elapsed minutes). Left out
+	// when levelling did not delay the task.
+	LevelingDelay       *int        `xml:"LevelingDelay,omitempty"`
+	LevelingDelayFormat *int        `xml:"LevelingDelayFormat,omitempty"`
+	Predecessors        []mspdiLink `xml:"PredecessorLink,omitempty"`
 }
 
 type mspdiLink struct {
@@ -82,14 +88,22 @@ func mspdiLinkType(t kernel.LinkType) int {
 //
 // Start/Finish dates: if the task map has been calendar-anchored via
 // kernel.AnchorSchedule (Task.StartDate / Task.FinishDate populated),
-// those real dates are emitted with the standard 08:00 start and
-// 17:00 finish times. Un-anchored task maps fall back to the legacy
-// behaviour of offsetting from "today".
+// those real dates are emitted with times on Microsoft Project's standard
+// day (kernel.StartClock, kernel.FinishClock): a whole-day task starts at
+// 08:00 and finishes at 17:00, and a part-day start or finish falls at its
+// working minute. Un-anchored task maps fall back to the legacy behaviour
+// of offsetting from "today".
+//
+// levelingDelays gives, by task ID, the levelling delay in elapsed minutes
+// (kernel.LevelingDelayMinutes); each is written as LevelingDelay in tenths
+// of elapsed minutes, shown in elapsed days (format 8) when it is a whole
+// number of days, else in elapsed minutes (format 4) (owner decision
+// 2026-11-23). nil writes none.
 //
 // Tasks are emitted in (ES, ID) order so the XML is deterministic for
 // a given schedule — byte-identical output for snapshot tests and
 // reproducible archives.
-func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
+func ToMSPDI(title string, tasks map[string]*kernel.Task, levelingDelays map[string]int) ([]byte, error) {
 	epoch := time.Now().UTC()
 	project := mspdiProject{
 		Xmlns: "http://schemas.microsoft.com/project",
@@ -114,10 +128,10 @@ func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
 		start := epoch.AddDate(0, 0, int(t.ES)).Format("2006-01-02T15:04:05")
 		finish := epoch.AddDate(0, 0, int(t.EF)).Format("2006-01-02T15:04:05")
 		if t.StartDate != "" {
-			start = t.StartDate + "T08:00:00"
+			start = t.StartDate + startClock(t)
 		}
 		if t.FinishDate != "" {
-			finish = t.FinishDate + "T17:00:00"
+			finish = t.FinishDate + finishClock(t)
 		}
 
 		task := mspdiTask{
@@ -131,6 +145,7 @@ func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
 			PercentComplete: int(t.PercentComplete + 0.5),
 		}
 		task.ConstraintType, task.ConstraintDate = mspdiConstraintFor(t)
+		task.LevelingDelay, task.LevelingDelayFormat = mspdiLevelingDelay(levelingDelays[t.ID])
 		// Typed links (legacy Precedents become FS+0 via the same
 		// merge the scheduler uses).
 		for _, l := range kernel.EffectiveLinks(t) {
@@ -182,6 +197,57 @@ func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
 	buf.WriteString(xml.Header)
 	buf.Write(body)
 	return buf.Bytes(), nil
+}
+
+// startClock is the time a task's start is written with: 08:00 for a
+// whole-day start, else the working minute its share of the day reaches.
+func startClock(t *kernel.Task) string {
+	_, f := kernel.SplitDayOffset(t.ES)
+	h, m := kernel.StartClock(f)
+	return clockText(h, m)
+}
+
+// finishClock is the time a task's finish is written with: 17:00 for work
+// that ends with the day, else the working minute it ends at. A milestone
+// finishes when it starts.
+func finishClock(t *kernel.Task) string {
+	if t.Duration <= 0 {
+		if _, f := kernel.SplitDayOffset(t.ES); f > 0 {
+			return startClock(t)
+		}
+		return "T17:00:00"
+	}
+	last := math.Ceil(t.EF-1e-9) - 1
+	h, m := kernel.FinishClock(t.EF - last)
+	return clockText(h, m)
+}
+
+func clockText(h, m int) string {
+	return "T" + twoDigits(h) + ":" + twoDigits(m) + ":00"
+}
+
+func twoDigits(n int) string {
+	if n < 10 {
+		return "0" + itoa(n)
+	}
+	return itoa(n)
+}
+
+// mspdiLevelingDelay is a delay of minutes elapsed minutes as MSPDI's
+// LevelingDelay and LevelingDelayFormat. The value is in tenths of elapsed
+// minutes, as Microsoft Project files carry it (MPXJ reads and writes it
+// so; owner decision 2026-11-23); the format is only the unit the delay is
+// shown in: elapsed days (8) for a whole number of days, else elapsed
+// minutes (4). None for no delay.
+func mspdiLevelingDelay(minutes int) (*int, *int) {
+	if minutes <= 0 {
+		return nil, nil
+	}
+	value, format := minutes*10, 4
+	if minutes%(24*60) == 0 {
+		format = 8
+	}
+	return &value, &format
 }
 
 // boolFlag renders a Go bool as MSPDI's "1"/"0" flag form.
