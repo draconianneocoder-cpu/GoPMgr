@@ -22,7 +22,7 @@ func TestMSPDIRoundTripKeepsEveryLinkTypeAndLead(t *testing.T) {
 		"D": {ID: "D", Title: "Order", Duration: 1, Links: []kernel.Link{{Pred: "B", Type: kernel.StartToStart, Lag: 1.5}}},
 		"E": {ID: "E", Title: "Build", Duration: 4, Links: []kernel.Link{{Pred: "D", Type: kernel.FinishToStart, Lag: -0.5}}},
 	}
-	raw, err := ToMSPDI("Links", tasks)
+	raw, err := ToMSPDI("Links", tasks, nil)
 	if err != nil {
 		t.Fatalf("ToMSPDI: %v", err)
 	}

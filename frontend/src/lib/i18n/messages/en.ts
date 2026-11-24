@@ -268,6 +268,8 @@ export const en = {
   },
   'leveling.constraintsBroken.hint':
     'Levelling does not avoid constraint dates while it places tasks. Add capacity, change the constraint, or clear the levelled start of: {labels}.',
+  'leveling.stale': 'The schedule changed since levelling. Level again to update the levelled starts.',
+  'leveling.stale.dismiss': 'Dismiss',
   'leveling.noneShifted': 'No tasks could be shifted into free capacity',
   'leveling.alreadyLevel': 'Already level: nothing moved',
   'leveling.stillOverallocated': {
@@ -345,6 +347,9 @@ export const en = {
   'dashboard.import.constraints': 'Constraints',
   'dashboard.import.constraints.hint':
     'Import each task\'s constraint and date. GoPMgr schedules from the links first and flags a constraint they cannot meet, where Microsoft Project by default holds the task to the date.',
+  'dashboard.import.levelingDelay': 'Levelling delays',
+  'dashboard.import.levelingDelay.hint':
+    "Import each task's levelling delay as its levelled start. Delays are placed using the file's own links and constraints, even if you do not import them. Delays on ALAP tasks or with no unit are not imported; the receipt counts them.",
   'cpm.levelStart': 'Levelled start',
   'cpm.levelStart.hint':
     'Resource levelling delayed this task to this date. Level again to recompute it, or clear it to schedule the task from its links and constraint alone.',

@@ -46,3 +46,25 @@ and MR-3 durable queue/receipt evidence gate their stronger claims. Repeat appli
 MEM cases with each affected RILD/PS/ARC/EXT delivery; MR-5 is not permission to
 defer safety tests to the end. A failed or unrun mandatory case blocks that claim.
 These specifications add no executed evidence or implementation authorization.
+
+## Slice records
+
+### Time-interval resource detection and levelling (2026-11-23)
+
+Changes `internal/kernel` overallocation detection and resource levelling
+(owner decisions D-TIME and D-CAL), levelled-start persistence and MSPDI
+levelling delays, under the [development contract](../design/resource-resilience.md#mandatory-slice-handoff).
+
+| Item | Record |
+| --- | --- |
+| Path and phase | Existing in-process host paths (chart layout, levelling, reports, export, import); MR-0 inventory entry. Not a new heavy path. |
+| MEM IDs | MEM-02 (envelope: measured allocation below), MEM-12 (exactness: independent oracles in the [overallocation contract](resource-overallocation-contract.md)). Others N/A for this slice only because nothing queues, isolates, retries or persists anew; independent reviewer agreement NOT obtained. |
+| Owners | Change approved by the owner's decisions; independent reviewer not assigned. |
+| Input and output bounds | Schedules within `kernel.MaxScheduleDays` (18,250 working days) and the 4× allocation limit. Detection keeps the per-day profiles and adds per-day buffers reused across days. Levelling keeps a per-resource whole-day total and capacity slice to the booked extent, plus part-day pieces (at most two per assignment of each part-day task). The delay helpers grow one date table to the latest offset they read. |
+| Profile and ceiling | None approved (DEC-HARDWARE, OWN-10): BLOCKED. |
+| Peak and estimate | Allocation per call measured (contract, Benchmarks): detection −7% at T0–T3; whole-day levelling T1 17.0 MB against 21.4 MB; part-day levelling T1 19.6 MB. Peak RSS NOT RUN; no estimate made, so no estimation error. |
+| Admission, queue, cancellation | None, as before: synchronous calls on the caller's goroutine. Not changed. |
+| Cleanup and retry | Pure computation; nothing to clean up; a repeated call gives the same result. |
+| Identity and durability | Results persist only through the existing chart save and import paths; no new acknowledgement or checkpoint. |
+| MEM-T results | MEM-T02 and MEM-T12 NOT RUN as qualification cases; the unit, property and differential tests in the contract ran on linux/amd64, Go 1.27.4, at the commits named in the change. |
+| Prohibited effects | No approximation, cap or silent truncation: records, participants and levelled starts are exact against hand and independent oracles. |

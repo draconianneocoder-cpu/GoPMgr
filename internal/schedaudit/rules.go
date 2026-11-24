@@ -460,7 +460,7 @@ func (a *auditor) checkOverallocation() error {
 		}
 		sort.Strings(res)
 		a.add(Overallocation, SeverityWarning, id, nil, "over capacity: "+strings.Join(res, ", "), "",
-			"On at least one day the work assigned to a resource is more than its capacity, so the dates cannot all be met as planned.",
+			"At some moment the work assigned to a resource needs more of it at once than it has, so the dates cannot all be met as planned.",
 			"Level the resource, change the assignment, or add capacity.")
 	}
 	a.ran(Overallocation, "")
@@ -554,12 +554,23 @@ func violationText(constraint kernel.ConstraintType, c *kernel.Task) (string, st
 		}
 		return explanation, "Move the date to a working day within the project."
 	}
-	if c.LevelStartArmed && c.ES <= c.LevelStartDay+1e-9 {
-		// The task sits on its levelled start, so levelling, not the
-		// links, holds it past the date.
-		return "Resource levelling delayed this task to " + c.LevelStart + ", past its constraint date.",
+	if c.LevelStartBinding {
+		// The levelled start is later than the links allow, so
+		// levelling, not the logic, holds the task past the date.
+		return "Resource levelling delayed this task to " + levelledStartText(c) + ", past its constraint date.",
 			"Clear the levelled start or level again to see whether the date can be met; add capacity, or move the date."
 	}
 	return "The logic and the constraint date conflict: the links push the task past its date, or a later task needs it sooner, so the date cannot be met.",
 		"Shorten or re-sequence the work before it, relax the date of the later task that needs it sooner, or move this date."
+}
+
+// levelledStartText is a levelled start as the audit shows it: the date,
+// with the time of day (kernel.StartClock) when levelling started the task
+// part-way through the day.
+func levelledStartText(t *kernel.Task) string {
+	if t.LevelStartFraction <= 0 || t.LevelStartFraction >= 1 {
+		return t.LevelStart
+	}
+	h, m := kernel.StartClock(t.LevelStartFraction)
+	return fmt.Sprintf("%s %02d:%02d", t.LevelStart, h, m)
 }

@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { definedEntries, normaliseSimulation } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
+  import { levelledStartText } from '../../local-date';
   // CPMEditor records each activity's Duration. The backend runs the
   // full CPM forward/backward pass (kernel.CalculateCPM) and writes
   // ES/EF/LS/LF/Float plus IsCritical back per node. Critical-path
@@ -364,11 +365,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // clearLevelStart removes the start levelling gave a task, saves, and
   // reloads, so the task is scheduled from its links and constraint again
   // straight away (levelling recomputes it on its next run).
-  async function clearLevelStart(node: { level_start?: string }) {
+  async function clearLevelStart(node: { level_start?: string; level_start_fraction?: number }) {
     if (resourceBusy) return;
     resourceBusy = true;
     try {
       node.level_start = undefined;
+      node.level_start_fraction = undefined;
       if (await shellRef?.save()) await shellRef?.reloadFromDB();
     } finally {
       resourceBusy = false;
@@ -842,7 +844,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if node.level_start}
       <div class="mt-2 flex items-center justify-between gap-2 text-xs" title={t('cpm.levelStart.hint')}>
         <span class="text-slate-500">{t('cpm.levelStart')}</span>
-        <span class="font-mono text-cyan-300">{node.level_start}</span>
+        <span class="font-mono text-cyan-300">{levelledStartText(node.level_start, node.level_start_fraction)}</span>
         <Button
           variant="secondary"
           size="compact"

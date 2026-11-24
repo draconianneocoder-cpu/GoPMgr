@@ -147,11 +147,14 @@ describe('CPMEditor schedule audit saving', () => {
 });
 
 // Levelling keeps a delay as the task's levelled start (owner decision
-// 2026-11-18). The panel shows it, and Clear removes it from the stored
-// chart without touching the constraint, then reloads.
+// 2026-11-18), with the share of the day passed when it starts part-way
+// through one (D-STORE, 2026-11-23). The panel shows it with the time of
+// day (three quarters of a 08:00-17:00 day with a lunch hour is 15:00),
+// and Clear removes both from the stored chart without touching the
+// constraint, then reloads.
 describe('CPMEditor levelled start', () => {
   it('shows a levelled start and clears it', async () => {
-    const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'SNLT', constraint_date: '2026-06-04', level_start: '2026-06-03' };
+    const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'SNLT', constraint_date: '2026-06-04', level_start: '2026-06-03', level_start_fraction: 0.75 };
     let stored = JSON.stringify({ nodes: [node], edges: [] });
     const app = installApp();
     app.GetChart = vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'cpm', title: 'C', data: stored }));
@@ -164,13 +167,14 @@ describe('CPMEditor levelled start', () => {
     await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
     await settle(50);
     await fireEvent.click(getByRole('button', { name: 'Pour' }));
-    expect(await findByText('2026-06-03')).toBeTruthy();
+    expect(await findByText('2026-06-03 15:00')).toBeTruthy();
     const loads = app.GetChart.mock.calls.length;
 
     await fireEvent.click(getByRole('button', { name: 'Clear the levelled start of Pour' }));
     await waitFor(() => expect(app.GetChart.mock.calls.length).toBeGreaterThan(loads));
     const saved = JSON.parse(stored).nodes[0];
     expect(saved.level_start).toBeUndefined();
+    expect(saved.level_start_fraction).toBeUndefined();
     expect(saved.constraint).toBe('SNLT');
     expect(saved.constraint_date).toBe('2026-06-04');
     await waitFor(() => expect(queryByText('Levelled start')).toBeNull());

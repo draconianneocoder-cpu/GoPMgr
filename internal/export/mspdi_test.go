@@ -20,7 +20,7 @@ func TestToMSPDIUsesAnchoredDates(t *testing.T) {
 		},
 	}
 
-	out, err := ToMSPDI("Demo", tasks)
+	out, err := ToMSPDI("Demo", tasks, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestToMSPDIFallsBackWithoutAnchor(t *testing.T) {
 		"A": {ID: "A", Title: "Design", Duration: 2, ES: 0, EF: 2},
 	}
 
-	out, err := ToMSPDI("Demo", tasks)
+	out, err := ToMSPDI("Demo", tasks, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,12 +62,12 @@ func TestToMSPDIDeterministicOrder(t *testing.T) {
 		}
 	}
 
-	first, err := ToMSPDI("Demo", mk())
+	first, err := ToMSPDI("Demo", mk(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 10; i++ {
-		again, err := ToMSPDI("Demo", mk())
+		again, err := ToMSPDI("Demo", mk(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,5 +81,42 @@ func TestToMSPDIDeterministicOrder(t *testing.T) {
 	if strings.Index(s, "<Name>A</Name>") >= strings.Index(s, "<Name>B</Name>") ||
 		strings.Index(s, "<Name>B</Name>") >= strings.Index(s, "<Name>C</Name>") {
 		t.Errorf("tasks not in (ES, ID) order:\n%s", s)
+	}
+}
+
+// Levelling delays are written in tenths of elapsed minutes (owner
+// decision 2026-11-23), shown in elapsed days (format 8) when whole days
+// and in elapsed minutes (format 4) otherwise, between ConstraintDate and
+// PredecessorLink. Part-day
+// starts and finishes fall at their working minute on the 08:00-12:00,
+// 13:00-17:00 day; a part-day milestone finishes when it starts.
+func TestToMSPDIWritesLevelingDelaysAndWorkingTimes(t *testing.T) {
+	tasks := map[string]*kernel.Task{
+		"A": {ID: "A", Duration: 1, ES: 2, EF: 3, StartDate: "2026-06-03", FinishDate: "2026-06-03"},
+		"B": {ID: "B", Duration: 0.5, ES: 0.5, EF: 1, StartDate: "2026-06-01", FinishDate: "2026-06-01",
+			Constraint: kernel.StartNoEarlierThan, ConstraintDate: "2026-06-01",
+			Links: []kernel.Link{{Pred: "D", Type: kernel.FinishToStart}}},
+		"D": {ID: "D", Duration: 0.5, ES: 0, EF: 0.5, StartDate: "2026-06-01", FinishDate: "2026-06-01"},
+		"M": {ID: "M", Milestone: true, ES: 0.5, EF: 0.5, StartDate: "2026-06-01", FinishDate: "2026-06-01"},
+	}
+	out, err := ToMSPDI("Levelled", tasks, map[string]int{"A": 2880, "B": 300})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{
+		"<UID>A</UID><ID>A</ID><Name></Name><Start>2026-06-03T08:00:00</Start><Finish>2026-06-03T17:00:00</Finish>",
+		"<UID>D</UID><ID>D</ID><Name></Name><Start>2026-06-01T08:00:00</Start><Finish>2026-06-01T12:00:00</Finish>",
+		"<UID>B</UID><ID>B</ID><Name></Name><Start>2026-06-01T13:00:00</Start><Finish>2026-06-01T17:00:00</Finish>",
+		"<UID>M</UID><ID>M</ID><Name></Name><Start>2026-06-01T13:00:00</Start><Finish>2026-06-01T13:00:00</Finish>",
+		"<LevelingDelay>28800</LevelingDelay><LevelingDelayFormat>8</LevelingDelayFormat>",
+		"<ConstraintDate>2026-06-01T08:00:00</ConstraintDate><LevelingDelay>3000</LevelingDelay><LevelingDelayFormat>4</LevelingDelayFormat><PredecessorLink>",
+	} {
+		if !strings.Contains(strings.Join(strings.Fields(s), ""), strings.Join(strings.Fields(want), "")) {
+			t.Errorf("missing %s in:\n%s", want, s)
+		}
+	}
+	if strings.Count(s, "<LevelingDelay>") != 2 {
+		t.Errorf("want exactly two delays (A and B):\n%s", s)
 	}
 }

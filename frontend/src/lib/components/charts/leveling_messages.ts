@@ -95,10 +95,3 @@ export function splitLevelStatus(res: LevelResult): string {
     ? t('leveling.splitApplied', { count: split.length, labels: summarizeLabels(split) })
     : t('leveling.splitNone');
 }
-
-// clearWorkSegments strips persisted split segments from chart nodes. A
-// manual schedule edit invalidates the leveled snapshot, so the Gantt editor
-// calls this before re-laying-out. Mutates in place.
-export function clearWorkSegments(nodes: Array<Record<string, unknown>>): void {
-  for (const n of nodes) n.work_segments = undefined;
-}

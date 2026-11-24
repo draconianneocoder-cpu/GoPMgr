@@ -152,3 +152,28 @@ func TestAnchorScheduleShowsAPartDayStartOnItsDay(t *testing.T) {
 		t.Errorf("Y = %s..%s, want 2026-06-03..2026-06-03", y.StartDate, y.FinishDate)
 	}
 }
+
+// Times of day follow Microsoft Project's standard calendar, 08:00-12:00
+// and 13:00-17:00: a start falls at the next working minute
+// and a finish at the last, so half a day is a 13:00 start but a 12:00
+// finish.
+func TestWorkingClock(t *testing.T) {
+	for _, c := range []struct {
+		f             float64
+		start, finish [2]int
+	}{
+		{0, [2]int{8, 0}, [2]int{8, 0}},
+		{0.25, [2]int{10, 0}, [2]int{10, 0}},
+		{0.5, [2]int{13, 0}, [2]int{12, 0}},
+		{0.75, [2]int{15, 0}, [2]int{15, 0}},
+		{1.0 / 3, [2]int{10, 40}, [2]int{10, 40}},
+		{1, [2]int{8, 0}, [2]int{17, 0}}, // a start share is below 1
+	} {
+		if h, m := StartClock(c.f); [2]int{h, m} != c.start {
+			t.Errorf("StartClock(%v) = %02d:%02d, want %02d:%02d", c.f, h, m, c.start[0], c.start[1])
+		}
+		if h, m := FinishClock(c.f); [2]int{h, m} != c.finish {
+			t.Errorf("FinishClock(%v) = %02d:%02d, want %02d:%02d", c.f, h, m, c.finish[0], c.finish[1])
+		}
+	}
+}

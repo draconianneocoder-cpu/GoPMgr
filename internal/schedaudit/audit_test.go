@@ -428,9 +428,18 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 	h.Constraint, h.ConstraintDate = kernel.MustStartOn, "2026-01-10"
 	i.Constraint, i.ConstraintDate = kernel.StartNoLaterThan, "2026-01-10"
 	k.Constraint, k.ConstraintDate, k.LevelStart = kernel.StartNoLaterThan, "2026-01-05", "2026-01-07"
-	r := run(t, base(tk("A", 1), e, f, g, h, j, i, k))
-	wantSubjects(t, r, HardConstraint, "E", "F", "H", "I", "K")
-	wantSubjects(t, r, ConstraintViolated, "F", "H", "I", "K")
+	// L follows the 2-day P, so its links already give Wednesday (2); its
+	// levelled start is also Wednesday, so the logic, not levelling, breaks
+	// its SNLT Monday.
+	p, l := tk("P", 2), tk("L", 1, "P")
+	l.Constraint, l.ConstraintDate, l.LevelStart = kernel.StartNoLaterThan, "2026-01-05", "2026-01-07"
+	// M is K levelled to three quarters of the way through Wednesday:
+	// 6 working hours from 08:00, past lunch, is 15:00 (kernel.StartClock).
+	m := tk("M", 1)
+	m.Constraint, m.ConstraintDate, m.LevelStart, m.LevelStartFraction = kernel.StartNoLaterThan, "2026-01-05", "2026-01-07", 0.75
+	r := run(t, base(tk("A", 1), e, f, g, h, j, i, k, p, l, m))
+	wantSubjects(t, r, HardConstraint, "E", "F", "H", "I", "K", "L", "M")
+	wantSubjects(t, r, ConstraintViolated, "F", "H", "I", "K", "L", "M")
 	for _, finding := range ofRule(r, HardConstraint) {
 		switch finding.TaskID {
 		case "E":
@@ -450,13 +459,17 @@ func TestStartAndFinishConstraintsInSQ08AndSQ09(t *testing.T) {
 			if !strings.Contains(finding.Explanation, calendar) || !strings.Contains(finding.Explanation, "cannot start on it") || finding.Advice != "Move the date to a working day within the project." {
 				t.Fatalf("SQ-09 for H should blame the calendar: %+v", finding)
 			}
-		case "F", "I":
+		case "F", "I", "L":
 			if strings.Contains(finding.Explanation, calendar) || !strings.Contains(finding.Explanation, "the links push the task past its date") {
 				t.Fatalf("SQ-09 for %s should blame the logic: %+v", finding.TaskID, finding)
 			}
 		case "K":
 			if finding.Explanation != "Resource levelling delayed this task to 2026-01-07, past its constraint date." {
 				t.Fatalf("SQ-09 for K should blame levelling: %+v", finding)
+			}
+		case "M":
+			if finding.Explanation != "Resource levelling delayed this task to 2026-01-07 15:00, past its constraint date." {
+				t.Fatalf("SQ-09 for M should give the levelled time: %+v", finding)
 			}
 		}
 	}

@@ -42,7 +42,13 @@ var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implem
 // checked against plan (named calendars and per-day capacity overrides).
 // All other kinds — and a zero projectStart — fall through to plain
 // Layout, so callers without project context lose nothing by using it.
-func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (LayoutResult, error) {
+//
+// levellingContext is what resource levelling read from outside the chart
+// (project start, work calendar, referenced capacity; see
+// dag.LevellingInputsDigest): with it the CPM and Gantt layouts report
+// whether the schedule changed since levelling. Plain Layout has no project
+// context and never reports it.
+func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan, levellingContext string) (LayoutResult, error) {
 	if (kind != KindCPM && kind != KindGantt) || projectStart.IsZero() {
 		return Layout(kind, rawData)
 	}
@@ -63,6 +69,7 @@ func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, i
 	if err != nil {
 		return LayoutResult{}, err
 	}
+	doc.LevellingStale = dag.LevellingIsStale(doc, levellingContext)
 	return wrapWithAnnotated(def, kind, layout, doc)
 }
 

@@ -59,6 +59,9 @@ type ReportPayload struct {
 	Tasks    map[string]*kernel.Task
 	EVM      *kernel.EVMetrics
 	Currency string
+	// LevelingDelays is, by task ID, each task's levelling delay in
+	// elapsed minutes (kernel.LevelingDelayMinutes), written by MSPDI.
+	LevelingDelays map[string]int
 }
 
 // evmSummaryLines renders the earned-value block shared by the DOCX, ODT,
@@ -97,7 +100,7 @@ func GenerateArchivalReport(payload ReportPayload, opts ExportOptions) ([]byte, 
 	case FormatXLSX:
 		raw, err = renderXLSX(payload, opts)
 	case FormatMSPDI:
-		raw, err = ToMSPDI(opts.Title, payload.Tasks)
+		raw, err = ToMSPDI(opts.Title, payload.Tasks, payload.LevelingDelays)
 	case FormatCSV:
 		raw, err = renderCSV(payload, opts)
 	case FormatHTML:

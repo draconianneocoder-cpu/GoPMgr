@@ -297,6 +297,7 @@ import Button from '../Button.svelte';
   let importProgress = $state(true);
   let importAssignments = $state(true);
   let importConstraints = $state(true);
+  let importLevelingDelay = $state(true);
 
   async function importMSPDI() {
     importMsg = '';
@@ -306,6 +307,7 @@ import Button from '../Button.svelte';
         include_progress: importProgress,
         include_assignments: importAssignments,
         include_constraints: importConstraints,
+        include_leveling_delay: importLevelingDelay,
       });
       goto(chartRoutes['cpm'] ?? 'charts', c.id);
     } catch (err: any) {
@@ -636,6 +638,7 @@ import Button from '../Button.svelte';
           <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
           <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
           <label class="flex items-center gap-1" title={t('dashboard.import.constraints.hint')}><input type="checkbox" bind:checked={importConstraints} /> {t('dashboard.import.constraints')}</label>
+          <label class="flex items-center gap-1" title={t('dashboard.import.levelingDelay.hint')}><input type="checkbox" bind:checked={importLevelingDelay} /> {t('dashboard.import.levelingDelay')}</label>
           <span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
         </div>
         {#if !loading && !loadError}

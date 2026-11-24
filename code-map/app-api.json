@@ -407,7 +407,7 @@
     {
       "method": "CompareScheduleBaseline",
       "file": "internal/desktop/app_charts.go",
-      "line": 289,
+      "line": 293,
       "params": "chartID string, baselineID string",
       "returns": "map[string]kernel.ScheduleVariance, error",
       "uses_internal_packages": [
@@ -467,7 +467,7 @@
     {
       "method": "ComputeScheduleEVM",
       "file": "internal/desktop/app_charts.go",
-      "line": 344,
+      "line": 348,
       "params": "chartID string, asOfDate string",
       "returns": "kernel.EVMetrics, error",
       "uses_internal_packages": [
@@ -609,7 +609,7 @@
     {
       "method": "DeleteScheduleBaseline",
       "file": "internal/desktop/app_charts.go",
-      "line": 267,
+      "line": 271,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": [
@@ -713,7 +713,7 @@
     {
       "method": "ExportChartMonteCarloRiskReport",
       "file": "internal/desktop/app_charts.go",
-      "line": 426,
+      "line": 454,
       "params": "chartID string, iterations int, workers int",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -795,7 +795,7 @@
     {
       "method": "ExportDocumentPDF",
       "file": "internal/desktop/app_documents.go",
-      "line": 1188,
+      "line": 1205,
       "params": "id string",
       "returns": "string, error",
       "uses_internal_packages": [
@@ -805,7 +805,7 @@
     {
       "method": "ExportDocumentPDFGnuPG",
       "file": "internal/desktop/app_documents.go",
-      "line": 1261,
+      "line": 1278,
       "params": "id string, keyID string",
       "returns": "GnuPGExportResult, error",
       "uses_internal_packages": [
@@ -817,7 +817,7 @@
     {
       "method": "ExportDocumentPDFSigned",
       "file": "internal/desktop/app_documents.go",
-      "line": 1304,
+      "line": 1321,
       "params": "id string, certPath string, certPassword string",
       "returns": "string, error",
       "uses_internal_packages": []
@@ -919,7 +919,7 @@
     {
       "method": "GenerateResourceHistogram",
       "file": "internal/desktop/app_charts.go",
-      "line": 789,
+      "line": 836,
       "params": "chartID string",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1049,7 +1049,7 @@
     {
       "method": "ImportMSPDIChartWithOptions",
       "file": "internal/desktop/app_charts.go",
-      "line": 920,
+      "line": 970,
       "params": "options export.MSPDIImportOptions",
       "returns": "db.Chart, error",
       "uses_internal_packages": [
@@ -1097,11 +1097,12 @@
     {
       "method": "LevelChartResources",
       "file": "internal/desktop/app_charts.go",
-      "line": 552,
+      "line": 581,
       "params": "chartID string, strategy string, priorityCritical bool, allowSplitting bool",
       "returns": "LevelResult, error",
       "uses_internal_packages": [
         "gopmgr/internal/calendar",
+        "gopmgr/internal/charts/dag",
         "gopmgr/internal/kernel"
       ]
     },
@@ -1290,7 +1291,7 @@
     {
       "method": "ListScheduleBaselines",
       "file": "internal/desktop/app_charts.go",
-      "line": 251,
+      "line": 255,
       "params": "chartID string",
       "returns": "[]db.Baseline, error",
       "uses_internal_packages": []
@@ -1445,7 +1446,7 @@
     {
       "method": "PreviewSplitLeveling",
       "file": "internal/desktop/app_charts.go",
-      "line": 713,
+      "line": 760,
       "params": "chartID string",
       "returns": "SplitLevelingPreview, error",
       "uses_internal_packages": [
@@ -1545,10 +1546,11 @@
     {
       "method": "RunChartMonteCarlo",
       "file": "internal/desktop/app_charts.go",
-      "line": 393,
+      "line": 397,
       "params": "chartID string, iterations int, workers int",
       "returns": "kernel.SimResult, error",
       "uses_internal_packages": [
+        "gopmgr/internal/calendar",
         "gopmgr/internal/charts",
         "gopmgr/internal/kernel"
       ]
@@ -1783,7 +1785,7 @@
     {
       "method": "SetScheduleBaseline",
       "file": "internal/desktop/app_charts.go",
-      "line": 215,
+      "line": 219,
       "params": "chartID string, name string",
       "returns": "db.Baseline, error",
       "uses_internal_packages": [

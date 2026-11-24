@@ -98,7 +98,8 @@ type SimResult struct {
 
 // RunMonteCarlo samples task durations, runs CPM for each sampled
 // network, and aggregates finish percentiles plus critical-path
-// frequency. Sampling is deterministic by iteration index, so results
+// frequency. A task whose levelled split the schedule uses works its split
+// days in each run (splitFinish). Sampling is deterministic by iteration index, so results
 // are stable regardless of worker count.
 func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResult {
 	result := SimResult{
@@ -139,10 +140,12 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 		samples[k] = make([]float64, iterations)
 	}
 	criticalCounts := make([][]int, workers)
+	splits := monteCarloSplits(tasks, taskIDs)
 	jobs := make(chan int)
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
 		sim := newMonteCarloWorker(tasks, taskIDs)
+		sim.splits = splits
 		criticalCounts[w] = sim.criticalCounts
 		wg.Add(1)
 		go func() {
@@ -245,6 +248,68 @@ type monteCarloWorker struct {
 	clones         []*Task // by taskIDs index, scheduled each iteration
 	plan           *cpmPlan
 	criticalCounts []int // by taskIDs index
+	splits         []monteCarloSplit
+}
+
+// monteCarloSplit is a task the schedule runs split (levelled split days
+// kept in PlannedWorkSegments): its taskIDs index and its working days
+// counted from its start, ascending.
+type monteCarloSplit struct {
+	k    int
+	days []int
+}
+
+// monteCarloSplits finds the tasks whose saved split the schedule uses,
+// by RebuildSplitDays' rule on the network scheduled with its planned
+// durations, so that at the planned durations every run finishes when the
+// schedule does (owner decision 2026-11-24, "follow the split days").
+func monteCarloSplits(tasks map[string]*Task, taskIDs []string) []monteCarloSplit {
+	network := make(map[string]*Task, len(taskIDs))
+	clones := make([]*Task, len(taskIDs))
+	hasSplit := false
+	for k, id := range taskIDs {
+		clones[k] = cloneTaskForSimulation(tasks[id])
+		network[id] = clones[k]
+		hasSplit = hasSplit || len(clones[k].PlannedWorkSegments) > 0
+	}
+	if !hasSplit {
+		return nil
+	}
+	plan, ok := newCPMPlan(network)
+	if !ok {
+		return nil
+	}
+	plan.run()
+	var out []monteCarloSplit
+	for k, t := range clones {
+		days, ok := splitDays(t)
+		if !ok {
+			continue
+		}
+		start := int(math.Round(t.ES))
+		rel := make([]int, len(days))
+		for i, d := range days {
+			rel[i] = d - start
+		}
+		out = append(out, monteCarloSplit{k: k, days: rel})
+	}
+	return out
+}
+
+// splitFinish is when a split task starting at es with a sampled duration
+// finishes: it works its split days in order, a whole day each as
+// levelling books them, so a duration of up to len(days) ends with the
+// split day it reaches; longer work continues right after the last split
+// day for the rest.
+func splitFinish(es, duration float64, days []int) float64 {
+	if !(duration > 0) {
+		return es
+	}
+	n := len(days)
+	if reached := int(math.Ceil(duration - 1e-9)); reached <= n {
+		return es + float64(days[max(reached, 1)-1]+1)
+	}
+	return es + float64(days[n-1]+1) + duration - float64(n)
 }
 
 func newMonteCarloWorker(tasks map[string]*Task, taskIDs []string) *monteCarloWorker {
@@ -279,6 +344,10 @@ func (sim *monteCarloWorker) run(iteration int, samples [][]float64) float64 {
 		samples[k][iteration] = duration
 	}
 	sim.plan.run()
+	for _, split := range sim.splits {
+		task := sim.clones[split.k]
+		task.EF = splitFinish(task.ES, task.Duration, split.days)
+	}
 	finish := 0.0
 	for k, task := range sim.clones {
 		if task.EF > finish {

@@ -28,7 +28,7 @@
       "mode": "100644"
     },
     "content/_index.md": {
-      "sha256": "2ea77dc1248d22cf0436fe067d7a55da11af35f145433a383727239e77f156ce",
+      "sha256": "6e85f35a6f9a1ac8cf06d3c8edfca18fe8ddaeca7def7dddc875981fe81bc29d",
       "size": 2188,
       "mode": "100644"
     },
@@ -38,17 +38,17 @@
       "mode": "100644"
     },
     "content/docs/_index.md": {
-      "sha256": "cdc536b24cb8168694ea04a7816aab7bed47e9c4979c628af2e55c38615cd1a1",
+      "sha256": "455cac074b419f1c48bb831b4d0770834442bda11ec3bffb6267966dcd926087",
       "size": 1819,
       "mode": "100644"
     },
     "content/docs/getting-started/_index.md": {
-      "sha256": "3cba23225771e701c007df279f71b2630ab765ddd304ef668da9cf9a2a9b80b7",
+      "sha256": "460aa0b069d6fe3b29431992c7983ddc369c1fe0df1a37eff4e5759fde0ed710",
       "size": 2035,
       "mode": "100644"
     },
     "content/docs/getting-started/first-project.md": {
-      "sha256": "3e5a38e4ac3d9e7f2756043872251ae5b2fee3a2faed65ef66912a59def35554",
+      "sha256": "925f1daa42fd83c403e5125f551b117530e1c6ae0863acab0338db1def8c5df7",
       "size": 2867,
       "mode": "100644"
     },
@@ -58,7 +58,7 @@
       "mode": "100644"
     },
     "content/features/_index.md": {
-      "sha256": "5302818cdb3f5e92d9483f2b53804dd96b58afe31452f2b4ab510b866b1cd30c",
+      "sha256": "4bab696f25a510527b0de213863ea468471a08a35cda14ded52b082d545e0d4b",
       "size": 2485,
       "mode": "100644"
     },
@@ -73,7 +73,7 @@
       "mode": "100644"
     },
     "content/security/_index.md": {
-      "sha256": "de2eca40ad1d082c82528d6e779da6d66c38c0c30be8e7e9b8cff2e1ba093f30",
+      "sha256": "c35cf039fe5c361d70a3ef0dddb3a6325d506b01c981c2e90301ad61a2ad10e8",
       "size": 2170,
       "mode": "100644"
     },
@@ -153,7 +153,7 @@
       "mode": "100644"
     },
     "quality/source-dependencies.json": {
-      "sha256": "8325a12abe4b126c257fc4a409cc1c3ff6a0daad4c508aa39d211d2895751d07",
+      "sha256": "9cbbe3dbd8b084b33bdbd1b6363c60a2a39d52275591f303a5b8d5842ce0487e",
       "size": 8426,
       "mode": "100644"
     },
@@ -258,5 +258,5 @@
       "mode": "100644"
     }
   },
-  "reviewed_at": "2026-11-18"
+  "reviewed_at": "2026-11-23"
 }

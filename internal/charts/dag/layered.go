@@ -69,9 +69,10 @@ type LayeredNode struct {
 	// WorkSegments records a split (interrupted) task's working-day runs
 	// as offsets RELATIVE to the task's start, persisted by an
 	// apply-splitting resource-leveling run. Empty for an ordinary
-	// contiguous task. The Gantt layout turns these into absolute bar
-	// pieces (ES + offset), while the EVM adapter uses the same snapshot
-	// to pause planned-value accrual during idle gaps. They do not alter
+	// contiguous task. While they still fit the task
+	// (kernel.RebuildSplitDays), the schedule, the Gantt bars and the EVM
+	// adapter use them; otherwise they are ignored and the task runs in one
+	// piece. Editors keep them; levelling rewrites them. They do not alter
 	// CPM precedence passes.
 	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 
@@ -93,6 +94,11 @@ type LayeredNode struct {
 	// never changes Constraint. On an anchored schedule the task starts no
 	// earlier (kernel.Task.LevelStart).
 	LevelStart string `json:"level_start,omitempty"`
+	// LevelStartFraction (input) is the share of LevelStart's working day
+	// passed when the levelled task starts (0 <= f < 1; owner decision
+	// D-STORE, 2026-11-23). Levelling writes and clears it with LevelStart
+	// (kernel.Task.LevelStartFraction).
+	LevelStartFraction float64 `json:"level_start_fraction,omitempty"`
 
 	// Progress tracking (input, reporting-only): 0..100 percent
 	// complete and an explicit milestone marker, plus observed
@@ -128,6 +134,13 @@ type LayeredEdge struct {
 type LayeredDocument struct {
 	Nodes []LayeredNode `json:"nodes"`
 	Edges []LayeredEdge `json:"edges"`
+
+	// LevelledInputs (stored) is LevellingInputsDigest of the chart when
+	// resource levelling last ran and left levelled starts or split
+	// segments; empty otherwise. LevellingStale (computed by the CPM and
+	// Gantt layouts) says the scheduling inputs changed since then.
+	LevelledInputs string `json:"levelled_inputs,omitempty"`
+	LevellingStale bool   `json:"levelling_stale,omitempty"`
 }
 
 // ErrCycle is returned by LayoutLayered when the graph contains a

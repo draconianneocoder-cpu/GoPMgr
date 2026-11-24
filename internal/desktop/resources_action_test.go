@@ -56,6 +56,7 @@ func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 // levelledNode is what levelling persists on a node, as stored.
 type levelledNode struct {
 	Constraint, ConstraintDate, LevelStart string
+	LevelStartFraction                     float64
 }
 
 // storedLevelling reads every node's constraint and levelled start from
@@ -68,10 +69,11 @@ func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]le
 	}
 	var doc struct {
 		Nodes []struct {
-			ID             string `json:"id"`
-			Constraint     string `json:"constraint"`
-			ConstraintDate string `json:"constraint_date"`
-			LevelStart     string `json:"level_start"`
+			ID             string  `json:"id"`
+			Constraint     string  `json:"constraint"`
+			ConstraintDate string  `json:"constraint_date"`
+			LevelStart     string  `json:"level_start"`
+			Fraction       float64 `json:"level_start_fraction"`
 		} `json:"nodes"`
 	}
 	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
@@ -79,9 +81,25 @@ func storedLevelling(t *testing.T, d *db.Database, chartID string) map[string]le
 	}
 	out := map[string]levelledNode{}
 	for _, n := range doc.Nodes {
-		out[n.ID] = levelledNode{n.Constraint, n.ConstraintDate, n.LevelStart}
+		out[n.ID] = levelledNode{n.Constraint, n.ConstraintDate, n.LevelStart, n.Fraction}
 	}
 	return out
+}
+
+// storedLevelledInputs reads the levelling digest stored in the chart.
+func storedLevelledInputs(t *testing.T, d *db.Database, chartID string) string {
+	t.Helper()
+	got, err := d.GetChart(chartID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	var doc struct {
+		LevelledInputs string `json:"levelled_inputs"`
+	}
+	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
+		t.Fatalf("unmarshal persisted doc: %v", err)
+	}
+	return doc.LevelledInputs
 }
 
 func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
@@ -109,6 +127,11 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	if byID["B"] != (levelledNode{LevelStart: "2026-06-03"}) {
 		t.Errorf("B = %+v, want levelled start 2026-06-03 and no constraint", byID["B"])
 	}
+	// Levelling records what it read, so the editors can warn after a
+	// schedule edit (owner decision 2026-11-21).
+	if got := storedLevelledInputs(t, d, c.ID); !strings.HasPrefix(got, "v2:") {
+		t.Errorf("levelled_inputs = %q, want a v2 digest", got)
+	}
 
 	// Levelling again keeps B's levelled start: it recomputes from the
 	// logic, not from the previous run's delay. (Before 2026-11-18 a
@@ -135,12 +158,17 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	if freed := storedLevelling(t, d, c.ID); freed["B"] != (levelledNode{}) {
 		t.Errorf("with capacity 2: B = %+v, want nothing stored", freed["B"])
 	}
+	// Nothing levelled, nothing that can go stale.
+	if got := storedLevelledInputs(t, d, c.ID); got != "" {
+		t.Errorf("with nothing levelled: levelled_inputs = %q, want none", got)
+	}
 }
 
 // Levelling never writes, rewrites or removes a constraint (owner decision
 // 2026-11-18): a task with its own constraint gets a levelled start like
 // any other, a hand-set SNET that is not needed stays, an explicit ASAP is
-// levelled like no constraint, and an ALAP task gets no levelled start.
+// levelled like no constraint, and an ALAP task keeps the position
+// levelling gave it (owner decision 2026-11-23, "keep levelled position").
 // It also names the tasks whose date levelling broke, and only those.
 //
 // Every task but LP needs alice full-time; there are no links; the project
@@ -152,8 +180,9 @@ func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 // and Q (ALAP) LS 5. LTF places by (LS, ID): V Mon (0); F Tue (1),
 // finishing at index 2, past its FNLT; LP needs no resource; S Wed (2),
 // breaking its SNLT; E Thu (3); H Fri (4); M stays on its MSO day (5); Q
-// wants day 5, finds alice busy and moves to 6, but ALAP tasks get no
-// levelled start. Violated after and not before: F and S.
+// wants day 5, finds alice busy and moves to 6 (Tuesday 06-09), which it
+// keeps: saved without it, the ALAP pass would put Q back on day 5, on top
+// of M. Violated after and not before: F and S.
 func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
 	app, d, _ := newResourceTestApp(t)
 	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Constrained", Data: `{
@@ -185,15 +214,15 @@ func TestLevelChartResourcesNeverChangesConstraints(t *testing.T) {
 		"E":  {Constraint: "ASAP", LevelStart: "2026-06-04"},
 		"M":  {Constraint: "MSO", ConstraintDate: "2026-06-08"},
 		"H":  {Constraint: "SNET", ConstraintDate: "2026-06-01", LevelStart: "2026-06-05"},
-		"Q":  {Constraint: "ALAP"},
+		"Q":  {Constraint: "ALAP", LevelStart: "2026-06-09"},
 	}
 	for id, w := range want {
 		if got[id] != w {
 			t.Errorf("%s = %+v, want %+v", id, got[id], w)
 		}
 	}
-	if res.Pinned != 4 {
-		t.Errorf("pinned = %d, want 4 (F, S, E, H)", res.Pinned)
+	if res.Pinned != 5 {
+		t.Errorf("pinned = %d, want 5 (F, S, E, H, Q)", res.Pinned)
 	}
 	if !reflect.DeepEqual(res.ConstraintViolationTaskIDs, []string{"F", "S"}) ||
 		!reflect.DeepEqual(res.ConstraintViolationLabels, []string{"Fit-out", "Survey"}) {
@@ -629,5 +658,259 @@ func TestGenerateResourceHistogramNoAssignments(t *testing.T) {
 	}
 	if _, err := app.GenerateResourceHistogram(c.ID); err == nil {
 		t.Error("histogram with no assignments must error")
+	}
+}
+
+// Part-day levelling (owner decision 2026-11-21): a chain of part-day
+// tasks on one person that fits within the day's capacity is left where
+// the logic puts it, so levelling stores no levelled start. A (0.5 day),
+// B (0.4) and C (0.5) run 0 to 1.4: day 0 holds exactly 1 day of work.
+func TestLevelChartResourcesLeavesAFittingPartDayChain(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Part days", Data: `{
+		"nodes": [
+			{"id":"A","label":"A","duration":0.5,"assignments":[{"resource":"alice"}]},
+			{"id":"B","label":"B","duration":0.4,"assignments":[{"resource":"alice"}]},
+			{"id":"C","label":"C","duration":0.5,"assignments":[{"resource":"alice"}]}
+		],
+		"edges": [{"from":"A","to":"B"},{"from":"B","to":"C"}]
+	}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	res, err := app.LevelChartResources(c.ID, "", false, false)
+	if err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	if res.Pinned != 0 || len(res.UnplacedTaskIDs) != 0 {
+		t.Fatalf("result = %+v, want nothing delayed or unplaced", res)
+	}
+	for id, n := range storedLevelling(t, d, c.ID) {
+		if n != (levelledNode{}) {
+			t.Errorf("%s = %+v, want nothing stored", id, n)
+		}
+	}
+}
+
+// Levelling stores a digest of what it read, and the chart's layout
+// compares it with the stored chart. Round-tripped through the store as
+// the app does it, a just-levelled chart is not stale (assignments here
+// carry an empty skill-tag list, which saving drops); changing a duration
+// makes it stale (owner decision 2026-11-21).
+func TestLevelledChartIsStaleOnlyAfterAScheduleEdit(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Tags", Data: `{
+		"nodes": [
+			{"id":"A","label":"A","duration":2,"assignments":[{"resource":"alice","skill_tags":[]}]},
+			{"id":"B","label":"B","duration":2,"assignments":[{"resource":"alice","skill_tags":[]}]}
+		],
+		"edges": []
+	}`})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.LevelChartResources(c.ID, "", false, false); err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	stale := func() bool {
+		t.Helper()
+		res, err := app.LayoutChart(c.ID)
+		if err != nil {
+			t.Fatalf("LayoutChart: %v", err)
+		}
+		var body struct {
+			Doc struct {
+				LevellingStale bool `json:"levelling_stale"`
+			} `json:"doc"`
+		}
+		if err := json.Unmarshal(res.Body, &body); err != nil {
+			t.Fatalf("decode layout: %v", err)
+		}
+		return body.Doc.LevellingStale
+	}
+	if stale() {
+		t.Fatal("a chart just levelled reports stale levelling")
+	}
+
+	stored, err := d.GetChart(c.ID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	stored.Data = strings.Replace(stored.Data, `"duration":2`, `"duration":3`, 1)
+	if _, err := d.SaveChart(stored); err != nil {
+		t.Fatalf("SaveChart (edit): %v", err)
+	}
+	if !stale() {
+		t.Fatal("a duration edit after levelling does not report stale levelling")
+	}
+}
+
+// What levelling read outside the chart is part of what can go stale: the
+// project start date, and the capacity of the resources the chart uses
+// (stakeholder availability, their calendars). Calendar notes and
+// resources the chart does not use are not. Each case levels the A/B alice
+// chart (a calendar for alice exists from the start), changes one thing,
+// and lays the chart out again.
+func TestLevellingGoesStaleWhenItsContextChanges(t *testing.T) {
+	cases := []struct {
+		name  string
+		edit  func(t *testing.T, d *db.Database)
+		stale bool
+	}{
+		{"project start date", func(t *testing.T, d *db.Database) {
+			if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Resource Test", StartDate: "2026-06-08"}); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
+		{"capacity of a resource the chart uses", func(t *testing.T, d *db.Database) {
+			if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: "project-1", Name: "alice", Availability: 0.5}); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
+		{"its calendar's capacity", func(t *testing.T, d *db.Database) {
+			saveAliceCalendar(t, d, map[int]float64{4: 0}, nil)
+		}, true},
+		{"its calendar's notes", func(t *testing.T, d *db.Database) {
+			saveAliceCalendar(t, d, nil, map[int]string{4: "training"})
+		}, false},
+		{"a resource the chart does not use", func(t *testing.T, d *db.Database) {
+			if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: "project-1", Name: "bob", Availability: 3}); err != nil {
+				t.Fatal(err)
+			}
+		}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d, c := newResourceTestApp(t)
+			saveAliceCalendar(t, d, nil, nil)
+			if _, err := app.LevelChartResources(c.ID, "", false, false); err != nil {
+				t.Fatalf("LevelChartResources: %v", err)
+			}
+			if layoutReportsStale(t, app, c.ID) {
+				t.Fatal("a chart just levelled reports stale levelling")
+			}
+			tc.edit(t, d)
+			if got := layoutReportsStale(t, app, c.ID); got != tc.stale {
+				t.Errorf("stale after the change = %v, want %v", got, tc.stale)
+			}
+		})
+	}
+}
+
+// saveAliceCalendar stores (or replaces) alice's resource calendar.
+func saveAliceCalendar(t *testing.T, d *db.Database, overrides map[int]float64, notes map[int]string) {
+	t.Helper()
+	cals, err := d.ListResourceCalendars("project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cal := db.ResourceCalendar{ProjectID: "project-1", Resource: "alice", DefaultCapacity: 1, Overrides: overrides, Notes: notes}
+	for _, existing := range cals {
+		if existing.Resource == "alice" {
+			cal.ID = existing.ID
+		}
+	}
+	if _, err := d.SaveResourceCalendar(cal); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// layoutReportsStale lays a chart out through the app and reads the flag.
+func layoutReportsStale(t *testing.T, app *App, chartID string) bool {
+	t.Helper()
+	res, err := app.LayoutChart(chartID)
+	if err != nil {
+		t.Fatalf("LayoutChart: %v", err)
+	}
+	var body struct {
+		Doc struct {
+			LevellingStale bool `json:"levelling_stale"`
+		} `json:"doc"`
+	}
+	if err := json.Unmarshal(res.Body, &body); err != nil {
+		t.Fatalf("decode layout: %v", err)
+	}
+	return body.Doc.LevellingStale
+}
+
+// The saved chart lays out as levelling placed it (owner decisions
+// 2026-11-23): levelling, saving and laying out again gives each
+// task its levelled start and flags nothing. Project from Monday
+// 2026-06-01, weekdays.
+func TestLevelledChartLaysOutAsLevelled(t *testing.T) {
+	cases := []struct {
+		name     string
+		data     string
+		split    bool
+		calendar map[int]float64
+		stored   map[string]levelledNode
+		es       map[string]float64
+	}{
+		{
+			// A and B (half a day each on alice) would overlap at 0; A goes
+			// first (ID order) and B starts when A ends, half-way through
+			// Monday. Only B needs a stored start: Monday plus 0.5.
+			name: "a part-day start is stored with its share of the day",
+			data: `{"nodes":[
+				{"id":"A","label":"A","duration":0.5,"assignments":[{"resource":"alice"}]},
+				{"id":"B","label":"B","duration":0.5,"assignments":[{"resource":"alice"}]}],"edges":[]}`,
+			stored: map[string]levelledNode{"A": {}, "B": {LevelStart: "2026-06-01", LevelStartFraction: 0.5}},
+			es:     map[string]float64{"A": 0, "B": 0.5},
+		},
+		{
+			// alice is away on days 1 and 3, so S (3 days) splits onto days
+			// 0, 2 and 4 and finishes at 5; T follows S. Saved, the forward
+			// pass sees S end at 3, so T keeps its own start: day 5, Monday
+			// 06-08. S itself starts where the logic puts it.
+			name:     "the successor of a split task keeps its start",
+			split:    true,
+			calendar: map[int]float64{1: 0, 3: 0},
+			data: `{"nodes":[
+				{"id":"S","label":"S","duration":3,"assignments":[{"resource":"alice"}]},
+				{"id":"T","label":"T","duration":1,"assignments":[{"resource":"alice"}]}],
+				"edges":[{"from":"S","to":"T"}]}`,
+			stored: map[string]levelledNode{"S": {}, "T": {LevelStart: "2026-06-08"}},
+			es:     map[string]float64{"S": 0, "T": 5},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d, _ := newResourceTestApp(t)
+			if tc.calendar != nil {
+				saveAliceCalendar(t, d, tc.calendar, nil)
+			}
+			c, err := d.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "Levelled", Data: tc.data})
+			if err != nil {
+				t.Fatalf("SaveChart: %v", err)
+			}
+			if _, err := app.LevelChartResources(c.ID, "", false, tc.split); err != nil {
+				t.Fatalf("LevelChartResources: %v", err)
+			}
+			if got := storedLevelling(t, d, c.ID); !reflect.DeepEqual(got, tc.stored) {
+				t.Errorf("stored %+v, want %+v", got, tc.stored)
+			}
+
+			res, err := app.LayoutChart(c.ID)
+			if err != nil {
+				t.Fatalf("LayoutChart: %v", err)
+			}
+			var body struct {
+				Doc struct {
+					Nodes []struct {
+						ID            string  `json:"id"`
+						ES            float64 `json:"es"`
+						Overallocated bool    `json:"overallocated"`
+					} `json:"nodes"`
+				} `json:"doc"`
+			}
+			if err := json.Unmarshal(res.Body, &body); err != nil {
+				t.Fatalf("decode layout: %v", err)
+			}
+			for _, n := range body.Doc.Nodes {
+				if n.ES != tc.es[n.ID] || n.Overallocated {
+					t.Errorf("%s laid out at ES %v (overallocated %v), want ES %v and not overallocated", n.ID, n.ES, n.Overallocated, tc.es[n.ID])
+				}
+			}
+		})
 	}
 }

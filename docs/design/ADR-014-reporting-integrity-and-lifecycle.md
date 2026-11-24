@@ -56,7 +56,8 @@ and label their evidence correctly. Do not fabricate historical events.
 PS-02 rules, `App.AuditSchedule`, the findings panel and the combined-report audit section are implemented ([PS-02 §11](../testing/PS-02-schedule-quality-audit-spec.md#11-ps-02c-as-implemented-2026-11-18)).
 At the original review baseline, KRN-01 and KRN-02 affected dependent schedule,
 EVM, baseline and resource claims. Main now includes the KRN-02 calendar-date fix
-from PR #213 (`22b7df1`); retain its regression cases. KRN-01 remains open. Further
+from PR #213 (`22b7df1`); retain its regression cases. KRN-01 was fixed on
+2026-11-18 by owner-authorized kernel slices (see STATUS); retain its regressions. Further
 kernel remedies require separately authorized slices; reporting and read-only
 audit work cannot change scheduling semantics incidentally.
 
@@ -159,7 +160,7 @@ Meetings, actions, decisions, risks, issues, changes, requirements and lessons s
 
 ## RILD-ARCH05 Schedule semantics and calculation contracts
 
-Scheduling is a report dependency, not just a display. KRN-01 remains a correctness blocker for affected schedule claims. KRN-02 was fixed in PR #213 (`22b7df1`); retain calendar-date and EVM status-date regressions when qualifying dependent claims. Complete the user-facing PS-02 audit and implement verified constraint semantics under separate authorization; do not change results within the read-only audit slice.
+Scheduling is a report dependency, not just a display. KRN-01 was fixed on 2026-11-18 (see STATUS); retain its regressions when qualifying affected schedule claims. KRN-02 was fixed in PR #213 (`22b7df1`); retain calendar-date and EVM status-date regressions when qualifying dependent claims. Complete the user-facing PS-02 audit and implement verified constraint semantics under separate authorization; do not change results within the read-only audit slice.
 
 | Requirement | Contract |
 | --- | --- |
