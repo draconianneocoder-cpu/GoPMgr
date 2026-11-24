@@ -6,6 +6,7 @@ package kernel
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"reflect"
 	"testing"
@@ -240,3 +241,105 @@ func TestSavedLevelledScheduleMatchesLevelling(t *testing.T) {
 }
 
 func sameOffset(a, b float64) bool { return a-b < 1e-9 && b-a < 1e-9 }
+
+// Monte Carlo follows a levelled split (owner decision 2026-11-24, "follow
+// the split days"). S (3 days) is split onto days 0, 2 and 4 and is the
+// last work, so the schedule finishes at 5. A run works the sampled
+// duration through those days in order, a whole day each: 3 days (the
+// plan) ends at 5, 2 days at the end of day 2 (3), 4 days runs one day
+// past day 4 (6). A split the schedule ignores (S needing 4 whole days
+// for its three split days) is ignored: 4 days from 0 end at 4.
+func TestMonteCarloFollowsSplitDays(t *testing.T) {
+	split := []WorkSegment{{Start: 0, End: 1}, {Start: 2, End: 3}, {Start: 4, End: 5}}
+	fixed := func(d float64) DurationEstimate {
+		return DurationEstimate{Optimistic: d, MostLikely: d, Pessimistic: d}
+	}
+	for _, c := range []struct {
+		name     string
+		duration float64
+		estimate DurationEstimate
+		want     float64
+	}{
+		{"planned duration", 3, DurationEstimate{}, 5},
+		{"shorter sample", 3, fixed(2), 3},
+		{"longer sample", 3, fixed(4), 6},
+		{"part of a day shorter", 3, fixed(2.5), 5},
+		{"a split the schedule ignores", 4, DurationEstimate{}, 4},
+	} {
+		tasks := map[string]*Task{"S": {ID: "S", Duration: c.duration, DurationEstimate: c.estimate, PlannedWorkSegments: split}}
+		r := RunMonteCarlo(tasks, 20, 2)
+		if !r.Valid || r.P50 != c.want || r.P90 != c.want {
+			t.Errorf("%s: P50 %v P90 %v (valid %v, %s), want %v", c.name, r.P50, r.P90, r.Valid, r.Error, c.want)
+		}
+	}
+
+	// A normal estimate from 0 clamps about half its draws to exactly 0: no
+	// work, so those runs finish where S starts (0), not after its first
+	// split day (1). The finish curve's 40% point falls among them.
+	zero := DurationEstimate{Optimistic: 0, MostLikely: 0, Pessimistic: 1, Distribution: MonteCarloNormal}
+	r := RunMonteCarlo(map[string]*Task{"S": {ID: "S", Duration: 3, DurationEstimate: zero, PlannedWorkSegments: split}}, 200, 2)
+	if !r.Valid || len(r.FinishCDF) != 21 || r.FinishCDF[8].Probability != 0.4 || r.FinishCDF[8].Day != 0 {
+		t.Errorf("zero-length samples: finish curve %+v (valid %v, %s), want day 0 at 40%%", r.FinishCDF, r.Valid, r.Error)
+	}
+}
+
+// With no estimates, every Monte Carlo run is the schedule: on random
+// levelled networks with splits, ALAP tasks, constraints and part days,
+// the simulated finish equals the saved schedule's latest finish, split
+// days rebuilt (the guide: "with every duration at its estimate the
+// simulation finishes when the schedule does").
+func TestMonteCarloFinishesWithTheSavedSchedule(t *testing.T) {
+	rng := rand.New(rand.NewPCG(20261124, 3))
+	splits := 0
+	for i := range 2000 {
+		input := map[string]*Task{}
+		for k := range 4 + rng.IntN(10) {
+			task := &Task{ID: fmt.Sprintf("T%02d", k), Duration: float64(1 + rng.IntN(3))}
+			if rng.IntN(2) == 0 {
+				task.Duration = float64(1+rng.IntN(24)) / 8
+			}
+			if k > 0 && rng.IntN(2) == 0 {
+				task.Links = []Link{{Pred: fmt.Sprintf("T%02d", rng.IntN(k)), Type: pickFrom(rng, FinishToStart, StartToStart, FinishToFinish)}}
+			}
+			if rng.IntN(6) == 0 {
+				task.Constraint = AsLateAsPossible
+			}
+			for range rng.IntN(3) {
+				task.Assignments = append(task.Assignments, Assignment{Resource: pickFrom(rng, "r0", "r1"), Units: pickFrom(rng, 0.5, 1)})
+			}
+			input[task.ID] = task
+		}
+		levelled := cloneTaskMap(input)
+		if _, err := LevelResourcesWithOptions(levelled, capacityPlanFromMap(nil), LevelingOptions{Horizon: 40, AllowSplitting: true}); err != nil && !errors.Is(err, ErrLevelingHorizonExceeded) {
+			t.Fatalf("case %d: %v", i, err)
+		}
+		keep, _ := LevelStartsToKeep(levelled)
+		saved := cloneTaskMap(input)
+		for id, task := range saved {
+			if day, ok := keep[id]; ok {
+				task.LevelStartArmed, task.LevelStartDay = true, day
+			}
+			if wd := levelled[id].WorkDays; len(wd) > 0 {
+				splits++
+				for _, d := range wd {
+					task.PlannedWorkSegments = append(task.PlannedWorkSegments, WorkSegment{Start: float64(d - wd[0]), End: float64(d - wd[0] + 1)})
+				}
+			}
+		}
+		simulated := RunMonteCarlo(cloneTaskMap(saved), 3, 1)
+		if err := ScheduleCPM(saved); err != nil {
+			t.Fatalf("case %d: %v", i, err)
+		}
+		RebuildSplitDays(saved)
+		finish := 0.0
+		for _, task := range saved {
+			finish = math.Max(finish, task.EF)
+		}
+		if !simulated.Valid || !sameOffset(simulated.P50, finish) {
+			t.Fatalf("case %d: simulated finish %v (%s), schedule %v", i, simulated.P50, simulated.Error, finish)
+		}
+	}
+	if splits < 50 {
+		t.Errorf("generator split %d tasks, want at least 50", splits)
+	}
+}

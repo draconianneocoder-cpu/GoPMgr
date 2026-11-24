@@ -526,9 +526,11 @@ calendar. Each one is a test of the scheduler.
 - **Charts levelled before 18 November 2026.** Earlier versions stored
   levelling delays as SNET constraints. Those SNETs look like any other and
   are kept. Remove the ones levelling added, then level again.
-- **Monte Carlo.** Each simulated run applies date constraints and levelled
-  starts as the schedule does, so with every duration at its estimate the
-  simulation finishes when the schedule does. A must date (MSO, MFO) holds
+- **Monte Carlo.** Each simulated run applies date constraints, levelled
+  starts and levelled splits as the schedule does, so with every duration at
+  its estimate the simulation finishes when the schedule does. A split task
+  works its split days in order in each run: shorter work ends on an
+  earlier split day, and longer work continues right after the last one. A must date (MSO, MFO) holds
   its task in every run. Without a project start date, neither is applied.
   A schedule the scheduler refuses as too long is refused by the simulation
   too.
