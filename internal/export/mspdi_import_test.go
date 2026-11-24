@@ -276,14 +276,14 @@ func TestFromMSPDILevelingDelays(t *testing.T) {
 		want          *delay
 		skipped       bool
 	}{
-		{"28800", "8", &delay{Amount: 2880, Elapsed: true}, false}, // 2 elapsed days
-		{"28800", "7", &delay{Amount: 2880, Elapsed: true}, false}, // shown in days
-		{"3000", "4", &delay{Amount: 300, Elapsed: true}, false},   // 5 hours
-		{"3000", "39", &delay{Amount: 300, Elapsed: true}, false},  // estimated days
-		{"4800", "11", &delay{Amount: 480, Elapsed: true}, false},  // shown in months
-		{"4800", "20", &delay{Amount: 480, Elapsed: true}, false},  // shown in elapsed percent
-		{"45", "3", &delay{Amount: 4.5, Elapsed: true}, false},     // tenths are kept
-		{"4800", "21", nil, true},                                  // null format
+		{"28800", "8", &delay{Minutes: 2880}, false}, // 2 elapsed days
+		{"28800", "7", &delay{Minutes: 2880}, false}, // shown in days
+		{"3000", "4", &delay{Minutes: 300}, false},   // 5 hours
+		{"3000", "39", &delay{Minutes: 300}, false},  // estimated days
+		{"4800", "11", &delay{Minutes: 480}, false},  // shown in months
+		{"4800", "20", &delay{Minutes: 480}, false},  // shown in elapsed percent
+		{"45", "3", &delay{Minutes: 4.5}, false},     // tenths are kept
+		{"4800", "21", nil, true},                    // null format
 		{"4800", "53", nil, true},
 		{"4800", "13", nil, true}, // undocumented
 		{"4800", "", nil, true},

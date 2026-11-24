@@ -178,6 +178,21 @@ type WorkSegment struct {
 	End   float64 `json:"end"`
 }
 
+// DayRuns merges ascending working-day offsets (such as Task.WorkDays)
+// into half-open runs of consecutive days, on the same offsets; nil for
+// none.
+func DayRuns(days []int) []WorkSegment {
+	var runs []WorkSegment
+	for _, d := range days {
+		if n := len(runs); n > 0 && runs[n-1].End == float64(d) {
+			runs[n-1].End++
+			continue
+		}
+		runs = append(runs, WorkSegment{Start: float64(d), End: float64(d + 1)})
+	}
+	return runs
+}
+
 // Task is the scheduling-side view of an activity. The persistence
 // layer (db.tasks) is a near-mirror, but kernel.Task carries the
 // computed CPM fields (ES/EF/LS/LF/Float and IsCritical) that the GUI
@@ -410,6 +425,9 @@ type cpmLink struct {
 	task *Task
 	typ  LinkType
 	lag  float64
+	// idx is the predecessor's position in plan.order (set on preds
+	// only), for passes that keep per-task values in slices.
+	idx int
 }
 
 // newCPMPlan sorts tasks and resolves their links. It changes no task and
@@ -428,15 +446,18 @@ func newCPMPlan(tasks map[string]*Task) (*cpmPlan, bool) {
 		succs: make([][]cpmLink, len(ids)),
 	}
 	successors := make(map[string][]cpmLink, len(tasks))
+	position := make(map[string]int, len(ids))
 	for i, id := range ids {
 		t := tasks[id]
 		plan.order[i] = t
+		position[id] = i
 		for _, l := range effectiveLinks(t) {
 			p, exists := tasks[l.Pred]
 			if !exists {
 				continue
 			}
-			plan.preds[i] = append(plan.preds[i], cpmLink{task: p, typ: l.Type, lag: l.Lag})
+			// Topological order places every predecessor first.
+			plan.preds[i] = append(plan.preds[i], cpmLink{task: p, typ: l.Type, lag: l.Lag, idx: position[l.Pred]})
 			successors[l.Pred] = append(successors[l.Pred], cpmLink{task: t, typ: l.Type, lag: l.Lag})
 		}
 	}

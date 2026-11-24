@@ -233,19 +233,26 @@ func twoDigits(n int) string {
 	return itoa(n)
 }
 
+// LevelingDelayFormat codes for the units GoPMgr writes (Microsoft's
+// duration format codes; the import accepts every documented unit).
+const (
+	mspdiElapsedMinutes = 4
+	mspdiElapsedDays    = 8
+)
+
 // mspdiLevelingDelay is a delay of minutes elapsed minutes as MSPDI's
 // LevelingDelay and LevelingDelayFormat. The value is in tenths of elapsed
 // minutes, as Microsoft Project files carry it (MPXJ reads and writes it
 // so; owner decision 2026-11-23); the format is only the unit the delay is
-// shown in: elapsed days (8) for a whole number of days, else elapsed
-// minutes (4). None for no delay.
+// shown in: elapsed days for a whole number of days, else elapsed
+// minutes. None for no delay.
 func mspdiLevelingDelay(minutes int) (*int, *int) {
 	if minutes <= 0 {
 		return nil, nil
 	}
-	value, format := minutes*10, 4
+	value, format := minutes*10, mspdiElapsedMinutes
 	if minutes%(24*60) == 0 {
-		format = 8
+		format = mspdiElapsedDays
 	}
 	return &value, &format
 }
