@@ -823,3 +823,22 @@ describe('StakeholderManager migrated header "&larr; Dashboard" button', () => {
     );
   });
 });
+
+// Keyboard focus moves into the dialog when it opens and returns to the
+// control that opened it when it closes (modalFocus, owned by
+// modal-focus.test.ts; 2026-11-24 dialog focus audit).
+describe('StakeholderManager editor dialog focus', () => {
+  it('is named by its heading, takes focus, and returns it to + Stakeholder when closed', async () => {
+    const utils = render(StakeholderManager);
+    await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalled());
+    const opener = Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === '+ Stakeholder')!;
+    opener.focus();
+    await openNewEditor();
+    const dialog = utils.getByRole('dialog', { name: 'New stakeholder' });
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+    await fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(utils.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(opener);
+  });
+});
