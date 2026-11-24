@@ -911,11 +911,14 @@ Shortcuts use Ctrl on Windows/Linux and Cmd on macOS:
 | Enter or Space | Select the focused diagram node |
 | Esc | Close/cancel the open dialog from anywhere inside it |
 
-GoPMgr is operable without a mouse and announces state to assistive
-technology: every navigation announces the destination view, save
-status and errors are live regions, rendered charts expose text
-descriptions, Gantt bars have descriptive hover tooltips, dialogs trap
-and restore focus, and animations honor the OS reduced-motion setting.
+For keyboard and assistive-technology users: every navigation announces
+the destination view; save status and errors are announced as live
+regions; statistical charts have a text label and diagram nodes are named;
+Gantt bars have descriptive tooltips; dialogs take focus when they open,
+keep Tab inside, close with Esc and return focus when they close; and
+animations follow the operating system's reduced-motion setting. A full
+keyboard-only pass and screen-reader passes (VoiceOver, NVDA, Narrator)
+have not been completed yet.
 
 ## Editor Save Behavior
 

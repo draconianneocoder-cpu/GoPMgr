@@ -27,7 +27,9 @@ From a checkout of the release tag:
 go run ./tools/sbom verify GoPMgr-1.2.0-arm64.dmg.cdx.json GoPMgr-1.2.0-arm64.dmg.spdx.json
 ```
 
-`verify` checks each `.sig` file against the public key committed at
+Once the signing key exists (it does not yet; see
+[Create the signing key](#create-the-signing-key-owner-once)), `verify`
+checks each `.sig` file against the public key committed at
 `tools/sbom/signing-key.pub`. It also checks that the SBOM names that key, by
 SHA-256 of the raw key, as its signing key. To confirm that an SBOM describes
 the package you have, compare the package's SHA-256 with the root component's
