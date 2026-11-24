@@ -135,6 +135,51 @@ describe('project PAdES timestamp settings', () => {
   });
 });
 
+// SET-01: when the stored export and signing settings could not be read,
+// the form showed defaults and Save wrote them over the real settings,
+// clearing the certificate, timestamping and compliance mode. Saving now
+// waits until the settings have loaded.
+describe('export settings that failed to load', () => {
+  it('does not save defaults over them, and saves normally after a retry', async () => {
+    const stored = { ...timestampSettings, cert_path: '/keys/signer.p12', compliance_mode: true };
+    app.GetSettings = vi.fn()
+      .mockRejectedValueOnce(new Error('database is locked'))
+      .mockImplementation(async () => ({ ...stored }));
+    const { container, findByRole, findByText, getByRole } = render(ProjectSettings);
+    await findByRole('tablist');
+    await switchTab(container, /exports & signing/i);
+
+    const message = await findByText(/Could not load the export and signing settings: database is locked/);
+    expect(message.closest('[role="alert"]')).not.toBeNull();
+    const save = getByRole('button', { name: /save export settings/i });
+    expect(save).toBeDisabled();
+    await fireEvent.click(save);
+    expect(app.SaveSettings).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByRole('button', { name: /retry/i }));
+    await waitFor(() => expect(save).toBeEnabled());
+    await fireEvent.click(save);
+    await waitFor(() => expect(app.SaveSettings).toHaveBeenCalledOnce());
+    expect(app.SaveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ cert_path: '/keys/signer.p12', compliance_mode: true, timestamp_enabled: true }),
+    );
+  });
+});
+
+describe('certificate file picker', () => {
+  it('shows a picker failure instead of treating it as a cancel', async () => {
+    app.ChooseCertFile = vi.fn(async () => {
+      throw new Error('native file dialog is not ready');
+    });
+    const { container, findByRole, findByText, getAllByRole } = render(ProjectSettings);
+    await findByRole('tablist');
+    await switchTab(container, /exports & signing/i);
+    await fireEvent.click(getAllByRole('button', { name: 'Browse…' })[0]);
+
+    expect(await findByText('Could not open the file picker: native file dialog is not ready')).toBeInTheDocument();
+  });
+});
+
 describe('tab wiring', () => {
   it('defaults to the General tab and hides the other tabs’ content', async () => {
     const { findByRole, queryByText } = render(ProjectSettings);

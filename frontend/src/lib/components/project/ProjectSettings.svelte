@@ -297,21 +297,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       error = `Could not load project: ${err}`;
     }
-    try {
-      const s = await desktopApi.GetSettings();
-      exportTheme = exportThemeValue(s.export_theme);
-      autoRepair = s.auto_repair;
-      certPath = s.cert_path ?? '';
-      signatureMethod = signatureMethodValue(s.signature_method, s.signature_enabled);
-      gpgKeyID = s.gpg_key_id ?? '';
-      timestampEnabled = s.timestamp_enabled ?? false;
-      tsaEndpoint = s.tsa_endpoint ?? '';
-      tsaPolicyOID = s.tsa_policy_oid ?? '';
-      tsaRootCertPath = s.tsa_root_cert_path ?? '';
-      complianceMode = s.compliance_mode ?? false;
-    } catch {
-      // non-fatal; leave defaults
-    }
+    await loadExportSettings();
     try {
       fonts = ((await desktopApi.ListFonts()) ?? []).map(normaliseFont);
       defaultFont = (await desktopApi.GetDefaultFont()) ?? '';
@@ -386,7 +372,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (original) draft = { ...original };
   }
 
+  // Set when the stored export and signing settings could not be read. The
+  // form then shows defaults, and saving them would overwrite the stored
+  // certificate, timestamping and compliance mode (SET-01), so saving waits
+  // until a load succeeds.
+  let settingsLoadError = $state('');
+
+  async function loadExportSettings() {
+    try {
+      const s = await desktopApi.GetSettings();
+      exportTheme = exportThemeValue(s.export_theme);
+      autoRepair = s.auto_repair;
+      certPath = s.cert_path ?? '';
+      signatureMethod = signatureMethodValue(s.signature_method, s.signature_enabled);
+      gpgKeyID = s.gpg_key_id ?? '';
+      timestampEnabled = s.timestamp_enabled ?? false;
+      tsaEndpoint = s.tsa_endpoint ?? '';
+      tsaPolicyOID = s.tsa_policy_oid ?? '';
+      tsaRootCertPath = s.tsa_root_cert_path ?? '';
+      complianceMode = s.compliance_mode ?? false;
+      settingsLoadError = '';
+    } catch (err: any) {
+      settingsLoadError = t('projectSettings.exportSettings.loadFailed', { error: String(err?.message ?? err) });
+    }
+  }
+
   async function saveExportSettings() {
+    if (settingsLoadError) return;
     settingsBusy = true;
     settingsStatus = '';
     settingsError = '';
@@ -436,6 +448,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       defaultFont = defaults.default_font || DEFAULT_DOCUMENT_FONT;
       fontStatus = '';
       fontError = '';
+      settingsLoadError = '';
       settingsStatus = 'Defaults restored.';
     } catch (err: any) {
       settingsError = `Reset failed: ${err}`;
@@ -620,12 +633,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     encryptionStatus = 'New recovery codes are in use. You can encrypt the database now.';
   }
 
+  // A cancelled picker returns an empty path, so an error here is a real
+  // failure (for example the window is not ready) and is shown.
   async function chooseCert() {
     try {
       const p = await desktopApi.ChooseCertFile();
       if (p) certPath = p;
-    } catch {
-      // user cancelled
+    } catch (err: any) {
+      settingsError = t('projectSettings.exportSettings.pickFailed', { error: String(err?.message ?? err) });
     }
   }
 
@@ -633,8 +648,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const path = await desktopApi.ChooseTSARootCertFile();
       if (path) tsaRootCertPath = path;
-    } catch {
-      // Closing a native file picker is not an actionable settings error.
+    } catch (err: any) {
+      settingsError = t('projectSettings.exportSettings.pickFailed', { error: String(err?.message ?? err) });
     }
   }
 
@@ -2179,9 +2194,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
            </p>
            {/if}
 
+           {#if settingsLoadError}
+             <div class="rounded border border-red-900/70 bg-red-950/30 p-3 text-xs text-red-200" role="alert">
+               <p>{settingsLoadError}</p>
+               <button type="button" onclick={() => void loadExportSettings()} class="mt-2 rounded border border-red-700/70 px-3 py-1 font-bold hover:bg-red-950/40">
+                 {t('projectSettings.exportSettings.retry')}
+               </button>
+             </div>
+           {/if}
            <button
              onclick={saveExportSettings}
-             disabled={settingsBusy || settingsResetting}
+             disabled={settingsBusy || settingsResetting || settingsLoadError !== ''}
              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
            >
              {settingsBusy ? 'Saving…' : 'Save export settings'}

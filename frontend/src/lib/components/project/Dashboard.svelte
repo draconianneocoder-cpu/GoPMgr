@@ -185,8 +185,9 @@ import Button from '../Button.svelte';
     try {
       await desktopApi.SetAgileEnabled(next);
       agileEnabled = next;
-    } catch {
-      // Binding missing; do nothing.
+    } catch (err: any) {
+      // The switch stays as stored; say why it did not change.
+      showToast(t('dashboard.agile.toggleFailed', { error: String(err?.message ?? err) }), 'error');
     }
   }
 
