@@ -9,6 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // settings). Edits the default font/theme applied to newly created
   // projects, and shows read-only environment info.
   import { onDestroy, onMount } from 'svelte';
+  import { createDraftGuard } from '../draft-guard';
   import AppHeader from './AppHeader.svelte';
   import ChangePasswordForm from './auth/ChangePasswordForm.svelte';
   import RecoveryCodesPanel from './auth/RecoveryCodesPanel.svelte';
@@ -89,7 +90,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try { hasAdmin = await desktopApi.HasAnyAdmin(); } catch { hasAdmin = true; }
   });
 
+  // Unsaved settings are protected by the unsaved-changes guard: leaving
+  // the view or closing the window asks before discarding them. The
+  // snapshot is the settings as save would store them.
+  const draftGuard = createDraftGuard(
+    () => JSON.stringify([font, theme, appTheme, autoSaveOn ? autoSaveSeconds : 0, autoCheckUpdates]),
+    () => save(),
+    () => error,
+  );
+
   onDestroy(() => {
+    draftGuard.disarm();
     applyTheme(committedAppTheme);
   });
 
@@ -107,6 +118,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       autoSaveOn = secs > 0;
       autoSaveSeconds = secs > 0 ? secs : 60;
       autoCheckUpdates = i.settings.auto_check_updates ?? false;
+      draftGuard.arm();
     } catch (err: any) {
       error = `Could not load settings: ${err}`;
     } finally {
@@ -214,7 +226,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     saving = true;
     status = '';
     error = '';
@@ -231,9 +243,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       rememberTheme(appTheme, session.user?.username);
       committedAppTheme = appTheme;
       autosave.setInterval(autoVal);
+      draftGuard.arm();
       status = 'Saved.';
+      return true;
     } catch (err: any) {
       error = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
     }
@@ -251,6 +266,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     applyTheme(appTheme);
     rememberTheme(appTheme, session.user?.username);
     autosave.setInterval(secs);
+    draftGuard.arm();
   }
 
   async function resetDefaults() {

@@ -2,8 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { fireEvent, render, waitFor } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import ProcurementCatalog from './ProcurementCatalog.svelte';
+import { autosave } from '../../autosave.svelte';
+import {
+  cancelNavigation,
+  discardAndContinueNavigation,
+  navigation,
+  requestNavigation,
+  saveAndContinueNavigation,
+  session as navSession,
+} from '../../session.svelte';
 
 const desktopApiMock = vi.hoisted(() => {
   const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
@@ -39,5 +48,36 @@ describe('ProcurementCatalog', () => {
     await fireEvent.click(ui.getByRole('button', { name: 'Save supplier' }));
     await waitFor(() => expect(app.SaveCatalogVendor).toHaveBeenCalledTimes(1));
     expect(app.SaveCatalogVendor.mock.calls[0][0]).toMatchObject({ name: 'Northwind', primary_contact: 'Morgan', phone: '555-0100', fax: '555-0101', email: 'orders@northwind.test' });
+  });
+});
+
+
+// Owner decision 2026-11-24 ("All five forms"): an open supplier or item
+// dialog asks before it is discarded by leaving the view.
+describe('ProcurementCatalog unsaved dialog', () => {
+  afterEach(() => {
+    autosave.discardAll();
+    cancelNavigation();
+    navigation.saving = false;
+    navigation.error = '';
+  });
+
+  it('asks before leaving with a typed supplier, then saves it', async () => {
+    const app = installApp();
+    const ui = render(ProcurementCatalog);
+    await fireEvent.click(await ui.findByRole('button', { name: 'New supplier' }));
+    requestNavigation('project_settings');
+    expect(navigation.pending).toBeNull(); // an empty dialog holds nothing
+    await waitFor(() => expect(navSession.view).toBe('project_settings'));
+
+    navSession.view = 'procurement_catalog' as typeof navSession.view;
+    await fireEvent.input(ui.getByLabelText('Name'), { target: { value: 'Bolt Co' } });
+    requestNavigation('project_settings');
+    expect(navigation.pending?.view).toBe('project_settings');
+
+    await saveAndContinueNavigation();
+    expect(app.SaveCatalogVendor).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: '', name: 'Bolt Co' }));
+    expect(navSession.view).toBe('project_settings');
+    expect(ui.queryByRole('dialog')).toBeNull();
   });
 });

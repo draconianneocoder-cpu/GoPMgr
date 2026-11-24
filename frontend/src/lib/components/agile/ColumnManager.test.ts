@@ -5,6 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import ColumnManager from './ColumnManager.svelte';
+import { autosave } from '../../autosave.svelte';
+import {
+  cancelNavigation,
+  discardAndContinueNavigation,
+  navigation,
+  requestNavigation,
+  saveAndContinueNavigation,
+  session as navSession,
+} from '../../session.svelte';
 
 const desktopApiMock = vi.hoisted(() => {
   const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
@@ -109,5 +118,30 @@ describe('ColumnManager', () => {
     await fireEvent.click(utils.getByRole('button', { name: 'Delete column' }));
     expect(await utils.findByRole('alert')).toHaveTextContent('Move the 1 work item out of this column before deleting it.');
     expect(onchange).not.toHaveBeenCalled();
+  });
+});
+
+
+// Owner decision 2026-11-24 ("All five forms"): unsaved column edits ask
+// before they are discarded by leaving the view.
+describe('ColumnManager unsaved edits', () => {
+  afterEach(() => {
+    autosave.discardAll();
+    cancelNavigation();
+    navigation.saving = false;
+    navigation.error = '';
+  });
+
+  it('asks before leaving with a renamed column, then saves it', async () => {
+    const { utils } = setup();
+    const [first] = utils.getAllByPlaceholderText('Column name') as HTMLInputElement[];
+    await fireEvent.input(first, { target: { value: 'Backlog' } });
+    requestNavigation('dashboard');
+    expect(navigation.pending?.view).toBe('dashboard');
+
+    await saveAndContinueNavigation();
+    expect(app.SaveColumn).toHaveBeenCalledWith(expect.objectContaining({ id: 'todo', name: 'Backlog', order_idx: 0 }));
+    expect(navigation.pending).toBeNull();
+    expect(navSession.view).toBe('dashboard');
   });
 });

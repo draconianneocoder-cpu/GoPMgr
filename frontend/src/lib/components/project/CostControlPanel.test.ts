@@ -2,8 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { fireEvent, render, waitFor } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import CostControlPanel from './CostControlPanel.svelte';
+import { autosave } from '../../autosave.svelte';
+import {
+  cancelNavigation,
+  discardAndContinueNavigation,
+  navigation,
+  requestNavigation,
+  saveAndContinueNavigation,
+  session as navSession,
+} from '../../session.svelte';
 
 const desktopApiMock = vi.hoisted(() => {
   const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
@@ -501,5 +510,61 @@ describe('CostControlPanel', () => {
     const { findByText } = render(CostControlPanel);
     expect(await findByText('Approved after risk review')).toBeInTheDocument();
     expect(await findByText(approvedAt)).toHaveAttribute('datetime', approvedAt);
+  });
+});
+
+
+// Owner decision 2026-11-24 ("All five forms"): typed Cost Control drafts
+// ask before they are discarded by leaving the view.
+describe('CostControlPanel unsaved drafts', () => {
+  afterEach(() => {
+    autosave.discardAll();
+    cancelNavigation();
+    navigation.saving = false;
+    navigation.error = '';
+  });
+
+  it('asks before leaving with a typed cost entry, then saves it', async () => {
+    const app = installApp();
+    const ui = render(CostControlPanel);
+    await fireEvent.input(await ui.findByRole('textbox', { name: 'Amount' }), { target: { value: '125.00' } });
+    requestNavigation('project_settings');
+    expect(navigation.pending?.view).toBe('project_settings');
+
+    await saveAndContinueNavigation();
+    expect(app.SaveCostEntry).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ cost_type_id: 'labor', amount: '125.00' }));
+    expect(navigation.pending).toBeNull();
+    expect(navSession.view).toBe('project_settings');
+  });
+
+  it('saves a typed entry and a typed reserve from one prompt', async () => {
+    const app = installApp();
+    const ui = render(CostControlPanel);
+    await fireEvent.input(await ui.findByRole('textbox', { name: 'Amount' }), { target: { value: '125.00' } });
+    await fireEvent.input(ui.getByRole('textbox', { name: 'Reserve amount' }), { target: { value: '40.00' } });
+    requestNavigation('project_settings');
+
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('');
+    expect(app.SaveCostEntry).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ amount: '125.00' }));
+    expect(app.SaveCostReserve).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ amount: '40.00' }));
+    expect(navSession.view).toBe('project_settings');
+  });
+
+  it('never approves the baseline from the leave prompt; the note can be discarded', async () => {
+    const app = installApp();
+    const ui = render(CostControlPanel);
+    await fireEvent.input(await ui.findByLabelText(/Approval rationale/), { target: { value: 'Board approved' } });
+    navSession.view = 'dashboard';
+    requestNavigation('project_settings');
+
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('Approve the cost baseline in Cost Control, or discard the note.');
+    expect(app.ApproveCostBaseline).not.toHaveBeenCalled();
+    expect(navSession.view).toBe('dashboard');
+
+    await discardAndContinueNavigation();
+    expect(navSession.view).toBe('project_settings');
+    expect(app.ApproveCostBaseline).not.toHaveBeenCalled();
   });
 });

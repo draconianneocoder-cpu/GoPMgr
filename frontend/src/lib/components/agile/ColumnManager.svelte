@@ -4,7 +4,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { createDraftGuard } from '../../draft-guard';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
   // Rename, reorder, add, and set WIP limits on the board's columns, then
@@ -37,12 +38,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // rebuilt from the backend after every save or delete.
   let rows = $state<Row[]>([]);
   let saved = $state<Row[]>([]);
+  let busy = $state(false);
+  let error = $state('');
+  // Unsaved column edits are protected by the unsaved-changes guard:
+  // leaving the view or closing the window asks before discarding them.
+  const draftGuard = createDraftGuard(
+    () => JSON.stringify(rows),
+    () => save(),
+    () => error,
+  );
   onMount(() => {
     rows = toRows(columns);
     saved = toRows(columns);
+    draftGuard.arm();
   });
-  let busy = $state(false);
-  let error = $state('');
+  onDestroy(() => draftGuard.disarm());
   let pendingDelete = $state<Row | null>(null);
 
   const dirty = $derived(JSON.stringify(rows) !== JSON.stringify(saved));
@@ -63,19 +73,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const res = await desktopApi.EnsureDefaultBoard();
     rows = toRows(res.columns ?? []);
     saved = toRows(res.columns ?? []);
+    draftGuard.arm();
     onchange(res.columns ?? []);
   }
 
-  async function save() {
-    if (busy) return;
+  async function save(): Promise<boolean> {
+    if (busy) return false;
     error = '';
     if (rows.some((r) => !r.name.trim())) {
       error = 'Give every column a name.';
-      return;
+      return false;
     }
     if (rows.some((r) => !Number.isInteger(r.wip_limit) || r.wip_limit < 0)) {
       error = 'A WIP limit must be a whole number, 0 for no limit.';
-      return;
+      return false;
     }
     busy = true;
     try {
@@ -98,6 +109,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       busy = false;
     }
+    return error === '';
   }
 
   async function confirmDelete() {

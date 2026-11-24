@@ -4,7 +4,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { desktopApi } from '../../desktop-api';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { createDraftGuard } from '../../draft-guard';
   import Spinner from '../Spinner.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
@@ -122,19 +123,57 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function approveBaseline() {
 	if (saving || mutationDisabled || !approvalNote.trim()) return;
     saving = true; error = '';
-    try { await desktopApi.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; await load(); }
+    try { await desktopApi.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; approvalGuard.arm(); await load(); }
     catch (err) { error = String(err); } finally { saving = false; approvalConfirmOpen = false; }
   }
 
-  async function saveReserve() {
-	if (saving || mutationDisabled) return;
+  async function saveReserve(): Promise<boolean> {
+	if (saving || mutationDisabled) return false;
     saving = true; error = '';
     try {
       await desktopApi.SaveCostReserve({ kind: reserveKind, amount: reserveAmount, description: reserveDescription });
-      reserveAmount = ''; reserveDescription = ''; await load();
-    } catch (err) { error = String(err); } finally { saving = false; }
+      reserveAmount = ''; reserveDescription = ''; reserveGuard.arm(); await load();
+      return true;
+    } catch (err) { error = String(err); return false; } finally { saving = false; }
   }
-  onMount(load);
+
+  // Typed drafts are protected by the unsaved-changes guard: leaving the
+  // view or closing the window asks before discarding them. Pickers with
+  // defaults (type, kind, date) are not drafts on their own.
+  const notSaved = () => error || summary?.mutation_disabled_reason || '';
+  // The prompt saves every draft at once, but entry and reserve saves share
+  // the saving flag, so they run one after the other.
+  let promptSaves: Promise<unknown> = Promise.resolve();
+  function oneAtATime(saveDraft: () => Promise<boolean>): Promise<boolean> {
+    const run = promptSaves.then(saveDraft);
+    promptSaves = run;
+    return run;
+  }
+  const entryGuard = createDraftGuard(
+    () => JSON.stringify([amount, description, quantity, unit, itemName, sku, supplierName, invoiceReference]),
+    () => oneAtATime(save),
+    () => notSaved() || (typeID ? '' : 'Choose a cost type for the entry.'),
+  );
+  const reserveGuard = createDraftGuard(
+    () => JSON.stringify([reserveAmount, reserveDescription]),
+    () => oneAtATime(saveReserve),
+    notSaved,
+  );
+  // Saving the note approves the baseline, which needs its own
+  // confirmation, so the leave prompt never does it.
+  const approvalGuard = createDraftGuard(
+    () => approvalNote,
+    async () => false,
+    () => 'Approve the cost baseline in Cost Control, or discard the note.',
+  );
+  const guards = [entryGuard, reserveGuard, approvalGuard];
+  onMount(() => {
+    for (const guard of guards) guard.arm();
+    void load();
+  });
+  onDestroy(() => {
+    for (const guard of guards) guard.disarm();
+  });
 
   async function findCatalogItems() {
     const query = catalogItemQuery.trim();
@@ -231,13 +270,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     catalogSupplierInFlightQuery = '';
   }
 
-  async function save() {
-	if (!typeID || saving || mutationDisabled) return;
+  async function save(): Promise<boolean> {
+	if (!typeID || saving || mutationDisabled) return false;
     saving = true; error = '';
     try {
       await desktopApi.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate, quantity, unit, item_name: itemName, sku, supplier_name: supplierName, invoice_reference: invoiceReference });
-      amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; clearCatalogSelections(); await load();
-    } catch (err) { error = String(err); } finally { saving = false; }
+      amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; clearCatalogSelections(); entryGuard.arm(); await load();
+      return true;
+    } catch (err) { error = String(err); return false; } finally { saving = false; }
   }
   async function exportFinancialReport() {
     if (exporting) return;

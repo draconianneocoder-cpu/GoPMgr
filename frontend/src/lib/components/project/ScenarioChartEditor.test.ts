@@ -154,3 +154,34 @@ describe('ScenarioChartEditor unsaved changes', () => {
     expect(autosave.hasDirty()).toBe(true);
   });
 });
+
+// Compare and Promote read the stored chart, so they wait while the editor
+// shows unsaved edits (owner decision 2026-11-24, "Disable until saved").
+describe('ScenarioChartEditor compare and promote with unsaved edits', () => {
+  it('disables both until the edits are saved, then promotes the saved chart', async () => {
+    app.SaveScenarioChart = vi.fn(async (chart: ScenarioChart) => chart);
+    app.PromoteScenarioChartToBaseline = vi.fn(async (_id: string, name: string) => ({ name }));
+    const utils = render(ScenarioChartEditor);
+    const dataBox = await utils.findByLabelText(/Scenario chart data JSON/i);
+    await fireEvent.input(utils.getByLabelText(/Promoted baseline name/i), { target: { value: 'Plan B' } });
+    const promote = utils.getByRole('button', { name: 'Promote to baseline' });
+    const compares = utils.getAllByRole('button', { name: 'Compare to baseline' });
+    expect(promote).toBeEnabled();
+
+    await fireEvent.input(dataBox, { target: { value: '{"tasks":[1]}' } });
+    for (const button of [promote, ...compares]) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription('Save your edits first. Compare and Promote use the saved chart.');
+    }
+
+    await fireEvent.click(utils.getAllByRole('button', { name: /Save scenario edits/i })[0]);
+    await utils.findByText('Saved.');
+    for (const button of [promote, ...compares]) expect(button).toBeEnabled();
+    expect(utils.queryByText(/Save your edits first/)).toBeNull();
+
+    await fireEvent.click(promote);
+    await utils.findByText('Promoted Plan B.');
+    expect(app.PromoteScenarioChartToBaseline).toHaveBeenCalledExactlyOnceWith('sc-1', 'Plan B');
+    expect(app.SaveScenarioChart).toHaveBeenCalledBefore(app.PromoteScenarioChartToBaseline);
+  });
+});

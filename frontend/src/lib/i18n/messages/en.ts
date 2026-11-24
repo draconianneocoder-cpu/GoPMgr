@@ -211,6 +211,7 @@ export const en = {
   'chart.dashboard': '← Dashboard',
   'chart.savedAt': 'Saved {time}',
   'chart.autosaveHint': 'Charts save automatically as you edit',
+  'scenarioChart.saveFirst': 'Save your edits first. Compare and Promote use the saved chart.',
   'chart.saved': 'Saved',
   'chart.baselineSet': 'Baseline set',
   'chart.taskDeleted': 'Task deleted',

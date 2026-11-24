@@ -6,6 +6,15 @@ import { render, fireEvent, waitFor } from '@testing-library/svelte';
 
 import DORADashboard from './DORADashboard.svelte';
 import { session } from '../../session.svelte';
+import { autosave } from '../../autosave.svelte';
+import {
+  cancelNavigation,
+  discardAndContinueNavigation,
+  navigation,
+  requestNavigation,
+  saveAndContinueNavigation,
+  session as navSession,
+} from '../../session.svelte';
 
 const desktopApiMock = vi.hoisted(() => {
   const state: { current: Record<string, ReturnType<typeof vi.fn>> } = { current: {} };
@@ -149,5 +158,45 @@ describe('DORADashboard', () => {
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
     );
+  });
+});
+
+
+// Owner decision 2026-11-24 ("All five forms"): a deployment typed into
+// the open form asks before it is discarded by leaving the view.
+describe('DORADashboard unsaved deployment', () => {
+  afterEach(() => {
+    autosave.discardAll();
+    cancelNavigation();
+    navigation.saving = false;
+    navigation.error = '';
+  });
+
+  it('leaves an empty form without asking, and asks for a typed one, then saves it', async () => {
+    const app = installApp([]);
+    const ui = await mountLoaded(app);
+    await fireEvent.click(ui.getByRole('button', { name: '+ Deployment' }));
+    navSession.view = 'dora';
+    requestNavigation('dashboard');
+    expect(navigation.pending).toBeNull();
+    await waitFor(() => expect(navSession.view).toBe('dashboard'));
+
+    // Cancel hides the form: what was typed is set aside, not a draft.
+    navSession.view = 'dora';
+    await fireEvent.input(ui.getByPlaceholderText('e.g. v1.4.2'), { target: { value: 'v1.9' } });
+    await fireEvent.click(ui.getByRole('button', { name: 'Cancel' }));
+    requestNavigation('dashboard');
+    expect(navigation.pending).toBeNull();
+    await waitFor(() => expect(navSession.view).toBe('dashboard'));
+
+    navSession.view = 'dora';
+    await fireEvent.click(ui.getByRole('button', { name: '+ Deployment' }));
+    await fireEvent.input(ui.getByPlaceholderText('e.g. v1.4.2'), { target: { value: 'v2.0' } });
+    requestNavigation('dashboard');
+    expect(navigation.pending?.view).toBe('dashboard');
+
+    await saveAndContinueNavigation();
+    expect(app.SaveDeployment).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ version: 'v2.0' }));
+    expect(navSession.view).toBe('dashboard');
   });
 });
