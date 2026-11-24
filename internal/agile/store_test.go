@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -86,8 +87,9 @@ func TestSaveColumn_InsertsThenUpdatesViaUpsert(t *testing.T) {
 		t.Fatalf("EnsureDefaultBoard: %v", err)
 	}
 
-	c := Column{BoardID: board.ID, Name: "Blocked", OrderIdx: 9, WIPLimit: 2}
-	if err := store.SaveColumn(c); err != nil {
+	c := Column{BoardID: board.ID, Name: "  Blocked ", OrderIdx: 9, WIPLimit: 2}
+	returned, err := store.SaveColumn(c)
+	if err != nil {
 		t.Fatalf("SaveColumn insert: %v", err)
 	}
 	cols, err := store.ListColumns(board.ID)
@@ -108,12 +110,17 @@ func TestSaveColumn_InsertsThenUpdatesViaUpsert(t *testing.T) {
 	if inserted.ID == "" {
 		t.Fatal("SaveColumn did not assign a generated ID")
 	}
+	// The column comes back as stored, so a caller can update it next
+	// rather than create it again (the column manager's retry).
+	if !reflect.DeepEqual(returned, inserted) {
+		t.Fatalf("SaveColumn returned %#v, stored %#v", returned, inserted)
+	}
 
 	// Re-save with the same ID: must update in place, not duplicate.
 	inserted.Name = "Blocked (renamed)"
 	inserted.OrderIdx = 10
 	inserted.WIPLimit = 5
-	if err := store.SaveColumn(inserted); err != nil {
+	if _, err := store.SaveColumn(inserted); err != nil {
 		t.Fatalf("SaveColumn update: %v", err)
 	}
 	cols, err = store.ListColumns(board.ID)
@@ -142,7 +149,7 @@ func TestDeleteColumn_RemovesRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureDefaultBoard: %v", err)
 	}
-	if err := store.SaveColumn(Column{BoardID: board.ID, Name: "Blocked"}); err != nil {
+	if _, err := store.SaveColumn(Column{BoardID: board.ID, Name: "Blocked"}); err != nil {
 		t.Fatalf("SaveColumn: %v", err)
 	}
 	cols, err := store.ListColumns(board.ID)
@@ -204,7 +211,7 @@ func TestSaveColumn_RefusesInvalidColumns(t *testing.T) {
 		{"moving another board's column", Column{ID: "foreign-col", BoardID: board.ID, Name: "Mine"}, ErrColumnNotOnBoard},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := store.SaveColumn(tc.col); !errors.Is(err, tc.want) {
+			if _, err := store.SaveColumn(tc.col); !errors.Is(err, tc.want) {
 				t.Fatalf("SaveColumn(%+v) = %v, want %v", tc.col, err, tc.want)
 			}
 		})
@@ -237,7 +244,7 @@ func TestDeleteColumn_RefusesBuiltInAndNonEmptyColumns(t *testing.T) {
 		}
 	}
 
-	if err := store.SaveColumn(Column{ID: "blocked", BoardID: board.ID, Name: "Blocked", OrderIdx: 4}); err != nil {
+	if _, err := store.SaveColumn(Column{ID: "blocked", BoardID: board.ID, Name: "Blocked", OrderIdx: 4}); err != nil {
 		t.Fatalf("SaveColumn: %v", err)
 	}
 	for range 2 {
@@ -791,7 +798,7 @@ func TestStoreMethods_PropagateClosedConnectionErrors(t *testing.T) {
 	}{
 		{"EnsureDefaultBoard", func() error { _, err := store.EnsureDefaultBoard(); return err }},
 		{"ListColumns", func() error { _, err := store.ListColumns("any-board"); return err }},
-		{"SaveColumn", func() error { return store.SaveColumn(Column{BoardID: "any-board", Name: "x"}) }},
+		{"SaveColumn", func() error { _, err := store.SaveColumn(Column{BoardID: "any-board", Name: "x"}); return err }},
 		{"DeleteColumn", func() error { return store.DeleteColumn("any-column") }},
 		{"SaveWorkItem", func() error { _, err := store.SaveWorkItem(WorkItem{Title: "x"}); return err }},
 		{"ListWorkItems", func() error { _, err := store.ListWorkItems("", "", ""); return err }},
@@ -916,7 +923,7 @@ func TestSaveColumn_PropagatesAWriteFailure(t *testing.T) {
 	`); err != nil {
 		t.Fatalf("create trigger: %v", err)
 	}
-	if err := store.SaveColumn(Column{BoardID: board.ID, Name: "Blocked"}); err == nil || err.Error() != "column write blocked" {
+	if _, err := store.SaveColumn(Column{BoardID: board.ID, Name: "Blocked"}); err == nil || err.Error() != "column write blocked" {
 		t.Fatalf("SaveColumn with the write blocked = %v, want the trigger's error", err)
 	}
 }
@@ -1050,7 +1057,7 @@ func TestStoreMethodsLeaveAnotherProjectsRowsAlone(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EnsureDefaultBoard B: %v", err)
 		}
-		if err := storeB.SaveColumn(Column{ID: "b-col", BoardID: boardB.ID, Name: "B only"}); err != nil {
+		if _, err := storeB.SaveColumn(Column{ID: "b-col", BoardID: boardB.ID, Name: "B only"}); err != nil {
 			t.Fatalf("SaveColumn B: %v", err)
 		}
 		if cols, err := storeA.ListColumns(boardB.ID); err != nil || len(cols) != 0 {

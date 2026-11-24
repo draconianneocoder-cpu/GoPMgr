@@ -33,7 +33,7 @@ let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   app = {
-    SaveColumn: vi.fn(async () => undefined),
+    SaveColumn: vi.fn(async (c: AgileColumn) => ({ ...c, id: c.id || 'col-new', name: c.name.trim() })),
     DeleteColumn: vi.fn(async () => undefined),
     EnsureDefaultBoard: vi.fn(async () => ({ board: { id: 'board-1' }, columns: initial })),
   };
@@ -142,5 +142,41 @@ describe('ColumnManager unsaved edits', () => {
     expect(app.SaveColumn).toHaveBeenCalledWith(expect.objectContaining({ id: 'todo', name: 'Backlog', order_idx: 0 }));
     expect(navigation.pending).toBeNull();
     expect(navSession.view).toBe('dashboard');
+  });
+});
+
+// A save that fails part-way keeps the user's columns, with the IDs of any
+// created before the failure, so a retry updates them instead of creating
+// them again (backlog known limit, fixed 2026-11-24).
+describe('ColumnManager save that fails part-way', () => {
+  afterEach(() => {
+    autosave.discardAll();
+  });
+
+  it('keeps the draft and retries without duplicating a column it already created', async () => {
+    app.SaveColumn.mockImplementation(async (c: AgileColumn) => {
+      if (c.name === 'Done') throw new Error('disk full');
+      return { ...c, id: c.id || 'col-new' };
+    });
+    const { utils } = setup();
+    await fireEvent.click(utils.getByRole('button', { name: '+ Column' }));
+    const names = () => (utils.getAllByPlaceholderText('Column name') as HTMLInputElement[]).map((i) => i.value);
+    const inputs = utils.getAllByPlaceholderText('Column name') as HTMLInputElement[];
+    await fireEvent.input(inputs[4], { target: { value: 'QA' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Move column 5 left' }));
+    expect(names()).toEqual(['To Do', 'In Progress', 'Blocked', 'QA', 'Done']);
+
+    await fireEvent.click(utils.getByRole('button', { name: /save columns/i }));
+    await utils.findByText(/disk full/);
+    expect(names()).toEqual(['To Do', 'In Progress', 'Blocked', 'QA', 'Done']);
+    expect(autosave.hasDirty()).toBe(true);
+    expect(app.SaveColumn).toHaveBeenCalledWith(expect.objectContaining({ id: '', name: 'QA', order_idx: 3 }));
+
+    app.SaveColumn.mockClear();
+    app.SaveColumn.mockImplementation(async (c: AgileColumn) => ({ ...c, id: c.id || 'col-duplicate' }));
+    await fireEvent.click(utils.getByRole('button', { name: /save columns/i }));
+    await waitFor(() => expect(app.SaveColumn).toHaveBeenCalledTimes(5));
+    expect(app.SaveColumn).toHaveBeenCalledWith(expect.objectContaining({ id: 'col-new', name: 'QA', order_idx: 3 }));
+    expect(app.SaveColumn).not.toHaveBeenCalledWith(expect.objectContaining({ id: '' }));
   });
 });

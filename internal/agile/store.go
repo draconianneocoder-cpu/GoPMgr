@@ -185,33 +185,34 @@ func isBuiltInColumn(id string) bool {
 
 // SaveColumn upserts one column: renames it, changes its WIP limit, or
 // moves it. The board must belong to this store's project, and an existing
-// column cannot move to another board.
-func (s *Store) SaveColumn(c Column) error {
+// column cannot move to another board. It returns the column as stored:
+// with its new ID when created, and its name trimmed.
+func (s *Store) SaveColumn(c Column) (Column, error) {
 	// A create under a generated ID must not update an existing row (BL-2):
 	// the upsert's guard below binds !generated.
 	generated := c.ID == ""
 	if generated {
 		id, err := NewColumnID()
 		if err != nil {
-			return fmt.Errorf("generate column id: %w", err)
+			return Column{}, fmt.Errorf("generate column id: %w", err)
 		}
 		c.ID = id
 	}
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
-		return ErrColumnName
+		return Column{}, ErrColumnName
 	}
 	if c.WIPLimit < 0 {
-		return ErrColumnWIPLimit
+		return Column{}, ErrColumnWIPLimit
 	}
 	var owned int
 	if err := s.Conn.QueryRow(
 		`SELECT COUNT(*) FROM agile_boards WHERE id = ? AND project_id = ?`, c.BoardID, s.ProjectID,
 	).Scan(&owned); err != nil {
-		return err
+		return Column{}, err
 	}
 	if owned == 0 {
-		return ErrColumnNotOnBoard
+		return Column{}, ErrColumnNotOnBoard
 	}
 	res, err := s.Conn.Exec(`
 		INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit)
@@ -223,9 +224,12 @@ func (s *Store) SaveColumn(c Column) error {
 		WHERE agile_columns.board_id = excluded.board_id AND ?
 	`, c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit, !generated)
 	if err != nil {
-		return err
+		return Column{}, err
 	}
-	return requireOneRow(res, createOr(generated, ErrColumnNotOnBoard))
+	if err := requireOneRow(res, createOr(generated, ErrColumnNotOnBoard)); err != nil {
+		return Column{}, err
+	}
+	return c, nil
 }
 
 // DeleteColumn removes an empty column the user added. Built-in columns

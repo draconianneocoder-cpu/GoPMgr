@@ -29,11 +29,12 @@ func TestGeneratedIDCollisionIsRefused(t *testing.T) {
 		"column": {
 			table: "agile_columns",
 			seedA: func(s *Store, boardID, id string) (func() (any, error), error) {
-				err := s.SaveColumn(Column{ID: id, BoardID: boardID, Name: "A", OrderIdx: 9})
+				_, err := s.SaveColumn(Column{ID: id, BoardID: boardID, Name: "A", OrderIdx: 9})
 				return func() (any, error) { return findByID(s.ListColumns(boardID))(id) }, err
 			},
 			create: func(s *Store, boardID string) error {
-				return s.SaveColumn(Column{BoardID: boardID, Name: "B", OrderIdx: 10})
+				_, err := s.SaveColumn(Column{BoardID: boardID, Name: "B", OrderIdx: 10})
+				return err
 			},
 		},
 		"work item": {

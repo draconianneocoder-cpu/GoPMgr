@@ -457,7 +457,7 @@
     {
       "method": "ComputeDORA",
       "file": "internal/desktop/app_agile.go",
-      "line": 248,
+      "line": 249,
       "params": "windowDays int",
       "returns": "agile.DORAResult, error",
       "uses_internal_packages": [
@@ -545,7 +545,7 @@
     {
       "method": "DeleteColumn",
       "file": "internal/desktop/app_agile.go",
-      "line": 104,
+      "line": 105,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": []
@@ -553,7 +553,7 @@
     {
       "method": "DeleteDeployment",
       "file": "internal/desktop/app_agile.go",
-      "line": 234,
+      "line": 235,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": []
@@ -619,7 +619,7 @@
     {
       "method": "DeleteSprint",
       "file": "internal/desktop/app_agile.go",
-      "line": 200,
+      "line": 201,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": []
@@ -637,7 +637,7 @@
     {
       "method": "DeleteWorkItem",
       "file": "internal/desktop/app_agile.go",
-      "line": 142,
+      "line": 143,
       "params": "id string",
       "returns": "error",
       "uses_internal_packages": []
@@ -1011,7 +1011,7 @@
     {
       "method": "GetWorkItem",
       "file": "internal/desktop/app_agile.go",
-      "line": 122,
+      "line": 123,
       "params": "id string",
       "returns": "agile.WorkItem, error",
       "uses_internal_packages": [
@@ -1195,7 +1195,7 @@
     {
       "method": "ListDeployments",
       "file": "internal/desktop/app_agile.go",
-      "line": 219,
+      "line": 220,
       "params": "sinceISO string",
       "returns": "[]agile.Deployment, error",
       "uses_internal_packages": []
@@ -1299,7 +1299,7 @@
     {
       "method": "ListSprints",
       "file": "internal/desktop/app_agile.go",
-      "line": 190,
+      "line": 191,
       "params": "",
       "returns": "[]agile.Sprint, error",
       "uses_internal_packages": []
@@ -1315,7 +1315,7 @@
     {
       "method": "ListWorkItems",
       "file": "internal/desktop/app_agile.go",
-      "line": 133,
+      "line": 134,
       "params": "sprintID string, state string, assignee string",
       "returns": "[]agile.WorkItem, error",
       "uses_internal_packages": []
@@ -1353,7 +1353,7 @@
     {
       "method": "MoveWorkItem",
       "file": "internal/desktop/app_agile.go",
-      "line": 162,
+      "line": 163,
       "params": "id string, newState string, newOrder int",
       "returns": "error",
       "uses_internal_packages": []
@@ -1610,10 +1610,12 @@
     {
       "method": "SaveColumn",
       "file": "internal/desktop/app_agile.go",
-      "line": 94,
+      "line": 95,
       "params": "c agile.Column",
-      "returns": "error",
-      "uses_internal_packages": []
+      "returns": "agile.Column, error",
+      "uses_internal_packages": [
+        "gopmgr/internal/agile"
+      ]
     },
     {
       "method": "SaveCostEntry",
@@ -1639,7 +1641,7 @@
     {
       "method": "SaveDeployment",
       "file": "internal/desktop/app_agile.go",
-      "line": 209,
+      "line": 210,
       "params": "d agile.Deployment",
       "returns": "agile.Deployment, error",
       "uses_internal_packages": [
@@ -1717,7 +1719,7 @@
     {
       "method": "SaveSprint",
       "file": "internal/desktop/app_agile.go",
-      "line": 181,
+      "line": 182,
       "params": "sp agile.Sprint",
       "returns": "agile.Sprint, error",
       "uses_internal_packages": [
@@ -1737,7 +1739,7 @@
     {
       "method": "SaveWorkItem",
       "file": "internal/desktop/app_agile.go",
-      "line": 113,
+      "line": 114,
       "params": "wi agile.WorkItem",
       "returns": "agile.WorkItem, error",
       "uses_internal_packages": [
@@ -2022,7 +2024,7 @@
     {
       "method": "WIPCounts",
       "file": "internal/desktop/app_agile.go",
-      "line": 172,
+      "line": 173,
       "params": "",
       "returns": "map[string]int, error",
       "uses_internal_packages": []

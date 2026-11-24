@@ -11,7 +11,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // Rename, reorder, add, and set WIP limits on the board's columns, then
   // save them together; delete an empty column the user added. Every save
   // renumbers the columns 0..n, so a save that stops partway is put right by
-  // the next one. The built-in columns come back whenever they are missing
+  // the next one: the draft is kept, with the IDs of columns already
+  // created, so that next save updates them rather than adding them again. The built-in columns come back whenever they are missing
   // (agile.DefaultColumns) and "done" feeds DORA, so the backend refuses to
   // delete them; they are marked here so the button is not offered.
   const BUILT_IN = new Set(['todo', 'doing', 'review', 'done']);
@@ -89,21 +90,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return false;
     }
     busy = true;
+    let saveFailed = false;
     try {
       for (const [i, r] of rows.entries()) {
-        await desktopApi.SaveColumn({
+        const stored = await desktopApi.SaveColumn({
           id: r.id,
           board_id: boardId,
           name: r.name.trim(),
           order_idx: i,
           wip_limit: r.wip_limit,
         });
+        // Recorded on the row itself, wherever it has moved, so a retry
+        // after a later failure updates this column instead of creating
+        // it again.
+        r.id = stored.id;
       }
     } catch (err: any) {
       error = String(err?.message ?? err);
+      saveFailed = true;
     }
     try {
-      await reload();
+      if (saveFailed) {
+        // Keep the draft for another Save; show the board as stored.
+        const res = await desktopApi.EnsureDefaultBoard();
+        saved = toRows(res.columns ?? []);
+        onchange(res.columns ?? []);
+      } else {
+        await reload();
+      }
     } catch (err: any) {
       error ||= `Could not reload the columns: ${err?.message ?? err}`;
     } finally {

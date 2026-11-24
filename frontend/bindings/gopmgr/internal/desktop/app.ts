@@ -1560,9 +1560,10 @@ export function SaveChart(c: db$0.Chart): $CancellablePromise<db$0.Chart> {
 
 /**
  * SaveColumn upserts a column on the project's board (rename, change WIP,
- * reorder, or add); agile.Store.SaveColumn validates it.
+ * reorder, or add); agile.Store.SaveColumn validates it. It returns the
+ * column as stored, so a caller learns a new column's ID.
  */
-export function SaveColumn(c: agile$0.Column): $CancellablePromise<void> {
+export function SaveColumn(c: agile$0.Column): $CancellablePromise<agile$0.Column> {
     return $Call.ByName("gopmgr/internal/desktop.App.SaveColumn", c);
 }
 
