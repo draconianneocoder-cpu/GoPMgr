@@ -57,16 +57,31 @@ export interface StatsLayout {
   flags?: PointFlag[];
 }
 
-// Default palette used when a Series or PieSlice doesn't specify a
-// colour. Eight values is enough for a typical PM chart (more series
-// than that should usually be redesigned).
-export const DEFAULT_PALETTE = [
-  '#22d3ee', // cyan
-  '#f59e0b', // amber
-  '#22c55e', // green
-  '#a855f7', // purple
-  '#ef4444', // red
-  '#0ea5e9', // sky
-  '#eab308', // yellow
-  '#94a3b8', // slate
-];
+// Series colours for a Series or PieSlice that doesn't name one, in fixed
+// slot order (blue, orange, aqua, yellow, magenta, green, violet, red).
+// Each theme has its own steps of the same eight hues, checked with the
+// dataviz palette validator against the chart surface (slate-900):
+// lightness band, chroma floor, colour-vision-deficiency separation of
+// adjacent slots (worst ΔE 9.1 light, 8.4 dark) and the normal-vision
+// floor all pass. In the light theme four slots are below 3:1 against the
+// surface, so stats charts always show a legend and per-point tooltips.
+export const SERIES_PALETTE = {
+  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c', '#9085e9', '#e66767'],
+  light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
+} as const;
+
+// The dark-only colours the app used before the themed palette. The Go
+// chart layouts (burndown, burnup, control, Pareto) still send some of
+// them, so each resolves to the matching slot in the active theme; null
+// means the neutral reference colour (ideal line, mean). Any other colour
+// is a user's choice and is drawn as given.
+export const LEGACY_SERIES_SLOTS: Readonly<Record<string, number | null>> = {
+  '#22d3ee': 0, // cyan → blue
+  '#f59e0b': 1, // amber → orange
+  '#22c55e': 5, // green → green
+  '#a855f7': 6, // purple → violet
+  '#ef4444': 7, // red → red
+  '#0ea5e9': 2, // sky → aqua
+  '#eab308': 3, // yellow → yellow
+  '#94a3b8': null, // slate → neutral
+};

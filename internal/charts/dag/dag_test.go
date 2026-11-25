@@ -9,6 +9,7 @@ package dag
 
 import (
 	"errors"
+	"math"
 	"testing"
 )
 
@@ -365,6 +366,66 @@ func TestLayoutFishbone_CanvasSizePositive(t *testing.T) {
 	layout := LayoutFishbone(doc, DefaultFishboneOptions())
 	if layout.Width <= 0 || layout.Height <= 0 {
 		t.Errorf("canvas should be positive, got (%v, %v)", layout.Width, layout.Height)
+	}
+}
+
+// A cause's label and its stroke to the bone must not cross another bone
+// (seen with four categories: "Flaky tests" drawn over the People bone).
+// The oracle is plain geometry: for every cause, every other bone that
+// spans the cause's height must lie outside [label left edge, own bone].
+func TestLayoutFishbone_CauseLabelsClearNeighbouringBones(t *testing.T) {
+	doc := FishboneDocument{Effect: "Late deliveries", Categories: []FishboneCategory{
+		{Name: "People", Causes: []string{"Training gaps", "Shift handover"}},
+		{Name: "Process", Causes: []string{"No WIP limit"}},
+		{Name: "Tools", Causes: []string{"Slow CI", "Flaky tests", "Old laptops"}},
+		{Name: "Materials", Causes: []string{"Supplier delay"}},
+		{Name: "Methods", Causes: []string{"No checklist", "Late reviews"}},
+		{Name: "Environment", Causes: []string{"Noise"}},
+	}}
+	layout := LayoutFishbone(doc, DefaultFishboneOptions())
+	var bones, strokes []FishboneEdge
+	for _, e := range layout.Edges {
+		switch e.Kind {
+		case "bone":
+			bones = append(bones, e)
+		case "cause":
+			strokes = append(strokes, e)
+		}
+	}
+	causes := 0
+	for _, n := range layout.Nodes {
+		if n.Type != "cause" {
+			continue
+		}
+		y := n.Y + n.Height/2
+		// The cause's stroke starts on its own bone at the same height.
+		var ownX float64
+		found := false
+		for _, s := range strokes {
+			if s.Y1 == y && s.X2 == n.X+n.Width {
+				ownX, found = s.X1, true
+			}
+		}
+		if !found {
+			t.Fatalf("cause %q has no stroke", n.Label)
+		}
+		causes++
+		for _, b := range bones {
+			lo, hi := math.Min(b.Y1, b.Y2), math.Max(b.Y1, b.Y2)
+			if y < lo || y > hi || b.Y2 == b.Y1 {
+				continue
+			}
+			x := b.X1 + (b.X2-b.X1)*(y-b.Y1)/(b.Y2-b.Y1)
+			if math.Abs(x-ownX) < 1e-6 {
+				continue // its own bone
+			}
+			if x > n.X && x < ownX {
+				t.Errorf("cause %q (x %.0f..%.0f) crosses a bone at x %.0f", n.Label, n.X, ownX, x)
+			}
+		}
+	}
+	if causes != 10 {
+		t.Fatalf("laid out %d causes, want 10", causes)
 	}
 }
 

@@ -552,7 +552,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         y="16"
         font-size="12"
         font-weight="bold"
-        fill="#94a3b8"
+        fill="#cbd5e1"
       ><title>{t('cpm.constraint.unapplied.marker')}</title>?</text>
     {/if}
     {#if data.milestone}
@@ -583,7 +583,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         ? (data.label as string).slice(0, 21) + '…'
         : data.label as string}
     </text>
-    <text x="8" y="34" font-size="9" fill="#94a3b8">
+    <text x="8" y="34" font-size="9" fill="#cbd5e1">
       {t('cpm.node.durationFloat', { duration: fmt(data.duration), float: fmt(data.float, 2) })}
     </text>
     <text x="8" y="48" font-size="9" fill="#67e8f9">

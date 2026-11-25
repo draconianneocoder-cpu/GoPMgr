@@ -25,8 +25,19 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const withoutComments = (text: string) =>
-  text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\/\/.*$/gm, '');
+// Removing one comment can join the halves of another ("<!<!---->--"), so
+// the removals repeat until nothing changes, as in hardcoded-text.test.ts.
+function withoutComments(text: string): string {
+  let previous: string;
+  do {
+    previous = text;
+    text = text
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/<!--[\s\S]*?--!?>/g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+  } while (text !== previous);
+  return text;
+}
 
 const appCss = withoutComments(readFileSync(join(SRC, 'app.css'), 'utf-8'));
 const defined = new Set(Array.from(appCss.matchAll(/(--[\w-]+)\s*:/g), (m) => m[1]));

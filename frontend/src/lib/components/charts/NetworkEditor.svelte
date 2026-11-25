@@ -17,7 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         : data.label as string}
     </text>
     {#if (data.duration as number) > 0}
-      <text x="8" y="40" font-size="10" fill="#94a3b8">
+      <text x="8" y="40" font-size="10" fill="#cbd5e1">
         Duration: {data.duration}
       </text>
     {/if}

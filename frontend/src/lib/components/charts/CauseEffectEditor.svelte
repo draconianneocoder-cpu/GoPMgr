@@ -328,7 +328,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {n.title.length > 22 ? n.title.slice(0, 21) + '…' : n.title}
               </text>
               {#if n.note}
-                <text x="8" y="38" font-size="9" fill="#94a3b8">
+                <text x="8" y="38" font-size="9" fill="#cbd5e1">
                   {n.note.length > 28 ? n.note.slice(0, 27) + '…' : n.note}
                 </text>
               {/if}

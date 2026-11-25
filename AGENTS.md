@@ -189,8 +189,9 @@ selection; they do not waive existing required verification or release gates.
 - The root `main.go` embeds repo-root `frontend/dist` through `go:embed` and
   calls `desktop.Main`. The Wails service `App` lives in `internal/desktop`;
   its 212 exported methods are frontend API, listed in `code-map/app-api.json`.
-  `frontend/src/lib/desktop-api.ts` re-exports the generated App namespace from
-  `frontend/bindings/gopmgr/internal/desktop/index.ts`. Generate real bindings
+  `frontend/src/lib/desktop-api.ts` exports the generated App namespace from
+  `frontend/bindings/gopmgr/internal/desktop/index.ts`, turning a Go method's
+  `RuntimeError` into a `BackendError` that reads as its message. Generate real bindings
   before frontend checks; do not restore ambient `window.go` declarations.
   `domain-types.d.ts` contains frontend editor views, and `desktop-dtos.ts`
   explicitly normalizes nullable collections for those views. Raw generated

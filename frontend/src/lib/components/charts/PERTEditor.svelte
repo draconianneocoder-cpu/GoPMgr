@@ -21,13 +21,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
         ? (data.label as string).slice(0, 21) + '…'
         : data.label as string}
     </text>
-    <text x="8" y="34" font-size="9" fill="#94a3b8">
+    <text x="8" y="34" font-size="9" fill="#cbd5e1">
       O: {fmt(data.o, 1)} · M: {fmt(data.m, 1)} · P: {fmt(data.p, 1)}
     </text>
     <text x="8" y="50" font-size="9" fill="#67e8f9" font-weight="bold">
       E = {fmt(data.expected)}
     </text>
-    <text x="8" y="64" font-size="9" fill="#94a3b8">
+    <text x="8" y="64" font-size="9" fill="#cbd5e1">
       σ = {fmt(data.std_dev)}
     </text>
   {/snippet}

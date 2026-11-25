@@ -19,6 +19,7 @@ describe('readStatsChartTheme', () => {
       '--slate-800': '226 232 240',
       '--slate-900': '241 245 249',
     }))).toEqual({
+      mode: 'light',
       text: 'rgb(51 65 85)',
       mutedText: 'rgb(71 85 105)',
       grid: 'rgb(226 232 240)',
@@ -37,6 +38,7 @@ describe('readStatsChartTheme', () => {
 
 describe('buildStatsChartConfig', () => {
   const lightTheme = {
+    mode: 'light' as const,
     text: 'rgb(51 65 85)',
     mutedText: 'rgb(71 85 105)',
     grid: 'rgb(226 232 240)',
@@ -51,7 +53,10 @@ describe('buildStatsChartConfig', () => {
       y_axis: { label: 'Hours' },
       categories: ['Mon'],
       series: [{ name: 'Observed', values: [4] }],
-      annotations: [{ type: 'horizontal_line', value: 5, label: 'UCL' }],
+      annotations: [
+        { type: 'horizontal_line', value: 5, label: 'UCL' },
+        { type: 'horizontal_line', value: 1, label: 'LCL' },
+      ],
     }, lightTheme);
 
     expect(config).toMatchObject({
@@ -63,7 +68,9 @@ describe('buildStatsChartConfig', () => {
         },
         scales: {
           x: { ticks: { color: lightTheme.mutedText }, grid: { color: lightTheme.grid } },
-          y: { ticks: { color: lightTheme.mutedText }, grid: { color: lightTheme.grid } },
+          // The value axis reaches both control limits, so neither is drawn
+          // outside the plot.
+          y: { ticks: { color: lightTheme.mutedText }, grid: { color: lightTheme.grid }, suggestedMin: 1, suggestedMax: 5 },
         },
       },
     });
@@ -91,6 +98,30 @@ describe('buildStatsChartConfig', () => {
         plugins: { gopmgrAnnotations: { scaleID: 'y1' } },
         scales: { y1: { ticks: { color: lightTheme.mutedText }, grid: { color: lightTheme.grid } } },
       },
+    });
+  });
+
+  it('draws series in the active theme: unset colours by slot, the former dark-only defaults by hue, custom colours as given', () => {
+    const layout = {
+      kind: 'burnup' as const,
+      x_axis: {},
+      y_axis: {},
+      categories: ['1'],
+      series: [
+        { name: 'Completed', values: [1], color: '#22d3ee' },
+        { name: 'Ideal', values: [1], color: '#94a3b8' },
+        { name: 'Unset', values: [1] },
+        { name: 'Custom', values: [1], color: '#123456' },
+      ],
+      annotations: [{ type: 'horizontal_line' as const, value: 1, label: 'Mean', color: '#ef4444' }],
+    };
+    const colours = (theme: typeof lightTheme | typeof DEFAULT_STATS_CHART_THEME) =>
+      (buildStatsChartConfig(layout, theme).data.datasets as { borderColor: string }[]).map((d) => d.borderColor);
+
+    expect(colours(lightTheme)).toEqual(['#2a78d6', lightTheme.mutedText, '#1baf7a', '#123456']);
+    expect(colours(DEFAULT_STATS_CHART_THEME)).toEqual(['#3987e5', DEFAULT_STATS_CHART_THEME.mutedText, '#199e70', '#123456']);
+    expect(buildStatsChartConfig(layout, lightTheme)).toMatchObject({
+      options: { plugins: { gopmgrAnnotations: { annotations: [{ color: '#e34948' }], labelColor: lightTheme.text } } },
     });
   });
 

@@ -69,7 +69,7 @@ describe('shapeFill', () => {
   });
 
   it('gives workflow terminal shapes distinct colours', () => {
-    expect(shapeFill('start', false)).toBe('#16a34a');
+    expect(shapeFill('start', false)).toBe('#15803d');
     expect(shapeFill('end', false)).toBe('#7f1d1d');
     expect(shapeFill('start', false)).not.toBe(shapeFill('end', false));
   });

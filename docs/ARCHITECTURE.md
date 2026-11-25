@@ -163,8 +163,9 @@ integrity checks pass.
 The frontend is a desktop application UI, not a marketing site. It
 should remain dense, utilitarian, and optimized for repeated project
 management work. The frontend calls the backend through generated Wails v3
-bindings (`frontend/bindings/gopmgr/internal/desktop`), re-exported by
-`frontend/src/lib/desktop-api.ts`. Regenerate the bindings whenever a bound
+bindings (`frontend/bindings/gopmgr/internal/desktop`), exported by
+`frontend/src/lib/desktop-api.ts`, which turns a Go method's `RuntimeError`
+into a `BackendError` whose text is the method's message. Regenerate the bindings whenever a bound
 `App` method is added or changed; there is no hand-written declaration file
 to keep aligned. `desktop-dtos.ts` normalizes nullable collections for the
 editor views, and `desktop-runtime.ts` adapts runtime events.

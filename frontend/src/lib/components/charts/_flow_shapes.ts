@@ -95,12 +95,12 @@ export function shapeFill(shape: string, selected: boolean): string {
   if (selected) return '#0e7490';
   switch (shape) {
     case 'start':
-      return '#16a34a';
+      return '#15803d';
     case 'end':
       return '#7f1d1d';
     case 'decision':
     case 'a_decision':
-      return '#a16207';
+      return '#854d0e';
     case 'io':
       return '#1e40af';
     case 'subprocess':

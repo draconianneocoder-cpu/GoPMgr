@@ -425,7 +425,7 @@ frontend/src/
     *.svelte.ts                  Svelte 5 rune-based state modules
                                   (session.svelte.ts, autosave.svelte.ts,
                                   toast.svelte.ts)
-    desktop-api.ts               Direct generated App namespace export
+    desktop-api.ts               Generated App namespace; Go errors as BackendError
     desktop-runtime.ts           Events.On envelope/unsubscribe adapter
     desktop-dtos.ts              Explicit DTO-to-editor normalization
     *.ts                         Pure TypeScript helpers (native-close.ts,
@@ -477,9 +477,10 @@ enforce security and persistence invariants.
 
 The pinned Wails v3.1.0 CLI generates
 `frontend/bindings/gopmgr/internal/desktop/index.ts` and `app.ts` from the
-actual Go service. `frontend/src/lib/desktop-api.ts` directly re-exports
-the generated `App` namespace as `desktopApi`; production callers import
-that module. `window.go` and the old hand-maintained `wails-window.d.ts`
+actual Go service. `frontend/src/lib/desktop-api.ts` exports
+the generated `App` namespace as `desktopApi`, rethrowing a Go method's
+`RuntimeError` as a `BackendError` whose text is the method's message;
+production callers import that module. `window.go` and the old hand-maintained `wails-window.d.ts`
 bridge were removed in the 2026-11-03 migration.
 
 Generate actual bindings before typecheck, tests or build. The build task
