@@ -688,7 +688,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         />
       </label>
       <label class="flex items-end gap-2 pb-2">
-        <input type="checkbox" bind:checked={node.milestone} class="accent-cyan-500" />
+        <!-- One-way plus onchange: bind:checked writes `false` into a task
+             stored without `milestone`, so selecting a task saved the chart. -->
+        <input
+          type="checkbox"
+          checked={node.milestone ?? false}
+          onchange={(e) => (node.milestone = e.currentTarget.checked)}
+          class="accent-cyan-500"
+        />
         <span class="text-xs text-slate-500 uppercase">{t('chart.milestone')}</span>
       </label>
     </div>

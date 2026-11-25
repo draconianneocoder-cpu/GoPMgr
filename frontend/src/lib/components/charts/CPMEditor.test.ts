@@ -236,6 +236,26 @@ describe('CPMEditor scheduling constraints', () => {
     expect(saved.every((data) => !data.includes('"constraint":"mso"'))).toBe(true);
   });
 
+  // Selecting a task must not write the chart. The detail panel's milestone
+  // checkbox used bind:checked, which writes `false` into a task stored
+  // without `milestone`, so one click saved the chart twice (adding the field,
+  // then removing it when layout returned the task without it).
+  it('selects a task stored without `milestone` without writing the chart', async () => {
+    vi.useFakeTimers();
+    const node = { id: 'n1', label: 'Pour', duration: 2 };
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'cpm', title: 'C', data: JSON.stringify({ nodes: [node], edges: [] }) })),
+      LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [{ id: 'n1', title: 'Pour', depth: 0, x: 0, y: 0, width: 120, height: 40 }], edges: [], width: 200, height: 80 } } })),
+    });
+    const { getByRole, getByLabelText } = render(CPMEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Pour' }));
+    await waitFor(() => getByLabelText('Constraint'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+
   it('opens a task stored as "ASAP" without rewriting it', async () => {
     const node = { id: 'n1', label: 'Pour', duration: 2, constraint: 'ASAP' };
     const app = installApp({

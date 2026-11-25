@@ -117,3 +117,28 @@ describe('_stats_editor_shell migrated load-error "Back to dashboard" button (vi
     );
   });
 });
+
+// Opening an editor must not write the chart (0c7d6e8). A checkbox bound
+// with `bind:checked` to a missing field writes its unchecked state back on
+// mount, so a stored line chart whose series omit `dashed` (as the stored
+// documents do) became "dirty" and was saved as soon as it opened.
+describe('LineEditor open', () => {
+  it('lays out a stored chart whose series omit `dashed` without writing it', async () => {
+    vi.useFakeTimers();
+    const { default: LineEditor } = await import('./LineEditor.svelte');
+    const app = installApp({
+      GetChart: vi.fn(async () => ({
+        id: 'chart-1',
+        project_id: 'p1',
+        kind: 'line',
+        title: 'Line',
+        data: JSON.stringify({ x_str: ['Jan', 'Feb'], series: [{ name: 'Plan', y: [1, 2] }] }),
+      })),
+    });
+    render(LineEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalledWith('chart-1'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});

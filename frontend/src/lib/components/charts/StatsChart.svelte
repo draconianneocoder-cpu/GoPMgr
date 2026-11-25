@@ -76,8 +76,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function rebuild() {
     if (!canvas) return;
     chart?.destroy();
+    // A construction that threw leaves its chart registered on the canvas,
+    // and every later `new Chart` on it fails with "Canvas is already in use".
+    Chart.getChart(canvas)?.destroy();
     const theme = readStatsChartTheme(getComputedStyle(document.documentElement));
-    const config = buildStatsChartConfig(layout, theme);
+    // Chart.js writes into its data arrays (it attaches a `_chartjs`
+    // listener property). Editors hold the layout in `$state`, whose proxies
+    // refuse that write (state_descriptors_fixed), so the chart drew nothing.
+    // Chart.js gets a plain copy instead.
+    const config = buildStatsChartConfig($state.snapshot(layout) as StatsLayout, theme);
     chart = new Chart(canvas, config);
   }
 

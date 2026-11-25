@@ -136,6 +136,15 @@ describe('buildStatsChartConfig', () => {
     });
   });
 
+  it('starts the value axis at zero for bars and stacked areas, not for plain lines', () => {
+    const yOf = (layout: Parameters<typeof buildStatsChartConfig>[0]) =>
+      (buildStatsChartConfig(layout, lightTheme).options?.scales as Record<string, { beginAtZero?: boolean }>).y;
+    const base = { x_axis: {}, y_axis: {}, categories: ['1', '2'] };
+    expect(yOf({ ...base, kind: 'cumulative_flow', stacked: true, series: [{ name: 'Done', values: [4, 6], type: 'area' }] }).beginAtZero).toBe(true);
+    expect(yOf({ ...base, kind: 'bar', series: [{ name: 'Hours', values: [40, 42], type: 'bar' }] }).beginAtZero).toBe(true);
+    expect(yOf({ ...base, kind: 'line', series: [{ name: 'Temp', values: [40, 42], type: 'line' }] }).beginAtZero).toBe(false);
+  });
+
   it('draws Pareto annotations against the configured percentage axis', () => {
     const leftPixel = vi.fn(() => 12);
     const rightPixel = vi.fn(() => 34);

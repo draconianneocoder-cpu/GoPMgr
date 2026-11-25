@@ -337,8 +337,11 @@
   --cyan-600: 8 145 178;
   --cyan-700: 14 116 144;
   --cyan-800: 21 94 117;
-  --cyan-900: 22 78 99;
-  --cyan-950: 8 51 68;
+  /* Badge and tint backgrounds invert like red/emerald/amber below, so
+     `bg-cyan-900 text-cyan-200` badges stay readable (dark-on-dark was
+     1.5:1) and tinted cells read as light tints. */
+  --cyan-900: 207 250 254;  /* → cyan-100 */
+  --cyan-950: 236 254 255;  /* → cyan-50  */
 
   /* Semantic text shades (100–400): pastel → dark for WCAG AA on white.
      Badge/alert backgrounds (900/950): dark → light so that the common
@@ -383,6 +386,18 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Placeholders use the hint-text tier, which meets WCAG AA (4.5:1) on
+   every surface in both themes. Tailwind's default (half the text colour)
+   measured 4.4:1 dark and 3.0:1 light. In the base layer, so an explicit
+   `placeholder:` utility still wins. */
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--slate-500));
+    opacity: 1;
+  }
 }
 
 /* Visible keyboard-focus indicator. Most components apply Tailwind's
