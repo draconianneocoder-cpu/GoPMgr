@@ -154,7 +154,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <span class="font-semibold text-slate-100 group-hover:text-cyan-300">
                     {definition.name}
                   </span>
-                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-slate-600">
+                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-slate-500">
                     {definition.kind.replace('_', '-')}
                   </span>
                 </span>

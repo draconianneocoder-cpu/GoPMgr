@@ -398,7 +398,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             onclick={save}
             disabled={status !== 'idle' || !draft.title.trim()}
-            class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+            class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
           >
             {status === 'saving' ? t('common.saving') : t('common.save')}
           </button>

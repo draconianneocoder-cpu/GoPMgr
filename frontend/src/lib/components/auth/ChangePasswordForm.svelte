@@ -97,7 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <button
     type="submit"
     disabled={!canSubmit}
-    class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+    class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
   >
     {busy ? t('changePassword.submitting') : t('changePassword.submit')}
   </button>

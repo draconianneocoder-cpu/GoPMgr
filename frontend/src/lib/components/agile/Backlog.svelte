@@ -205,7 +205,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </button>
       <button
         onclick={openNew}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase px-3 py-1 rounded"
       >
         + Work item
       </button>
@@ -233,7 +233,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             ondrop={(e) => onDrop(e, i)}
             class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded {priorityTint(item.priority)} flex items-start gap-3 cursor-move"
           >
-            <span class="text-slate-600 font-mono text-xs select-none mt-1">
+            <span class="text-slate-500 font-mono text-xs select-none mt-1">
               {i + 1}.
             </span>
             <button

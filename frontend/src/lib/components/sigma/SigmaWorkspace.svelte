@@ -78,7 +78,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           onclick={createProject}
           disabled={creating || !newTitle}
-          class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-6 py-3 rounded text-sm"
+          class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-6 py-3 rounded text-sm"
         >
           {creating ? 'Creating...' : 'Create Project'}
         </button>

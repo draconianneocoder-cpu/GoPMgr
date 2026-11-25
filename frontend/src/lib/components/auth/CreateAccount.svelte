@@ -227,7 +227,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <button
       type="submit"
       disabled={!canSubmit}
-      class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+      class="w-full bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
     >
       {busy ? t('createAccount.submitting') : t('createAccount.submit')}
     </button>
@@ -255,7 +255,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="button"
         onclick={finish}
-        class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
+        class="w-full bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-2 rounded transition-colors"
       >
         {t('recoveryCodes.continue')}
       </button>
@@ -276,7 +276,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         type="button"
         disabled={!acknowledged}
         onclick={finish}
-        class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+        class="w-full bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
       >
         {t('recoveryCodes.continue')}
       </button>

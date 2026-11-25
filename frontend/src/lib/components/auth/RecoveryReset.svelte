@@ -96,7 +96,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="button"
         onclick={() => goto('login')}
-        class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
+        class="w-full bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-2 rounded transition-colors"
       >
         {t('recoveryReset.done.back')}
       </button>
@@ -204,7 +204,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="submit"
         disabled={!canSubmit}
-        class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+        class="w-full bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
       >
         {busy ? t('recoveryReset.submitting') : t('recoveryReset.submit')}
       </button>

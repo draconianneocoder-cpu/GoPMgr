@@ -55,7 +55,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="button"
         onclick={checkAndRepair}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-4 py-2 rounded"
       >Check and repair</button>
       <button type="button" onclick={dismiss} class="text-xs text-slate-400 hover:text-slate-200 underline">
         Dismiss

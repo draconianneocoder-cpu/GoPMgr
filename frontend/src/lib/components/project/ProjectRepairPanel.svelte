@@ -59,7 +59,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="button"
         onclick={() => goto('dashboard')}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-4 py-2 rounded"
       >Reload the project</button>
     </div>
   {:else if projectClosed}
@@ -71,7 +71,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         type="button"
         onclick={() => goto('portfolio')}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-4 py-2 rounded"
       >Back to projects</button>
     </div>
   {:else if result?.success}

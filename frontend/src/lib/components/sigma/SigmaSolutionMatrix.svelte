@@ -183,7 +183,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </select>
               </td>
               <td>
-                <Button variant="danger" size="sm" onclick={() => removeSolution(index)}>×</Button>
+                <Button variant="danger" size="sm" onclick={() => removeSolution(index)} aria-label={t('sigma.solutions.remove', { number: index + 1 })}>×</Button>
               </td>
             </tr>
           {/each}
@@ -226,11 +226,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   th, td {
     padding: 0.5rem;
-    border: 1px solid var(--border-color, #ccc);
+    border: 1px solid rgb(var(--slate-700));
     text-align: left;
   }
   th {
-    background: var(--bg-secondary, #f5f5f5);
+    background: rgb(var(--slate-900));
     font-weight: 600;
   }
   input[type="text"],
@@ -238,8 +238,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   select {
     width: 100%;
     padding: 0.25rem;
-    border: 1px solid var(--border-color, #ccc);
+    border: 1px solid rgb(var(--slate-700));
     border-radius: 4px;
+    background: rgb(var(--slate-950));
   }
   .score {
     font-weight: bold;
@@ -248,12 +249,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   .summary {
     margin-top: 1rem;
     padding: 1rem;
-    background: var(--bg-secondary, #f5f5f5);
+    background: rgb(var(--slate-900));
     border-radius: 4px;
   }
   .empty-state {
     text-align: center;
     padding: 2rem;
-    color: var(--text-muted, #666);
+    color: rgb(var(--slate-400));
   }
 </style>

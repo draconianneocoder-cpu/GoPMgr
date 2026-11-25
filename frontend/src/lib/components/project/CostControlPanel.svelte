@@ -302,7 +302,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="mt-1 text-xs text-slate-400"><span class="tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span><span class="ml-2 text-slate-500">Shown for context only; it is not included in Cost Control baseline or authorised funding.</span></p>
     </section>
     <section aria-labelledby="cost-summary-heading">
-      <div class="mb-2 flex items-baseline justify-between gap-3"><h3 id="cost-summary-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cost Control summary</h3><span class="text-[10px] uppercase tracking-widest text-slate-600">{summary.currency_code} reporting currency</span></div>
+      <div class="mb-2 flex items-baseline justify-between gap-3"><h3 id="cost-summary-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cost Control summary</h3><span class="text-[10px] uppercase tracking-widest text-slate-500">{summary.currency_code} reporting currency</span></div>
       <div class="grid grid-cols-2 gap-2 text-xs tabular-nums md:grid-cols-4">
       {#each [['Base plan', summary.planned], ['Contingency reserve', summary.contingency], ['Cost baseline', summary.cost_baseline], ['Management reserve', summary.management_reserve], ['Authorised funding', summary.authorised_funding], ['Committed', summary.commitment], ['Actual', summary.actual]] as [label, value]}
         <div class="rounded border border-slate-800 bg-slate-950 p-3"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="mt-1 font-bold text-slate-100">{summary.currency_code} {value}</div></div>
@@ -355,7 +355,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <label class="text-xs text-slate-400">Quantity<input disabled={mutationDisabled} bind:value={quantity} inputmode="decimal" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.000" /></label>
         <label class="text-xs text-slate-400">Unit<input disabled={mutationDisabled} bind:value={unit} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="each, kg, hr" /></label>
       </div>
-      <button disabled={saving || mutationDisabled || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
+      <button disabled={saving || mutationDisabled || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
     </form>
     </section>
     <section aria-labelledby="reserve-governance-heading" class="border-t border-slate-800 pt-3">

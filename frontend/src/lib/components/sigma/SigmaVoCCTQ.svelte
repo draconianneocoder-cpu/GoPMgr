@@ -8,6 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let {
     projectID,
@@ -112,7 +113,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="voc-entry-card">
           <div class="entry-header">
             <h4>Entry #{index + 1}</h4>
-            <Button variant="danger" size="sm" onclick={() => removeEntry(index)}>×</Button>
+            <Button variant="danger" size="sm" onclick={() => removeEntry(index)} aria-label={t('sigma.voc.remove', { number: index + 1 })}>×</Button>
           </div>
 
           <div class="entry-content">
@@ -238,11 +239,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     margin-bottom: 1.5rem;
   }
   .voc-entry-card {
-    border: 1px solid var(--border-color, #ddd);
+    border: 1px solid rgb(var(--slate-700));
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
-    background: white;
+    background: rgb(var(--slate-900) / 0.6);
   }
   .entry-header {
     display: flex;
@@ -253,7 +254,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   .entry-header h4 {
     margin: 0 0 0.25rem 0;
     font-size: 1rem;
-    color: var(--text-color, #333);
+    color: rgb(var(--slate-100));
   }
   .entry-content {
     display: grid;
@@ -263,7 +264,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     display: block;
     font-size: 0.75rem;
     text-transform: uppercase;
-    color: var(--text-muted, #666);
+    color: rgb(var(--slate-400));
     margin-bottom: 0.25rem;
   }
   .grid-2 {
@@ -276,28 +277,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
   textarea {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid var(--border-color, #ccc);
+    border: 1px solid rgb(var(--slate-700));
     border-radius: 4px;
+    background: rgb(var(--slate-950));
     font-size: 0.875rem;
   }
   input[type="text"]:focus,
   input[type="number"]:focus,
   textarea:focus {
     outline: none;
-    border-color: var(--color-primary, #007bff);
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    border-color: rgb(var(--cyan-500));
+    box-shadow: 0 0 0 2px rgb(var(--focus-ring) / 0.35);
   }
   .ctq-summary {
     margin-top: 1.5rem;
     padding: 1rem;
-    background: var(--bg-secondary, #f5f5f5);
+    background: rgb(var(--slate-900));
     border-radius: 4px;
   }
   .ctq-summary h4 {
     margin-top: 0;
     margin-bottom: 0.75rem;
     font-size: 1.125rem;
-    color: var(--text-color, #333);
+    color: rgb(var(--slate-100));
   }
   .ctq-summary ol {
     padding-left: 1.5rem;
@@ -308,6 +310,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   .empty-state {
     text-align: center;
     padding: 2rem;
-    color: var(--text-muted, #666);
+    color: rgb(var(--slate-400));
   }
 </style>

@@ -210,7 +210,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       type="button"
       onclick={save}
       disabled={!dirty || busy}
-      class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold px-3 py-1 rounded"
+      class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-3 py-1 rounded"
     >{busy ? 'Saving…' : 'Save columns'}</button>
     <button
       type="button"

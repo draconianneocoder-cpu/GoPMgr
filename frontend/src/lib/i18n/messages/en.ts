@@ -171,8 +171,13 @@ export const en = {
     '60 seconds after you copy them, GoPMgr clears the clipboard if it still holds these codes.',
   'recoveryCodes.copyFailed': 'Could not copy the codes: {error}',
 
+  'sigma.controlPlan.remove': 'Remove row {number}',
+  'sigma.sipoc.add': 'Add to {column}',
+  'sigma.sipoc.remove': 'Remove {column} item {number}',
   'sigma.solutions.cost': 'Cost',
   'sigma.solutions.costIn': 'Cost ({currency})',
+  'sigma.solutions.remove': 'Remove solution {number}',
+  'sigma.voc.remove': 'Remove entry {number}',
 
   'portfolio.analyticsFailed': 'Analytics failed: {error}',
   'portfolio.importFailed': 'Import failed: {error}',
@@ -228,6 +233,7 @@ export const en = {
   'chart.newTask': 'New task',
   'chart.addTask': '+ Task',
   'chart.task': 'Task',
+  'chart.deleteLink': 'Delete link',
   'chart.deleteTask': 'Delete task',
   'chart.milestone': 'Milestone',
   'chart.previewSplitting': 'Preview splitting',

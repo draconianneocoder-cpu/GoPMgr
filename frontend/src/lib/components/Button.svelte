@@ -72,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // the primary/cyan family which does app-wide; adding it here would
   // silently change ConfirmDialog's already-live-verified appearance.
   const variantClasses: Record<Exclude<typeof variant, 'link' | 'remove' | 'nav'>, string> = {
-    primary: 'bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase disabled:opacity-50',
+    primary: 'bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase disabled:opacity-50',
     secondary: 'bg-slate-800 hover:bg-slate-700 disabled:opacity-50',
     danger: 'bg-red-700 hover:bg-red-600 text-white font-bold disabled:opacity-50',
     caution: 'bg-amber-800 hover:bg-amber-700 text-white font-bold disabled:opacity-50',

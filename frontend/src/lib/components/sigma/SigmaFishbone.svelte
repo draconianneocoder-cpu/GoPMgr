@@ -103,7 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="w-full bg-slate-900 border border-slate-800 rounded-lg p-4 overflow-x-auto">
   <div class="flex justify-between items-center mb-4">
     <h3 class="text-sm font-bold uppercase tracking-widest text-cyan-400">Fishbone Diagram</h3>
-    <button onclick={saveAll} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1.5 rounded">
+    <button onclick={saveAll} disabled={saving} class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1.5 rounded">
       {saving ? 'Saving...' : 'Save Diagram'}
     </button>
   </div>
@@ -116,9 +116,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <svg viewBox="0 0 {width} {height}" class="w-full h-auto select-none">
     <!-- Main Spine -->
-    <line x1="50" y1={centerY} x2={centerX + spineLength} y2={centerY} stroke="#94a3b8" stroke-width="3" />
+    <line x1="50" y1={centerY} x2={centerX + spineLength} y2={centerY} class="stroke-slate-400" stroke-width="3" />
     <!-- Arrow Head -->
-    <polygon points="{centerX + spineLength},{centerY} {centerX + spineLength - 15},{centerY - 10} {centerX + spineLength - 15},{centerY + 10}" fill="#94a3b8" />
+    <polygon points="{centerX + spineLength},{centerY} {centerX + spineLength - 15},{centerY - 10} {centerX + spineLength - 15},{centerY + 10}" class="fill-slate-400" />
 
     {#each data.branches as branch, bIdx (branch.category)}
       {@const isTop = bIdx < 3}
@@ -129,7 +129,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <line x1={xStart} y1={centerY} x2={xStart + 60} y2={centerY + yOffset} stroke="#64748b" stroke-width="2" />
 
       <!-- Category Label -->
-      <text x={xStart + 70} y={centerY + yOffset - 10} fill="#cbd5e1" font-size="12" font-weight="bold">{branch.category}</text>
+      <text x={xStart + 70} y={centerY + yOffset - 10} class="fill-slate-300" font-size="12" font-weight="bold">{branch.category}</text>
 
       <!-- Causes -->
       {#each branch.causes as cause, cIdx (cause.id)}
@@ -138,9 +138,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <text
           x={xStart + 65}
           y={causeY + 4}
-          fill={cause.is_root_cause ? '#f87171' : '#e2e8f0'}
           font-size="11"
-          class="cursor-pointer hover:fill-white"
+          class="cursor-pointer hover:fill-slate-50 {cause.is_root_cause ? 'fill-red-400' : 'fill-slate-200'}"
           role="button"
           tabindex="0"
           onclick={() => openFiveWhys(bIdx, cIdx)}
@@ -149,7 +148,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {cause.description}
         </text>
         {#if cause.is_root_cause}
-          <circle cx={xStart + 60} cy={causeY} r="3" fill="#f87171" />
+          <circle cx={xStart + 60} cy={causeY} r="3" class="fill-red-400" />
         {/if}
       {/each}
 
@@ -157,9 +156,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <text
         x={xStart + 20}
         y={centerY + yOffset + 40}
-        fill="#3b82f6"
         font-size="10"
-        class="cursor-pointer hover:fill-blue-400"
+        class="cursor-pointer fill-cyan-400 hover:fill-cyan-300"
         role="button"
         tabindex="0"
         onclick={() => addCause(bIdx)}

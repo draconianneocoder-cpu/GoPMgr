@@ -214,7 +214,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         onclick={openNew}
         disabled={columns.length === 0}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
         + Work item
       </button>
@@ -283,7 +283,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </li>
               {/each}
               {#if itemsInColumn(col.id).length === 0}
-                <li class="text-[10px] text-slate-600 text-center py-4">
+                <li class="text-[10px] text-slate-500 text-center py-4">
                   Drag a card here, or click + Work item.
                 </li>
               {/if}

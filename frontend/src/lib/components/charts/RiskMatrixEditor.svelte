@@ -194,7 +194,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="flex items-center gap-2">
         {#if lastSavedAt}<span class="text-[10px] text-slate-500 tabular-nums">Saved {lastSavedAt.toLocaleTimeString()}</span>{/if}
         <button onclick={addItem} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Item</button>
-        <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">{saving ? 'Saving...' : 'Save'}</button>
+        <button onclick={save} disabled={saving} class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">{saving ? 'Saving...' : 'Save'}</button>
       </div>
     </header>
 

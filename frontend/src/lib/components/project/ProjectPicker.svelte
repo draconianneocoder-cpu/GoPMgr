@@ -121,7 +121,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
         <button
           onclick={() => goto('launchpad')}
-          class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+          class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
         >
           + New Project
         </button>

@@ -1155,7 +1155,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         onclick={save}
         disabled={!dirty || busy}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
         {busy ? 'Saving details…' : 'Save details'}
       </button>
@@ -1445,7 +1445,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <button
               onclick={saveScenario}
               disabled={scenarioBusy}
-              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+              class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
             >
               {scenarioBusy ? 'Saving…' : scenarioDraft.id ? 'Update scenario' : 'Add scenario'}
             </button>
@@ -1517,7 +1517,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <button
                 onclick={branchScenarioChart}
                 disabled={scenarioCopyBusy || !scenarioCopyDraft.scenario_id || !scenarioCopyDraft.chart_id}
-                class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+                class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
               >
                 {scenarioCopyBusy ? 'Copying…' : 'Copy chart into scenario'}
               </button>
@@ -1633,7 +1633,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                             <button
                               onclick={saveScenarioChart}
                               disabled={scenarioChartEditBusy}
-                              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+                              class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
                             >
                               {scenarioChartEditBusy ? 'Saving…' : 'Save scenario edits'}
                             </button>
@@ -1788,7 +1788,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              <button
                onclick={saveResourceCalendar}
                disabled={resourceCalendarBusy}
-               class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+               class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
              >
                {resourceCalendarBusy
                  ? 'Saving…'
@@ -1867,7 +1867,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                <button
                  onclick={encryptDatabase}
                  disabled={encryptionBusy || recoveryCodesPending || encryptGate !== null}
-                 class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+                 class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
                >
                  {encryptionBusy ? 'Encrypting…' : 'Encrypt database'}
                </button>
@@ -2205,7 +2205,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            <button
              onclick={saveExportSettings}
              disabled={settingsBusy || settingsResetting || settingsLoadError !== ''}
-             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
+             class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
            >
              {settingsBusy ? 'Saving…' : 'Save export settings'}
            </button>
@@ -2267,7 +2267,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            <button
              onclick={applyFont}
              disabled={fontBusy || !defaultFont}
-             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+             class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
            >
              Apply font
            </button>

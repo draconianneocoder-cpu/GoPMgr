@@ -273,7 +273,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         onclick={save}
         disabled={saving}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
         {saving ? 'Saving...' : 'Save'}
       </button>
@@ -306,7 +306,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 y1={e.y1}
                 x2={e.x2}
                 y2={e.y2}
-                stroke={e.kind === 'spine' ? '#22d3ee' : e.kind === 'bone' ? '#94a3b8' : '#475569'}
+                class={e.kind === 'spine' ? 'stroke-cyan-400' : e.kind === 'bone' ? 'stroke-slate-400' : 'stroke-slate-600'}
                 stroke-width={e.kind === 'spine' ? 2.5 : e.kind === 'bone' ? 2 : 1}
               />
             {/each}
@@ -338,7 +338,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   x={n.x + n.width / 2}
                   y={n.y + n.height / 2 + 4}
                   font-size="12"
-                  fill="#67e8f9"
+                  class="fill-cyan-300"
                   text-anchor="middle"
                   font-weight="bold"
                 >
@@ -349,7 +349,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   x={n.x + n.width}
                   y={n.y + n.height / 2 + 4}
                   font-size="10"
-                  fill="#cbd5e1"
+                  class="fill-slate-300"
                   text-anchor="end"
                 >
                   {n.label}

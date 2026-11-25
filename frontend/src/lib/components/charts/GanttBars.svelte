@@ -39,9 +39,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <svg width={canvasW} height={canvasH} role="img" aria-label={ariaLabel}>
     <!-- day grid -->
     {#each Array(Math.ceil(layout.horizon) + 1) as _, d (d)}
-      <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} stroke="#1e293b" stroke-width="1" />
+      <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} class="stroke-slate-800" stroke-width="1" />
       {#if pxPerDay >= 20 || d % 5 === 0}
-        <text x={d * pxPerDay + 2} y={layout.rows.length * rowH + 14} font-size="9" fill="#475569">{d}</text>
+        <text x={d * pxPerDay + 2} y={layout.rows.length * rowH + 14} font-size="9" class="fill-slate-400">{d}</text>
       {/if}
     {/each}
 
@@ -49,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#each layout.deps as dep (dep.from + '>' + dep.to)}
       {@const p = depPath(dep, layout.rows, pxPerDay)}
       {#if p}
-        <path d={p} data-testid="dep-{dep.from}-{dep.to}" fill="none" stroke="#475569" stroke-width="1.2" />
+        <path d={p} data-testid="dep-{dep.from}-{dep.to}" fill="none" class="stroke-slate-500" stroke-width="1.2" />
       {/if}
     {/each}
 
@@ -113,10 +113,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
       {/if}
       {#if r.constraint_violated}
-        <text x={r.ef * pxPerDay + 4} y={y + 12} font-size="11" font-weight="bold" fill="#f59e0b">!</text>
+        <text x={r.ef * pxPerDay + 4} y={y + 12} font-size="11" font-weight="bold" class="fill-amber-400">!</text>
       {/if}
       {#if layout.anchored && r.start_date}
-        <text x={r.ef * pxPerDay + (r.constraint_violated ? 14 : 4)} y={y + 12} font-size="9" fill="#64748b">
+        <text x={r.ef * pxPerDay + (r.constraint_violated ? 14 : 4)} y={y + 12} font-size="9" class="fill-slate-400">
           {r.start_date} → {r.finish_date}
         </text>
       {/if}

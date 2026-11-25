@@ -199,9 +199,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function confidenceMarkers(result: SimResult) {
     return [
-      { label: 'cpm.risk.p50' as const, day: result.p50, probability: 0.5, color: '#67e8f9' },
-      { label: 'cpm.risk.p80' as const, day: result.p80, probability: 0.8, color: '#fbbf24' },
-      { label: 'cpm.risk.p90' as const, day: result.p90, probability: 0.9, color: '#fca5a5' },
+      { label: 'cpm.risk.p50' as const, day: result.p50, probability: 0.5, stroke: 'stroke-cyan-300', fill: 'fill-cyan-300' },
+      { label: 'cpm.risk.p80' as const, day: result.p80, probability: 0.8, stroke: 'stroke-amber-400', fill: 'fill-amber-400' },
+      { label: 'cpm.risk.p90' as const, day: result.p90, probability: 0.9, stroke: 'stroke-red-300', fill: 'fill-red-300' },
     ];
   }
 
@@ -1057,17 +1057,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 role="img"
                 aria-label={t('cpm.risk.sCurve.label', { from: days(cdfDomain(monteCarlo)[0]), to: days(cdfDomain(monteCarlo)[1]) })}
               >
-                <line x1="14" y1="82" x2="228" y2="82" stroke="#334155" stroke-width="1" />
-                <line x1="14" y1="18" x2="14" y2="82" stroke="#334155" stroke-width="1" />
-                <line x1="14" y1="50" x2="228" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
-                <text x="14" y="95" font-size="8" fill="#64748b">{days(cdfDomain(monteCarlo)[0])}</text>
-                <text x="228" y="95" font-size="8" fill="#64748b" text-anchor="end">{days(cdfDomain(monteCarlo)[1])}</text>
-                <text x="5" y="84" font-size="8" fill="#64748b" text-anchor="end">0</text>
-                <text x="5" y="21" font-size="8" fill="#64748b" text-anchor="end">1</text>
+                <line x1="14" y1="82" x2="228" y2="82" class="stroke-slate-700" stroke-width="1" />
+                <line x1="14" y1="18" x2="14" y2="82" class="stroke-slate-700" stroke-width="1" />
+                <line x1="14" y1="50" x2="228" y2="50" class="stroke-slate-800" stroke-width="1" stroke-dasharray="3 3" />
+                <text x="14" y="95" font-size="8" class="fill-slate-400">{days(cdfDomain(monteCarlo)[0])}</text>
+                <text x="228" y="95" font-size="8" class="fill-slate-400" text-anchor="end">{days(cdfDomain(monteCarlo)[1])}</text>
+                <text x="5" y="84" font-size="8" class="fill-slate-400" text-anchor="end">0</text>
+                <text x="5" y="21" font-size="8" class="fill-slate-400" text-anchor="end">1</text>
                 <path
                   d={cdfPath(monteCarlo)}
                   fill="none"
-                  stroke="#22d3ee"
+                  class="stroke-cyan-400"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -1078,7 +1078,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     y1={cdfY(marker.probability)}
                     x2={cdfX(monteCarlo, marker.day)}
                     y2="82"
-                    stroke={marker.color}
+                    class={marker.stroke}
                     stroke-width="1"
                     stroke-dasharray="3 2"
                   />
@@ -1086,14 +1086,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     cx={cdfX(monteCarlo, marker.day)}
                     cy={cdfY(marker.probability)}
                     r="2.5"
-                    fill={marker.color}
+                    class={marker.fill}
                   />
                   <text
                     x={cdfX(monteCarlo, marker.day)}
                     y={Math.max(10, cdfY(marker.probability) - 5)}
                     font-size="8"
                     text-anchor="middle"
-                    fill={marker.color}
+                    class={marker.fill}
                   >{t(marker.label)}</text>
                 {/each}
               </svg>
