@@ -36,7 +36,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="mt-5 flex flex-wrap justify-end gap-2">
         <button onclick={onCancel} disabled={navigation.saving} class="rounded px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">{t('unsaved.cancel')}</button>
         <button onclick={discardAndContinueNavigation} disabled={navigation.saving} class="rounded border border-red-800 px-3 py-2 text-xs text-red-300 hover:bg-red-950/40">{t('unsaved.discard')}</button>
-        <button onclick={saveAndContinueNavigation} disabled={navigation.saving} class="rounded bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
+        <button onclick={saveAndContinueNavigation} disabled={navigation.saving} class="rounded bg-cyan-700 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
           {navigation.saving ? t('unsaved.saving') : t('unsaved.save')}
         </button>
       </div>

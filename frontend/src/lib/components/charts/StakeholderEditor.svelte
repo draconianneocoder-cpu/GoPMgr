@@ -240,7 +240,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         onclick={save}
         disabled={saving}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
         {saving ? 'Saving...' : 'Save'}
       </button>
@@ -347,11 +347,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="bg-slate-900 border border-slate-800 rounded"
       >
         <!-- Axis labels -->
-        <text x={40 + W / 2} y="20" font-size="11" fill="#67e8f9" text-anchor="middle" font-weight="bold"
+        <text x={40 + W / 2} y="20" font-size="11" class="fill-cyan-300" text-anchor="middle" font-weight="bold"
               style="text-transform: uppercase; letter-spacing: 2px;">
           Interest →
         </text>
-        <text x="20" y={40 + H / 2} font-size="11" fill="#67e8f9" text-anchor="middle" font-weight="bold"
+        <text x="20" y={40 + H / 2} font-size="11" class="fill-cyan-300" text-anchor="middle" font-weight="bold"
               transform={`rotate(-90 20 ${40 + H / 2})`}
               style="text-transform: uppercase; letter-spacing: 2px;">
           Power →
@@ -367,15 +367,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               y={y}
               width={W / 2}
               height={H / 2}
-              class={quadrantTone(q.power, q.interest)}
-              stroke="#334155"
+              class="{quadrantTone(q.power, q.interest)} stroke-slate-700"
               stroke-width="1"
             />
-            <text x={x + 10} y={y + 18} font-size="10" fill="#94a3b8"
+            <text x={x + 10} y={y + 18} font-size="10" class="fill-slate-400"
                   style="text-transform: uppercase; letter-spacing: 1px;">
               {q.title}
             </text>
-            <text x={x + 10} y={y + 36} font-size="14" fill="#f1f5f9" font-weight="bold">
+            <text x={x + 10} y={y + 36} font-size="14" class="fill-slate-100" font-weight="bold">
               {q.strategy}
             </text>
           {/each}
@@ -385,9 +384,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="#475569" stroke-width="1.5" />
 
           <!-- Axis tick labels -->
-          <text x="6" y={H - 6} font-size="9" fill="#64748b">low</text>
-          <text x={W - 26} y={H - 6} font-size="9" fill="#64748b">high</text>
-          <text x="6" y={H - 6 - H / 4} font-size="9" fill="#64748b"></text>
+          <text x="6" y={H - 6} font-size="9" class="fill-slate-400">low</text>
+          <text x={W - 26} y={H - 6} font-size="9" class="fill-slate-400">high</text>
+          <text x="6" y={H - 6 - H / 4} font-size="9" class="fill-slate-400"></text>
 
           <!-- Stakeholder points -->
           {#each layout.points as p (p.id)}
@@ -415,7 +414,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <text y="4" font-size="10" fill="#f1f5f9" text-anchor="middle" font-weight="bold">
                 {p.name.charAt(0).toUpperCase()}
               </text>
-              <text y="32" font-size="10" fill="#cbd5e1" text-anchor="middle">
+              <text y="32" font-size="10" class="fill-slate-300" text-anchor="middle">
                 {p.name.length > 16 ? p.name.slice(0, 15) + '…' : p.name}
               </text>
             </g>

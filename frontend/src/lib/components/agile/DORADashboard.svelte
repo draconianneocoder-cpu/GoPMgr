@@ -197,7 +197,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </label>
       <button
         onclick={() => (showForm = !showForm)}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-1 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase px-3 py-1 rounded"
       >
         {showForm ? 'Cancel' : '+ Deployment'}
       </button>
@@ -341,7 +341,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           onclick={recordDeployment}
           disabled={recording || !formVersion.trim()}
-          class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+          class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
         >
           Save deployment
         </button>

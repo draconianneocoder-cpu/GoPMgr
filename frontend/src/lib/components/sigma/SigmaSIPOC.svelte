@@ -8,6 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let {
     projectID,
@@ -147,7 +148,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="sipoc-column border-t-4 {cat.color}">
           <div class="column-header">
             <h4>{cat.label}</h4>
-            <Button variant="secondary" size="sm" onclick={() => addElement(cat.key)}>+</Button>
+            <Button variant="secondary" size="sm" onclick={() => addElement(cat.key)} aria-label={t('sigma.sipoc.add', { column: cat.label })}>+</Button>
           </div>
           <div class="column-content">
             {#each getElementsForCategory(cat.key) as element, index (element.id || index)}
@@ -170,7 +171,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   placeholder="Requirements"
                   oninput={() => updateElement(sipocData.elements.indexOf(element), 'requirements', element.requirements)}
                 />
-                <button class="btn-remove" onclick={() => removeElement(sipocData.elements.indexOf(element))}>×</button>
+                <button
+                  class="btn-remove"
+                  aria-label={t('sigma.sipoc.remove', { column: cat.label, number: index + 1 })}
+                  onclick={() => removeElement(sipocData.elements.indexOf(element))}
+                >
+                  ×
+                </button>
               </div>
             {/each}
             {#if getElementsForCategory(cat.key).length === 0}
@@ -200,7 +207,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   .process-info {
     margin-bottom: 1.5rem;
     padding: 1rem;
-    background: var(--bg-secondary, #f5f5f5);
+    background: rgb(var(--slate-900));
     border-radius: 4px;
   }
   .process-info label {
@@ -211,7 +218,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     display: block;
     font-size: 0.75rem;
     text-transform: uppercase;
-    color: var(--text-muted, #666);
+    color: rgb(var(--slate-400));
     margin-bottom: 0.25rem;
   }
   .grid-2 {
@@ -223,8 +230,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   textarea {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid var(--border-color, #ccc);
+    border: 1px solid rgb(var(--slate-700));
     border-radius: 4px;
+    background: rgb(var(--slate-950));
     font-size: 0.875rem;
   }
   .sipoc-columns {
@@ -233,7 +241,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     gap: 1rem;
   }
   .sipoc-column {
-    background: var(--bg-secondary, #f5f5f5);
+    background: rgb(var(--slate-900));
     border-radius: 4px;
     padding: 0.5rem;
   }
@@ -243,7 +251,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     align-items: center;
     margin-bottom: 0.5rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color, #ccc);
+    border-bottom: 1px solid rgb(var(--slate-700));
   }
   .column-header h4 {
     font-size: 0.875rem;
@@ -258,8 +266,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   .element-card {
     position: relative;
     padding: 0.5rem;
-    background: white;
-    border: 1px solid var(--border-color, #ddd);
+    background: rgb(var(--slate-950));
+    border: 1px solid rgb(var(--slate-700));
     border-radius: 4px;
   }
   .element-card textarea,
@@ -293,7 +301,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   .empty-column {
     text-align: center;
-    color: var(--text-muted, #999);
+    color: rgb(var(--slate-400));
     font-size: 0.75rem;
     padding: 1rem 0;
   }

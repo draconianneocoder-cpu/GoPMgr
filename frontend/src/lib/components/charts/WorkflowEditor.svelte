@@ -341,7 +341,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 />
                 {#if e.label}
                   {@const pos = edgeLabelPosition(from, to)}
-                  <text x={pos.x} y={pos.y} font-size="10" fill="#cbd5e1">
+                  <text x={pos.x} y={pos.y} font-size="10" class="fill-slate-300">
                     {e.label}
                   </text>
                 {/if}

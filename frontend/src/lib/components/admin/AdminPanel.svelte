@@ -650,7 +650,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
       <button
         onclick={() => { showCreateForm = !showCreateForm; pendingRoleChange = null; pendingDisable = null; purgeTarget = null; }}
-        class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded shrink-0"
+        class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded shrink-0"
       >
         {showCreateForm ? 'Cancel' : 'Create user'}
       </button>
@@ -883,7 +883,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             type="submit"
             disabled={creating}
-            class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+            class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
           >
             {creating ? 'Creating…' : 'Create account'}
           </button>
@@ -909,7 +909,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           type="button"
           onclick={dismissCodes}
-          class="text-xs font-semibold uppercase tracking-wide bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded transition-colors"
+          class="text-xs font-semibold uppercase tracking-wide bg-cyan-700 hover:bg-cyan-800 text-white px-3 py-1.5 rounded transition-colors"
         >
           Done
         </button>
@@ -1191,7 +1191,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <button
                 type="submit"
                 disabled={savingStandby}
-                class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+                class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
               >{savingStandby ? 'Saving…' : 'Save'}</button>
             </form>
             {#if standbyCandidates.length === 0}

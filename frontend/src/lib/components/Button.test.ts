@@ -31,7 +31,10 @@ describe('Button', () => {
   it('applies the primary variant classes (solid cyan, white bold uppercase)', () => {
     const { getByText } = render(ButtonChildrenHarness, { props: { text: 'Save', variant: 'primary' } });
     const btn = getByText('Save');
-    expect(btn.className).toContain('bg-cyan-600');
+    // Whole class tokens: the AA-contrast shades chosen 2026-11-25.
+    const classes = btn.className.split(/\s+/);
+    expect(classes).toContain('bg-cyan-700');
+    expect(classes).toContain('hover:bg-cyan-800');
     expect(btn.className).toContain('text-white');
     expect(btn.className).toContain('uppercase');
   });

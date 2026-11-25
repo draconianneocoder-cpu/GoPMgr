@@ -348,7 +348,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title={t('chart.previewSplitting.hint')}>{t('chart.previewSplitting')}</button>
       <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title={t('gantt.levelSplit.hint')}>{t('gantt.levelSplit')}</button>
       <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">{t('chart.addTask')}</button>
-      <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
+      <button onclick={save} disabled={saving} class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
         {saving ? t('common.saving') : t('common.save')}
       </button>
     </div>
@@ -402,7 +402,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} class="accent-cyan-500" />
                 </td>
                 <td class="text-center">
-                  <button onclick={() => deleteTask(r.id)} class="text-slate-600 hover:text-red-400" title={t('chart.deleteTask')}>✕</button>
+                  <button onclick={() => deleteTask(r.id)} class="text-slate-500 hover:text-red-400" title={t('chart.deleteTask')} aria-label={t('chart.deleteTask')}>✕</button>
                 </td>
               </tr>
             {/if}
@@ -421,7 +421,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               placeholder={LINK_TYPE_EXAMPLE}
               class="w-16 bg-slate-900 border border-slate-800 rounded p-1 font-mono outline-none focus:border-cyan-500"
             />
-            <button onclick={() => deleteLink(i)} class="text-slate-600 hover:text-red-400">✕</button>
+            <button onclick={() => deleteLink(i)} class="text-slate-500 hover:text-red-400" title={t('chart.deleteLink')} aria-label={t('chart.deleteLink')}>✕</button>
           </div>
         {/each}
         <div class="flex items-center gap-1 mt-2">

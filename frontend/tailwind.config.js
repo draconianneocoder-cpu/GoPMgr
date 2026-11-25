@@ -33,6 +33,7 @@ export default {
           500: 'rgb(var(--cyan-500) / <alpha-value>)',
           600: 'rgb(var(--cyan-600) / <alpha-value>)',
           700: 'rgb(var(--cyan-700) / <alpha-value>)',
+          800: 'rgb(var(--cyan-800) / <alpha-value>)',
           900: 'rgb(var(--cyan-900) / <alpha-value>)',
           950: 'rgb(var(--cyan-950) / <alpha-value>)',
         },

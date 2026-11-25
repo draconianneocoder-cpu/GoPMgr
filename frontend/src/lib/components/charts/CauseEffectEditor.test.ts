@@ -93,7 +93,7 @@ describe('CauseEffectEditor migrated "+ Child cause"/"+ Sibling"/"Save" buttons'
     const save = getByText('Save') as HTMLButtonElement;
     expect(save.disabled).toBe(false);
     expect(save.className.split(/\s+/).filter(Boolean).sort()).toEqual(
-      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
     );
@@ -107,7 +107,7 @@ describe('CauseEffectEditor migrated load-error "Back to dashboard" button', () 
 
     const btn = await findByText('Back to dashboard');
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
-      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
     );

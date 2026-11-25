@@ -287,7 +287,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <li
         aria-current={item.id === step ? 'step' : undefined}
         class="border-t-2 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider
-          {item.id <= step ? 'border-cyan-500 text-slate-200' : 'border-slate-800 text-slate-600'}"
+          {item.id <= step ? 'border-cyan-500 text-slate-200' : 'border-slate-800 text-slate-500'}"
       >
         <span class="mr-1 text-slate-500">{item.id}.</span>{item.label}
       </li>
@@ -337,7 +337,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             type="submit"
             disabled={busy || created || !name.trim()}
-            class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+            class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
           >{busy ? 'Creating…' : 'Create blank project'}</button>
         </div>
       </form>
@@ -502,7 +502,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           onclick={create}
           disabled={busy || !name || !countryCode || !timeZone}
-          class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+          class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
         >
           {busy ? 'Creating…' : 'Create project'}
         </button>
@@ -530,8 +530,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           onclick={next}
           disabled={!canContinue || busy}
-          class="rounded bg-cyan-600 px-4 py-2 text-xs font-bold uppercase text-white
-            hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+          class="rounded bg-cyan-700 px-4 py-2 text-xs font-bold uppercase text-white
+            hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {step === 3 && busy ? 'Loading…' : 'Continue'}
         </button>

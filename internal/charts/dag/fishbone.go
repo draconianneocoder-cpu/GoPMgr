@@ -154,7 +154,15 @@ func LayoutFishbone(doc FishboneDocument, opt FishboneLayoutOptions) FishboneLay
 			maxHorizProj = hp
 		}
 	}
-	attachmentStride := 110.0 // x-distance between successive attachments
+	// Bones on one side are parallel, so at any height two neighbours are
+	// one stride apart. A cause occupies causeStroke + causeLabelWidth to
+	// the left of its bone; the stride clears that with a margin, so no
+	// cause label is drawn across the neighbouring bone.
+	const (
+		causeStroke     = 24.0
+		causeLabelWidth = 130.0
+	)
+	attachmentStride := causeStroke + causeLabelWidth + 16 // x-distance between successive attachments
 
 	// Compute spine length:
 	//   left margin (for cause labels) + (N-1) * stride + max bone horiz projection +
@@ -272,8 +280,7 @@ func LayoutFishbone(doc FishboneDocument, opt FishboneLayoutOptions) FishboneLay
 			}
 			// Short perpendicular stroke from the bone outward
 			// horizontally for the cause text.
-			strokeLen := 90.0
-			textX := cx - strokeLen
+			textX := cx - causeStroke
 			out.Edges = append(out.Edges, FishboneEdge{
 				X1: cx, Y1: cy, X2: textX, Y2: cy, Kind: "cause",
 			})
@@ -281,9 +288,9 @@ func LayoutFishbone(doc FishboneDocument, opt FishboneLayoutOptions) FishboneLay
 				ID:     "cause_" + itoa(i) + "_" + itoa(j),
 				Type:   "cause",
 				Label:  cause,
-				X:      textX - 120,
+				X:      textX - causeLabelWidth,
 				Y:      cy - opt.CauseHeight/2,
-				Width:  120,
+				Width:  causeLabelWidth,
 				Height: opt.CauseHeight,
 				Side:   side,
 			})

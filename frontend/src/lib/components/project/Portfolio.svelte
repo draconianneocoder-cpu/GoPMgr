@@ -150,7 +150,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
       <button
         onclick={() => goto('launchpad')}
-        class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+        class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
       >
         + New Project
       </button>
@@ -339,7 +339,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               aria-selected={tab === t}
               onclick={() => (tab = t)}
               class="text-xs px-3 py-1.5 rounded {tab === t
-                ? 'bg-cyan-600 text-white'
+                ? 'bg-cyan-700 text-white'
                 : 'bg-slate-800 text-slate-400 hover:text-slate-200'}"
             >
               {label} <span class="opacity-60">{counts[t]}</span>

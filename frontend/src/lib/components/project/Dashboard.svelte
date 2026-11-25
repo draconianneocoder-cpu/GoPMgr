@@ -718,7 +718,7 @@ import Button from '../Button.svelte';
             onclick={toggleAgile}
             disabled={loading}
             title={loading ? 'Waiting for the project to finish loading…' : undefined}
-            class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} disabled:opacity-50 px-3 py-1 rounded"
+            class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-700 hover:bg-cyan-800 text-white'} disabled:opacity-50 px-3 py-1 rounded"
           >
             {agileEnabled ? 'Disable' : 'Enable Agile Pack'}
           </button>

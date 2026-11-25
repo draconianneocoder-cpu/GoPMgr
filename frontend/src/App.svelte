@@ -321,7 +321,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-sm text-red-400 break-words" role="alert">Failed to load view: {routeError}</p>
       <button
         onclick={() => goto('dashboard')}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase px-3 py-2 rounded"
       >
         Back to dashboard
       </button>
@@ -350,7 +350,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </p>
       <button
         onclick={() => goto('dashboard')}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
+        class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase px-3 py-2 rounded"
       >
         Back to dashboard
       </button>

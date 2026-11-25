@@ -343,7 +343,7 @@ import Button from '../Button.svelte';
             <button
               onclick={saveCharter}
               disabled={saving}
-              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+              class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
             >
               {saving ? 'Saving...' : 'Save Charter'}
             </button>
@@ -376,7 +376,7 @@ import Button from '../Button.svelte';
                   type="file"
                   accept=".csv,.tsv,.txt,.xlsx"
                   onchange={handleDataImport}
-                  class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500"
+                  class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-cyan-700 file:text-white hover:file:bg-cyan-800"
                 />
                 <span class="text-xs text-slate-500">Supports CSV, TSV, Excel (.xlsx)</span>
               </div>
@@ -415,7 +415,7 @@ import Button from '../Button.svelte';
           <button
             onclick={calculateStats}
             disabled={!datasetInput.trim()}
-            class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+            class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
           >
             Calculate
           </button>
@@ -487,7 +487,7 @@ import Button from '../Button.svelte';
           <button
             onclick={calculatePareto}
             disabled={!paretoCategories || !paretoCounts}
-            class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+            class="text-xs bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
           >
             Generate Pareto
           </button>

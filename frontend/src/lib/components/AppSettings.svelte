@@ -439,7 +439,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             onclick={save}
             disabled={saving || resetting}
-            class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+            class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
           >
             {saving ? 'Saving…' : 'Save settings'}
           </button>
@@ -521,7 +521,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <button
                     onclick={downloadAndInstallUpdate}
                     disabled={installingUpdate}
-                    class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase px-3 py-1.5 rounded"
+                    class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white text-xs font-bold uppercase px-3 py-1.5 rounded"
                   >
                     {installingUpdate ? 'Downloading and verifying…' : 'Download & Open Installer'}
                   </button>

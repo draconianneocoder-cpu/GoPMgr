@@ -367,7 +367,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {n.title.length > 24 ? n.title.slice(0, 23) + '…' : n.title}
             </text>
             {#if n.owner}
-              <text x="8" y="49" font-size="9" fill="#94a3b8">
+              <text x="8" y="49" font-size="9" fill="#cbd5e1">
                 {n.owner}
               </text>
             {/if}

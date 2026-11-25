@@ -37,8 +37,9 @@ changed.
 - Use Svelte 5 and TypeScript patterns already present in `frontend/src`.
 - Keep desktop workflows dense, clear, and operational. Avoid
   marketing-page composition for app screens.
-- Call the backend through `frontend/src/lib/desktop-api.ts`, which re-exports
-  the generated bindings in `frontend/bindings/`. Regenerate them when an
+- Call the backend through `frontend/src/lib/desktop-api.ts`, which exports
+  the generated bindings in `frontend/bindings/` and turns a Go error into a
+  `BackendError` that reads as its message, so `${e}` needs no prefix trimming. Regenerate them when an
   exported App method or its doc comment changes; never hand-edit them or
   restore the old `window.go` declarations.
 - Put Svelte runes only in Svelte-aware files: `.svelte`, `.svelte.ts`,

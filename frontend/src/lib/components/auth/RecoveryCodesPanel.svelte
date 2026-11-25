@@ -182,7 +182,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           type="submit"
           disabled={busy || !password}
-          class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
+          class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
         >{busy ? t('common.creating') : t('recoveryPanel.createCodes')}</button>
         <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">{t('common.cancel')}</button>
       </div>
@@ -205,7 +205,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="button"
           onclick={confirm}
           disabled={busy || !saved}
-          class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
+          class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
         >{busy ? t('common.saving') : t('recoveryPanel.useNew')}</button>
         <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">{t('recoveryPanel.keepCurrent')}</button>
       </div>

@@ -3,6 +3,10 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  // Bar, milestone and outline colours are mid-tones chosen to keep 3:1
+  // against both the dark and the light page (WCAG 1.4.11): critical
+  // #ef4444, other tasks #0284c7, milestones #0891b2, over-allocation
+  // #ea580c, progress #0f766e.
   // Presentational Gantt bar canvas: pure function of the layout, zoom, and
   // baseline variances (no Wails bridge, no session), so it can be mounted
   // and asserted in component tests. GanttEditor renders through this.
@@ -39,9 +43,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <svg width={canvasW} height={canvasH} role="img" aria-label={ariaLabel}>
     <!-- day grid -->
     {#each Array(Math.ceil(layout.horizon) + 1) as _, d (d)}
-      <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} stroke="#1e293b" stroke-width="1" />
+      <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} class="stroke-slate-800" stroke-width="1" />
       {#if pxPerDay >= 20 || d % 5 === 0}
-        <text x={d * pxPerDay + 2} y={layout.rows.length * rowH + 14} font-size="9" fill="#475569">{d}</text>
+        <text x={d * pxPerDay + 2} y={layout.rows.length * rowH + 14} font-size="9" class="fill-slate-400">{d}</text>
       {/if}
     {/each}
 
@@ -49,7 +53,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#each layout.deps as dep (dep.from + '>' + dep.to)}
       {@const p = depPath(dep, layout.rows, pxPerDay)}
       {#if p}
-        <path d={p} data-testid="dep-{dep.from}-{dep.to}" fill="none" stroke="#475569" stroke-width="1.2" />
+        <path d={p} data-testid="dep-{dep.from}-{dep.to}" fill="none" class="stroke-slate-500" stroke-width="1.2" />
       {/if}
     {/each}
 
@@ -60,7 +64,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if barTitle}<title>{barTitle(r)}</title>{/if}
       <!-- baseline ghost -->
       {#if bb}
-        <rect x={bb.x} y={y + rowH - 16} width={bb.w} height="5" rx="2" fill="#475569" opacity="0.6" />
+        <rect x={bb.x} y={y + rowH - 16} width={bb.w} height="5" rx="2" class="fill-slate-500" opacity="0.6" />
       {/if}
       {#if r.milestone}
         <rect
@@ -69,7 +73,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           width="14"
           height="14"
           transform="rotate(45 {r.es * pxPerDay} {y + 9})"
-          fill="#22d3ee"
+          fill="#0891b2"
         />
       {:else}
         {@const split = !!(r.work_segments && r.work_segments.length)}
@@ -82,7 +86,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             y1={y + 7}
             x2={r.work_segments[r.work_segments.length - 1].end * pxPerDay}
             y2={y + 7}
-            stroke={r.is_critical ? '#ef4444' : '#0ea5e9'}
+            stroke={r.is_critical ? '#ef4444' : '#0284c7'}
             stroke-width="1"
             stroke-dasharray="2 2"
             opacity="0.5"
@@ -96,8 +100,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             width={piece.w}
             height="14"
             rx="3"
-            fill={r.is_critical ? '#ef4444' : '#0ea5e9'}
-            stroke={r.overallocated ? '#fb923c' : 'none'}
+            fill={r.is_critical ? '#ef4444' : '#0284c7'}
+            stroke={r.overallocated ? '#ea580c' : 'none'}
             stroke-width={r.overallocated ? 2 : 0}
           />
         {/each}
@@ -113,10 +117,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
       {/if}
       {#if r.constraint_violated}
-        <text x={r.ef * pxPerDay + 4} y={y + 12} font-size="11" font-weight="bold" fill="#f59e0b">!</text>
+        <text x={r.ef * pxPerDay + 4} y={y + 12} font-size="11" font-weight="bold" class="fill-amber-400">!</text>
       {/if}
       {#if layout.anchored && r.start_date}
-        <text x={r.ef * pxPerDay + (r.constraint_violated ? 14 : 4)} y={y + 12} font-size="9" fill="#64748b">
+        <text x={r.ef * pxPerDay + (r.constraint_violated ? 14 : 4)} y={y + 12} font-size="9" class="fill-slate-400">
           {r.start_date} → {r.finish_date}
         </text>
       {/if}

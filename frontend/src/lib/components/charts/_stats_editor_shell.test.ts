@@ -111,7 +111,7 @@ describe('_stats_editor_shell migrated load-error "Back to dashboard" button (vi
 
     const btn = await findByText('Back to dashboard');
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
-      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-700 hover:bg-cyan-800 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
     );

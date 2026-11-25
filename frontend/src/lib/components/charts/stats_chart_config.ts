@@ -6,12 +6,14 @@ import type { Chart, ChartConfiguration, ChartDataset, ChartType, Plugin, Toolti
 import { FONT_SANS } from '../../typography';
 
 import type { Annotation, StatsLayout, StatsSeries } from './_stats_types';
-import { DEFAULT_PALETTE } from './_stats_types';
 import type { StatsChartTheme } from './stats_chart_theme';
+import { seriesColor } from './stats_chart_theme';
 
 export interface AnnotationPluginOptions {
   annotations?: Annotation[];
   fallbackColor?: string;
+  // Labels wear the text colour; the line's own colour carries identity.
+  labelColor?: string;
   scaleID?: string;
 }
 
@@ -31,9 +33,10 @@ function buildPieConfig(l: StatsLayout, theme: StatsChartTheme): ChartConfigurat
       labels: slices.map((s) => s.label),
       datasets: [{
         data: slices.map((s) => s.value),
-        backgroundColor: slices.map((s, i) => s.color || DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]),
+        backgroundColor: slices.map((s, i) => seriesColor(theme, i, s.color)),
+        // A 2px surface gap keeps neighbouring slices apart.
         borderColor: theme.surface,
-        borderWidth: 1,
+        borderWidth: 2,
       }],
     },
     options: {
@@ -57,7 +60,7 @@ function buildPieConfig(l: StatsLayout, theme: StatsChartTheme): ChartConfigurat
 
 function buildParetoConfig(l: StatsLayout, theme: StatsChartTheme): ChartConfiguration {
   const datasets: ChartDataset<'line' | 'bar', number[]>[] = (l.series ?? []).map(
-    (series, index) => baseDataset(series, index, true),
+    (series, index) => baseDataset(series, index, theme, true),
   );
   return {
     type: 'bar',
@@ -84,7 +87,7 @@ function buildParetoConfig(l: StatsLayout, theme: StatsChartTheme): ChartConfigu
 
 function buildCartesianConfig(l: StatsLayout, theme: StatsChartTheme): ChartConfiguration {
   const datasets: ChartDataset<'line' | 'bar', number[]>[] = (l.series ?? []).map(
-    (series, index) => baseDataset(series, index, false, l),
+    (series, index) => baseDataset(series, index, theme, false, l),
   );
   return {
     type: l.kind === 'bar' ? 'bar' : 'line',
@@ -104,10 +107,11 @@ function buildCartesianConfig(l: StatsLayout, theme: StatsChartTheme): ChartConf
 function baseDataset(
   series: StatsSeries,
   index: number,
+  theme: StatsChartTheme,
   allowDualY: boolean,
   layout?: StatsLayout,
 ): ChartDataset<'line' | 'bar', number[]> {
-  const color = series.color || DEFAULT_PALETTE[index % DEFAULT_PALETTE.length];
+  const color = seriesColor(theme, index, series.color);
   const type = series.type || 'line';
   const dataset: ChartDataset<'line' | 'bar', number[]> = {
     type: type === 'area' ? 'line' : type,
@@ -116,10 +120,11 @@ function baseDataset(
     borderColor: color,
     backgroundColor: type === 'bar' ? color : type === 'area' ? hexToRgba(color, 0.45) : color,
     borderDash: series.dashed ? [6, 4] : undefined,
-    pointBackgroundColor: pointColors(series.values, index, color, layout),
-    pointBorderColor: pointColors(series.values, index, color, layout),
+    pointBackgroundColor: pointColors(series.values, index, color, theme, layout),
+    pointBorderColor: pointColors(series.values, index, color, theme, layout),
     pointRadius: 4,
-    borderWidth: 2,
+    borderWidth: type === 'bar' ? 0 : 2,
+    borderRadius: type === 'bar' ? 4 : 0,
     fill: type === 'area' && series.y_axis !== 'right',
     tension: type === 'line' || type === 'area' ? 0.2 : 0,
   };
@@ -127,11 +132,17 @@ function baseDataset(
   return dataset;
 }
 
-function pointColors(values: number[], seriesIndex: number, baseColor: string, layout?: StatsLayout): string[] {
+function pointColors(
+  values: number[],
+  seriesIndex: number,
+  baseColor: string,
+  theme: StatsChartTheme,
+  layout?: StatsLayout,
+): string[] {
   if (!layout?.flags?.length) return values.map(() => baseColor);
   return values.map((_, pointIndex) => {
     const flag = layout.flags?.find((candidate) => candidate.series === seriesIndex && candidate.point === pointIndex);
-    return flag?.color ?? baseColor;
+    return flag?.color ? seriesColor(theme, seriesIndex, flag.color) : baseColor;
   });
 }
 
@@ -147,8 +158,12 @@ function commonPlugins(l: StatsLayout, theme: StatsChartTheme) {
       },
     },
     gopmgrAnnotations: {
-      annotations: l.annotations ?? [],
+      annotations: (l.annotations ?? []).map((annotation) => ({
+        ...annotation,
+        color: annotation.color ? seriesColor(theme, 0, annotation.color) : undefined,
+      })),
       fallbackColor: theme.mutedText,
+      labelColor: theme.text,
       scaleID: l.kind === 'pareto' ? 'y1' : 'y',
     },
   };
@@ -171,7 +186,20 @@ function cartesianY(l: StatsLayout, theme: StatsChartTheme) {
     grid: { color: theme.grid },
     min: l.y_axis?.min,
     max: l.y_axis?.max,
+    // Keep reference lines (control limits, means) inside the plot.
+    ...annotationRange(l),
   };
+}
+
+// annotationRange widens the value axis to include every horizontal line
+// drawn against it, so a control limit outside the data is not drawn over
+// the axis labels. Pareto lines sit on the percentage axis, so they are
+// left out there.
+function annotationRange(l: StatsLayout): { suggestedMin?: number; suggestedMax?: number } {
+  if (l.kind === 'pareto') return {};
+  const values = (l.annotations ?? []).filter((a) => a.type === 'horizontal_line').map((a) => a.value);
+  if (values.length === 0) return {};
+  return { suggestedMin: Math.min(...values), suggestedMax: Math.max(...values) };
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -198,7 +226,7 @@ export function drawStatsChartAnnotations(chart: Chart, options: AnnotationPlugi
     ctx.lineTo(chart.chartArea.right, y);
     ctx.stroke();
     if (annotation.label) {
-      ctx.fillStyle = color;
+      ctx.fillStyle = options.labelColor ?? color;
       ctx.font = `10px ${FONT_SANS}`;
       ctx.fillText(annotation.label, chart.chartArea.left + 4, y - 4);
     }

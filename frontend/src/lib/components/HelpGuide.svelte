@@ -72,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           bind:value={query}
           placeholder="Search help…"
           aria-label="Search help sections"
-          class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 outline-none"
+          class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-500 outline-none"
         />
         {#if query.trim()}
           <p class="mt-1.5 text-[10px] text-slate-500" role="status">
