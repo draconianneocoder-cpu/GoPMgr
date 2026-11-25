@@ -102,7 +102,7 @@ func drawTitle(pdf *pdfdoc.PDF, x, y, w, h float64, sectionLabel, chartKindName 
 	pdf.CellFormat(w, h, sectionLabel, "", 0, "L", false, 0, "")
 	if chartKindName != "" {
 		pdf.SetFont("Helvetica", "", 8)
-		pdf.SetTextColor(120, 120, 120)
+		setText(pdf, inkMuted) // 7.6:1 on white; grey 120 was 4.4:1
 		pdf.SetXY(x, y+h-3)
 		pdf.CellFormat(w, 3, chartKindName, "", 0, "R", false, 0, "")
 	}

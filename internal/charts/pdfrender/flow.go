@@ -106,7 +106,7 @@ func renderFlow(pdf *pdfdoc.PDF, kind string, body json.RawMessage, frame Frame)
 		pdf.Line(x2, midY, x2, y2)
 		if e.Label != "" {
 			pdf.SetFont("Helvetica", "", 5)
-			pdf.SetTextColor(203, 213, 225)
+			setText(pdf, inkMuted) // edge labels sit on the paper
 			pdf.SetXY((x1+x2)/2+0.5, midY-1.5)
 			pdf.CellFormat(15, 2, e.Label, "", 0, "L", false, 0, "")
 			pdf.SetTextColor(0, 0, 0)

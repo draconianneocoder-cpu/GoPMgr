@@ -51,13 +51,13 @@ func renderFishbone(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) error {
 	for _, e := range layout.Edges {
 		switch e.Kind {
 		case "spine":
-			pdf.SetDrawColor(34, 211, 238) // cyan
+			pdf.SetDrawColor(14, 116, 144) // cyan-700, 5.4:1 on white
 			pdf.SetLineWidth(0.6)
 		case "bone":
-			pdf.SetDrawColor(148, 163, 184)
+			pdf.SetDrawColor(100, 116, 139) // slate-500; 148,163,184 was 2.6:1 on white
 			pdf.SetLineWidth(0.4)
 		default:
-			pdf.SetDrawColor(100, 116, 139)
+			pdf.SetDrawColor(148, 163, 184) // fine cause strokes recede behind the bones
 			pdf.SetLineWidth(0.2)
 		}
 		pdf.Line(
@@ -77,7 +77,7 @@ func renderFishbone(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) error {
 		switch n.Type {
 		case "effect":
 			pdf.SetFillColor(14, 116, 144) // cyan-700
-			pdf.SetDrawColor(34, 211, 238)
+			pdf.SetDrawColor(14, 116, 144)
 			pdf.SetLineWidth(0.4)
 			pdf.RoundedRect(x, y, w, h, 1.2, "1234", "FD")
 			pdf.SetFont("Helvetica", "B", 8)
@@ -87,13 +87,13 @@ func renderFishbone(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) error {
 			pdf.SetTextColor(0, 0, 0)
 		case "category":
 			pdf.SetFont("Helvetica", "B", 7)
-			pdf.SetTextColor(103, 232, 249)
+			pdf.SetTextColor(14, 116, 144) // on paper: cyan-700, 5.4:1
 			pdf.SetXY(x, y+h/2-2)
 			pdf.CellFormat(w, 4, n.Label, "", 0, "C", false, 0, "")
 			pdf.SetTextColor(0, 0, 0)
 		default: // cause
 			pdf.SetFont("Helvetica", "", 6)
-			pdf.SetTextColor(203, 213, 225)
+			setText(pdf, inkMuted)
 			pdf.SetXY(x, y+h/2-1.5)
 			align := "R"
 			pdf.CellFormat(w, 3, n.Label, "", 0, align, false, 0, "")
