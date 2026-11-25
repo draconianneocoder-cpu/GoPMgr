@@ -283,7 +283,7 @@ Chart taxonomy/dispatch layer: 22 chart kinds routed to one of 4 layout engines 
 | `charts_test.go` | 26 | `All`, `Get`, the per-engine registry counts (through a test-local `byEngine`), `Layout` dispatch for every kind | table-driven | The registry is the single source of truth routing a chart kind string to its layout function — an unrouted or mis-routed kind would silently render nothing or the wrong chart. Every kind's example data is round-tripped through `Layout` to prove the registry and the engines agree on schema. |
 | `engines_schedule_test.go` | 4 | `LayoutWithSchedulePlan` (CPM date-anchoring dispatch); CPM and Gantt layouts, anchored or not, report stale levelling (2026-11-21) | unit | Only CPM charts anchor to real dates; other DAG-family charts must delegate to plain layout, and a zero project start must fall back safely rather than producing garbage dates. |
 
-## `internal/charts/dag` — 95.9%
+## `internal/charts/dag` — 97.4%
 
 DAG-family chart engines: WBS, CPM/Network/PERT, layered (Workflow-adjacent), Fishbone, causal tree.
 
