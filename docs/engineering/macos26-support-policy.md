@@ -72,7 +72,9 @@ old measurements.
 
 - **Native macOS 26 execution is not available on this host.** Current macOS 27.2
   build/header evidence cannot replace a run on the minimum supported release.
-  Ubuntu 24.04 and Windows qualification retain their separately documented gaps.
+  Linux (Ubuntu 24.04 when this was written; Ubuntu 26.04 has been the minimum
+  since 2026-11-09) and Windows qualification retain their separately
+  documented gaps.
 - Installer/install/upgrade, notarization and full release evidence remain open.
   No release or hosted execution is authorized or claimed by this change.
 - **Resolved 2026-11-09:** the CI assurance job and the release macOS package

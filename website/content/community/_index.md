@@ -10,7 +10,7 @@ last_reviewed = "2026-11-16"
 claim_ids = ["page.community"]
 [[params.sources]]
 label = "README.md"
-url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/88b92cf935c77332cec4357789250126a5e6b314/README.md"
+url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/f96f79c549d49d529948cd208eb06b24aceee517/README.md"
 [[params.sources]]
 label = "docs/SECURITY.md"
 url = "https://github.com/draconianneocoder-cpu/GoPMgr/blob/d704af051d6049ab1a14e0ef92b6a063d87668c6/docs/SECURITY.md"

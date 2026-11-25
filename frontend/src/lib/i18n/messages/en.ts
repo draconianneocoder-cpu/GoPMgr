@@ -558,6 +558,11 @@ export const en = {
     'Under Schedule audits, add the quality audit of a CPM chart and choose its thresholds and status date. The audit runs when you export, so the PDF shows the schedule as stored then, and the manifest records the chart revision and inputs it read. Signed exports can include one; certified reports cannot.',
   'projectPicker.restore.done':
     'Backup restored. Signing is switched off in a restored project. Set it up again in Project Settings if you need it.',
+  'projectSettings.exportSettings.loadFailed':
+    'Could not load the export and signing settings: {error}. Saving them is off until they load, so the stored settings are not overwritten.',
+  'projectSettings.exportSettings.retry': 'Retry',
+  'projectSettings.exportSettings.pickFailed': 'Could not open the file picker: {error}',
+  'dashboard.agile.toggleFailed': 'Could not change the Software-Dev Pack: {error}',
   'projectSettings.backup.includeCert': 'Include my signing certificate file in this backup',
   'projectSettings.backup.includeCertHelp':
     'The file holds your private signing key, so anyone who gets the backup gets the key. Restoring a backup never needs it. Leave this off unless you want this backup to carry a spare copy.',

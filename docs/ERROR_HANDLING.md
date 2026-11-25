@@ -137,7 +137,7 @@ relies on. Two patterns, chosen by whether the failure is expected:
   (e.g. an older backend binary without a newer Wails method bound):
   ```ts
   try {
-    agileEnabled = await window.go.desktop.App.AgileEnabled();
+    agileEnabled = await desktopApi.AgileEnabled();
   } catch {
     // Older binary without the Agile bindings — feature stays hidden.
     agileEnabled = false;

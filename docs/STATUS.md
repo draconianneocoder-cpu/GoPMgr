@@ -5,8 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # GoPMgr current status
 
-**Last reviewed:** 2026-11-14, against `main` at `0952c8f` (PR 214).
-Unmerged work is named below.
+**Last reviewed:** 2026-11-24, against `main` at `1846474` (PR 253): every
+link, file path and count, and the platform, website, limits and known-defect
+rows, were checked against the code. Other rows were last reviewed on
+2026-11-14 at `0952c8f` (PR 214). Unmerged work is named below.
 
 This file says what is true now. Where it disagrees with an older document,
 this file wins for *status*; the older document still stands as the record of
@@ -65,7 +67,7 @@ installed-app and screen-reader qualification remain unverified.
 | Website page policy: scripts, styles and data from the site only, no inline script | Implemented (PR 203). A meta tag, because GitHub Pages cannot send headers: another site can still show these pages in a frame. The checker also rejects automatic meta refresh and duplicate attributes (PR 207) | `website/tools/site.py` |
 | Website accessibility | Recorded evidence 2026-11-12: axe 4.14.0 reports no violation on 11 pages, light and dark, at four widths; keyboard use of the skip link, search and menus checked. Unverified: a screen reader, browser zoom at 200% and 400% | PR 204 |
 | Website tests in hosted CI | Checker CI implemented (PR 206). Production build implemented (PR 207). All 14 hosted checks passed on its final revision `f27c989` on 2026-11-13 (run 43336827515). A configuration guard preserves the reviewed execution contract. Website check is not required for merging | `.github/workflows/ci.yml` |
-| Website build on Linux | Historical verification: Ubuntu 26.04.1 and PR 207 hosted CI at `709a31d`, with Go 1.27.4 and Hugo 0.169.0. Hugo 0.170.0 archive and executable provenance is recorded; that binary has not been executed on Linux in this acceptance session | `website/quality/dependencies.json` |
+| Website build on Linux | Historical verification: Ubuntu 26.04.1 and PR 207 hosted CI at `709a31d`, with Go 1.27.4 and Hugo 0.169.0. Hugo 0.170.0 archive and executable provenance is recorded. Since then, hosted CI builds the production site with the pinned Linux Hugo 0.170.0 on Ubuntu 26.04 for every pull request (for example run 45513566175, 2026-11-24) | `website/quality/dependencies.json` |
 | `main` protected on GitHub: pull requests only, merge commits only, no force-push or deletion, four required checks | Implemented 2026-11-12 as repository ruleset "Protect main", with no bypass list. A setting, not a file in this repository | GitHub repository settings |
 | GitHub Actions limited to pinned or allow-listed actions | Open: the repository allows any action | GitHub repository settings |
 | Vulnerability reports go to GitHub's private form | Implemented (PR 203) | [SECURITY.md](SECURITY.md), Reporting |

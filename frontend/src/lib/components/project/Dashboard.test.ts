@@ -389,6 +389,19 @@ describe('Dashboard Agile Pack toggle', () => {
     expect(app.SetAgileEnabled).toHaveBeenCalledWith(false);
   });
 
+  it('says why the switch did not change when saving it fails', async () => {
+    const { getByRole } = await renderLoaded({
+      SetAgileEnabled: vi.fn(async () => {
+        throw new Error('database is read-only');
+      }),
+    });
+    await switchTab(getByRole, /^dev tools$/i);
+    await fireEvent.click(getByRole('button', { name: /enable agile pack/i }));
+
+    await waitFor(() => expect(getToasts().at(-1)?.message).toBe('Could not change the Software-Dev Pack: database is read-only'));
+    expect(getByRole('button', { name: /enable agile pack/i })).toBeInTheDocument();
+  });
+
   it('an older binary without the Agile binding degrades to disabled rather than failing', async () => {
     setApp({
       AgileEnabled: vi.fn(async () => {

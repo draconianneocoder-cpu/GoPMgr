@@ -105,8 +105,8 @@ Vitest + `@testing-library/svelte` (jsdom). Presentational components (e.g.
 `GanttBars.svelte`) render from props with no Wails bridge, so they mount
 directly in tests; pure geometry and action message-builders live in sibling
 modules (`*_geometry.ts`, `leveling_messages.ts`) with fast unit tests. Async
-handler glue is covered by mounting the real editor against a mocked
-`window.go.desktop.App` (see `GanttEditor.test.ts`): click an action, assert the
+handler glue is covered by mounting the real editor with `vi.mock` replacing
+the `desktop-api` module (see `GanttEditor.test.ts`): click an action, assert the
 bridge result reaches the status DOM. `make frontend-stability` runs the Vitest suite, so it
 is part of `make verify` and `make check-release`. Test files
 (`*.test.ts` / `*.spec.ts`) are excluded from the app `svelte-check`.
