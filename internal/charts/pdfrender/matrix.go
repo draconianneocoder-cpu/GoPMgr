@@ -189,7 +189,7 @@ func renderRACI(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) error {
 			// Footer indicator that we ran out of room.
 			pdf.SetXY(frame.X, y)
 			pdf.SetFont("Helvetica", "I", 7)
-			pdf.SetTextColor(120, 120, 120)
+			setText(pdf, inkMuted)
 			pdf.CellFormat(frame.W, rowH, fmt.Sprintf("… and %d more rows", len(layout.Tasks)-i),
 				"", 0, "C", false, 0, "")
 			pdf.SetTextColor(0, 0, 0)
@@ -453,7 +453,7 @@ func renderGenericMatrix(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) err
 		if i >= maxRows {
 			pdf.SetXY(frame.X, y)
 			pdf.SetFont("Helvetica", "I", 7)
-			pdf.SetTextColor(120, 120, 120)
+			setText(pdf, inkMuted)
 			pdf.CellFormat(frame.W, rowH, fmt.Sprintf("… and %d more rows", len(layout.Rows)-i),
 				"", 0, "C", false, 0, "")
 			pdf.SetTextColor(0, 0, 0)

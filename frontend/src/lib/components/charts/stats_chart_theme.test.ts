@@ -91,7 +91,12 @@ describe('buildStatsChartConfig', () => {
       y_axis: {},
       y_axis_right: { label: 'Cumulative' },
       series: [{ name: 'Count', values: [3], type: 'bar' }, { name: 'Cumulative', values: [100], y_axis: 'right' }],
+      annotations: [{ type: 'horizontal_line', value: 80, label: '80%' }],
     }, lightTheme);
+    // The 80% line belongs to the percentage axis; it must not stretch the
+    // count axis (3 here) to 80.
+    const countAxis = (pareto.options?.scales as Record<string, { suggestedMax?: number }>).y;
+    expect(countAxis.suggestedMax).toBeUndefined();
     expect(pareto).toMatchObject({
       data: { datasets: [{}, { yAxisID: 'y1' }] },
       options: {
@@ -119,6 +124,12 @@ describe('buildStatsChartConfig', () => {
       (buildStatsChartConfig(layout, theme).data.datasets as { borderColor: string }[]).map((d) => d.borderColor);
 
     expect(colours(lightTheme)).toEqual(['#2a78d6', lightTheme.mutedText, '#1baf7a', '#123456']);
+    // A ninth unset series takes the first slot again rather than no colour.
+    const nine = buildStatsChartConfig({
+      kind: 'line', x_axis: {}, y_axis: {}, categories: ['1'],
+      series: Array.from({ length: 9 }, (_, i) => ({ name: `S${i}`, values: [i] })),
+    }, lightTheme).data.datasets as { borderColor: string }[];
+    expect(nine[8].borderColor).toBe('#2a78d6');
     expect(colours(DEFAULT_STATS_CHART_THEME)).toEqual(['#3987e5', DEFAULT_STATS_CHART_THEME.mutedText, '#199e70', '#123456']);
     expect(buildStatsChartConfig(layout, lightTheme)).toMatchObject({
       options: { plugins: { gopmgrAnnotations: { annotations: [{ color: '#e34948' }], labelColor: lightTheme.text } } },

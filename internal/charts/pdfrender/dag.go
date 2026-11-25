@@ -153,15 +153,12 @@ func truncatePDF(s string, maxChars int) string {
 	if maxChars < 4 {
 		maxChars = 4
 	}
-	if len(s) <= maxChars {
-		return s
-	}
-	return s[:maxChars-1] + "…"
+	return truncateRunes(s, maxChars)
 }
 
 func drawEmptyChartPlaceholder(pdf *pdfdoc.PDF, frame Frame, label string) {
 	pdf.SetFont("Helvetica", "I", 9)
-	pdf.SetTextColor(120, 120, 120)
+	setText(pdf, inkMuted)
 	pdf.SetXY(frame.X, frame.Y+frame.H/2-3)
 	pdf.CellFormat(frame.W, 6, label, "", 0, "C", false, 0, "")
 	pdf.SetTextColor(0, 0, 0)

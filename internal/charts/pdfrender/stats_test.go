@@ -5,8 +5,12 @@ package pdfrender
 
 import (
 	"bytes"
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // --- Pie ---
@@ -226,6 +230,68 @@ func TestHexRGB(t *testing.T) {
 	}
 }
 
+// paletteRGB picks a series' print colour. The expected values are the
+// light-theme steps of the app's validated series palette (blue, orange,
+// aqua, yellow, magenta, green, violet, red); regressions it guards: the
+// former dark-only defaults printed as given (cyan #22d3ee is 1.7:1 on
+// white), case-sensitive matching letting "#22D3EE" through, a slot past
+// the eighth series panicking or going blank, and a user's own colour
+// being replaced.
+func TestPaletteRGB(t *testing.T) {
+	cases := []struct {
+		name    string
+		idx     int
+		hex     string
+		r, g, b int
+	}{
+		{"unset first slot", 0, "", 42, 120, 214},
+		{"unset last slot", 7, "", 227, 73, 72},
+		{"unset ninth series repeats the first", 8, "", 42, 120, 214},
+		{"former cyan default prints as blue", 3, "#22d3ee", 42, 120, 214},
+		{"former default matched in any case", 0, "#F59E0B", 235, 104, 52},
+		{"former red default", 0, "#ef4444", 227, 73, 72},
+		{"former slate is the neutral reference colour", 0, "#94a3b8", 100, 116, 139},
+		{"a user's own colour is kept", 5, "#123456", 0x12, 0x34, 0x56},
+		{"malformed colour falls back to the first slot", 5, "#zz", 42, 120, 214},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, g, b := paletteRGB(tc.idx, tc.hex)
+			if r != tc.r || g != tc.g || b != tc.b {
+				t.Errorf("paletteRGB(%d, %q) = (%d,%d,%d), want (%d,%d,%d)", tc.idx, tc.hex, r, g, b, tc.r, tc.g, tc.b)
+			}
+		})
+	}
+}
+
+// truncatePDF shortens labels to fit a box. It cut by bytes, so a label
+// with accented letters could be split inside a character and print as
+// U+FFFD (pdfdoc.SafeText replaces invalid UTF-8).
+func TestTruncatePDF(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		max  int
+		want string
+	}{
+		{"short label unchanged", "Design", 10, "Design"},
+		{"exactly at the limit unchanged", "Überprüfen", 10, "Überprüfen"},
+		{"cut between accented letters, not inside one", "Überprüfung der Lieferkette", 8, "Überprü…"},
+		{"limit below four is raised to four", "Kostenplanung", 2, "Kos…"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := truncatePDF(tc.in, tc.max)
+			if got != tc.want {
+				t.Errorf("truncatePDF(%q, %d) = %q, want %q", tc.in, tc.max, got, tc.want)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("truncatePDF(%q, %d) = %q is not valid UTF-8", tc.in, tc.max, got)
+			}
+		})
+	}
+}
+
 // --- Full pipeline: RenderChartToPDF -> charts.Layout -> renderStats.
 // The tests above call renderPie/renderCartesian directly to control
 // edge cases precisely; these two confirm renderStats's own kind
@@ -436,5 +502,164 @@ func TestDrawDashedLine_ZeroLengthDoesNotProduceNaN(t *testing.T) {
 	assertNoNaNOrInf(t, out)
 	if got := bytes.Count(out, []byte(" l ")); got != 0 {
 		t.Errorf("segment count = %d, want 0 for a zero-length line", got)
+	}
+}
+
+// Exported charts print on white paper. Every text colour the stats
+// renderers set must reach WCAG AA (4.5:1) against white: pie legend
+// labels were drawn near-white (241,245,249; 1.1:1), legend names in
+// 203,213,225 (1.5:1) and ticks in 148,163,184 (2.6:1). The oracle reads
+// the colour of every text object from the content stream (textColours).
+func TestStatsTextIsLegibleOnWhitePaper(t *testing.T) {
+	charts := map[string]string{
+		"pie":     `{"slices":[{"label":"Design","value":5},{"label":"Build","value":3}]}`,
+		"bar":     `{"categories":["Q1","Q2"],"series":[{"name":"Revenue","values":[100,200]},{"name":"Cost","values":[80,90]}]}`,
+		"control": `{"x":[1,2,3,4,5,6],"y":[5,6,4,9,5,6]}`,
+		"pareto":  `{"items":[{"label":"A","count":30},{"label":"B","count":10}]}`,
+	}
+	for kind, data := range charts {
+		pdf := newTestPDF()
+		if err := RenderChartToPDF(pdf, kind, data, kind, Frame{X: 20, Y: 20, W: 170, H: 180}); err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		texts := textColours(outputBytes(t, pdf))
+		if len(texts) == 0 {
+			t.Fatalf("%s: no text found", kind)
+		}
+		for _, d := range texts {
+			if ratio := contrastOnWhite(d.r, d.g, d.b); ratio < 4.5 {
+				t.Errorf("%s: %q is %.2f:1 on white, want >= 4.5", kind, d.text, ratio)
+			}
+		}
+	}
+}
+
+// Diagram labels drawn straight on the paper, not inside a filled shape,
+// must also reach 4.5:1: fishbone categories (103,232,249) and causes
+// (203,213,225) and workflow branch labels (203,213,225) were 1.5:1.
+// Labels inside dark node boxes are light on purpose and are not checked.
+func TestDiagramLabelsOnPaperAreLegible(t *testing.T) {
+	cases := []struct {
+		kind, data string
+		labels     []string
+	}{
+		{"fishbone", `{"effect":"Late","categories":[{"name":"People","causes":["Training gaps"]}]}`,
+			[]string{"People", "Training gaps"}},
+		{"workflow", `{"nodes":[{"id":"s","label":"Request","shape":"start"},{"id":"e","label":"Done","shape":"end"}],"edges":[{"from":"s","to":"e","label":"Yes"}]}`,
+			[]string{"Yes"}},
+	}
+	for _, tc := range cases {
+		pdf := newTestPDF()
+		if err := RenderChartToPDF(pdf, tc.kind, tc.data, tc.kind, Frame{X: 20, Y: 20, W: 170, H: 180}); err != nil {
+			t.Fatalf("%s: %v", tc.kind, err)
+		}
+		out := outputBytes(t, pdf)
+		for _, label := range tc.labels {
+			r, g, b, ok := textColour(out, label)
+			if !ok {
+				t.Errorf("%s: label %q not found", tc.kind, label)
+				continue
+			}
+			if ratio := contrastOnWhite(r, g, b); ratio < 4.5 {
+				t.Errorf("%s: label %q is %.2f:1 on white, want >= 4.5", tc.kind, label, ratio)
+			}
+		}
+	}
+}
+
+var (
+	fillRGB   = regexp.MustCompile(`^([0-9.]+) ([0-9.]+) ([0-9.]+) rg$`)
+	fillGrey  = regexp.MustCompile(`^([0-9.]+) g$`)
+	textInset = regexp.MustCompile(`^q ([0-9.]+)(?: ([0-9.]+) ([0-9.]+) rg| g) BT `)
+)
+
+// drawnText is one text object and the colour fpdf drew it in.
+type drawnText struct {
+	text    string
+	r, g, b float64
+}
+
+var shownText = regexp.MustCompile(`\((.*?)\)Tj`)
+
+// textColours reads every text object from an uncompressed content stream
+// with its colour. fpdf wraps text in "q <colour> BT ... ET Q" when the
+// text colour differs from the fill colour, and otherwise draws it in the
+// current fill colour, so both forms are followed.
+func textColours(out []byte) []drawnText {
+	parse := func(m [][]byte) (float64, float64, float64) {
+		r, _ := strconv.ParseFloat(string(m[1]), 64)
+		g, b := r, r
+		if len(m) > 2 && len(m[2]) > 0 {
+			g, _ = strconv.ParseFloat(string(m[2]), 64)
+			b, _ = strconv.ParseFloat(string(m[3]), 64)
+		}
+		return r, g, b
+	}
+	var fr, fg, fb float64 // fpdf's initial fill colour is black
+	var texts []drawnText
+	for _, line := range bytes.Split(out, []byte("\n")) {
+		if m := fillRGB.FindSubmatch(line); m != nil {
+			fr, fg, fb = parse(m)
+			continue
+		}
+		if m := fillGrey.FindSubmatch(line); m != nil {
+			fr, fg, fb = parse(m)
+			continue
+		}
+		shown := shownText.FindSubmatch(line)
+		if shown == nil {
+			continue
+		}
+		r, g, b := fr, fg, fb
+		if m := textInset.FindSubmatch(line); m != nil {
+			r, g, b = parse(m)
+		}
+		texts = append(texts, drawnText{string(shown[1]), r, g, b})
+	}
+	return texts
+}
+
+// textColour returns the colour of the first text object showing label.
+func textColour(out []byte, label string) (r, g, b float64, ok bool) {
+	for _, d := range textColours(out) {
+		if d.text == label {
+			return d.r, d.g, d.b, true
+		}
+	}
+	return 0, 0, 0, false
+}
+
+// contrastOnWhite is the WCAG 2.1 contrast ratio of an sRGB colour
+// (channels 0..1) against white.
+func contrastOnWhite(r, g, b float64) float64 {
+	lin := func(c float64) float64 {
+		if c <= 0.03928 {
+			return c / 12.92
+		}
+		return math.Pow((c+0.055)/1.055, 2.4)
+	}
+	l := 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
+	return 1.05 / (l + 0.05)
+}
+
+// A reference line outside the data must still print: the control
+// chart's UCL above every sample was skipped, and Pareto's 80% line was
+// placed against the count axis instead of the percentage axis.
+func TestStatsReferenceLinesPrintOutsideTheData(t *testing.T) {
+	for kind, data := range map[string]string{
+		// mean 5.83, UCL above the highest sample (9)
+		"control": `{"x":[1,2,3,4,5,6],"y":[5,6,4,9,5,6]}`,
+		// counts up to 30; the 80% line is on the percentage axis
+		"pareto": `{"items":[{"label":"A","count":30},{"label":"B","count":10}]}`,
+	} {
+		pdf := newTestPDF()
+		if err := RenderChartToPDF(pdf, kind, data, kind, Frame{X: 20, Y: 20, W: 170, H: 180}); err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		out := outputBytes(t, pdf)
+		want := map[string]string{"control": "(UCL)Tj", "pareto": "(80%)Tj"}[kind]
+		if !bytes.Contains(out, []byte(want)) {
+			t.Errorf("%s: output has no %q", kind, want)
+		}
 	}
 }

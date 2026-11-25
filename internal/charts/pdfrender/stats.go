@@ -6,6 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 	"math"
+	"strings"
 
 	"github.com/go-pdf/fpdf"
 
@@ -98,8 +99,9 @@ func renderPie(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 	// Approximate wedges with thin triangular polygons. 48 segments
 	// per wedge is plenty smooth at typical print sizes.
 	startAngle := -math.Pi / 2 // start at 12 o'clock
-	pdf.SetDrawColor(15, 23, 42)
-	pdf.SetLineWidth(0.1)
+	// A white edge (the paper) keeps neighbouring slices apart.
+	pdf.SetDrawColor(255, 255, 255)
+	pdf.SetLineWidth(0.5)
 	for i, s := range l.Slices {
 		fr, fg, fb := paletteRGB(i, s.Color)
 		pdf.SetFillColor(fr, fg, fb)
@@ -110,21 +112,20 @@ func renderPie(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 
 	// Legend.
 	pdf.SetFont("Helvetica", "", 7)
-	yCursor := frame.Y + 4
+	// Centre the legend on the pie; a legend taller than the frame starts
+	// at the top and stops at the bottom edge.
+	yCursor := math.Max(frame.Y+4, cy-float64(len(l.Slices))*7/2)
 	for i, s := range l.Slices {
 		fr, fg, fb := paletteRGB(i, s.Color)
 		pdf.SetFillColor(fr, fg, fb)
 		pdf.Rect(frame.X+pieW+2, yCursor, 3, 3, "F")
-		pdf.SetTextColor(241, 245, 249)
+		setText(pdf, inkPrimary)
 		pdf.SetXY(frame.X+pieW+7, yCursor-0.5)
-		label := s.Label
-		if len(label) > 22 {
-			label = label[:21] + "…"
-		}
+		label := truncateRunes(s.Label, 22)
 		pdf.CellFormat(legW-10, 3, label, "", 0, "L", false, 0, "")
 		pdf.SetXY(frame.X+pieW+7, yCursor+2.5)
 		pdf.SetFont("Helvetica", "I", 6)
-		pdf.SetTextColor(148, 163, 184)
+		setText(pdf, inkMuted)
 		pdf.CellFormat(legW-10, 2.5,
 			gpct(s.Pct), "", 0, "L", false, 0, "")
 		pdf.SetFont("Helvetica", "", 7)
@@ -183,22 +184,38 @@ func renderCartesian(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 	if l.YAxis.Max != nil {
 		yMax = *l.YAxis.Max
 	}
+	// Reference lines on the value axis (control limits, means) widen it
+	// unless the user fixed that end, so none is left off the page.
+	if l.YAxisRight == nil {
+		for _, a := range l.Annotations {
+			if a.Type != "horizontal_line" {
+				continue
+			}
+			if l.YAxis.Min == nil && a.Value < yMin {
+				yMin = a.Value
+			}
+			if l.YAxis.Max == nil && a.Value > yMax {
+				yMax = a.Value
+			}
+		}
+	}
 	if yMax <= yMin {
 		yMax = yMin + 1
 	}
 
 	// Plot frame
-	pdf.SetDrawColor(51, 65, 85)
+	setDraw(pdf, frameInk)
 	pdf.SetLineWidth(0.2)
 	pdf.Rect(plot.X, plot.Y, plot.W, plot.H, "D")
 
 	// Y-axis ticks (4 divisions).
 	pdf.SetFont("Helvetica", "", 6)
-	pdf.SetTextColor(148, 163, 184)
+	setText(pdf, inkMuted)
+	setDraw(pdf, gridInk)
+	pdf.SetLineWidth(0.1)
 	for i := 0; i <= 4; i++ {
 		v := yMin + (yMax-yMin)*float64(i)/4
 		y := plot.Y + plot.H - (v-yMin)/(yMax-yMin)*plot.H
-		pdf.SetDrawColor(30, 41, 59)
 		pdf.Line(plot.X, y, plot.X+plot.W, y) // gridline
 		pdf.SetXY(frame.X, y-1.5)
 		pdf.CellFormat(padL-1, 3, gnum(v), "", 0, "R", false, 0, "")
@@ -250,16 +267,24 @@ func renderCartesian(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 		drawLineSeries(pdf, s, i, l.Flags, plot, yMin, yMax, len(l.Categories))
 	}
 
-	// Annotations (Mean / UCL / LCL etc.).
+	// Annotations (Mean / UCL / LCL, or Pareto's 80% line, which belongs
+	// to the percentage axis).
+	aMin, aMax := yMin, yMax
+	if l.YAxisRight != nil {
+		aMin, aMax = rightAxisRange(l.YAxisRight)
+	}
 	for _, a := range l.Annotations {
 		if a.Type != "horizontal_line" {
 			continue
 		}
-		if a.Value < yMin || a.Value > yMax {
+		if a.Value < aMin || a.Value > aMax {
 			continue
 		}
-		y := plot.Y + plot.H - (a.Value-yMin)/(yMax-yMin)*plot.H
-		r, g, b := hexRGB(a.Color, 148, 163, 184)
+		y := plot.Y + plot.H - (a.Value-aMin)/(aMax-aMin)*plot.H
+		r, g, b := neutralRef[0], neutralRef[1], neutralRef[2]
+		if a.Color != "" {
+			r, g, b = paletteRGB(0, a.Color)
+		}
 		pdf.SetDrawColor(r, g, b)
 		pdf.SetLineWidth(0.25)
 		if a.Dashed {
@@ -269,7 +294,7 @@ func renderCartesian(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 		}
 		if a.Label != "" {
 			pdf.SetFont("Helvetica", "", 5)
-			pdf.SetTextColor(r, g, b)
+			setText(pdf, inkMuted) // labels wear text colour; the line carries identity
 			pdf.SetXY(plot.X+0.5, y-2.2)
 			pdf.CellFormat(20, 2, a.Label, "", 0, "L", false, 0, "")
 		}
@@ -408,7 +433,8 @@ func drawLineSeries(pdf *pdfdoc.PDF, s statsSeries, idx int, flags []pointFlag, 
 			}
 		}
 		if flagged {
-			pdf.SetFillColor(239, 68, 68)
+			fr2, fg2, fb2 := paletteRGB(0, "#ef4444")
+			pdf.SetFillColor(fr2, fg2, fb2)
 		} else {
 			pdf.SetFillColor(fr, fg, fb)
 		}
@@ -419,20 +445,8 @@ func drawLineSeries(pdf *pdfdoc.PDF, s statsSeries, idx int, flags []pointFlag, 
 // drawRightAxisLine draws a series mapped onto a 0..100 right axis
 // (Pareto cumulative percentage).
 func drawRightAxisLine(pdf *pdfdoc.PDF, l statsLayout, s statsSeries, plot Frame) {
-	rMin := 0.0
-	rMax := 100.0
-	if l.YAxisRight != nil {
-		if l.YAxisRight.Min != nil {
-			rMin = *l.YAxisRight.Min
-		}
-		if l.YAxisRight.Max != nil {
-			rMax = *l.YAxisRight.Max
-		}
-	}
-	fr, fg, fb := paletteRGB(99, s.Color) // unique idx → custom palette
-	if s.Color == "" {
-		fr, fg, fb = 239, 68, 68
-	}
+	rMin, rMax := rightAxisRange(l.YAxisRight)
+	fr, fg, fb := paletteRGB(len(printPalette)-1, s.Color) // red when unset
 	pdf.SetDrawColor(fr, fg, fb)
 	pdf.SetLineWidth(0.5)
 	n := len(s.Values)
@@ -458,16 +472,9 @@ func drawRightAxisLine(pdf *pdfdoc.PDF, l statsLayout, s statsSeries, plot Frame
 }
 
 func drawRightAxisTicks(pdf *pdfdoc.PDF, plot Frame, ax *axisConfig) {
-	min := 0.0
-	max := 100.0
-	if ax.Min != nil {
-		min = *ax.Min
-	}
-	if ax.Max != nil {
-		max = *ax.Max
-	}
+	min, max := rightAxisRange(ax)
 	pdf.SetFont("Helvetica", "", 6)
-	pdf.SetTextColor(148, 163, 184)
+	setText(pdf, inkMuted)
 	for i := 0; i <= 2; i++ {
 		v := min + (max-min)*float64(i)/2
 		y := plot.Y + plot.H - (v-min)/(max-min)*plot.H
@@ -484,7 +491,7 @@ func drawStatsLegend(pdf *pdfdoc.PDF, series []statsSeries, frame Frame) {
 		fr, fg, fb := paletteRGB(i, s.Color)
 		pdf.SetFillColor(fr, fg, fb)
 		pdf.Rect(cursor, yLegend, 2.5, 2.5, "F")
-		pdf.SetTextColor(203, 213, 225)
+		setText(pdf, inkMuted)
 		pdf.SetXY(cursor+3, yLegend-0.4)
 		w := pdf.GetStringWidth(s.Name) + 4
 		pdf.CellFormat(w, 3, s.Name, "", 0, "L", false, 0, "")
@@ -549,22 +556,80 @@ func scanYBounds(series []statsSeries, stacked bool, side string) (lo, hi float6
 	return lo, hi
 }
 
+// Exported charts are printed on white paper, so they use the light-theme
+// steps of the app's series palette (frontend _stats_types.ts
+// SERIES_PALETTE.light, checked with the dataviz palette validator) and
+// dark ink for text. The former dark-only colours, which the stats
+// layouts still send, map to the same hue: cyan #22d3ee measured 1.7:1 on
+// white, and legend text 1.5:1.
+var (
+	inkPrimary = [3]int{15, 23, 42}    // slate-900, 17.9:1 on white
+	inkMuted   = [3]int{71, 85, 105}   // slate-600, 7.6:1
+	frameInk   = [3]int{148, 163, 184} // slate-400, plot outline
+	gridInk    = [3]int{226, 232, 240} // slate-200, recessive gridlines
+	neutralRef = [3]int{100, 116, 139} // slate-500, reference lines such as a mean
+)
+
+var printPalette = [8][3]int{
+	{42, 120, 214},  // blue
+	{235, 104, 52},  // orange
+	{27, 175, 122},  // aqua
+	{237, 161, 0},   // yellow
+	{232, 123, 164}, // magenta
+	{0, 131, 0},     // green
+	{98, 80, 214},   // violet
+	{227, 73, 72},   // red
+}
+
+// legacySeriesSlots matches frontend LEGACY_SERIES_SLOTS; -1 is the
+// neutral reference colour.
+var legacySeriesSlots = map[string]int{
+	"#22d3ee": 0, "#f59e0b": 1, "#22c55e": 5, "#a855f7": 6,
+	"#ef4444": 7, "#0ea5e9": 2, "#eab308": 3, "#94a3b8": -1,
+}
+
+// paletteRGB returns the print colour for series idx: its palette slot
+// when hex is empty, the print step of the same hue for a former default,
+// and any other colour as given.
 func paletteRGB(idx int, hex string) (int, int, int) {
-	if hex != "" {
-		return hexRGB(hex, 34, 211, 238)
+	if hex == "" {
+		c := printPalette[idx%len(printPalette)]
+		return c[0], c[1], c[2]
 	}
-	pal := [][3]int{
-		{34, 211, 238},  // cyan
-		{245, 158, 11},  // amber
-		{34, 197, 94},   // green
-		{168, 85, 247},  // purple
-		{239, 68, 68},   // red
-		{14, 165, 233},  // sky
-		{234, 179, 8},   // yellow
-		{148, 163, 184}, // slate
+	if slot, ok := legacySeriesSlots[strings.ToLower(hex)]; ok {
+		if slot < 0 {
+			return neutralRef[0], neutralRef[1], neutralRef[2]
+		}
+		c := printPalette[slot]
+		return c[0], c[1], c[2]
 	}
-	c := pal[idx%len(pal)]
-	return c[0], c[1], c[2]
+	c := printPalette[0]
+	return hexRGB(hex, c[0], c[1], c[2])
+}
+
+// rightAxisRange returns a right axis's bounds, 0..100 by default.
+func rightAxisRange(ax *axisConfig) (float64, float64) {
+	lo, hi := 0.0, 100.0
+	if ax != nil && ax.Min != nil {
+		lo = *ax.Min
+	}
+	if ax != nil && ax.Max != nil {
+		hi = *ax.Max
+	}
+	return lo, hi
+}
+
+func setText(pdf *pdfdoc.PDF, c [3]int) { pdf.SetTextColor(c[0], c[1], c[2]) }
+func setDraw(pdf *pdfdoc.PDF, c [3]int) { pdf.SetDrawColor(c[0], c[1], c[2]) }
+
+// truncateRunes shortens s to at most n characters, ending with "…" when
+// cut, without splitting a multi-byte character.
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n-1]) + "…"
 }
 
 // hexRGB parses "#RRGGBB". On parse failure it returns the fallback
