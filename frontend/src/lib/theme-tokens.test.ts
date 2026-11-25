@@ -25,28 +25,31 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-// Removing one comment can join the halves of another ("<!<!---->--"), so
-// the removals repeat until nothing changes, as in hardcoded-text.test.ts.
-function withoutComments(text: string): string {
-  let previous: string;
-  do {
-    previous = text;
-    text = text
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/<!--[\s\S]*?--!?>/g, '')
-      .replace(/^\s*\/\/.*$/gm, '');
-  } while (text !== previous);
-  return text;
+// matchesOutsideComments returns the matches of pattern that do not start
+// inside a CSS (/* */), HTML (<!-- -->) or line (//) comment; an
+// unterminated comment runs to the end of the text. Comments are
+// located in the original text rather than removed, so no removal can join
+// the halves of another comment.
+function matchesOutsideComments(text: string, pattern: RegExp): RegExpMatchArray[] {
+  const comments = Array.from(
+    text.matchAll(/\/\*[\s\S]*?(?:\*\/|(?![\s\S]))|<!--[\s\S]*?(?:--!?>|(?![\s\S]))|^\s*\/\/.*$/gm),
+    (m) => [m.index ?? 0, (m.index ?? 0) + m[0].length] as const,
+  );
+  return Array.from(text.matchAll(pattern)).filter(
+    (m) => !comments.some(([start, end]) => (m.index ?? 0) >= start && (m.index ?? 0) < end),
+  );
 }
 
-const appCss = withoutComments(readFileSync(join(SRC, 'app.css'), 'utf-8'));
-const defined = new Set(Array.from(appCss.matchAll(/(--[\w-]+)\s*:/g), (m) => m[1]));
+const defined = new Set(
+  matchesOutsideComments(readFileSync(join(SRC, 'app.css'), 'utf-8'), /(--[\w-]+)\s*:/g).map((m) => m[1]),
+);
 
 describe('theme custom properties', () => {
   it('references only properties that app.css defines', () => {
     const files = [...sourceFiles(SRC), join(FRONTEND, 'tailwind.config.js'), join(FRONTEND, 'index.html')];
     const undefinedRefs = files.flatMap((file) =>
-      Array.from(withoutComments(readFileSync(file, 'utf-8')).matchAll(/var\(\s*(--[\w-]+)/g), (m) => m[1])
+      matchesOutsideComments(readFileSync(file, 'utf-8'), /var\(\s*(--[\w-]+)/g)
+        .map((m) => m[1])
         .filter((name) => !defined.has(name))
         .map((name) => `${file.slice(FRONTEND.length + 1)}: ${name}`),
     );
