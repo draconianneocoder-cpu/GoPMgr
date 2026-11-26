@@ -41,7 +41,13 @@ export function reportOptionsPayload(value: CombinedReportOptions): Desktop.Comb
 }
 
 function normaliseDocumentField(value: Documents.Field): DocumentField {
-  return { ...value, object_shape: value.object_shape?.map(normaliseDocumentField) ?? [] };
+  return {
+    ...value,
+    object_shape: value.object_shape?.map(normaliseDocumentField) ?? [],
+    options: value.options ?? undefined,
+    min: value.min ?? undefined,
+    max: value.max ?? undefined,
+  };
 }
 
 export function normaliseDocumentDefinition(value: Documents.Definition): DocumentDefinition {

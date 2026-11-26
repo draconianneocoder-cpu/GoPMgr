@@ -42,6 +42,19 @@ export interface Field {
      * names no currency; LabelIn adds the project's code.
      */
     "money"?: boolean;
+
+    /**
+     * Options, when set, are the values a string field accepts; the editor
+     * offers them as a choice instead of free text.
+     */
+    "options"?: string[] | null;
+
+    /**
+     * Min and Max bound a number field. A new row leaves a bounded number
+     * unset rather than filling in a value outside the bounds.
+     */
+    "min"?: number | null;
+    "max"?: number | null;
 }
 
 /**

@@ -28,7 +28,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   $effect(() => {
     if (value !== undefined && value !== null) return;
     switch (field.type) {
-      case 'number':       value = 0; break;
+      // A bounded number stays unset until entered: 0 would be out of range.
+      case 'number':       if (field.min === undefined) value = 0; break;
       case 'bool':         value = false; break;
       case 'string_array': value = []; break;
       case 'object_array': value = []; break;
@@ -47,7 +48,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function addObjectRow() {
     const blank: Record<string, unknown> = {};
     for (const sub of field.object_shape ?? []) {
-      blank[sub.key] = sub.type === 'number' ? 0 : sub.type === 'bool' ? false : '';
+      blank[sub.key] =
+        sub.type === 'number' ? (sub.min === undefined ? 0 : null) : sub.type === 'bool' ? false : '';
     }
     (value as Record<string, unknown>[]).push(blank);
     value = [...(value as Record<string, unknown>[])];
@@ -59,18 +61,43 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function updateBool(event: Event) {
     value = (event.currentTarget as HTMLInputElement).checked;
   }
+
+  // choices lists a field's options, plus a stored value that is not one
+  // of them, so a legacy or imported value is shown rather than replaced.
+  function choices(f: DocumentField, current: unknown): string[] {
+    const options = f.options ?? [];
+    const v = typeof current === 'string' ? current : '';
+    return v && !options.includes(v) ? [...options, v] : options;
+  }
+
+  // A row of several controls is a group (fieldset); a label can name only
+  // one control, and the rows contain labels of their own.
+  const grouped = $derived(field.type === 'string_array' || field.type === 'object_array');
 </script>
 
-<label class="block space-y-1">
-  <span class="text-xs font-semibold text-slate-500 uppercase">
+<svelte:element this={grouped ? 'fieldset' : 'label'} class="block space-y-1">
+  <svelte:element this={grouped ? 'legend' : 'span'} class="text-xs font-semibold text-slate-500 uppercase">
     {labelOf(field)}
     {#if field.required}<span class="text-red-400">*</span>{/if}
-  </span>
+  </svelte:element>
   {#if field.help}
     <span class="block text-[10px] text-slate-500">{field.help}</span>
   {/if}
 
-  {#if field.type === 'string'}
+  {#if field.type === 'string' && field.options}
+    <!-- One-way plus onchange: bind:value would write the first option
+         into a document that has no value yet. -->
+    <select
+      value={typeof value === 'string' ? value : ''}
+      onchange={(e) => (value = e.currentTarget.value)}
+      class="w-full bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+    >
+      <option value="">—</option>
+      {#each choices(field, value) as option (option)}
+        <option value={option}>{option}</option>
+      {/each}
+    </select>
+  {:else if field.type === 'string'}
     <input
       type="text"
       bind:value
@@ -86,6 +113,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <input
       type="number"
       bind:value
+      min={field.min}
+      max={field.max}
       class="w-full bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
     />
   {:else if field.type === 'date'}
@@ -142,6 +171,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="number"
                   bind:value={(value as Record<string, unknown>[])[i][sub.key]}
+                  min={sub.min}
+                  max={sub.max}
                   class="w-full bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
                 />
               {:else if sub.type === 'date'}
@@ -150,6 +181,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   bind:value={(value as Record<string, unknown>[])[i][sub.key]}
                   class="w-full bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
                 />
+              {:else if sub.options}
+                <select
+                  value={(value as Record<string, unknown>[])[i][sub.key] ?? ''}
+                  onchange={(e) => ((value as Record<string, unknown>[])[i][sub.key] = e.currentTarget.value)}
+                  class="w-full bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
+                >
+                  <option value="">—</option>
+                  {#each choices(sub, (value as Record<string, unknown>[])[i][sub.key]) as option (option)}
+                    <option value={option}>{option}</option>
+                  {/each}
+                </select>
               {:else}
                 <input
                   type="text"
@@ -173,4 +215,4 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </button>
     </div>
   {/if}
-</label>
+</svelte:element>
