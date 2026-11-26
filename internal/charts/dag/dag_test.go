@@ -8,9 +8,13 @@ package dag
 // defined there is shared across all files in this package.
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
+	"strings"
 	"testing"
+
+	"gopmgr/internal/kernel"
 )
 
 // ===== WBS (wbs.go) =====
@@ -426,6 +430,25 @@ func TestLayoutFishbone_CauseLabelsClearNeighbouringBones(t *testing.T) {
 	}
 	if causes != 10 {
 		t.Fatalf("laid out %d causes, want 10", causes)
+	}
+}
+
+// A task with no three-point estimate must reach the editor without a
+// duration_estimate key. With omitempty Go wrote "duration_estimate":{} (a
+// struct is never empty), and the CPM editor, which tests the field for
+// presence, showed empty estimate inputs and "Clear" instead of "Use
+// estimate" on every task.
+func TestLayeredNodeOmitsAbsentDurationEstimate(t *testing.T) {
+	raw, err := json.Marshal(LayeredNode{ID: "a", Label: "Design", Duration: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "duration_estimate") {
+		t.Errorf("node without an estimate encodes %s", raw)
+	}
+	withEstimate, _ := json.Marshal(LayeredNode{ID: "b", DurationEstimate: kernel.DurationEstimate{Optimistic: 2, MostLikely: 3, Pessimistic: 5}})
+	if !strings.Contains(string(withEstimate), `"duration_estimate":{"optimistic":2,"most_likely":3,"pessimistic":5}`) {
+		t.Errorf("node with an estimate encodes %s", withEstimate)
 	}
 }
 

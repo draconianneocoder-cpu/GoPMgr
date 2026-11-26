@@ -83,7 +83,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <Button variant="remove" onclick={() => removeSeries(i)} aria-label="Remove series" title="Remove series">×</Button>
                 </div>
                 <label class="flex items-center gap-1 mt-1 text-[10px]">
-                  <input type="checkbox" bind:checked={doc.series[i].dashed} />
+                  <!-- One-way plus onchange: bind:checked would write `false`
+                       into series that omit `dashed` as soon as the editor
+                       opened, and the editor would save an untouched chart. -->
+                  <input
+                    type="checkbox"
+                    checked={doc.series[i].dashed ?? false}
+                    onchange={(e) => (doc.series[i].dashed = e.currentTarget.checked)}
+                  />
                   dashed
                 </label>
               </th>

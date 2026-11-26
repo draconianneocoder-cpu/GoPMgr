@@ -188,6 +188,9 @@ function cartesianY(l: StatsLayout, theme: StatsChartTheme) {
     max: l.y_axis?.max,
     // Keep reference lines (control limits, means) inside the plot.
     ...annotationRange(l),
+    // Bars and stacked or filled areas encode size as length from the axis,
+    // so the axis starts at zero (a cumulative flow diagram started at 4).
+    beginAtZero: !!l.stacked || (l.series ?? []).some((s) => s.type === 'bar' || s.type === 'area'),
   };
 }
 

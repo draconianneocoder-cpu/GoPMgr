@@ -168,11 +168,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (debounceTimer) clearTimeout(debounceTimer);
   });
 
+  // Tint strength follows severity in both themes: extreme is the full
+  // red-900 step and severe a 60% tint of it. (red-950 for extreme turned
+  // into the palest red in the light theme, where 900/950 invert.)
   function cellTone(band: string): string {
-    if (band === 'extreme') return 'bg-red-950 border-red-700';
-    if (band === 'severe') return 'bg-red-900/70 border-red-600';
-    if (band === 'high') return 'bg-amber-900/70 border-amber-600';
-    if (band === 'medium') return 'bg-cyan-900/70 border-cyan-600';
+    if (band === 'extreme') return 'bg-red-900 border-red-700';
+    if (band === 'severe') return 'bg-red-900/60 border-red-600';
+    if (band === 'high') return 'bg-amber-900/60 border-amber-600';
+    if (band === 'medium') return 'bg-cyan-900/60 border-cyan-600';
     return 'bg-slate-800 border-slate-700';
   }
 </script>
@@ -254,10 +257,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <div class="flex-1 grid grid-cols-5 gap-1" role="grid" aria-label="Five by five probability and impact risk matrix">
               {#each layout.cells as cell (`${cell.probability}-${cell.impact}`)}
                 <div role="gridcell" aria-label={`Probability ${cell.probability}, impact ${cell.impact}, score ${cell.score}, ${cell.items.length} items`} class="relative min-h-28 rounded border p-2 {cellTone(cell.band)}">
-                  <span class="absolute right-2 top-1 text-[10px] text-white/60">{cell.score}</span>
+                  <span class="absolute right-2 top-1 text-[10px] text-slate-300">{cell.score}</span>
                   <div class="mt-4 flex flex-wrap gap-1">
                     {#each cell.items as item (item.id)}
-                      <button onclick={() => (selectedIndex = doc.items.findIndex((candidate) => candidate.id === item.id))} title={item.title} class="rounded bg-slate-950/80 px-2 py-1 text-[10px] font-bold text-white ring-1 ring-white/20 hover:ring-cyan-300">{item.kind === 'opportunity' ? '+' : item.kind === 'issue' ? '!' : ''}{item.id}</button>
+                      <button onclick={() => (selectedIndex = doc.items.findIndex((candidate) => candidate.id === item.id))} title={item.title} class="rounded bg-slate-950/80 px-2 py-1 text-[10px] font-bold text-slate-100 ring-1 ring-slate-100/20 hover:ring-cyan-300">{item.kind === 'opportunity' ? '+' : item.kind === 'issue' ? '!' : ''}{item.id}</button>
                     {/each}
                   </div>
                 </div>
