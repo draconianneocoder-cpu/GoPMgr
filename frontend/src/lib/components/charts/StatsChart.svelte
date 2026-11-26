@@ -25,6 +25,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { buildStatsChartConfig, gopmgrAnnotationsPlugin } from './stats_chart_config';
   import { readStatsChartTheme } from './stats_chart_theme';
   import { FONT_SANS } from '../../typography';
+  import { t } from '../../i18n/i18n.svelte';
 
   Chart.register(
     LineController,
@@ -73,8 +74,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return parts.join('. ') + '.';
   });
 
+  // A layout with nothing to draw (a new chart, or a pie whose values are
+  // all 0) showed an empty canvas with no reason; it gets a message instead.
+  const emptyMessage = $derived.by(() => {
+    if (layout.kind === 'pie') {
+      const slices = layout.slices ?? [];
+      if (slices.some((s) => s.value > 0)) return '';
+      return slices.length ? t('chart.noData.pie') : t('chart.noData');
+    }
+    const hasValue = (layout.series ?? []).some((s) => s.values.some((v) => Number.isFinite(v)));
+    return hasValue ? '' : t('chart.noData');
+  });
+
   function rebuild() {
-    if (!canvas) return;
+    if (!canvas) {
+      chart?.destroy();
+      chart = null;
+      return;
+    }
     chart?.destroy();
     // A construction that threw leaves its chart registered on the canvas,
     // and every later `new Chart` on it fails with "Canvas is already in use".
@@ -108,6 +125,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 </script>
 
-<div style={`height: ${height}px;`} class="w-full" role="img" aria-label={chartLabel}>
-  <canvas bind:this={canvas}></canvas>
-</div>
+{#if emptyMessage}
+  <div
+    style={`height: ${height}px;`}
+    class="w-full flex items-center justify-center rounded border border-dashed border-slate-700 text-sm text-slate-400"
+    role="status"
+  >
+    {emptyMessage}
+  </div>
+{:else}
+  <div style={`height: ${height}px;`} class="w-full" role="img" aria-label={chartLabel}>
+    <canvas bind:this={canvas}></canvas>
+  </div>
+{/if}

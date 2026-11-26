@@ -272,6 +272,9 @@ export const en = {
   'a11y.removeRow': 'Remove {field} row {row}',
   // A part-to-whole chart has no negative parts; the layout leaves them out.
   // {labels} is a list of the rows' labels (or row numbers).
+  // Shown in place of an empty chart canvas.
+  'chart.noData': 'No data to chart yet.',
+  'chart.noData.pie': 'No slice has a value above 0, so the pie has nothing to draw.',
   'pie.negativeLeftOut': 'Left out of the pie: {labels}. A slice must be 0 or more.',
   'pareto.negativeLeftOut': 'Left out of the chart: {labels}. A count must be 0 or more.',
   'a11y.col.day': 'Day',
