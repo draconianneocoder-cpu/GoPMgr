@@ -216,7 +216,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
 {:else}
 <div class="min-h-screen bg-slate-950 text-slate-200">
-  <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+  <header class="border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <div class="flex items-center gap-4">
       <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
@@ -249,7 +249,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <div class="flex">
     <!-- Stakeholder list -->
-    <aside class="w-96 border-r border-slate-800 p-4 overflow-y-auto h-[calc(100vh-50px)]">
+    <aside class="w-72 lg:w-96 shrink-0 border-r border-slate-800 p-4 overflow-y-auto h-[calc(100vh-50px)]">
       <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">
         Stakeholders
       </h2>
@@ -338,7 +338,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </aside>
 
     <!-- Plot -->
-    <main class="flex-1 p-6">
+    <!-- min-w-0 lets the plot scroll inside main; without it the fixed-width
+         grid widened the page past the window and squeezed the list away. -->
+    <main class="flex-1 min-w-0 overflow-auto p-6">
       {#if status}
         <p class="text-xs text-cyan-400 mb-2" role="status" aria-live="polite">{status}</p>
       {/if}

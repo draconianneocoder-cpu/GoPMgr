@@ -425,14 +425,16 @@ not routed directly.
   </div>
 {:else}
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
-  <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+  <!-- flex-wrap: at narrow widths (WCAG 1.4.10 reflow) the toolbar drops
+       below the title instead of pushing the page wider than the window. -->
+  <header class="border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <div class="flex items-center gap-4">
       <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
       </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center justify-end gap-2">
       {#if lastSavedAt}
         <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
           Saved {lastSavedAt.toLocaleTimeString()}
