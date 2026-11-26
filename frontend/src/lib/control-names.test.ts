@@ -62,9 +62,15 @@ export function* controls(source: string): Generator<{ start: number; attrs: str
 // file and button-like inputs are exempt; placeholder and title count, as
 // browsers fall back to them, though a visible label is better.
 export function unnamed(source: string): number[] {
-  // Blank out comments and scripts, keeping offsets and line numbers.
+  // Blank out comments and scripts, keeping offsets and line numbers. Each
+  // block is overwritten in place, never removed, so no removal can join
+  // the halves of another; a comment may end "--!>", a closing script tag
+  // may carry spaces or attributes in any case, and an unterminated block
+  // runs to the end of the text.
   const blank = (c: string) => c.replace(/[^\n]/g, ' ');
-  const text = source.replace(/<!--[\s\S]*?-->/g, blank).replace(/<script\b[\s\S]*?<\/script>/g, blank);
+  const text = source
+    .replace(/<!--[\s\S]*?(?:--!?>|(?![\s\S]))/g, blank)
+    .replace(/<script\b[\s\S]*?(?:<\/script\b[^>]*>|(?![\s\S]))/gi, blank);
   const lines: number[] = [];
   for (const { start, attrs } of controls(text)) {
     if (/type="(hidden|file|submit|button)"/.test(attrs)) continue;
@@ -80,8 +86,8 @@ describe('form control names', () => {
   it('flags only controls with no name source', () => {
     const source = `<label>Name <input bind:value={a} /></label>
 <input aria-label={t('x')} oninput={(e) => go(e)} />
-<!-- <input /> in a comment -->
-<script>// a <select> in a script comment</script>
+<!-- <input /> in a comment --!>
+<SCRIPT>// a <select> in a script comment</script >
 <input type="checkbox" onchange={(e) => (a = e.currentTarget.checked)} />
 <select value={v}>`;
     expect(unnamed(source)).toEqual([5, 6]);
