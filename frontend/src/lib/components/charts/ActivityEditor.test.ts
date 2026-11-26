@@ -71,6 +71,26 @@ describe('ActivityEditor open', () => {
   });
 });
 
+// Selecting an item must not write the chart. A <select bind:value> on a
+// field the stored chart omits writes the first option back on mount
+// (Svelte's bind_select_value), so one click saved an untouched chart.
+describe('ActivityEditor select', () => {
+  it('selects a node stored without a swimlane without writing the chart', async () => {
+    vi.useFakeTimers();
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'activity', title: 'A',
+        data: JSON.stringify({ swimlanes: [{ id: 'l1', name: 'Ops' }], nodes: [{ id: 's', label: 'Start', shape: 'initial' }], edges: [] }) })),
+      LayoutChart: vi.fn(async () => ({ body: { nodes: [{ id: 's', label: 'Start', shape: 'initial', x: 10, y: 10, width: 28, height: 28 }], edges: [], swimlanes: [{ id: 'l1', name: 'Ops', x: 0, y: 0, width: 200, height: 100 }], width: 200, height: 100 } })),
+    });
+    const { getByRole } = render(ActivityEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Start' }));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(app.SaveChart).not.toHaveBeenCalled();
+  });
+});
+
 describe('ActivityEditor migrated buttons', () => {
   it('load-error "Back to dashboard": Button variant="primary" size="md"', async () => {
     installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });

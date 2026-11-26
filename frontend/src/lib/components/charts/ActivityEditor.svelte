@@ -531,8 +531,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Swimlane</span>
+            <!-- One-way plus onchange: bind:value on a <select> writes its first option into a field the stored chart omits, so selecting an item saved the chart. -->
             <select
-              bind:value={selectedNode.swimlane_id}
+              value={selectedNode.swimlane_id ?? ''}
+              onchange={(e) => (selectedNode.swimlane_id = e.currentTarget.value)}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               <option value="">(unassigned)</option>
