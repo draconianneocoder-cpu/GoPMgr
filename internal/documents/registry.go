@@ -94,6 +94,13 @@ type Field struct {
 	// Money marks an amount in the project's reporting currency. Its Label
 	// names no currency; LabelIn adds the project's code.
 	Money bool `json:"money,omitempty"`
+	// Options, when set, are the values a string field accepts; the editor
+	// offers them as a choice instead of free text.
+	Options []string `json:"options,omitempty"`
+	// Min and Max bound a number field. A new row leaves a bounded number
+	// unset rather than filling in a value outside the bounds.
+	Min *float64 `json:"min,omitempty"`
+	Max *float64 `json:"max,omitempty"`
 }
 
 // LabelIn returns the field's label, followed by the currency code when

@@ -529,6 +529,9 @@ interface CostSummary {
     object_shape?: DocumentField[];
     chart_kind?: string; // restrict ChartPicker to this kind when set
     money?: boolean; // an amount in the project's reporting currency
+    options?: string[]; // the values a string field accepts
+    min?: number; // bounds of a number field
+    max?: number;
   }
 
   interface DocumentRecord {

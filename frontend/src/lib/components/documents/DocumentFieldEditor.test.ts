@@ -115,3 +115,48 @@ describe('DocumentFieldEditor amount labels', () => {
     expect(getByText('Task')).toBeInTheDocument();
   });
 });
+
+// Choices and bounds from the document definition (2026-11-26). Before,
+// every number in a new row started at 0, so a risk's "Probability (1-5)"
+// began out of range, and enumerated fields were free text the Risk Matrix
+// sync could reject. A row-based field was also wrapped in a <label>
+// containing the rows' own labels (invalid nesting; one name for many
+// controls).
+describe('DocumentFieldEditor choices, bounds and grouping', () => {
+  const risks: DocumentField = {
+    key: 'risks',
+    label: 'Risks',
+    type: 'object_array',
+    object_shape: [
+      { key: 'kind', label: 'Type', type: 'string', options: ['risk', 'issue', 'opportunity'] },
+      { key: 'probability', label: 'Probability (1-5)', type: 'number', min: 1, max: 5 },
+      { key: 'cost', label: 'Cost', type: 'number' },
+    ],
+  };
+
+  it('starts a bounded number unset in a new row, and an unbounded one at 0', async () => {
+    const { getByText, getByLabelText } = render(DocumentFieldEditor, { props: { field: risks, value: [] } });
+    await fireEvent.click(getByText('+ Add row'));
+    const probability = getByLabelText('Probability (1-5)') as HTMLInputElement;
+    expect(probability.value).toBe('');
+    expect([probability.min, probability.max]).toEqual(['1', '5']);
+    expect((getByLabelText('Cost') as HTMLInputElement).value).toBe('0');
+  });
+
+  it('offers the options as a choice and keeps a stored value outside them visible', () => {
+    const { getByLabelText } = render(DocumentFieldEditor, {
+      props: { field: risks, value: [{ kind: 'threat', probability: 3, cost: 0 }] },
+    });
+    const kind = getByLabelText('Type') as HTMLSelectElement;
+    expect(Array.from(kind.options, (o) => o.value)).toEqual(['', 'risk', 'issue', 'opportunity', 'threat']);
+    expect(kind.value).toBe('threat');
+  });
+
+  it('exposes a row-based field as a group named by its label, with no nested labels', () => {
+    const { getByRole, container } = render(DocumentFieldEditor, {
+      props: { field: risks, value: [{ kind: 'risk', probability: 3, cost: 0 }] },
+    });
+    expect(getByRole('group', { name: 'Risks' })).toBeTruthy();
+    expect(container.querySelectorAll('label label')).toHaveLength(0);
+  });
+});

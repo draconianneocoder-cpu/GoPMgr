@@ -196,9 +196,9 @@ var registry = []Definition{
 			{Key: "risks", Label: "Risks", Type: FieldObjectArr, ObjectShape: []Field{
 				{Key: "id", Label: "Risk ID", Type: FieldString},
 				{Key: "description", Label: "Description", Type: FieldText},
-				{Key: "kind", Label: "Type (risk, issue, opportunity)", Type: FieldString},
-				{Key: "probability", Label: "Probability (1-5)", Type: FieldNumber},
-				{Key: "impact", Label: "Impact (1-5)", Type: FieldNumber},
+				{Key: "kind", Label: "Type (risk, issue, opportunity)", Type: FieldString, Options: []string{"risk", "issue", "opportunity"}},
+				{Key: "probability", Label: "Probability (1-5)", Type: FieldNumber, Min: scorePtr(1), Max: scorePtr(5)},
+				{Key: "impact", Label: "Impact (1-5)", Type: FieldNumber, Min: scorePtr(1), Max: scorePtr(5)},
 				{Key: "owner", Label: "Owner", Type: FieldString},
 				{Key: "mitigation", Label: "Mitigation", Type: FieldText},
 				{Key: "status", Label: "Status", Type: FieldString},
@@ -443,3 +443,6 @@ var registry = []Definition{
 		},
 	},
 }
+
+// scorePtr returns a pointer to a field bound, for Field.Min and Field.Max.
+func scorePtr(v float64) *float64 { return &v }
