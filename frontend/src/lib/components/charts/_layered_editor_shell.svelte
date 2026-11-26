@@ -533,6 +533,7 @@ not routed directly.
                   <input
                     bind:value={edge.label}
                     placeholder="FS"
+                    aria-label={t('a11y.fieldFor', { field: t('gantt.link.lagLabel'), item: doc.nodes.find((n) => n.id === edge.from)?.label ?? edge.from })}
                     class="w-24 bg-slate-950 border border-slate-800 p-1 rounded text-xs font-mono focus:border-cyan-500 outline-none"
                   />
                 </div>

@@ -2084,10 +2084,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {#if signatureMethod === 'pades'}
            <div class="space-y-3">
              <div>
-               <span class="text-xs text-slate-500 uppercase">Certificate path</span>
+               <span id="pades-cert-path-label" class="text-xs text-slate-500 uppercase">Certificate path</span>
                <div class="flex gap-2 mt-1">
                  <input
                    bind:value={certPath}
+                   aria-labelledby="pades-cert-path-label"
                    placeholder="Path to .p12 / .pfx certificate"
                    class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
                  />
@@ -2150,12 +2151,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
                  </label>
 
                  <div>
-                   <span class="text-xs text-slate-500 uppercase">
+                   <span id="tsa-root-cert-label" class="text-xs text-slate-500 uppercase">
                      TSA trust root certificate (optional PEM)
                    </span>
                    <div class="flex gap-2 mt-1">
                      <input
                        bind:value={tsaRootCertPath}
+                       aria-labelledby="tsa-root-cert-label"
                        autocomplete="off"
                        spellcheck="false"
                        placeholder="Path to TSA root .pem / .crt"

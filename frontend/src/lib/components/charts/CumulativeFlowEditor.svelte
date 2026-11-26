@@ -105,6 +105,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <input
           bind:value={newStateName}
           placeholder="e.g. todo / doing / done"
+          aria-label={t('cfd.newState')}
           class="flex-1 bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
         />
         <button class="bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs rounded">+ State</button>

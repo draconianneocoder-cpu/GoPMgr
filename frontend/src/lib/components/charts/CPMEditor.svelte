@@ -452,6 +452,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       bind:value={levelStrategy}
       disabled={resourceBusy}
       title={t('cpm.level.strategy.hint')}
+      aria-label={t('cpm.level.strategy')}
       class="text-[10px] bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-200"
     >
       <option value="ltf">{t('cpm.level.leastFloat')}</option>
@@ -748,6 +749,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={assignment.resource}
               list="cpm-stakeholders"
               placeholder={t('cpm.assignment.resource')}
+              aria-label={t('cpm.assignment.resource')}
               class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
             <input
@@ -756,6 +758,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               step="0.1"
               bind:value={assignment.units}
               title={t('cpm.assignment.units')}
+              aria-label={t('cpm.assignment.units')}
               class="w-16 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
             />
             <Button
@@ -772,6 +775,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={assignment.calendar_id}
               placeholder={t('cpm.assignment.calendar')}
               title={t('cpm.assignment.calendar.hint')}
+              aria-label={t('cpm.assignment.calendar')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
             <input
@@ -781,6 +785,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={assignment.max_units}
               placeholder={t('cpm.assignment.max')}
               title={t('cpm.assignment.max.hint')}
+              aria-label={t('cpm.assignment.max')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
             />
             <input
@@ -788,6 +793,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               oninput={(e) => setSkillTags(assignment, (e.target as HTMLInputElement).value)}
               placeholder={t('cpm.assignment.skills')}
               title={t('cpm.assignment.skills.hint')}
+              aria-label={t('cpm.assignment.skills')}
               class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
             />
           </div>
@@ -938,6 +944,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         type="date"
         bind:value={evmAsOf}
         title={t('cpm.evm.statusDate')}
+        aria-label={t('cpm.evm.statusDate')}
         class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
       />
       <Button variant="secondary" size="compact" onclick={computeEVM} disabled={evmBusy}>

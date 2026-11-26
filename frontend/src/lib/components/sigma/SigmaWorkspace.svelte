@@ -69,6 +69,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="flex flex-col md:flex-row gap-4">
         <input
           bind:value={newTitle}
+          aria-label={t('sigma.newProjectTitle')}
           placeholder="Project Title (e.g., Reduce Defect Rate in Assembly Line A)"
           class="flex-1 bg-slate-950 border border-slate-800 p-3 rounded text-sm focus:border-cyan-500 outline-none"
         />

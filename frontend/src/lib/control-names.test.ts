@@ -59,8 +59,10 @@ export function* controls(source: string): Generator<{ start: number; attrs: str
 }
 
 // unnamed returns the line numbers of controls with no name source. Hidden,
-// file and button-like inputs are exempt; placeholder and title count, as
-// browsers fall back to them, though a visible label is better.
+// file and button-like inputs are exempt. A placeholder or title does not
+// count: browsers fall back to them, but they are examples and hints, and
+// screen readers announced fields as "#22d3ee", "FS" or "e.g., Every hour,
+// Daily".
 export function unnamed(source: string): number[] {
   // Blank out comments and scripts, keeping offsets and line numbers. Each
   // block is overwritten in place, never removed, so no removal can join
@@ -74,7 +76,7 @@ export function unnamed(source: string): number[] {
   const lines: number[] = [];
   for (const { start, attrs } of controls(text)) {
     if (/type="(hidden|file|submit|button)"/.test(attrs)) continue;
-    if (/\baria-label(ledby)?=|\bid=|\bplaceholder=|\btitle=|\{\.\.\./.test(attrs)) continue;
+    if (/\baria-label(ledby)?=|\bid=|\{\.\.\./.test(attrs)) continue;
     const before = text.slice(0, start);
     if (before.lastIndexOf('<label') > before.lastIndexOf('</label>')) continue;
     lines.push(before.split('\n').length);
@@ -89,8 +91,9 @@ describe('form control names', () => {
 <!-- <input /> in a comment --!>
 <SCRIPT>// a <select> in a script comment</script >
 <input type="checkbox" onchange={(e) => (a = e.currentTarget.checked)} />
-<select value={v}>`;
-    expect(unnamed(source)).toEqual([5, 6]);
+<select value={v}>
+<input placeholder="e.g. Daily" title="How often" />`;
+    expect(unnamed(source)).toEqual([5, 6, 7]);
   });
 
   it('every input, select and textarea has an accessible name', () => {

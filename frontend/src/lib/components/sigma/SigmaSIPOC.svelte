@@ -156,6 +156,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <textarea
                   bind:value={element.description}
                   placeholder="Description"
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.sipoc.description'), item: t('sigma.sipoc.item', { column: cat.label, n: index + 1 }) })}
                   rows="2"
                   oninput={() => updateElement(sipocData.elements.indexOf(element), 'description', element.description)}
                 ></textarea>
@@ -163,12 +164,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   type="text"
                   bind:value={element.owner}
                   placeholder="Owner"
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.sipoc.owner'), item: t('sigma.sipoc.item', { column: cat.label, n: index + 1 }) })}
                   oninput={() => updateElement(sipocData.elements.indexOf(element), 'owner', element.owner)}
                 />
                 <input
                   type="text"
                   bind:value={element.requirements}
                   placeholder="Requirements"
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.sipoc.requirements'), item: t('sigma.sipoc.item', { column: cat.label, n: index + 1 }) })}
                   oninput={() => updateElement(sipocData.elements.indexOf(element), 'requirements', element.requirements)}
                 />
                 <button

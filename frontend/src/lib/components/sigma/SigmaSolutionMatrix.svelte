@@ -128,6 +128,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   type="text"
                   bind:value={solution.title}
                   placeholder="Solution title"
+                  aria-label={t('a11y.rowField', { field: t('sigma.solutions.title'), row: index + 1 })}
                   oninput={() => updateSolution(index, 'title', solution.title)}
                 />
               </td>

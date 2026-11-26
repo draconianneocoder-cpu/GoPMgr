@@ -110,6 +110,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <input
     bind:value={data.problem_statement}
+    aria-label={t('sigma.fishbone.problem')}
     class="w-full mb-4 bg-slate-950 border border-slate-800 p-2 rounded text-sm text-center font-bold text-red-400"
     placeholder="Effect / Problem Statement"
   />
@@ -212,6 +213,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         <textarea
           bind:value={whysInput}
+          aria-label={t('sigma.fishbone.whys')}
           rows="4"
           class="w-full bg-slate-950 border border-slate-800 p-3 rounded text-sm focus:border-amber-500 outline-none"
           placeholder="Why 1 → Why 2 → Why 3..."
