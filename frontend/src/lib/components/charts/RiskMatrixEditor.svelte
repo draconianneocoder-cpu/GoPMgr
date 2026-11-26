@@ -224,7 +224,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="mt-6 border-t border-slate-800 pt-4 space-y-3 text-sm">
             <div class="grid grid-cols-2 gap-2">
               <label><span class="text-xs text-slate-500 uppercase">ID</span><input bind:value={selected.id} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none" /></label>
-              <label><span class="text-xs text-slate-500 uppercase">Type</span><select bind:value={selected.kind} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"><option value="risk">Risk</option><option value="issue">Issue</option><option value="opportunity">Opportunity</option></select></label>
+              <label><span class="text-xs text-slate-500 uppercase">Type</span><select value={selected.kind || 'risk'} onchange={(e) => (selected.kind = e.currentTarget.value as 'risk' | 'issue' | 'opportunity')} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"><option value="risk">Risk</option><option value="issue">Issue</option><option value="opportunity">Opportunity</option></select></label>
             </div>
             <label class="block"><span class="text-xs text-slate-500 uppercase">Title</span><input bind:value={selected.title} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none" /></label>
             <div class="grid grid-cols-2 gap-2">

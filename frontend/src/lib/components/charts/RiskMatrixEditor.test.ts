@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { render, fireEvent, waitFor } from '@testing-library/svelte';
 
 // autosave.register sets up a timer; stub it so the mounted editor doesn't
 // leave a live interval running through the test.
@@ -86,5 +86,24 @@ describe('RiskMatrixEditor migrated load-error "Back to dashboard" button', () =
         .split(/\s+/)
         .sort(),
     );
+  });
+});
+
+// Selecting an item must not write the chart. A <select bind:value> on a
+// field the stored chart omits writes the first option back on mount
+// (Svelte's bind_select_value), so one click saved an untouched chart.
+describe('RiskMatrixEditor select', () => {
+  it('selects an item stored without a kind without writing the chart', async () => {
+    vi.useFakeTimers();
+    const app = installApp({
+      GetChart: vi.fn(async () => ({ id: 'chart-1', project_id: 'p1', kind: 'risk_matrix', title: 'R',
+        data: JSON.stringify({ items: [{ id: '1', title: 'Supplier delay', probability: 4, impact: 4 }] }) })),
+    });
+    const { getByText } = render(RiskMatrixEditor);
+    await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+    await fireEvent.click(getByText('Supplier delay'));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(app.SaveChart).not.toHaveBeenCalled();
   });
 });

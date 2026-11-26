@@ -297,8 +297,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="grid grid-cols-2 gap-2">
             <label class="block">
               <span class="text-xs text-slate-500 uppercase">Power</span>
+              <!-- One-way plus onchange: bind:value on a <select> writes its first option into a field the stored chart omits, so selecting an item saved the chart. -->
               <select
-                bind:value={selected.power}
+                value={selected.power || 'low'}
+                onchange={(e) => (selected.power = e.currentTarget.value)}
                 class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
               >
                 <option value="low">Low</option>
@@ -308,7 +310,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <label class="block">
               <span class="text-xs text-slate-500 uppercase">Interest</span>
               <select
-                bind:value={selected.interest}
+                value={selected.interest || 'low'}
+                onchange={(e) => (selected.interest = e.currentTarget.value)}
                 class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
               >
                 <option value="low">Low</option>

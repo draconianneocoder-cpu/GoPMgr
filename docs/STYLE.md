@@ -46,6 +46,13 @@ changed.
   or `.svelte.js`.
 - Validate important UI changes with runtime smoke or browser testing, not
   only type checks.
+- Do not `bind:checked` a checkbox or `bind:value` a `<select>` to a stored
+  field that may be missing. Svelte writes the input's state (unchecked, or
+  the first option) into a missing field on mount, so an editor saves a
+  chart the user did not change. Show the effective default one way
+  (`checked={x ?? false}`, `value={x || 'low'}`) and write in `onchange`.
+- Give Chart.js a `$state.snapshot` of reactive data; it writes into its
+  data arrays, which Svelte state proxies refuse.
 - Put interface text in `frontend/src/lib/i18n/messages/en.ts` and show it
   with `t('key')`, never as literal text in markup; full sentences with
   `{placeholders}`, never joined fragments. `hardcoded-text.test.ts` fails
