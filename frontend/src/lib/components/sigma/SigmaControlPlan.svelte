@@ -108,6 +108,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.process_step}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.processStep'), row: index + 1 })}
                   placeholder="Process step"
                   oninput={() => updateItem(index, 'process_step', item.process_step)}
                 />
@@ -116,6 +117,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.metric}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.metric'), row: index + 1 })}
                   placeholder="Metric to monitor"
                   oninput={() => updateItem(index, 'metric', item.metric)}
                 />
@@ -124,6 +126,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.specification}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.specification'), row: index + 1 })}
                   placeholder="Target / spec limits"
                   oninput={() => updateItem(index, 'specification', item.specification)}
                 />
@@ -132,6 +135,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.measurement_method}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.measurementMethod'), row: index + 1 })}
                   placeholder="How to measure"
                   oninput={() => updateItem(index, 'measurement_method', item.measurement_method)}
                 />
@@ -140,6 +144,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.frequency}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.frequency'), row: index + 1 })}
                   placeholder="e.g., Every hour, Daily"
                   oninput={() => updateItem(index, 'frequency', item.frequency)}
                 />
@@ -148,6 +153,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.owner}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.owner'), row: index + 1 })}
                   placeholder="Owner name"
                   oninput={() => updateItem(index, 'owner', item.owner)}
                 />
@@ -156,6 +162,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="text"
                   bind:value={item.response_plan}
+                  aria-label={t('a11y.rowField', { field: t('sigma.controlPlan.col.responsePlan'), row: index + 1 })}
                   placeholder="Action if out of control"
                   oninput={() => updateItem(index, 'response_plan', item.response_plan)}
                 />

@@ -430,6 +430,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     {/if}
                     <input
                       placeholder="Section intro (optional, one line)"
+                      aria-label={t('report.sectionIntro', { section: d.title })}
                       value={descriptions[d.id] ?? ''}
                       oninput={(e) => (descriptions[d.id] = (e.target as HTMLInputElement).value)}
                       class="w-full bg-slate-950 border border-slate-800 p-1 text-xs rounded focus:border-cyan-500 outline-none"

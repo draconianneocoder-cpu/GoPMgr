@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { desktopApi } from '../../desktop-api';
   import { saveChartWhenDocumentChanges } from './chart-document';
   // WorkflowEditor renders a classic process flowchart with six node
@@ -439,6 +440,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     </div>
                     <input
                       placeholder="Edge label (e.g. Yes / No)"
+                      aria-label={t('workflow.edgeLabel')}
                       bind:value={doc.edges[e.idx].label}
                       onblur={refreshLayout}
                       class="w-full mt-1 bg-slate-900 border border-slate-800 p-1 text-xs rounded focus:border-cyan-500 outline-none"

@@ -422,6 +422,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={e.label}
               onchange={onEdit}
               placeholder={LINK_TYPE_EXAMPLE}
+              aria-label={t('a11y.fieldFor', { field: t('gantt.link.lagLabel'), item: `${labelFor(e.from)} → ${labelFor(e.to)}` })}
               class="w-16 bg-slate-900 border border-slate-800 rounded p-1 font-mono outline-none focus:border-cyan-500"
             />
             <button onclick={() => deleteLink(i)} class="text-slate-500 hover:text-red-400" title={t('chart.deleteLink')} aria-label={t('chart.deleteLink')}>✕</button>

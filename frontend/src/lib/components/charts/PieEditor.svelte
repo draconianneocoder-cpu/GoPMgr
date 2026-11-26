@@ -64,7 +64,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <input type="number" min="0" bind:value={doc.slices[i].value} aria-invalid={doc.slices[i].value < 0} aria-label={t('a11y.rowField', { field: t('a11y.col.value'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input bind:value={doc.slices[i].color} placeholder="#22d3ee" class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded font-mono" />
+              <input bind:value={doc.slices[i].color} placeholder="#22d3ee" aria-label={t('a11y.rowField', { field: t('a11y.col.color'), row: i + 1 })} class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded font-mono" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
               <Button variant="remove" class="text-xs" onclick={() => removeSlice(i)} aria-label="Remove slice" title="Remove slice">×</Button>

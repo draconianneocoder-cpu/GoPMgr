@@ -400,6 +400,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <input
                 bind:value={cat.causes[ci]}
                 placeholder="cause"
+                aria-label={t('fishbone.causeName', { n: ci + 1, category: cat.name || t('fishbone.categoryName', { n: i + 1 }) })}
                 class="flex-1 bg-slate-950 border border-slate-800 p-2 text-xs rounded focus:border-cyan-500 outline-none"
               />
               <Button

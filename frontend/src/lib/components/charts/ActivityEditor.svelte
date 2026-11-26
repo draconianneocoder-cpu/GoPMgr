@@ -568,6 +568,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     </div>
                     <input
                       placeholder="Edge condition (e.g. approved)"
+                      aria-label={t('activity.edgeCondition')}
                       bind:value={doc.edges[e.idx].label}
                       onblur={refreshLayout}
                       class="w-full mt-1 bg-slate-900 border border-slate-800 p-1 text-xs rounded focus:border-cyan-500 outline-none"
