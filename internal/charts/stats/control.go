@@ -11,8 +11,9 @@ import (
 
 // ControlDocument is the JSON shape stored in db.charts.data for a
 // Control Chart. X is the sample index (often time), Y is the
-// measured value. Mean / UCL / LCL can be supplied explicitly; if not
-// (Mean=0 and UCL=LCL), LayoutControl computes mean ± 3σ.
+// measured value. Mean / UCL / LCL can be supplied explicitly. A Mean of 0
+// is computed from the samples, and UCL and LCL that are both 0 become
+// mean ± 3σ (see LayoutControl).
 type ControlDocument struct {
 	Title  string    `json:"title,omitempty"`
 	YLabel string    `json:"y_label,omitempty"`
@@ -47,11 +48,20 @@ func LayoutControl(doc ControlDocument) StatsLayout {
 	mean := doc.Mean
 	ucl := doc.UCL
 	lcl := doc.LCL
-	if mean == 0 && ucl == 0 && lcl == 0 && len(doc.Y) > 0 {
-		mean = computeMean(doc.Y)
-		sigma := computeStdDev(doc.Y, mean)
-		ucl = mean + 3*sigma
-		lcl = mean - 3*sigma
+	// A field left at 0 is computed, as the editor says. The two limits are
+	// computed together, as mean ± 3σ of the samples, and only when both
+	// are 0: one limit of 0 is a real value (a count's LCL). Before, a
+	// chart with only a UCL drew its mean line at 0.
+	if len(doc.Y) > 0 {
+		sampleMean := computeMean(doc.Y)
+		if mean == 0 {
+			mean = sampleMean
+		}
+		if ucl == 0 && lcl == 0 {
+			sigma := computeStdDev(doc.Y, sampleMean)
+			ucl = mean + 3*sigma
+			lcl = mean - 3*sigma
+		}
 	}
 
 	flags := make([]PointFlag, 0)

@@ -29,15 +29,25 @@ func ParsePie(raw string) (PieDocument, error) {
 }
 
 // LayoutPie computes each slice's percentage of the total and emits
-// presentation-ready slice records.
+// presentation-ready slice records. A pie shows parts of a whole, and a
+// negative value is not a part: it is left out of the slices and the
+// total. Drawn anyway, it made the percentages run past 100% (10 and -5
+// read 200% and -100%), while the screen drew its size as positive and the
+// PDF swept the wedges backwards. The stored document keeps the value; the
+// editor says which slices are left out.
 func LayoutPie(doc PieDocument) StatsLayout {
 	var total float64
 	for _, s := range doc.Slices {
-		total += s.Value
+		if s.Value > 0 {
+			total += s.Value
+		}
 	}
 
 	slices := make([]PieSlice, 0, len(doc.Slices))
 	for _, s := range doc.Slices {
+		if s.Value < 0 {
+			continue
+		}
 		var pct float64
 		if total > 0 {
 			pct = (s.Value / total) * 100

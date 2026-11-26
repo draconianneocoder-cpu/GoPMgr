@@ -5,6 +5,7 @@ package stats
 
 import (
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -124,6 +125,23 @@ func TestLayoutPareto_ZeroTotal_CumPctAllZero(t *testing.T) {
 }
 
 // ----- LayoutPareto: 80% annotation -----
+
+// Counts cannot be negative. Counted, A=10, B=-4, C=2 gave cumulative
+// percentages of 125, 150 and 100, which the 0-100 right axis clipped. B is
+// left out: A is 10/12 of the total, and the line ends at 100.
+func TestLayoutPareto_NegativeCountLeftOut(t *testing.T) {
+	doc := ParetoDocument{Items: []ParetoItem{{Label: "A", Count: 10}, {Label: "B", Count: -4}, {Label: "C", Count: 2}}}
+	layout := LayoutPareto(doc)
+	if !reflect.DeepEqual(layout.Categories, []string{"A", "C"}) {
+		t.Fatalf("categories = %v, want [A C]", layout.Categories)
+	}
+	cum := layout.Series[1].Values
+	if len(cum) != 2 {
+		t.Fatalf("cumulative values = %v, want 2", cum)
+	}
+	near(t, "cumulative A", cum[0], 100.0*10/12)
+	near(t, "cumulative C", cum[1], 100)
+}
 
 func TestLayoutPareto_80PercentAnnotation(t *testing.T) {
 	layout := LayoutPareto(ParetoDocument{Items: []ParetoItem{{Label: "A", Count: 1}}})
@@ -248,6 +266,35 @@ func TestLayoutControl_ExplicitLimits_NotOverridden(t *testing.T) {
 	near(t, "Mean", layout.Annotations[0].Value, 10.0)
 	near(t, "UCL", layout.Annotations[1].Value, 15.0)
 	near(t, "LCL", layout.Annotations[2].Value, 5.0)
+}
+
+// A field left at 0 is computed, as the editor's help text says; the two
+// limits are computed together only when both are 0. Before, a chart with
+// only a UCL drew its mean line at 0, and one with only a mean flagged
+// every sample against limits of 0.
+func TestLayoutControl_PartlySuppliedLimits(t *testing.T) {
+	// Y=[4,5,6]: sample mean 5, sample stddev 1.
+	cases := []struct {
+		name           string
+		doc            ControlDocument
+		mean, ucl, lcl float64
+		flaggedSamples int
+	}{
+		{"only UCL: mean computed, LCL 0 kept", ControlDocument{Y: []float64{4, 5, 6}, UCL: 10}, 5, 10, 0, 0},
+		{"only mean: limits are mean ± 3σ", ControlDocument{Y: []float64{4, 5, 6}, Mean: 10}, 10, 13, 7, 3},
+		{"limits given, mean 0: mean computed", ControlDocument{Y: []float64{4, 5, 6}, UCL: 8, LCL: 2}, 5, 8, 2, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			layout := LayoutControl(tc.doc)
+			near(t, "Mean", layout.Annotations[0].Value, tc.mean)
+			near(t, "UCL", layout.Annotations[1].Value, tc.ucl)
+			near(t, "LCL", layout.Annotations[2].Value, tc.lcl)
+			if len(layout.Flags) != tc.flaggedSamples {
+				t.Errorf("flags = %d, want %d", len(layout.Flags), tc.flaggedSamples)
+			}
+		})
+	}
 }
 
 // ----- LayoutControl: flagging -----

@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { t } from '../../i18n/i18n.svelte';
+  import { formatList, t } from '../../i18n/i18n.svelte';
   // ParetoEditor: a flat list of (label, count) items. The backend
   // sorts them descending, computes cumulative percentage, and
   // overlays the 80% reference line.
@@ -28,6 +28,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function removeItem(i: number) {
     doc.items = doc.items.filter((_, idx) => idx !== i);
   }
+  // The layout leaves negative counts out of the chart; name them here so an
+  // item never disappears without a reason.
+  const leftOut = $derived(
+    doc.items.flatMap((it, i) => (it.count < 0 ? [it.label || String(i + 1)] : [])),
+  );
 </script>
 
 <StatsEditorShell
@@ -62,7 +67,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <input bind:value={doc.items[i].label} aria-label={t('a11y.rowField', { field: t('a11y.col.category'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input type="number" bind:value={doc.items[i].count} aria-label={t('a11y.rowField', { field: t('a11y.col.count'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" min="0" bind:value={doc.items[i].count} aria-invalid={doc.items[i].count < 0} aria-label={t('a11y.rowField', { field: t('a11y.col.count'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
               <Button variant="remove" class="text-xs" onclick={() => removeItem(i)} aria-label="Remove item" title="Remove item">×</Button>
@@ -72,6 +77,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </tbody>
     </table>
     <button onclick={addItem} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded mt-3">+ Item</button>
+    <p class="text-xs text-amber-300 mt-3 max-w-xl" role="status">
+      {#if leftOut.length}{t('pareto.negativeLeftOut', { labels: formatList(leftOut) })}{/if}
+    </p>
 
     <p class="text-[10px] text-slate-500 mt-3 max-w-xl">
       The backend sorts items by count descending and overlays the cumulative
