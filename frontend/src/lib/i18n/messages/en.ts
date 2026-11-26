@@ -270,6 +270,10 @@ export const en = {
   'a11y.categoryName': 'Category {n} name',
   'a11y.xPointName': 'X point {n} label',
   'a11y.removeRow': 'Remove {field} row {row}',
+  // A part-to-whole chart has no negative parts; the layout leaves them out.
+  // {labels} is a list of the rows' labels (or row numbers).
+  'pie.negativeLeftOut': 'Left out of the pie: {labels}. A slice must be 0 or more.',
+  'pareto.negativeLeftOut': 'Left out of the chart: {labels}. A count must be 0 or more.',
   'a11y.col.day': 'Day',
   'a11y.col.remaining': 'Remaining',
   'a11y.col.completed': 'Completed',

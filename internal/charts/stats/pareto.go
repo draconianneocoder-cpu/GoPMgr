@@ -39,8 +39,18 @@ func ParsePareto(raw string) (ParetoDocument, error) {
 //
 // The 80/20 rule's vital-few cut-off is rendered as an annotation
 // horizontal line at 80% on the right axis.
+//
+// Counts cannot be negative. A negative item is left out: counted, it
+// pushed the cumulative line past the right axis's 100% (10, 2 and -4
+// gave 125%, 150%, 100%), where the chart clipped it. The stored document
+// keeps the value; the editor says which items are left out.
 func LayoutPareto(doc ParetoDocument) StatsLayout {
-	items := append([]ParetoItem{}, doc.Items...)
+	items := make([]ParetoItem, 0, len(doc.Items))
+	for _, it := range doc.Items {
+		if it.Count >= 0 {
+			items = append(items, it)
+		}
+	}
 	sort.SliceStable(items, func(i, j int) bool {
 		return items[i].Count > items[j].Count
 	})

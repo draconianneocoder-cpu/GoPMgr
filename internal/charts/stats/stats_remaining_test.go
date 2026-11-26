@@ -210,6 +210,22 @@ func TestLayoutPie_SingleSlice_100Percent(t *testing.T) {
 	near(t, "single slice pct", layout.Slices[0].Pct, 100.0)
 }
 
+// A negative value is not a part of a whole. Counted, A=30, B=-5, C=10
+// gave a total of 35 and percentages of 85.7, -14.3 and 28.6, and the PDF
+// swept B's wedge backwards. B is left out: A and C share 40.
+func TestLayoutPie_NegativeSliceLeftOut(t *testing.T) {
+	doc, err := ParsePie(`{"slices":[{"label":"A","value":30},{"label":"B","value":-5},{"label":"C","value":10}]}`)
+	if err != nil {
+		t.Fatalf("ParsePie: %v", err)
+	}
+	layout := LayoutPie(doc)
+	if len(layout.Slices) != 2 || layout.Slices[0].Label != "A" || layout.Slices[1].Label != "C" {
+		t.Fatalf("slices = %+v, want A and C only", layout.Slices)
+	}
+	near(t, "A pct", layout.Slices[0].Pct, 75)
+	near(t, "C pct", layout.Slices[1].Pct, 25)
+}
+
 func TestLayoutPie_MultiSliceProportional(t *testing.T) {
 	// A=50, B=30, C=20; total=100 -> 50%, 30%, 20%
 	doc := PieDocument{

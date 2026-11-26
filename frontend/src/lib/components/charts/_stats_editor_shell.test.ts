@@ -142,3 +142,31 @@ describe('LineEditor open', () => {
     expect(app.SaveChart).not.toHaveBeenCalled();
   });
 });
+
+// The layout leaves a negative slice out of the pie (internal/charts/stats
+// LayoutPie). The editor must say so: a slice that vanished from the chart
+// with no reason reads as data loss.
+describe('PieEditor negative slices', () => {
+  it('names the slices the pie leaves out, and only those', async () => {
+    installApp({
+      GetChart: vi.fn(async () => ({
+        id: 'chart-1',
+        project_id: 'p1',
+        kind: 'pie',
+        title: 'Pie',
+        data: JSON.stringify({
+          slices: [
+            { label: 'Labour', value: 30 },
+            { label: 'Refund', value: -5 },
+            { label: 'Materials', value: 10 },
+          ],
+        }),
+      })),
+    });
+    const { findByText, getByRole } = render(PieEditor);
+
+    await findByText('Left out of the pie: Refund. A slice must be 0 or more.');
+    expect(getByRole('spinbutton', { name: 'Value, row 2' })).toHaveAttribute('aria-invalid', 'true');
+    expect(getByRole('spinbutton', { name: 'Value, row 1' })).toHaveAttribute('aria-invalid', 'false');
+  });
+});

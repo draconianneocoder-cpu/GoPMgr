@@ -5,8 +5,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { t } from '../../i18n/i18n.svelte';
   // ControlChartEditor: a time series of measurements with optional
-  // explicit Mean / UCL / LCL. If left at 0/0/0, the backend computes
-  // mean ± 3σ from the data. Out-of-control points are flagged red
+  // explicit Mean / UCL / LCL. A Mean left at 0 is the samples' mean; UCL
+  // and LCL both left at 0 become mean ± 3σ. Out-of-control points are flagged red
   // in the rendered chart automatically.
   import StatsEditorShell from './_stats_editor_shell.svelte';
   import Button from '../Button.svelte';
@@ -112,9 +112,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <button onclick={addRow} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded mt-3">+ Sample</button>
 
     <p class="text-[10px] text-slate-500 mt-3 max-w-xl">
-      Leave Mean / UCL / LCL at 0 to have the backend compute them as
-      mean ± 3σ from your samples. Out-of-control points (outside
-      [LCL, UCL]) are highlighted red in the chart.
+      Leave Mean at 0 to use your samples' mean. Leave both UCL and LCL at 0
+      to set them to mean ± 3σ; set either one and both are used as
+      entered. Out-of-control points (outside [LCL, UCL]) are highlighted
+      red in the chart.
     </p>
   {/snippet}
 </StatsEditorShell>
