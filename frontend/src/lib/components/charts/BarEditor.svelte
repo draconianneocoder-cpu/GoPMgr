@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // BarEditor mirrors LineEditor closely — same categories × series
   // grid — but the chart renders as vertical bars. Same data model
   // (categories + named series of values).
@@ -78,7 +79,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {#each doc.series as _, i (i)}
               <th class="p-2 border-b border-l border-slate-800 min-w-[140px]">
                 <div class="flex items-center gap-1">
-                  <input bind:value={doc.series[i].name} class="flex-1 bg-transparent text-xs px-1 py-1 focus:bg-slate-800 rounded" />
+                  <input bind:value={doc.series[i].name} aria-label={t('a11y.seriesName', { n: i + 1 })} class="flex-1 bg-transparent text-xs px-1 py-1 focus:bg-slate-800 rounded" />
                   <Button variant="remove" onclick={() => removeSeries(i)} aria-label="Remove series" title="Remove series">×</Button>
                 </div>
               </th>
@@ -93,7 +94,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <tr>
               <td class="p-1 border-b border-slate-800 bg-slate-950">
                 <div class="flex items-center gap-1">
-                  <input bind:value={doc.categories[ci]} class="flex-1 bg-transparent text-xs px-2 py-1 focus:bg-slate-900 rounded" />
+                  <input bind:value={doc.categories[ci]} aria-label={t('a11y.categoryName', { n: ci + 1 })} class="flex-1 bg-transparent text-xs px-2 py-1 focus:bg-slate-900 rounded" />
                   <Button variant="remove" class="text-xs" onclick={() => removeCategory(ci)} aria-label="Remove category" title="Remove category">×</Button>
                 </div>
               </td>
@@ -102,6 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <input
                     type="number"
                     bind:value={doc.series[si].values[ci]}
+                    aria-label={t('a11y.seriesValue', { series: doc.series[si].name || t('a11y.seriesName', { n: si + 1 }), category: doc.categories[ci] || t('a11y.categoryName', { n: ci + 1 }) })}
                     class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded text-right"
                   />
                 </td>

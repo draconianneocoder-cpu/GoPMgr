@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { workItemPayload } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
   // Backlog: every work item with state === 'backlog', shown as a
@@ -252,6 +253,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <select
               value={item.sprint_id}
               onchange={(e) => assignSprint(item, (e.target as HTMLSelectElement).value)}
+              aria-label={t('backlog.sprintFor', { item: item.title || '(untitled)' })}
               onclick={(e) => e.stopPropagation()}
               class="text-xs bg-slate-950 border border-slate-800 rounded px-2 py-1"
             >

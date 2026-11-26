@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // PieEditor edits a list of slices. Percentages are computed by the
   // backend and rendered in the StatsChart tooltip.
   import StatsEditorShell from './_stats_editor_shell.svelte';
@@ -52,10 +53,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each doc.slices as _, i}
           <tr>
             <td class="p-1 border-b border-slate-800">
-              <input bind:value={doc.slices[i].label} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded" />
+              <input bind:value={doc.slices[i].label} aria-label={t('a11y.rowField', { field: t('a11y.col.label'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input type="number" bind:value={doc.slices[i].value} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.slices[i].value} aria-label={t('a11y.rowField', { field: t('a11y.col.value'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
               <input bind:value={doc.slices[i].color} placeholder="#22d3ee" class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded font-mono" />

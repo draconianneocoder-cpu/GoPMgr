@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { desktopApi } from '../../desktop-api';
   import { saveChartWhenDocumentChanges } from './chart-document';
   // FishboneEditor edits an Ishikawa diagram: one central Effect plus
@@ -381,6 +382,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <div class="flex items-center gap-2">
             <input
               bind:value={cat.name}
+              aria-label={t('fishbone.categoryName', { n: i + 1 })}
               class="flex-1 bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
             />
             <Button

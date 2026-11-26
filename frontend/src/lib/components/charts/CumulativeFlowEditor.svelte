@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // CumulativeFlowEditor: Days × States grid. Each cell is the WIP
   // count for a state on a day. State order (bottom-to-top of the
   // stack) is editable via the up/down arrows on each state header.
@@ -127,13 +128,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {#each doc.days as _, di}
               <tr>
                 <td class="p-1 border-b border-slate-800">
-                  <input type="number" bind:value={doc.days[di]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+                  <input type="number" bind:value={doc.days[di]} aria-label={t('a11y.rowField', { field: t('a11y.col.day'), row: di + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
                 </td>
                 {#each doc.state_order as name (name)}
                   <td class="p-1 border-b border-l border-slate-800">
                     <input
                       type="number"
                       value={doc.states[name]?.[di] ?? 0}
+                      aria-label={t('a11y.dayValue', { series: name, day: doc.days[di] })}
                       oninput={(e) => setCell(name, di, parseFloat((e.target as HTMLInputElement).value) || 0)}
                       class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right"
                     />

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // LineEditor edits a Line chart: a list of x-axis labels (or
   // numbers) and one or more named series of y-values aligned to
   // that x-axis.
@@ -79,7 +80,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {#each doc.series as s, i (i)}
               <th class="p-2 border-b border-l border-slate-800 min-w-[140px]">
                 <div class="flex items-center gap-1">
-                  <input bind:value={doc.series[i].name} class="flex-1 bg-transparent text-xs px-1 py-1 focus:bg-slate-800 rounded" />
+                  <input bind:value={doc.series[i].name} aria-label={t('a11y.seriesName', { n: i + 1 })} class="flex-1 bg-transparent text-xs px-1 py-1 focus:bg-slate-800 rounded" />
                   <Button variant="remove" onclick={() => removeSeries(i)} aria-label="Remove series" title="Remove series">×</Button>
                 </div>
                 <label class="flex items-center gap-1 mt-1 text-[10px]">
@@ -105,7 +106,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <tr>
               <td class="p-1 border-b border-slate-800 bg-slate-950">
                 <div class="flex items-center gap-1">
-                  <input bind:value={doc.x_str![xi]} class="flex-1 bg-transparent text-xs px-2 py-1 focus:bg-slate-900 rounded" />
+                  <input bind:value={doc.x_str![xi]} aria-label={t('a11y.xPointName', { n: xi + 1 })} class="flex-1 bg-transparent text-xs px-2 py-1 focus:bg-slate-900 rounded" />
                   <Button variant="remove" class="text-xs" onclick={() => removeX(xi)} aria-label="Remove row" title="Remove row">×</Button>
                 </div>
               </td>
@@ -114,6 +115,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <input
                     type="number"
                     bind:value={doc.series[si].y[xi]}
+                    aria-label={t('a11y.seriesValue', { series: doc.series[si].name || t('a11y.seriesName', { n: si + 1 }), category: doc.x_str?.[xi] || t('a11y.xPointName', { n: xi + 1 }) })}
                     class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded text-right"
                   />
                 </td>

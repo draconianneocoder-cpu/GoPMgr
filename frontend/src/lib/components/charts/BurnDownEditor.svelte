@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // BurnDownEditor edits days and remaining-work counts. The backend
   // computes the ideal linear trajectory from remaining[0] to 0 and
   // adds it as a second series.
@@ -60,10 +61,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each doc.days as _, i}
           <tr>
             <td class="p-1 border-b border-slate-800">
-              <input type="number" bind:value={doc.days[i]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.days[i]} aria-label={t('a11y.rowField', { field: t('a11y.col.day'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input type="number" bind:value={doc.remaining[i]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.remaining[i]} aria-label={t('a11y.rowField', { field: t('a11y.col.remaining'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
               <Button variant="remove" class="text-xs" onclick={() => removeRow(i)} aria-label="Remove day" title="Remove day">×</Button>

@@ -137,6 +137,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   min="1"
                   max="10"
                   bind:value={solution.impact}
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.impact'), item: solution.title || String(index + 1) })}
                   oninput={() => updateSolution(index, 'impact', +solution.impact)}
                 />
               </td>
@@ -146,6 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   min="1"
                   max="10"
                   bind:value={solution.effort}
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.effort'), item: solution.title || String(index + 1) })}
                   oninput={() => updateSolution(index, 'effort', +solution.effort)}
                 />
               </td>
@@ -155,6 +157,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   min="1"
                   max="10"
                   bind:value={solution.risk}
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.risk'), item: solution.title || String(index + 1) })}
                   oninput={() => updateSolution(index, 'risk', +solution.risk)}
                 />
               </td>
@@ -164,6 +167,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   min="0"
                   step="0.01"
                   bind:value={solution.cost}
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.cost'), item: solution.title || String(index + 1) })}
                   oninput={() => updateSolution(index, 'cost', +solution.cost)}
                 />
               </td>
@@ -172,11 +176,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <input
                   type="checkbox"
                   bind:checked={solution.selected}
+                  aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.select'), item: solution.title || String(index + 1) })}
                   onchange={() => updateSolution(index, 'selected', solution.selected)}
                 />
               </td>
               <td>
-                <select bind:value={solution.status} onchange={() => updateSolution(index, 'status', solution.status)}>
+                <select bind:value={solution.status} aria-label={t('a11y.fieldFor', { field: t('sigma.solutions.status'), item: solution.title || String(index + 1) })} onchange={() => updateSolution(index, 'status', solution.status)}>
                   <option value="proposed">Proposed</option>
                   <option value="pilot">Pilot</option>
                   <option value="implemented">Implemented</option>

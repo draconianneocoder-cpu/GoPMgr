@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { desktopApi } from '../../desktop-api';
   import { saveChartWhenDocumentChanges } from './chart-document';
   // ActivityEditor renders a UML 2.5 activity diagram with horizontal
@@ -488,10 +489,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
         Swimlanes
       </h2>
       <ul class="space-y-2 mb-6">
-        {#each doc.swimlanes as s (s.id)}
+        {#each doc.swimlanes as s, si (s.id)}
           <li class="flex gap-2 items-center">
             <input
               bind:value={s.name}
+              aria-label={t('activity.swimlaneName', { n: si + 1 })}
               class="flex-1 bg-slate-950 border border-slate-800 p-2 text-xs rounded focus:border-cyan-500 outline-none"
             />
             <Button
