@@ -339,8 +339,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {t('chart.savedAt', { time: formatTime(lastSavedAt) })}
         </span>
       {/if}
-      <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomOut')}>−</button>
-      <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomIn')}>+</button>
+      <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomOut')} aria-label={t('gantt.zoomOut')}>−</button>
+      <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title={t('gantt.zoomIn')} aria-label={t('gantt.zoomIn')}>+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title={t('gantt.setBaseline.hint')}>{t('chart.setBaseline')}</button>
       {#if session.editingId}
         <BaselineList chartId={session.editingId} onchange={refreshBaseline} />
@@ -376,6 +376,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <input
                     bind:value={n.label}
                     onchange={onEdit}
+                    aria-label={t('chart.task')}
                     class="w-full bg-transparent border border-transparent hover:border-slate-800 focus:border-cyan-500 rounded p-1 outline-none"
                   />
                 </td>
@@ -385,6 +386,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     min="0"
                     bind:value={n.duration}
                     onchange={onEdit}
+                    aria-label={t('a11y.fieldFor', { field: t('gantt.days'), item: n.label || t('chart.task') })}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
@@ -395,11 +397,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     max="100"
                     bind:value={n.percent_complete}
                     onchange={onEdit}
+                    aria-label={t('a11y.fieldFor', { field: t('gantt.percentComplete'), item: n.label || t('chart.task') })}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
                 <td class="text-center">
-                  <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} class="accent-cyan-500" />
+                  <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} aria-label={t('a11y.fieldFor', { field: t('chart.milestone'), item: n.label || t('chart.task') })} class="accent-cyan-500" />
                 </td>
                 <td class="text-center">
                   <button onclick={() => deleteTask(r.id)} class="text-slate-500 hover:text-red-400" title={t('chart.deleteTask')} aria-label={t('chart.deleteTask')}>✕</button>
@@ -425,16 +428,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
         {/each}
         <div class="flex items-center gap-1 mt-2">
-          <select bind:value={linkFrom} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
+          <select bind:value={linkFrom} aria-label={t('gantt.link.fromLabel')} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
             <option value="">{t('gantt.link.from')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
-          <select bind:value={linkTo} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
+          <select bind:value={linkTo} aria-label={t('gantt.link.toLabel')} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
             <option value="">{t('gantt.link.to')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
-          <input bind:value={linkLabel} placeholder={LINK_LAG_EXAMPLE} class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
-          <button onclick={addLink} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded">+</button>
+          <input bind:value={linkLabel} placeholder={LINK_LAG_EXAMPLE} aria-label={t('gantt.link.lagLabel')} class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
+          <button onclick={addLink} aria-label={t('gantt.link.add')} title={t('gantt.link.add')} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded">+</button>
         </div>
       </div>
     </aside>

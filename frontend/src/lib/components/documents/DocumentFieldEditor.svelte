@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import ChartPicker from './ChartPicker.svelte';
   import Button from '../Button.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   // currency is the project's reporting currency code; amount fields
   // show it after their label, as the exported documents do.
@@ -136,12 +137,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="space-y-2">
       {#each (value as string[]) ?? [] as _, i}
         <div class="flex gap-2">
+          <!-- A fieldset names the group, not each row: the row and its
+               remove button carry their own names. -->
           <input
             type="text"
             bind:value={(value as string[])[i]}
+            aria-label={t('a11y.rowField', { field: labelOf(field), row: i + 1 })}
             class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
-          <Button variant="remove" class="text-xs px-2" onclick={() => removeStringRow(i)}>
+          <Button
+            variant="remove"
+            class="text-xs px-2"
+            onclick={() => removeStringRow(i)}
+            aria-label={t('a11y.removeRow', { field: labelOf(field), row: i + 1 })}
+            title={t('a11y.removeRow', { field: labelOf(field), row: i + 1 })}
+          >
             ×
           </Button>
         </div>

@@ -100,16 +100,20 @@ describe('milestone entries', () => {
 
     await waitFor(() => expect(getByText('milestone · chart')).toBeInTheDocument());
 
-    // Distinct color from the charter case above (#ec4899, not #a855f7).
+    // Distinct color from the charter case above: the rose theme token,
+    // which steps darker in the light theme, not the fixed #a855f7.
     const dot = container.querySelector('.rounded-full') as HTMLElement | null;
-    expect(dot?.style.background).toBe('rgb(236, 72, 153)'); // #ec4899
+    expect(dot?.getAttribute('style')).toContain('rgb(var(--rose-300))');
 
     // Distinct marker shape in the strip: a diamond (polygon), not the
     // charter case's circle -- the distinction doesn't rely on color alone.
+    // The colour is bound through style: a fill= attribute cannot resolve
+    // var(), so the marker would draw black.
     const marker = container.querySelector('svg polygon');
     expect(marker).toBeTruthy();
-    expect(marker?.getAttribute('fill')).toBe('#ec4899');
-    expect(container.querySelector('svg circle[fill="#ec4899"]')).not.toBeInTheDocument();
+    expect(marker?.getAttribute('style')).toContain('fill: rgb(var(--rose-300))');
+    expect(marker?.hasAttribute('fill')).toBe(false);
+    expect(container.querySelector('svg circle[style*="--rose-300"]')).not.toBeInTheDocument();
   });
 });
 

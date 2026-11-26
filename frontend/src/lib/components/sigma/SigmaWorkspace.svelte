@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { desktopApi } from '../../desktop-api';
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
@@ -71,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           placeholder="Project Title (e.g., Reduce Defect Rate in Assembly Line A)"
           class="flex-1 bg-slate-950 border border-slate-800 p-3 rounded text-sm focus:border-cyan-500 outline-none"
         />
-        <select bind:value={newBelt} class="bg-slate-950 border border-slate-800 p-3 rounded text-sm">
+        <select bind:value={newBelt} aria-label={t('sigma.belt')} class="bg-slate-950 border border-slate-800 p-3 rounded text-sm">
           <option value="green">Green Belt</option>
           <option value="black">Black Belt</option>
         </select>

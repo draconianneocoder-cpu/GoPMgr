@@ -220,15 +220,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // milestones get a distinct hue. Color alone is not a sufficient cue
   // (WCAG 1.4.1) -- see milestoneSourceLabel below for the paired text
   // label, and the diamond-vs-circle marker shape in the strip itself.
+  // Markers sit on the slate-800 strip, so each colour needs 3:1 against it
+  // in both themes (WCAG 1.4.11). Theme tokens step darker in the light
+  // theme; the fixed dark-theme hexes measured 1.5-2.0:1 there. Purple has
+  // no token and clears 3:1 on both strips as a fixed value (3.7 / 3.2:1).
+  // The value is CSS, so the SVG binds it through `style`: presentation
+  // attributes such as fill= do not resolve var().
   function kindColor(e: TimelineEntry): string {
     switch (e.kind) {
-      case 'sprint_start':   return '#22d3ee';
-      case 'sprint_end':     return '#0891b2';
-      case 'deployment':     return '#22c55e';
-      case 'milestone':      return e.milestone_source === 'chart' ? '#ec4899' : '#a855f7';
-      case 'project_start':  return '#f59e0b';
-      case 'project_end':    return '#ef4444';
-      default:               return '#94a3b8';
+      case 'sprint_start':   return 'rgb(var(--cyan-400))';
+      case 'sprint_end':     return 'rgb(var(--sky-300))';
+      case 'deployment':     return 'rgb(var(--emerald-400))';
+      case 'milestone':      return e.milestone_source === 'chart' ? 'rgb(var(--rose-300))' : '#a855f7';
+      case 'project_start':  return 'rgb(var(--amber-400))';
+      case 'project_end':    return 'rgb(var(--red-400))';
+      default:               return 'rgb(var(--slate-500))';
     }
   }
 
@@ -377,9 +383,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                      changes, a chart-sourced milestone would silently render
                      as a circle here -- add the same shape branch then. -->
                 <line x1={x} y1={STRIP_Y - 8} x2={x} y2={STRIP_Y + STRIP_H + 8}
-                      stroke={kindColor(e)} stroke-width="2" />
+                      style="stroke: {kindColor(e)}" stroke-width="2" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="5"
-                        fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
+                        style="fill: {kindColor(e)}; stroke: rgb(var(--slate-900))" stroke-width="1" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="8"
                         fill="transparent"
                         style="stroke: {movingKey === key ? 'rgb(var(--amber-400))' : 'rgb(var(--cyan-300))'}"
@@ -395,16 +401,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {:else}
               <g>
                 <line x1={x} y1={STRIP_Y - 8} x2={x} y2={STRIP_Y + STRIP_H + 8}
-                      stroke={kindColor(e)} stroke-width="1.5" />
+                      style="stroke: {kindColor(e)}" stroke-width="1.5" />
                 {#if e.kind === 'milestone' && e.milestone_source === 'chart'}
                   <!-- Chart-sourced milestone: diamond, not the default circle,
                        so the distinction doesn't rely on color alone. -->
                   <polygon
                     points="{x},{STRIP_Y + STRIP_H / 2 - 4.5} {x + 4.5},{STRIP_Y + STRIP_H / 2} {x},{STRIP_Y + STRIP_H / 2 + 4.5} {x - 4.5},{STRIP_Y + STRIP_H / 2}"
-                    fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
+                    style="fill: {kindColor(e)}; stroke: rgb(var(--slate-900))" stroke-width="1" />
                 {:else}
                   <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="3.5"
-                          fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
+                          style="fill: {kindColor(e)}; stroke: rgb(var(--slate-900))" stroke-width="1" />
                 {/if}
                 {#if i % 2 === 0}
                   <text x={x + 4} y={STRIP_Y - 14}

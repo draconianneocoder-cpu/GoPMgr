@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // ControlChartEditor: a time series of measurements with optional
   // explicit Mean / UCL / LCL. If left at 0/0/0, the backend computes
   // mean ± 3σ from the data. Out-of-control points are flagged red
@@ -96,10 +97,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each doc.x as _, i}
           <tr>
             <td class="p-1 border-b border-slate-800">
-              <input type="number" bind:value={doc.x[i]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.x[i]} aria-label={t('a11y.rowField', { field: t('a11y.col.sample'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input type="number" bind:value={doc.y[i]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.y[i]} aria-label={t('a11y.rowField', { field: t('a11y.col.measurement'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
               <Button variant="remove" class="text-xs" onclick={() => removeRow(i)} aria-label="Remove sample" title="Remove sample">×</Button>

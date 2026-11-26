@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   // ParetoEditor: a flat list of (label, count) items. The backend
   // sorts them descending, computes cumulative percentage, and
   // overlays the 80% reference line.
@@ -58,10 +59,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each doc.items as _, i}
           <tr>
             <td class="p-1 border-b border-slate-800">
-              <input bind:value={doc.items[i].label} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded" />
+              <input bind:value={doc.items[i].label} aria-label={t('a11y.rowField', { field: t('a11y.col.category'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded" />
             </td>
             <td class="p-1 border-b border-l border-slate-800">
-              <input type="number" bind:value={doc.items[i].count} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
+              <input type="number" bind:value={doc.items[i].count} aria-label={t('a11y.rowField', { field: t('a11y.col.count'), row: i + 1 })} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
               <Button variant="remove" class="text-xs" onclick={() => removeItem(i)} aria-label="Remove item" title="Remove item">×</Button>

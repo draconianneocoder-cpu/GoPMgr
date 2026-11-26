@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { t } from '../../i18n/i18n.svelte';
   import { normaliseDocumentDefinition, signatureMethodValue } from '../../desktop-dtos';
   import { desktopApi } from '../../desktop-api';
   import { onMount, onDestroy } from 'svelte';
@@ -265,6 +266,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <span class="text-xs text-slate-500">v{doc.version}</span>
         <select
           bind:value={doc.status}
+          aria-label={t('document.status')}
           onchange={() => save()}
           class="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded"
         >
