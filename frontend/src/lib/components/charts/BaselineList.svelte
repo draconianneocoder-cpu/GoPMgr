@@ -60,7 +60,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 </script>
 
-<div class="relative">
+<!-- flex: a block wrapper adds line-box space under the inline button,
+     which sat it a pixel or two off the toolbar row. -->
+<div class="relative flex">
   <button
     type="button"
     onclick={toggle}

@@ -18,6 +18,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   const circumference = 2 * Math.PI * 40;
   let offset = $derived(circumference - (score / 100) * circumference);
+  // One band decides both the arc and the percentage, so a failing score
+  // no longer pairs a red arc with amber text.
+  let scoreTone = $derived(
+    score >= 80
+      ? { token: '--emerald-400', text: 'text-emerald-400' }
+      : score >= 50
+        ? { token: '--amber-400', text: 'text-amber-400' }
+        : { token: '--red-400', text: 'text-red-400' },
+  );
 </script>
 
 <div class="bg-slate-900 border border-slate-800 rounded-lg p-5">
@@ -25,10 +34,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <!-- Circular Progress -->
     <div class="relative w-24 h-24 flex-shrink-0">
       <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="40" stroke="#334155" stroke-width="8" fill="none" />
+        <!-- Theme tokens through style (fill=/stroke= attributes cannot resolve
+             var()): the fixed dark-theme hexes drew a near-black track and
+             a 2:1 amber arc on the light theme's pale card. -->
+        <circle cx="50" cy="50" r="40" style="stroke: rgb(var(--slate-800))" stroke-width="8" fill="none" />
         <circle
           cx="50" cy="50" r="40"
-          stroke={score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444'}
+          style="stroke: rgb(var({scoreTone.token}))"
           stroke-width="8"
           fill="none"
           stroke-dasharray={circumference}
@@ -37,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         />
       </svg>
       <div class="absolute inset-0 flex items-center justify-center">
-        <span class="text-xl font-bold {score >= 80 ? 'text-emerald-400' : 'text-amber-400'}">
+        <span class="text-xl font-bold {scoreTone.text}">
           {Math.round(score)}%
         </span>
       </div>

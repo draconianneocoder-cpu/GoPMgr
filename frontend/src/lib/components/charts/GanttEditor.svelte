@@ -425,16 +425,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
         {/each}
         <div class="flex items-center gap-1 mt-2">
-          <select bind:value={linkFrom} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
+          <select bind:value={linkFrom} aria-label={t('gantt.link.fromLabel')} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
             <option value="">{t('gantt.link.from')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
-          <select bind:value={linkTo} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
+          <select bind:value={linkTo} aria-label={t('gantt.link.toLabel')} class="flex-1 bg-slate-900 border border-slate-800 rounded p-1 text-xs outline-none">
             <option value="">{t('gantt.link.to')}</option>
             {#each doc.nodes as n (n.id)}<option value={n.id}>{n.label}</option>{/each}
           </select>
-          <input bind:value={linkLabel} placeholder={LINK_LAG_EXAMPLE} class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
-          <button onclick={addLink} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded">+</button>
+          <input bind:value={linkLabel} placeholder={LINK_LAG_EXAMPLE} aria-label={t('gantt.link.lagLabel')} class="w-16 bg-slate-900 border border-slate-800 rounded p-1 text-xs font-mono outline-none" />
+          <button onclick={addLink} aria-label={t('gantt.link.add')} title={t('gantt.link.add')} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded">+</button>
         </div>
       </div>
     </aside>

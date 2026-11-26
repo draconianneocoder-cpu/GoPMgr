@@ -254,6 +254,12 @@ export const en = {
   'gantt.links': 'Links (FS/SS/FF/SF ± lag)',
   'gantt.link.from': 'from…',
   'gantt.link.to': 'to…',
+  // Accessible names for the add-link row, whose controls show only
+  // placeholder text.
+  'gantt.link.fromLabel': 'Link from task',
+  'gantt.link.toLabel': 'Link to task',
+  'gantt.link.lagLabel': 'Link type and lag',
+  'gantt.link.add': 'Add link',
   'gantt.legend':
     'Red bars are critical; teal strip = % complete; grey ghost = baseline; orange outline = overallocated resource; amber ! = constraint violated. Split tasks show interrupted bars. Real dates appear when the project has a start date. Link labels accept FS/SS/FF/SF with ±lag days.',
   // The bar canvas's description for screen readers. {tasks} and {days} are
